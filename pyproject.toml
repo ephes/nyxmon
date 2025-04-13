@@ -1,0 +1,20 @@
+[project]
+name = "nyxmon"
+version = "0.1.0"
+description = "Minimal monitoring package"
+readme = "README.md"
+authors = [
+    { name = "Jochen Wersdörfer", email = "jochen-nyxmon@wersdoerfer.de" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+    "pytest",
+]
