@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Health Check - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .confirm-delete-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .confirm-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    .warning-message {
+        background-color: #fee2e2;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1.5rem;
+        color: #991b1b;
+        border-left: 4px solid #ef4444;
+    }
+    
+    .health-check-info {
+        background-color: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .service-link {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.25rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+    }
+    
+    .delete-button {
+        background-color: #ef4444;
+        color: white;
+    }
+    
+    .cancel-button {
+        background-color: #e5e7eb;
+        color: var(--color-text);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirm-delete-container">
+    <div class="confirm-header">
+        <h2>Delete Health Check</h2>
+    </div>
+    
+    <div class="warning-message">
+        <p><strong>Warning:</strong> You are about to delete this health check. This action cannot be undone.</p>
+        <p>All results associated with this health check will also be deleted.</p>
+    </div>
+    
+    <div class="health-check-info">
+        <h3>Health Check #{{ health_check.id }}</h3>
+        <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="service-link">
+            Service #{{ health_check.service.id }}
+        </a>
+        <p>Data: {{ health_check.data }}</p>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" class="button delete-button">Confirm Delete</button>
+            <a href="{% url 'nyxboard:healthcheck_detail' check_id=health_check.id %}" class="button cancel-button">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

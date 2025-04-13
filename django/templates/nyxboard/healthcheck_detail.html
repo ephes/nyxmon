@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Health Check Details - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .button {
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .primary-btn {
+        background-color: var(--color-header-bg);
+        color: white;
+    }
+    
+    .back-btn {
+        background-color: #e5e7eb;
+        color: var(--color-text);
+    }
+    
+    .health-check-info {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .health-check-status {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        margin-left: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .passed {
+        background-color: var(--color-passed);
+    }
+    
+    .failed {
+        background-color: var(--color-failed);
+    }
+    
+    .warning {
+        background-color: var(--color-warning);
+    }
+    
+    .recovering {
+        background-color: var(--color-recovering);
+    }
+    
+    .unknown {
+        background-color: var(--color-unknown);
+    }
+    
+    .health-check-id {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .service-link {
+        display: block;
+        margin-bottom: 1rem;
+    }
+    
+    .health-check-data {
+        background-color: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        white-space: pre-wrap;
+        margin-top: 1rem;
+    }
+    
+    .health-check-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .results-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .result-item {
+        background-color: white;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .result-id {
+        font-weight: 600;
+    }
+    
+    .result-content {
+        padding: 1rem;
+    }
+    
+    .result-date {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .result-data {
+        background-color: #f9fafb;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        margin-top: 0.5rem;
+        max-height: 100px;
+        overflow-y: auto;
+    }
+    
+    .edit-btn {
+        background-color: #a7f3d0;
+        color: #065f46;
+    }
+    
+    .delete-btn {
+        background-color: #fca5a5;
+        color: #991b1b;
+    }
+    
+    .empty-message {
+        padding: 2rem;
+        text-align: center;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .ok-status {
+        color: #047857;
+    }
+    
+    .error-status {
+        color: #b91c1c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Health Check Details</h2>
+    <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="button back-btn">&larr; Back to Service</a>
+</div>
+
+<div class="health-check-info">
+    <div class="health-check-id">
+        Health Check #{{ health_check.id }}
+        <span class="health-check-status {{ health_check.get_status }}">{{ health_check.get_status|title }}</span>
+    </div>
+    
+    <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="service-link">
+        Service #{{ health_check.service.id }}
+    </a>
+    
+    <h3>Health Check Data:</h3>
+    <div class="health-check-data">{{ health_check.data|pprint }}</div>
+    
+    <div class="health-check-actions">
+        <a href="{% url 'nyxboard:healthcheck_update' check_id=health_check.id %}" class="button edit-btn">Edit Health Check</a>
+        <a href="{% url 'nyxboard:healthcheck_delete' check_id=health_check.id %}" class="button delete-btn">Delete Health Check</a>
+    </div>
+</div>
+
+<div class="section-header">
+    <h3>Recent Results</h3>
+</div>
+
+{% if results %}
+    <ul class="results-list">
+        {% for result in results %}
+            <li class="result-item">
+                <div class="result-header">
+                    <div class="result-id">Result #{{ result.id }}</div>
+                    <div class="result-status {% if result.status == 'ok' %}ok-status{% else %}error-status{% endif %}">
+                        {{ result.status|upper }}
+                    </div>
+                </div>
+                <div class="result-content">
+                    <div class="result-date">{{ result.created_at }}</div>
+                    <h4>Result Data:</h4>
+                    <div class="result-data">{{ result.data }}</div>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No results available for this health check yet.</p>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="button back-btn">Back to Dashboard</a>
+</div>
+{% endblock %}

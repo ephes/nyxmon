@@ -30,6 +30,15 @@ header {
     padding: 1rem 2rem;
 }
 
+.header-link {
+    color: var(--color-header-text);
+    text-decoration: none;
+}
+
+.header-link:hover {
+    text-decoration: underline;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -116,6 +125,15 @@ h1, h2, h3, h4 {
     font-weight: 600;
 }
 
+.service-link, .health-check-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.service-link:hover, .health-check-link:hover {
+    text-decoration: underline;
+}
+
 .service-status {
     font-weight: 600;
 }
@@ -173,6 +191,36 @@ h1, h2, h3, h4 {
     font-weight: 600;
 }
 
+/* Dashboard controls */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.dashboard-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.dashboard-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.service-btn {
+    background-color: #93c5fd;
+    color: #1e40af;
+}
+
+.check-btn {
+    background-color: #a7f3d0;
+    color: #065f46;
+}
+
 /* Messages */
 .no-services-message,
 .no-checks-message {
@@ -181,6 +229,16 @@ h1, h2, h3, h4 {
     background-color: var(--color-unknown);
     border-radius: 0.25rem;
     margin: 1rem 0;
+}
+
+.no-services-message p,
+.no-checks-message p,
+.empty-message p {
+    margin-bottom: 1.5rem;
+}
+
+.empty-action {
+    margin-top: 1.5rem;
 }
 
 /* Responsive adjustments */

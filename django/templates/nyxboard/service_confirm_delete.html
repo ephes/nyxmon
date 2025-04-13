@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Service - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .confirm-delete-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .confirm-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    .warning-message {
+        background-color: #fee2e2;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1.5rem;
+        color: #991b1b;
+        border-left: 4px solid #ef4444;
+    }
+    
+    .service-info {
+        background-color: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.25rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+    }
+    
+    .delete-button {
+        background-color: #ef4444;
+        color: white;
+    }
+    
+    .cancel-button {
+        background-color: #e5e7eb;
+        color: var(--color-text);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirm-delete-container">
+    <div class="confirm-header">
+        <h2>Delete Service</h2>
+    </div>
+    
+    <div class="warning-message">
+        <p><strong>Warning:</strong> You are about to delete this service. This action cannot be undone.</p>
+        <p>All health checks associated with this service will also be deleted.</p>
+    </div>
+    
+    <div class="service-info">
+        <h3>Service #{{ service.id }}</h3>
+        <p>Data: {{ service.data }}</p>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" class="button delete-button">Confirm Delete</button>
+            <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="button cancel-button">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

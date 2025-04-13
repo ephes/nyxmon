@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Services - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .new-service-btn {
+        padding: 0.5rem 1rem;
+        background-color: var(--color-header-bg);
+        color: white;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .service-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .service-card {
+        background-color: white;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .service-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .service-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    
+    .service-status {
+        font-weight: 600;
+    }
+    
+    .service-content {
+        padding: 1rem;
+    }
+    
+    .service-data {
+        background-color: #f9fafb;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        margin-bottom: 1rem;
+        max-height: 100px;
+        overflow-y: auto;
+    }
+    
+    .service-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .action-btn {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .view-btn {
+        background-color: #93c5fd;
+        color: #1e40af;
+    }
+    
+    .edit-btn {
+        background-color: #a7f3d0;
+        color: #065f46;
+    }
+    
+    .delete-btn {
+        background-color: #fca5a5;
+        color: #991b1b;
+    }
+    
+    .empty-message {
+        padding: 2rem;
+        text-align: center;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Services</h2>
+    <a href="{% url 'nyxboard:service_create' %}" class="new-service-btn">New Service</a>
+</div>
+
+{% if services %}
+    <ul class="service-list">
+        {% for service in services %}
+            {% with service_status=service.get_status %}
+            <li class="service-card">
+                <div class="service-header">
+                    <div class="service-name">Service #{{ service.id }}</div>
+                    <div class="service-status {{ status_choices.get_css_class }}">{{ service_status|title }}</div>
+                </div>
+                <div class="service-content">
+                    <div class="service-data">{{ service.data }}</div>
+                    <div class="service-actions">
+                        <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="action-btn view-btn">View</a>
+                        <a href="{% url 'nyxboard:service_update' service_id=service.id %}" class="action-btn edit-btn">Edit</a>
+                        <a href="{% url 'nyxboard:service_delete' service_id=service.id %}" class="action-btn delete-btn">Delete</a>
+                    </div>
+                </div>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No services available. Start by creating a new service.</p>
+        <div class="empty-action">
+            <a href="{% url 'nyxboard:service_create' %}" class="new-service-btn">Create Service</a>
+        </div>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="action-btn view-btn">Back to Dashboard</a>
+</div>
+{% endblock %}

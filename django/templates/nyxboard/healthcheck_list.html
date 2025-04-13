@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Health Checks - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .new-check-btn {
+        padding: 0.5rem 1rem;
+        background-color: var(--color-header-bg);
+        color: white;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .health-check-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .health-check-card {
+        background-color: white;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .health-check-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .health-check-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    
+    .health-check-status {
+        font-weight: 600;
+    }
+    
+    .health-check-content {
+        padding: 1rem;
+    }
+    
+    .service-link {
+        margin-bottom: 0.5rem;
+        display: inline-block;
+    }
+    
+    .health-check-data {
+        background-color: #f9fafb;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        margin-bottom: 1rem;
+        max-height: 100px;
+        overflow-y: auto;
+    }
+    
+    .health-check-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .action-btn {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .view-btn {
+        background-color: #93c5fd;
+        color: #1e40af;
+    }
+    
+    .edit-btn {
+        background-color: #a7f3d0;
+        color: #065f46;
+    }
+    
+    .delete-btn {
+        background-color: #fca5a5;
+        color: #991b1b;
+    }
+    
+    .empty-message {
+        padding: 2rem;
+        text-align: center;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Health Checks</h2>
+    <a href="{% url 'nyxboard:healthcheck_create' %}" class="new-check-btn">New Health Check</a>
+</div>
+
+{% if health_checks %}
+    <ul class="health-check-list">
+        {% for check in health_checks %}
+            {% with check_status=check.get_status %}
+            <li class="health-check-card">
+                <div class="health-check-header">
+                    <div class="health-check-name">Health Check #{{ check.id }}</div>
+                    <div class="health-check-status {{ check_status }}">{{ check_status|title }}</div>
+                </div>
+                <div class="health-check-content">
+                    <a href="{% url 'nyxboard:service_detail' service_id=check.service.id %}" class="service-link">
+                        Service #{{ check.service.id }}
+                    </a>
+                    <div class="health-check-data">{{ check.data }}</div>
+                    <div class="health-check-actions">
+                        <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="action-btn view-btn">View</a>
+                        <a href="{% url 'nyxboard:healthcheck_update' check_id=check.id %}" class="action-btn edit-btn">Edit</a>
+                        <a href="{% url 'nyxboard:healthcheck_delete' check_id=check.id %}" class="action-btn delete-btn">Delete</a>
+                    </div>
+                </div>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No health checks available. Start by creating a new health check.</p>
+        <div class="empty-action">
+            <a href="{% url 'nyxboard:healthcheck_create' %}" class="new-check-btn">Create Health Check</a>
+        </div>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="action-btn view-btn">Back to Dashboard</a>
+</div>
+{% endblock %}

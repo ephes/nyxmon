@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h2>{{ action }} {{ form_title|default:"Item" }}</h2>
+        {% if back_url %}
+            <a href="{{ back_url }}" class="back-link">&larr; Back</a>
+        {% endif %}
+    </div>
+    
+    <form method="post" class="form">
+        {% csrf_token %}
+        
+        {% for field in form %}
+            <div class="form-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="help-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="field-errors">
+                        {% for error in field.errors %}
+                            <div class="error">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        
+        <div class="form-actions">
+            <button type="submit" class="button submit-button">{{ action }}</button>
+            {% if cancel_url %}
+                <a href="{{ cancel_url }}" class="button cancel-button">Cancel</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .back-link {
+        color: var(--color-text);
+        text-decoration: none;
+    }
+    
+    .back-link:hover {
+        text-decoration: underline;
+    }
+    
+    .form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    label {
+        font-weight: 600;
+    }
+    
+    input, textarea, select {
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.25rem;
+        font-family: inherit;
+        font-size: inherit;
+    }
+    
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .field-errors {
+        margin-top: 0.25rem;
+    }
+    
+    .error {
+        color: #ef4444;
+        font-size: 0.875rem;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.25rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+    }
+    
+    .submit-button {
+        background-color: var(--color-header-bg);
+        color: white;
+    }
+    
+    .cancel-button {
+        background-color: #e5e7eb;
+        color: var(--color-text);
+    }
+</style>
+{% endblock %}

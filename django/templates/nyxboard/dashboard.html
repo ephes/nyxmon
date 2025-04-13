@@ -6,7 +6,13 @@
 {% endblock %}
 
 {% block content %}
-<h2>Services Overview</h2>
+<div class="dashboard-header">
+    <h2>Services Overview</h2>
+    <div class="dashboard-actions">
+        <a href="{% url 'nyxboard:service_list' %}" class="dashboard-btn service-btn">Manage Services</a>
+        <a href="{% url 'nyxboard:healthcheck_list' %}" class="dashboard-btn check-btn">Manage Health Checks</a>
+    </div>
+</div>
 
 {% if services %}
     <ul class="services-list">
@@ -14,7 +20,11 @@
             {% with service_status=service.get_status %}
             <li class="service">
                 <div class="service-header {{ service_status }}">
-                    <div class="service-name">Service #{{ service.id }}</div>
+                    <div class="service-name">
+                        <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="service-link">
+                            Service #{{ service.id }}
+                        </a>
+                    </div>
                     <div class="service-status">{{ service_status|title }}</div>
                 </div>
                 
@@ -24,7 +34,11 @@
                             {% with check_status=check.get_status %}
                             <li class="health-check {{ check_status }}">
                                 <div class="health-check-info">
-                                    <div class="health-check-id">Health Check #{{ check.id }}</div>
+                                    <div class="health-check-id">
+                                        <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="health-check-link">
+                                            Health Check #{{ check.id }}
+                                        </a>
+                                    </div>
                                     <div class="health-check-data">{{ check.data }}</div>
                                 </div>
                                 <div class="health-check-status">{{ check_status|title }}</div>
@@ -42,6 +56,9 @@
 {% else %}
     <div class="no-services-message">
         <p>No services available. Please add services to monitor.</p>
+        <div class="empty-action">
+            <a href="{% url 'nyxboard:service_create' %}" class="dashboard-btn service-btn">Create Service</a>
+        </div>
     </div>
 {% endif %}
 {% endblock %}

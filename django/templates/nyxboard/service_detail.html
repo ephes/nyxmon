@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Service Details - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .button {
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .primary-btn {
+        background-color: var(--color-header-bg);
+        color: white;
+    }
+    
+    .back-btn {
+        background-color: #e5e7eb;
+        color: var(--color-text);
+    }
+    
+    .service-info {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .service-status {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        margin-left: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .passed {
+        background-color: var(--color-passed);
+    }
+    
+    .failed {
+        background-color: var(--color-failed);
+    }
+    
+    .warning {
+        background-color: var(--color-warning);
+    }
+    
+    .recovering {
+        background-color: var(--color-recovering);
+    }
+    
+    .unknown {
+        background-color: var(--color-unknown);
+    }
+    
+    .service-id {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .service-data {
+        background-color: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        white-space: pre-wrap;
+        margin-top: 1rem;
+    }
+    
+    .service-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .health-checks {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .health-check {
+        background-color: white;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .health-check-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .health-check-name {
+        font-weight: 600;
+    }
+    
+    .health-check-content {
+        padding: 1rem;
+    }
+    
+    .health-check-data {
+        background-color: #f9fafb;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        margin-bottom: 1rem;
+        max-height: 100px;
+        overflow-y: auto;
+    }
+    
+    .health-check-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .action-btn {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .view-btn {
+        background-color: #93c5fd;
+        color: #1e40af;
+    }
+    
+    .edit-btn {
+        background-color: #a7f3d0;
+        color: #065f46;
+    }
+    
+    .delete-btn {
+        background-color: #fca5a5;
+        color: #991b1b;
+    }
+    
+    .empty-message {
+        padding: 2rem;
+        text-align: center;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Service Details</h2>
+    <a href="{% url 'nyxboard:service_list' %}" class="button back-btn">&larr; Back to Services</a>
+</div>
+
+<div class="service-info">
+    <div class="service-id">
+        Service #{{ service.id }}
+        <span class="service-status {{ service.get_status }}">{{ service.get_status|title }}</span>
+    </div>
+    
+    <h3>Service Data:</h3>
+    <div class="service-data">{{ service.data|pprint }}</div>
+    
+    <div class="service-actions">
+        <a href="{% url 'nyxboard:service_update' service_id=service.id %}" class="button edit-btn">Edit Service</a>
+        <a href="{% url 'nyxboard:service_delete' service_id=service.id %}" class="button delete-btn">Delete Service</a>
+    </div>
+</div>
+
+<div class="section-header">
+    <h3>Health Checks</h3>
+    <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}" class="button primary-btn">Add Health Check</a>
+</div>
+
+{% if health_checks %}
+    <ul class="health-checks">
+        {% for check in health_checks %}
+            {% with check_status=check.get_status %}
+            <li class="health-check">
+                <div class="health-check-header">
+                    <div class="health-check-name">Health Check #{{ check.id }}</div>
+                    <div class="health-check-status {{ check_status }}">{{ check_status|title }}</div>
+                </div>
+                <div class="health-check-content">
+                    <div class="health-check-data">{{ check.data }}</div>
+                    <div class="health-check-actions">
+                        <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="action-btn view-btn">View</a>
+                        <a href="{% url 'nyxboard:healthcheck_update' check_id=check.id %}" class="action-btn edit-btn">Edit</a>
+                        <a href="{% url 'nyxboard:healthcheck_delete' check_id=check.id %}" class="action-btn delete-btn">Delete</a>
+                    </div>
+                </div>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No health checks for this service. Start by adding a new health check.</p>
+        <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}" class="button primary-btn">Add Health Check</a>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="action-btn view-btn">Back to Dashboard</a>
+</div>
+{% endblock %}
