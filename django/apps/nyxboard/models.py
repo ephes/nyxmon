@@ -61,23 +61,42 @@ class Service(models.Model):
 
 
 class HealthCheck(models.Model):
+    CHECK_TYPE_CHOICES = [
+        ("http", "HTTP"),
+        ("tcp", "TCP"),
+        ("ping", "Ping"),
+        ("dns", "DNS"),
+        ("custom", "Custom"),
+    ]
+
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
-    data = models.JSONField("Metadata", blank=True, default=dict)
+    check_type = models.CharField(
+        "Check Type", max_length=20, choices=CHECK_TYPE_CHOICES, default="http"
+    )
+    url = models.URLField("URL", max_length=512)
 
     def __str__(self):
-        return f"Check {self.id} for {self.service}"
+        return f"{self.get_check_type_display()} Check ({self.id}) for {self.service}"
 
     def get_status(self):
         """
         Calculate the health check status based on recent results.
         """
-        # Get the 5 most recent results
-        recent_results = self.results.order_by("-created_at")[:5]
+        # Use recent_results if it's available (set by the dashboard view)
+        # Otherwise, query the database
+        if hasattr(self, "recent_results"):
+            recent_results = self.recent_results
+        else:
+            # Get the 5 most recent results
+            recent_results = self.results.order_by("-created_at")[:5]
 
-        if not recent_results.exists():
+        if not recent_results:
             return StatusChoices.UNKNOWN
 
-        latest_result = recent_results.first()
+        latest_result = recent_results[0] if recent_results else None
+
+        if not latest_result:
+            return StatusChoices.UNKNOWN
 
         # Check for Failed status (latest result is error)
         if latest_result.status == "error":

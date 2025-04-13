@@ -36,10 +36,10 @@
                                 <div class="health-check-info">
                                     <div class="health-check-id">
                                         <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="health-check-link">
-                                            Health Check #{{ check.id }}
+                                            {{ check.get_check_type_display }} Check #{{ check.id }}
                                         </a>
                                     </div>
-                                    <div class="health-check-data">{{ check.data }}</div>
+                                    <div class="health-check-data">{{ check.url }}</div>
                                 </div>
                                 <div class="health-check-status">{{ check_status|title }}</div>
                             </li>

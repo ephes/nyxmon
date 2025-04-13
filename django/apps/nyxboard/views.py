@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Prefetch
 
-from .models import Service, HealthCheck, Result, StatusChoices
+from .models import Service, HealthCheck, StatusChoices
 from .forms import ServiceForm, HealthCheckForm
 
 
@@ -9,21 +8,15 @@ def dashboard(request):
     """
     Function-based view to display the dashboard of services and their health checks.
     """
-    # Optimize the query with prefetch_related to reduce database hits
-    # Prefetch recent results for each health check
-    results_prefetch = Prefetch(
-        "results",
-        queryset=Result.objects.order_by("-created_at")[:5],
-    )
+    # Get all services with their health checks
+    services = Service.objects.prefetch_related("healthcheck_set")
 
-    # Prefetch health checks with their recent results
-    health_checks_prefetch = Prefetch(
-        "healthcheck_set",
-        queryset=HealthCheck.objects.prefetch_related(results_prefetch),
-    )
+    # Fetch recent results for all health checks separately
+    health_checks = HealthCheck.objects.filter(service__in=services)
 
-    # Get all services with prefetched data
-    services = Service.objects.prefetch_related(health_checks_prefetch)
+    # For each health check, fetch its recent results separately
+    for check in health_checks:
+        check.recent_results = check.results.order_by("-created_at")[:5]
 
     context = {
         "services": services,

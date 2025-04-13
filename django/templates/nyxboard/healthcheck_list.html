@@ -60,14 +60,12 @@
         display: inline-block;
     }
     
-    .health-check-data {
+    .health-check-url {
         background-color: #f9fafb;
         padding: 0.5rem;
         border-radius: 0.25rem;
-        font-family: monospace;
         margin-bottom: 1rem;
-        max-height: 100px;
-        overflow-y: auto;
+        word-break: break-all;
     }
     
     .health-check-actions {
@@ -120,14 +118,16 @@
             {% with check_status=check.get_status %}
             <li class="health-check-card">
                 <div class="health-check-header">
-                    <div class="health-check-name">Health Check #{{ check.id }}</div>
+                    <div class="health-check-name">{{ check.get_check_type_display }} Check #{{ check.id }}</div>
                     <div class="health-check-status {{ check_status }}">{{ check_status|title }}</div>
                 </div>
                 <div class="health-check-content">
                     <a href="{% url 'nyxboard:service_detail' service_id=check.service.id %}" class="service-link">
                         {{ check.service.name }}
                     </a>
-                    <div class="health-check-data">{{ check.data }}</div>
+                    <div class="health-check-url">
+                        <strong>URL:</strong> <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer">{{ check.url }}</a>
+                    </div>
                     <div class="health-check-actions">
                         <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="action-btn view-btn">View</a>
                         <a href="{% url 'nyxboard:healthcheck_update' check_id=check.id %}" class="action-btn edit-btn">Edit</a>

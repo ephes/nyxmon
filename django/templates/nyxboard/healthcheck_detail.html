@@ -75,13 +75,12 @@
         margin-bottom: 1rem;
     }
     
-    .health-check-data {
-        background-color: #f9fafb;
-        padding: 1rem;
-        border-radius: 0.25rem;
-        font-family: monospace;
-        white-space: pre-wrap;
-        margin-top: 1rem;
+    .health-check-details {
+        margin: 1.5rem 0;
+    }
+    
+    .health-check-detail {
+        margin-bottom: 0.5rem;
     }
     
     .health-check-actions {
@@ -179,7 +178,7 @@
 
 <div class="health-check-info">
     <div class="health-check-id">
-        Health Check #{{ health_check.id }}
+        {{ health_check.get_check_type_display }} Check #{{ health_check.id }}
         <span class="health-check-status {{ health_check.get_status }}">{{ health_check.get_status|title }}</span>
     </div>
     
@@ -187,8 +186,14 @@
         {{ health_check.service.name }}
     </a>
     
-    <h3>Health Check Data:</h3>
-    <div class="health-check-data">{{ health_check.data|pprint }}</div>
+    <div class="health-check-details">
+        <div class="health-check-detail">
+            <strong>Check Type:</strong> {{ health_check.get_check_type_display }}
+        </div>
+        <div class="health-check-detail">
+            <strong>URL:</strong> <a href="{{ health_check.url }}" target="_blank" rel="noopener noreferrer">{{ health_check.url }}</a>
+        </div>
+    </div>
     
     <div class="health-check-actions">
         <a href="{% url 'nyxboard:healthcheck_update' check_id=health_check.id %}" class="button edit-btn">Edit Health Check</a>
