@@ -29,10 +29,10 @@ class StatusChoices:
 
 
 class Service(models.Model):
-    data = models.JSONField("Metadata", blank=True, default=dict)
+    name = models.CharField("Service Name", max_length=255)
 
     def __str__(self):
-        return f"Service {self.id}"
+        return self.name
 
     def get_status(self):
         """

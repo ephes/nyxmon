@@ -8,41 +8,10 @@ from .models import Service, HealthCheck
 class ServiceForm(forms.ModelForm):
     """Form for creating and updating Service objects."""
 
-    data_json = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 4}),
-        required=False,
-        label="Service Data (JSON)",
-        help_text="Enter the service metadata as a JSON object.",
-    )
-
     class Meta:
         model = Service
-        fields = []  # Exclude data field since we use data_json instead
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            # If editing an existing instance, populate the data_json field
-            self.fields["data_json"].initial = json.dumps(self.instance.data, indent=2)
-
-    def clean_data_json(self):
-        data_json = self.cleaned_data.get("data_json", "{}")
-        if not data_json:
-            return {}
-
-        try:
-            return json.loads(data_json)
-        except json.JSONDecodeError:
-            raise ValidationError("Invalid JSON format. Please check your input.")
-
-    def save(self, commit=True):
-        service = super().save(commit=False)
-        service.data = self.cleaned_data.get("data_json", {})
-
-        if commit:
-            service.save()
-
-        return service
+        fields = ["name"]
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control"})}
 
 
 class HealthCheckForm(forms.ModelForm):

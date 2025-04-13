@@ -178,12 +178,9 @@
 
 <div class="service-info">
     <div class="service-id">
-        Service #{{ service.id }}
+        {{ service.name }}
         <span class="service-status {{ service.get_status }}">{{ service.get_status|title }}</span>
     </div>
-    
-    <h3>Service Data:</h3>
-    <div class="service-data">{{ service.data|pprint }}</div>
     
     <div class="service-actions">
         <a href="{% url 'nyxboard:service_update' service_id=service.id %}" class="button edit-btn">Edit Service</a>

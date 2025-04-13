@@ -22,7 +22,7 @@
                 <div class="service-header {{ service_status }}">
                     <div class="service-name">
                         <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="service-link">
-                            Service #{{ service.id }}
+                            {{ service.name }}
                         </a>
                     </div>
                     <div class="service-status">{{ service_status|title }}</div>

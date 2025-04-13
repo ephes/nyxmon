@@ -115,11 +115,10 @@
             {% with service_status=service.get_status %}
             <li class="service-card">
                 <div class="service-header">
-                    <div class="service-name">Service #{{ service.id }}</div>
+                    <div class="service-name">{{ service.name }}</div>
                     <div class="service-status {{ status_choices.get_css_class }}">{{ service_status|title }}</div>
                 </div>
                 <div class="service-content">
-                    <div class="service-data">{{ service.data }}</div>
                     <div class="service-actions">
                         <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="action-btn view-btn">View</a>
                         <a href="{% url 'nyxboard:service_update' service_id=service.id %}" class="action-btn edit-btn">Edit</a>

@@ -184,7 +184,7 @@
     </div>
     
     <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="service-link">
-        Service #{{ health_check.service.id }}
+        {{ health_check.service.name }}
     </a>
     
     <h3>Health Check Data:</h3>
