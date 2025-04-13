@@ -4,7 +4,7 @@ version = "0"  # this is an application without a version
 requires-python = "==3.13.*"  # also tells uv which python version to fetch if none is installed
 dependencies = [
     "django",
-    "django-environ>=0.12.0",
+    "django-environ",
 ]
 
 [project.optional-dependencies]
