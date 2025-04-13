@@ -1,0 +1,198 @@
+:root {
+    --color-passed: #4ade80;
+    --color-failed: #f87171;
+    --color-warning: #fbbf24;
+    --color-recovering: #facc15;
+    --color-unknown: #d1d5db;
+    --color-bg: #f9fafb;
+    --color-text: #1f2937;
+    --color-header-bg: #1e3a8a;
+    --color-header-text: #f9fafb;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, 
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    color: var(--color-text);
+    background-color: var(--color-bg);
+}
+
+header {
+    background-color: var(--color-header-bg);
+    color: var(--color-header-text);
+    padding: 1rem 2rem;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+h1, h2, h3, h4 {
+    margin-bottom: 0.5rem;
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-passed {
+    background-color: var(--color-passed);
+}
+
+.status-failed {
+    background-color: var(--color-failed);
+}
+
+.status-warning {
+    background-color: var(--color-warning);
+}
+
+.status-recovering {
+    background-color: var(--color-recovering);
+}
+
+.status-unknown {
+    background-color: var(--color-unknown);
+}
+
+/* Services list */
+.services-list {
+    list-style: none;
+    margin: 2rem 0;
+}
+
+.service {
+    margin-bottom: 2rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.service-header {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.service-header.passed {
+    background-color: var(--color-passed);
+}
+
+.service-header.failed {
+    background-color: var(--color-failed);
+}
+
+.service-header.warning {
+    background-color: var(--color-warning);
+}
+
+.service-header.recovering {
+    background-color: var(--color-recovering);
+}
+
+.service-header.unknown {
+    background-color: var(--color-unknown);
+}
+
+.service-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.service-status {
+    font-weight: 600;
+}
+
+/* Health checks */
+.health-checks {
+    list-style: none;
+    padding: 1rem;
+}
+
+.health-check {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.health-check.passed {
+    background-color: var(--color-passed);
+}
+
+.health-check.failed {
+    background-color: var(--color-failed);
+}
+
+.health-check.warning {
+    background-color: var(--color-warning);
+}
+
+.health-check.recovering {
+    background-color: var(--color-recovering);
+}
+
+.health-check.unknown {
+    background-color: var(--color-unknown);
+}
+
+.health-check-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.health-check-id {
+    font-weight: 600;
+}
+
+.health-check-data {
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.health-check-status {
+    font-weight: 600;
+}
+
+/* Messages */
+.no-services-message,
+.no-checks-message {
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--color-unknown);
+    border-radius: 0.25rem;
+    margin: 1rem 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .service-header,
+    .health-check {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .service-status,
+    .health-check-status {
+        margin-top: 0.5rem;
+    }
+}
