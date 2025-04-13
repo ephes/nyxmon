@@ -46,7 +46,12 @@
                             {% endwith %}
                         {% endfor %}
                     {% else %}
-                        <li class="no-checks-message">No health checks for this service</li>
+                        <li class="no-checks-message">
+                            <p>No health checks for this service.</p>
+                            <div class="empty-action">
+                                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}" class="dashboard-btn check-btn">Add Health Check</a>
+                            </div>
+                        </li>
                     {% endif %}
                 </ul>
             </li>
