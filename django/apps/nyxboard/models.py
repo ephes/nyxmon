@@ -69,11 +69,27 @@ class HealthCheck(models.Model):
         ("custom", "Custom"),
     ]
 
+    INTERVAL_CHOICES = [
+        (30, "30 seconds"),
+        (60, "1 minute"),
+        (300, "5 minutes"),
+        (900, "15 minutes"),
+        (1800, "30 minutes"),
+        (3600, "1 hour"),
+        (86400, "1 day"),
+    ]
+
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
     check_type = models.CharField(
         "Check Type", max_length=20, choices=CHECK_TYPE_CHOICES, default="http"
     )
     url = models.URLField("URL", max_length=512)
+    check_interval = models.IntegerField(
+        "Check Interval",
+        choices=INTERVAL_CHOICES,
+        default=300,
+        help_text="How often this health check should be performed",
+    )
 
     def __str__(self):
         return f"{self.get_check_type_display()} Check ({self.id}) for {self.service}"

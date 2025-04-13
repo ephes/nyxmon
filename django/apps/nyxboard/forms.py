@@ -17,7 +17,7 @@ class HealthCheckForm(forms.ModelForm):
 
     class Meta:
         model = HealthCheck
-        fields = ["service", "check_type", "url"]
+        fields = ["service", "check_type", "url", "check_interval"]
         widgets = {
             "service": forms.Select(attrs={"class": "form-control"}),
             "check_type": forms.Select(attrs={"class": "form-control"}),
@@ -27,8 +27,10 @@ class HealthCheckForm(forms.ModelForm):
                     "placeholder": "https://example.com/api/health",
                 }
             ),
+            "check_interval": forms.Select(attrs={"class": "form-control"}),
         }
         help_texts = {
             "check_type": "Select the type of health check to perform.",
             "url": "Enter the URL to check for HTTP health checks.",
+            "check_interval": "Select how frequently this health check should run.",
         }
