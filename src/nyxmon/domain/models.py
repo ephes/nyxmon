@@ -1,11 +1,17 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 if TYPE_CHECKING:
     from .events import Event
 
 
+OK: Literal["ok"] = "ok"
+ERROR: Literal["error"] = "error"
+
+Status: TypeAlias = Literal["ok", "error"]
+
+
 class Result:
-    def __init__(self, *, result_id: str, status: str, data: dict) -> None:
+    def __init__(self, *, result_id: str, status: Status, data: dict) -> None:
         self.result_id = result_id
         self.status = status
         self.data = data
