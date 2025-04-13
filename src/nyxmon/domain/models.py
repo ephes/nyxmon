@@ -11,7 +11,7 @@ Status: TypeAlias = Literal["ok", "error"]
 
 
 class Result:
-    def __init__(self, *, result_id: str, status: Status, data: dict) -> None:
+    def __init__(self, *, result_id: int, status: Status, data: dict) -> None:
         self.result_id = result_id
         self.status = status
         self.data = data
@@ -22,7 +22,7 @@ class Result:
 
 
 class Check:
-    def __init__(self, *, check_id: str, data: dict) -> None:
+    def __init__(self, *, check_id: int, data: dict) -> None:
         self.check_id = check_id
         self.data = data
         self.events: list["Event"] = []
@@ -34,7 +34,7 @@ class Check:
 
 
 class Service:
-    def __init__(self, *, service_id: str, data: dict) -> None:
+    def __init__(self, *, service_id: int, data: dict) -> None:
         self.service_id = service_id
         self.data = data
         self.events: list["Event"] = []

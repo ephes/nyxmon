@@ -30,7 +30,7 @@ class FakeCheck:
 def test_run_checks_with_result(bus):
     # Given a message bus with a pending check
     uow = bus.uow
-    check = FakeCheck(check_id="check1", data={})
+    check = FakeCheck(check_id=1, data={})
     check = uow.store.checks.add(check)
 
     # When we run the checks
@@ -70,7 +70,7 @@ def test_run_checks_concurrently(bus):
     delay_per_check = 0.2  # seconds
 
     for i in range(num_checks):
-        check = SlowCheck(check_id=f"check{i}", data={}, delay_seconds=delay_per_check)
+        check = SlowCheck(check_id=i, data={}, delay_seconds=delay_per_check)
         uow.store.checks.add(check)
 
     # When we run the checks

@@ -12,14 +12,14 @@ class InMemoryResultRepository(ResultRepository):
     """An in-memory implementation of the ResultRepository interface."""
 
     def __init__(self) -> None:
-        self.results: dict[str, Result] = {}
+        self.results: dict[int, Result] = {}
         self.seen: set[Result] = set()
 
     def add(self, result: Result) -> None:
         self.results[result.result_id] = result
         self.seen.add(result)
 
-    def get(self, result_id: str) -> Result:
+    def get(self, result_id: int) -> Result:
         return self.results[result_id]
 
     def list(self) -> list[Result]:
@@ -30,14 +30,14 @@ class InMemoryCheckRepository(CheckRepository):
     """An in-memory implementation of the CheckRepository interface."""
 
     def __init__(self) -> None:
-        self.checks: dict[str, Check] = {}
+        self.checks: dict[int, Check] = {}
         self.seen: set[Check] = set()
 
     def add(self, check: Check) -> None:
         self.checks[check.check_id] = check
         self.seen.add(check)
 
-    def get(self, check_id: str) -> Check:
+    def get(self, check_id: int) -> Check:
         return self.checks[check_id]
 
     def list(self) -> list[Check]:
@@ -48,14 +48,14 @@ class InMemoryServiceRepository(ServiceRepository):
     """An in-memory implementation of the ServiceRepository interface."""
 
     def __init__(self) -> None:
-        self.services: dict[str, Service] = {}
+        self.services: dict[int, Service] = {}
         self.seen: set[Service] = set()
 
     def add(self, service: Service) -> None:
         self.services[service.service_id] = service
         self.seen.add(service)
 
-    def get(self, service_id: str) -> Service:
+    def get(self, service_id: int) -> Service:
         return self.services[service_id]
 
     def list(self) -> list[Service]:

@@ -12,7 +12,7 @@ class ResultRepository(Protocol):
         """Add a result to the repository."""
         ...
 
-    def get(self, result_id: str) -> Result:
+    def get(self, result_id: int) -> Result:
         """Get a result from the repository by ID."""
         ...
 
@@ -30,7 +30,7 @@ class CheckRepository(Protocol):
         """Add a check to the repository."""
         ...
 
-    def get(self, check_id: str):
+    def get(self, check_id: int):
         """Get a check from the repository by ID."""
         ...
 
@@ -48,7 +48,7 @@ class ServiceRepository(Protocol):
         """Add a service to the repository."""
         ...
 
-    def get(self, service_id: str):
+    def get(self, service_id: int):
         """Get a service from the repository by ID."""
         ...
 

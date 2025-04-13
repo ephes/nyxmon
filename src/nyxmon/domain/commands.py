@@ -16,7 +16,7 @@ class ExecuteChecks(Command):
 class RegisterCheck(Command):
     """Register a check."""
 
-    check_id: str
+    check_id: int
     check_type: str
     check_data: dict
 
@@ -25,4 +25,4 @@ class RegisterCheck(Command):
 class DeleteCheck(Command):
     """Delete a check."""
 
-    check_id: str
+    check_id: int

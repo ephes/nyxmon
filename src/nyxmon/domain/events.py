@@ -9,7 +9,7 @@ class Event:
 class CheckExecuted(Event):
     """Check executed."""
 
-    check_id: str
+    check_id: int
     result: bool
 
 
@@ -17,14 +17,14 @@ class CheckExecuted(Event):
 class CheckSucceeded(Event):
     """Check succeeded."""
 
-    check_id: str
+    check_id: int
 
 
 @dataclass
 class CheckFailed(Event):
     """Check failed."""
 
-    check_id: str
+    check_id: int
     result: bool
 
 
@@ -32,5 +32,5 @@ class CheckFailed(Event):
 class ServiceStatusChanged(Event):
     """Service status changed."""
 
-    service_id: str
+    service_id: int
     status: str
