@@ -1,15 +1,35 @@
-from typing import Callable
+import asyncio
+from typing import Callable, Awaitable, Any
 
 from ..domain import events, commands
 from .unit_of_work import UnitOfWork
 
 
+def run_in_executor(func, *args, **kwargs) -> Awaitable[Any]:
+    """Run a synchronous function in an executor to make it awaitable."""
+    loop = asyncio.get_event_loop()
+    return loop.run_in_executor(None, lambda: func(*args, **kwargs))
+
+
 def execute_checks(cmd: commands.ExecuteChecks, uow: UnitOfWork) -> None:
     with uow:
         checks = uow.store.checks.list()
+
+        # Create coroutines for each check execution
+        async def execute_all_checks():
+            # Run all checks concurrently
+            coroutines = [run_in_executor(check.execute) for check in checks]
+            await asyncio.gather(*coroutines)
+
+        # Run the coroutines in the event loop
+        if checks:
+            asyncio.run(execute_all_checks())
+
+        # Add all results to the repository
         for check in checks:
-            check.execute()
-            uow.store.results.add(check.result)
+            if check.result is not None:
+                uow.store.results.add(check.result)
+
         uow.commit()
 
 
