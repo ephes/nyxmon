@@ -16,7 +16,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-steel-model = { path = "../../" }
+nyxmon = { path = "../" }
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "nyxboard.settings"
