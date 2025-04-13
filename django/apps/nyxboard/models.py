@@ -31,6 +31,9 @@ class StatusChoices:
 class Service(models.Model):
     name = models.CharField("Service Name", max_length=255)
 
+    class Meta:
+        db_table = "service"
+
     def __str__(self):
         return self.name
 
@@ -91,6 +94,9 @@ class HealthCheck(models.Model):
         help_text="How often this health check should be performed",
     )
 
+    class Meta:
+        db_table = "health_check"
+
     def __str__(self):
         return f"{self.get_check_type_display()} Check ({self.id}) for {self.service}"
 
@@ -141,6 +147,9 @@ class Result(models.Model):
     )
     created_at = models.DateTimeField("Created At", auto_now_add=True)
     data = models.JSONField("Metadata", blank=True, default=dict)
+
+    class Meta:
+        db_table = "check_result"
 
     def __str__(self):
         return f"Result {self.id} for {self.health_check} ({self.status})"
