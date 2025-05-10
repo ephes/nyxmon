@@ -1,36 +1,66 @@
-import asyncio
-from typing import Callable, Awaitable, Any
+from typing import Callable
 
+from anyio.from_thread import BlockingPortalProvider
+
+from ..adapters.collector import CheckCollector
 from ..domain import events, commands
+from ..adapters.runner import CheckRunner
 from .unit_of_work import UnitOfWork
+from ..domain.commands import AddResult
 
 
-def run_in_executor(func, *args, **kwargs) -> Awaitable[Any]:
-    """Run a synchronous function in an executor to make it awaitable."""
-    loop = asyncio.get_event_loop()
-    return loop.run_in_executor(None, lambda: func(*args, **kwargs))
+def execute_checks(
+    cmd: commands.ExecuteChecks, runner: CheckRunner, uow: UnitOfWork
+) -> None:
+    """Execute all pending checks."""
+    check_by_check_id = {check.check_id: check for check in cmd.checks}
+
+    def result_received(result):
+        print("result received", result)
+        check = check_by_check_id[result.check_id]
+        inner_cmd = AddResult(check=check, result=result)
+        check.add_result(result)  # raise events
+        uow.store.checks.seen.add(
+            check
+        )  # mark as seen so that raised events will be collected
+        uow.add_command(inner_cmd)  # add command to the unit of work
+
+    runner.run_all(cmd.checks, result_received)
 
 
-def execute_checks(cmd: commands.ExecuteChecks, uow: UnitOfWork) -> None:
+def add_check(cmd: commands.AddCheck, uow: UnitOfWork) -> None:
+    """Add a check to the repository."""
+    check = cmd.check
     with uow:
-        checks = uow.store.checks.list()
-
-        # Create coroutines for each check execution
-        async def execute_all_checks():
-            # Run all checks concurrently
-            coroutines = [run_in_executor(check.execute) for check in checks]
-            await asyncio.gather(*coroutines)
-
-        # Run the coroutines in the event loop
-        if checks:
-            asyncio.run(execute_all_checks())
-
-        # Add all results to the repository
-        for check in checks:
-            if check.result is not None:
-                uow.store.results.add(check.result)
-
+        uow.store.checks.add(check)
         uow.commit()
+
+
+def add_result(cmd: commands.AddResult, uow: UnitOfWork) -> None:
+    """Add a check to the repository."""
+    result = cmd.result
+    check = cmd.check
+    with uow:
+        print("add result to db: ", result)
+        uow.store.results.add(result)
+        print("add check to db: ", check)
+        uow.store.checks.add(check)
+        uow.commit()
+
+
+def start_collector(
+    _cmd: commands.StartCollector,
+    collector: CheckCollector,
+    portal_provider: BlockingPortalProvider,
+) -> None:
+    """Start the check collector."""
+    collector.set_portal_provider(portal_provider)
+    collector.start()
+
+
+def stop_collector(_cmd: commands.StopCollector, collector: CheckCollector) -> None:
+    """Stop the check collector."""
+    collector.stop()
 
 
 def service_status_changed(event: events.ServiceStatusChanged, uow: UnitOfWork) -> None:
@@ -46,4 +76,8 @@ EVENT_HANDLERS: dict[type[events.Event], list[Callable]] = {
 
 COMMAND_HANDLERS: dict[type[commands.Command], Callable] = {
     commands.ExecuteChecks: execute_checks,
+    commands.AddCheck: add_check,
+    commands.AddResult: add_result,
+    commands.StartCollector: start_collector,
+    commands.StopCollector: stop_collector,
 }

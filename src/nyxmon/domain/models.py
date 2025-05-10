@@ -1,8 +1,7 @@
-from typing import TYPE_CHECKING, Literal, TypeAlias
+import time
+from typing import Literal, TypeAlias
 
-if TYPE_CHECKING:
-    from .events import Event
-
+from .events import Event
 
 OK: Literal["ok"] = "ok"
 ERROR: Literal["error"] = "error"
@@ -11,26 +10,63 @@ Status: TypeAlias = Literal["ok", "error"]
 
 
 class Result:
-    def __init__(self, *, result_id: int, status: Status, data: dict) -> None:
+    def __init__(
+        self, *, result_id: int | None = None, check_id: int, status: Status, data: dict
+    ) -> None:
         self.result_id = result_id
+        self.check_id = check_id
         self.status = status
         self.data = data
         self.events: list["Event"] = []
 
     def __repr__(self) -> str:
-        return f"Result(result_id={self.result_id}, status={self.status}, data={self.data})"
+        return f"Result(result_id={self.result_id}, check_id={self.check_id} status={self.status}, data={self.data})"
 
 
 class Check:
-    def __init__(self, *, check_id: int, data: dict) -> None:
+    def __init__(
+        self,
+        *,
+        check_id: int,
+        service_id: int,
+        check_type: str,
+        url: str,
+        check_interval: int = 300,
+        next_check_time: int = 0,
+        processing_started_at: int = 0,
+        status: str = "idle",
+        data: dict,
+    ) -> None:
         self.check_id = check_id
+        self.service_id = service_id
+        self.check_type = check_type
+        self.url = url
+        self.check_interval = check_interval
+        self.next_check_time = next_check_time
+        self.processing_started_at = processing_started_at
+        self.status = status
         self.data = data
         self.events: list["Event"] = []
-        self.result = None
+
+        # Will be populated when check is executed
+        self.result: "Result" = None  # type: ignore
 
     def execute(self) -> None:
         # Logic to execute the check
         pass
+
+    def add_result(self, _result: Result) -> None:
+        # self.events.append(CheckGotResult(check_id=self.check_id, result=result))
+        self.schedule_next_check()
+
+    def schedule_next_check(self) -> None:
+        """Schedule the next execution of this check."""
+        current_time = int(time.time())
+        check_interval = self.data.get("check_interval", 300)  # Default to 5 minutes
+
+        self.next_check_time = current_time + check_interval
+        self.status = "idle"
+        self.processing_started_at = 0
 
 
 class Service:

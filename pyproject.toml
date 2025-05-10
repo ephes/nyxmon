@@ -7,7 +7,13 @@ authors = [
     { name = "Jochen Wersdörfer", email = "jochen-nyxmon@wersdoerfer.de" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "aiosqlite>=0.21.0",
+    "httpx>=0.28.1",
+]
+
+[project.scripts]
+start-agent = "nyxmon.entrypoints.cli:start_agent"
 
 [build-system]
 requires = ["hatchling"]
@@ -15,6 +21,10 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.15.0",
+    "mypy",
     "pytest",
+    "pytest-anyio",
 ]
+
+[tool.pytest.ini_options]
+addopts = "-ra"

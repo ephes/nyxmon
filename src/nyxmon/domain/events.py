@@ -1,16 +1,21 @@
 from dataclasses import dataclass
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .models import Result
+
 
 class Event:
     """Base class for all events."""
 
 
 @dataclass
-class CheckExecuted(Event):
+class CheckGotResult(Event):
     """Check executed."""
 
     check_id: int
-    result: bool
+    result: "Result"
 
 
 @dataclass

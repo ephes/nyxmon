@@ -16,6 +16,8 @@ class InMemoryResultRepository(ResultRepository):
         self.seen: set[Result] = set()
 
     def add(self, result: Result) -> None:
+        if result.result_id is None:
+            result.result_id = len(self.results)
         self.results[result.result_id] = result
         self.seen.add(result)
 

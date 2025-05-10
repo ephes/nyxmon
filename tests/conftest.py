@@ -9,3 +9,8 @@ def bus():
     from nyxmon.bootstrap import bootstrap
 
     return bootstrap()
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"

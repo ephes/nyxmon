@@ -41,7 +41,6 @@ class MessageBus:
     def handle_event(self, event: Event):
         for handler in self.event_handlers[type(event)]:
             try:
-                # print(f"handling event {event} with handler {handler}")
                 logger.debug("handling event %s with handler %s", event, handler)
                 handler(event)
                 self.queue.extend(self.uow.collect_new_events())

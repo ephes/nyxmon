@@ -88,7 +88,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "django" },
-    { name = "django-environ", specifier = ">=0.12.0" },
+    { name = "django-environ" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-django", marker = "extra == 'dev'" },
 ]
