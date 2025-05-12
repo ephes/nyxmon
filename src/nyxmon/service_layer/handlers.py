@@ -16,7 +16,6 @@ def execute_checks(
     check_by_check_id = {check.check_id: check for check in cmd.checks}
 
     def result_received(result):
-        print("result received", result)
         check = check_by_check_id[result.check_id]
         inner_cmd = AddResult(check=check, result=result)
         check.add_result(result)  # raise events
@@ -41,9 +40,7 @@ def add_result(cmd: commands.AddResult, uow: UnitOfWork) -> None:
     result = cmd.result
     check = cmd.check
     with uow:
-        print("add result to db: ", result)
         uow.store.results.add(result)
-        print("add check to db: ", check)
         uow.store.checks.add(check)
         uow.commit()
 
