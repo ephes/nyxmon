@@ -1,8 +1,6 @@
 import anyio
 import pytest
 
-from anyio.from_thread import start_blocking_portal
-
 from nyxmon.adapters.collector import running_collector, AsyncCheckCollector
 from nyxmon.bootstrap import bootstrap
 from nyxmon.domain import Check
@@ -13,12 +11,6 @@ from nyxmon.adapters.repositories import SqliteStore
 @pytest.fixture
 def db_path(tmp_path):
     yield tmp_path / "checks.db"
-
-
-@pytest.fixture
-def portal():
-    with start_blocking_portal() as portal:
-        yield portal
 
 
 @pytest.mark.anyio
