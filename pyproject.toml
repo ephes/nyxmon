@@ -42,3 +42,9 @@ dashboard-dev = [
 
 [tool.pytest.ini_options]
 addopts = "-ra"
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+django_find_project = false
+pythonpath = [
+    ".",
+    "src/django",
+]

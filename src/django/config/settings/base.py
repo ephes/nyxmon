@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from warnings import filterwarnings
 
 import environ
 
@@ -155,3 +156,8 @@ STORAGES = {
 }
 
 ADMIN_URL = "admin/"
+
+filterwarnings(
+    "ignore", "The FORMS_URLFIELD_ASSUME_HTTPS transitional setting is deprecated."
+)
+FORMS_URLFIELD_ASSUME_HTTPS = True
