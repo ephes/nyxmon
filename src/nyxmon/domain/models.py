@@ -51,6 +51,11 @@ class Check:
         # Will be populated when check is executed
         self.result: "Result" = None  # type: ignore
 
+    def __repr__(self) -> str:
+        return (
+            f"Check(check={self.check_id}, service_id={self.service_id} url={self.url})"
+        )
+
     def execute(self) -> None:
         # Logic to execute the check
         pass
