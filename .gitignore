@@ -1,0 +1,8 @@
+# Ignore __pycache__ directories
+__pycache__/
+
+# PyCharm project files
+.idea/
+
+# macOS stuff
+.DS_Store
