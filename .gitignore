@@ -6,3 +6,6 @@ __pycache__/
 
 # macOS stuff
 .DS_Store
+
+# database
+db.sqlite3
