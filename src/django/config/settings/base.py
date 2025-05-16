@@ -18,7 +18,8 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-APPS_DIR = BASE_DIR / "apps"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+SRC_DIR = PROJECT_ROOT / "src"
 
 # Load env file
 env = environ.Env(
@@ -55,7 +56,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = []
 
 LOCAL_APPS = [
-    "apps.nyxboard.apps.NyxboardConfig",
+    "nyxboard.apps.NyxboardConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -96,7 +97,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": PROJECT_ROOT / "db.sqlite3",
     }
 }
 

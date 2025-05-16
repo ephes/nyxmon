@@ -7,13 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - The architecture is documented in [Architecture.md](/docs/Architecture.md).
 
 ## Build, Lint & Test Commands
-- Install dependencies: `uv pip install -e ".[dev]"`
+- Install dependencies: `uv pip install -e ".[dev,dashboard,dashboard-dev]"`
 - Package management: `uv pip install/uninstall <package>`
 - Lint: `pre-commit run --all-files` (ruff runs automatically)
 - Type check: `mypy src/`
 - Test (all): `pytest`
 - Test (single): `pytest path/to/test.py::TestClass::test_function -v`
-- Run Django server: `python src/frontend/manage.py runserver`
+- Run Django server: `cd src/django && python manage.py runserver` or `uv run src/django/manage.py runserver`
 
 ## Code Style Guidelines
 - **Python version**: Python 3.13+

@@ -12,6 +12,16 @@ dependencies = [
     "httpx>=0.28.1",
 ]
 
+[project.optional-dependencies]
+dashboard = [
+    "django",
+    "django-environ",
+]
+dashboard-dev = [
+    "django-debug-toolbar",
+    "pytest-django",
+]
+
 [project.scripts]
 start-agent = "nyxmon.entrypoints.cli:start_agent"
 
@@ -24,6 +34,10 @@ dev = [
     "mypy",
     "pytest",
     "pytest-anyio",
+]
+dashboard-dev = [
+    "django-debug-toolbar",
+    "pytest-django",
 ]
 
 [tool.pytest.ini_options]
