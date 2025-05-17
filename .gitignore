@@ -9,3 +9,9 @@ __pycache__/
 
 # database
 db.sqlite3
+
+# environment variables
+.env
+
+# vim
+*.swp
