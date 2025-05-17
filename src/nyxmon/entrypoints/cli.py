@@ -2,6 +2,8 @@ import anyio
 import argparse
 import logging
 import sys
+import uvloop
+
 from pathlib import Path
 
 from nyxmon.adapters.collector import running_collector, AsyncCheckCollector
@@ -87,7 +89,7 @@ def start_agent():
             )
 
         # anyio automatically handles SIGINT and SIGTERM
-        anyio.run(main)
+        anyio.run(main, backend_options={"loop_factory": uvloop.new_event_loop})
 
     except KeyboardInterrupt:
         logger.info("Agent stopped by user")
