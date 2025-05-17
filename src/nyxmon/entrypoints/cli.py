@@ -7,6 +7,7 @@ from pathlib import Path
 from nyxmon.adapters.collector import running_collector, AsyncCheckCollector
 from ..bootstrap import bootstrap
 from ..adapters.repositories import SqliteStore
+from ..adapters.notification import AsyncTelegramNotifier, LoggingNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,17 @@ def signal_handler(agent, signum, frame):
     agent.stop()
 
 
-async def run_agent_with_collector(store, interval):
+async def run_agent_with_collector(store, interval, enable_telegram=False):
     """Async function to run the agent with collector"""
-    bus = bootstrap(store=store, collector=AsyncCheckCollector(interval=interval))
+    if enable_telegram:
+        notifier = AsyncTelegramNotifier()
+        logger.info("Telegram notifications enabled")
+    else:
+        notifier = LoggingNotifier()
+
+    bus = bootstrap(
+        store=store, collector=AsyncCheckCollector(interval=interval), notifier=notifier
+    )
 
     async with running_collector(bus):
         logger.info(f"Agent started with {interval}s check interval")
@@ -51,6 +60,11 @@ def start_agent():
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
     )
+    parser.add_argument(
+        "--enable-telegram",
+        action="store_true",
+        help="Enable Telegram notifications (requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID env vars)",
+    )
 
     args = parser.parse_args()
 
@@ -68,7 +82,9 @@ def start_agent():
         store = SqliteStore(db_path=db_path)
 
         async def main():
-            await run_agent_with_collector(store, args.interval)
+            await run_agent_with_collector(
+                store, args.interval, enable_telegram=args.enable_telegram
+            )
 
         # anyio automatically handles SIGINT and SIGTERM
         anyio.run(main)

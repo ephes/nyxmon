@@ -6,6 +6,7 @@ from .adapters.runner import CheckRunner, AsyncCheckRunner
 from .domain import Auto
 from .adapters.collector import CheckCollector, AsyncCheckCollector
 from .adapters.repositories import RepositoryStore, InMemoryStore
+from .adapters.notification import Notifier, AsyncTelegramNotifier
 from .service_layer import handlers, UnitOfWork, MessageBus
 
 
@@ -23,6 +24,7 @@ def bootstrap(
     store: RepositoryStore = Auto,
     collector: CheckCollector = Auto,
     runner: CheckRunner = Auto,
+    notifier: Notifier = Auto,
 ) -> MessageBus:
     """Creates a new MessageBus instance with all dependencies injected."""
     if not store:
@@ -43,11 +45,19 @@ def bootstrap(
     if not runner:
         runner = AsyncCheckRunner(portal_provider=portal_provider)
 
+    if not notifier:
+        # Use telegram notifier by default
+        notifier = AsyncTelegramNotifier()
+
+    if hasattr(notifier, "set_portal_provider"):
+        notifier.set_portal_provider(portal_provider)
+
     dependencies = {
         "uow": uow,
         "portal_provider": portal_provider,
         "collector": collector,
         "runner": runner,
+        "notifier": notifier,
     }
     injected_event_handlers = {
         event_type: [
