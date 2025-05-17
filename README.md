@@ -29,9 +29,14 @@ uv pip install -e .
 uvx pre-commit install
 ```
 
-2. Run tests:
+6. Run tests:
 ```shell
 uv run pytest
+```
+
+7. Run static analysis:
+```shell
+uv run mypy src/
 ```
 
 ## Usage
