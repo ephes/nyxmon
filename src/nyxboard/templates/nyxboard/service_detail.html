@@ -197,8 +197,8 @@
             {% with check_status=check.get_status %}
             <li class="health-check">
                 <div class="health-check-header">
-                    <div class="health-check-name">{{ check.get_check_type_display }} Check #{{ check.id }}</div>
-                    <div class="health-check-status {{ check_status }}">{{ check_status|title }}</div>
+                    <div class="health-check-name">{{ check.name }} ({{ check.get_check_type_display }})</div>
+                    <div class="health-check-status {{ check_status }}" style="margin-left: 1rem;">{{ check_status|title }}</div>
                 </div>
                 <div class="health-check-content">
                     <div class="health-check-url">

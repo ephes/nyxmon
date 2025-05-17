@@ -179,7 +179,7 @@
 <div class="health-check-info">
     <div class="health-check-id">
         {{ health_check.name }}
-        <span class="health-check-status {{ health_check.get_status }}">{{ health_check.get_status|title }}</span>
+        <span class="health-check-status {{ health_check.get_status }}" style="margin-left: 1rem;">{{ health_check.get_status|title }}</span>
     </div>
     
     <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="service-link">
