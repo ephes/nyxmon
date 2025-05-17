@@ -2,24 +2,66 @@
 
 A monitoring application for services and health checks.
 
-## Setup
+## Setup for Development
 
-1. Install dependencies:
-```bash
-uv pip install -e ".[dev,dashboard,dashboard-dev]"
+1. Install Python (3.12 or higher)
+```shell
+uv python install
+```
+
+2. Create a virtual environment:
+```shell
+uv venv
+```
+
+3. Install dependencies and local packages in editable mode:
+```shell
+uv sync
+```
+
+4. Install local packages in editable mode:
+```shell
+uv pip install -e .
+```
+
+5. Install pre-commit hooks:
+```shell
+uvx pre-commit install
 ```
 
 2. Run tests:
-```bash
-pytest
+```shell
+uv run pytest
 ```
 
 ## Usage
 
-### Starting the monitoring agent
+### Run Database Migrations
 
-```bash
-python -m src.nyxmon.entrypoints.cli --db /path/to/database.sqlite --interval 5
+Before running the application, make sure to run the database migrations:
+
+```shell
+uv run src/django/manage.py migrate
+```
+
+This will create an SQLite database file in the project root directory.
+
+### Starting the monitoring agent and Django dashboard
+
+At the moment, there's only the development version of the monitoring agent and a
+Django dashboard. You can start both of them using `honcho`:
+
+```shell
+uvx honcho start
+```
+
+### The start-agent command
+
+The monitoring agent registers an entrypoint named `start-agent` in the
+`pyproject.toml` file.
+
+```shell
+uv run start-agent --db /path/to/database.sqlite
 ```
 
 Options:
@@ -30,8 +72,8 @@ Options:
 
 ### Running the Django dashboard
 
-```bash
-cd src/django && python manage.py runserver
+```shell
+PYTHONUNBUFFERED=true uv run src/django/manage.py runserver 0.0.0.0:8000
 ```
 
 ## Notifications
@@ -43,12 +85,12 @@ To enable Telegram notifications:
 1. Create a Telegram bot using [BotFather](https://t.me/botfather) and get the token
 2. Find your chat ID (you can use the [userinfobot](https://t.me/userinfobot))
 3. Set environment variables:
-   ```bash
+   ```shell
    export TELEGRAM_BOT_TOKEN=your_bot_token
    export TELEGRAM_CHAT_ID=your_chat_id
    ```
 4. Start the monitoring agent with notifications enabled:
-   ```bash
+   ```shell
    python -m src.nyxmon.entrypoints.cli --db /path/to/database.sqlite --enable-telegram
    ```
 
