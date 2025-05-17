@@ -27,6 +27,9 @@ def llm_content():
     exclude_files = {}
     exclude_dirs = {
         ".venv",
+        "src/django",
+        "src/nyxboard",
+        "scripts",
     }
     patterns = ["*.py", "*.rst", "*.js", "*.ts", "*.html"]
     all_files = []

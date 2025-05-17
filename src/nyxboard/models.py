@@ -29,7 +29,7 @@ class StatusChoices:
 
 
 class Service(models.Model):
-    name = models.CharField("Service Name", max_length=255)
+    name: models.CharField = models.CharField("Service Name", max_length=255)
 
     class Meta:
         db_table = "service"
@@ -87,27 +87,27 @@ class HealthCheck(models.Model):
         ("processing", "Processing"),
     ]
 
-    service = models.ForeignKey(Service, on_delete=models.CASCADE)
-    check_type = models.CharField(
+    service: models.ForeignKey = models.ForeignKey(Service, on_delete=models.CASCADE)
+    check_type: models.CharField = models.CharField(
         "Check Type", max_length=20, choices=CHECK_TYPE_CHOICES, default="http"
     )
-    url = models.URLField("URL", max_length=512)
-    check_interval = models.IntegerField(
+    url: models.URLField = models.URLField("URL", max_length=512)
+    check_interval: models.IntegerField = models.IntegerField(
         "Check Interval",
         choices=INTERVAL_CHOICES,
         default=300,
         help_text="How often this health check should be performed",
     )
-    status = models.CharField(
+    status: models.CharField = models.CharField(
         "Status",
         max_length=10,
         choices=STATUS_CHOICES,
         default="idle",
     )
-    next_check_time = models.PositiveIntegerField(
+    next_check_time: models.PositiveIntegerField = models.PositiveIntegerField(
         "Next Check Time", default=0, help_text="Unix timestamp of the next check"
     )
-    processing_started_at = models.PositiveIntegerField(
+    processing_started_at: models.PositiveIntegerField = models.PositiveIntegerField(
         "Processing Started At",
         default=0,
         help_text="Unix timestamp when the check started processing",
@@ -158,13 +158,15 @@ class HealthCheck(models.Model):
 
 
 class Result(models.Model):
-    health_check = models.ForeignKey(
+    health_check: models.ForeignKey = models.ForeignKey(
         HealthCheck, on_delete=models.CASCADE, related_name="results"
     )
-    status = models.CharField(
+    status: models.CharField = models.CharField(
         "Status", max_length=10, choices=[("ok", "OK"), ("error", "Error")]
     )
-    created_at = models.DateTimeField("Created At", auto_now_add=True)
+    created_at: models.DateTimeField = models.DateTimeField(
+        "Created At", auto_now_add=True
+    )
     data = models.JSONField("Metadata", blank=True, default=dict)
 
     class Meta:
