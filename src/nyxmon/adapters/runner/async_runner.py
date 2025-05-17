@@ -1,4 +1,5 @@
 import anyio
+from anyio import to_thread
 
 from anyio.from_thread import BlockingPortalProvider
 from typing import Iterable, Callable
@@ -18,8 +19,8 @@ class AsyncCheckRunner(CheckRunner):
 
         async def run_checks(result_received_callback: Callable) -> None:
             async for result in self._async_run_all(checks):
-                # Send the result back to the main thread
-                result_received_callback(result)
+                # Process the result in a worker thread
+                await to_thread.run_sync(result_received_callback, result)
 
         # Run the async function in the portal
         with self.portal_provider as portal:

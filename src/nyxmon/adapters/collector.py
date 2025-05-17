@@ -6,6 +6,7 @@ import threading
 from typing import Protocol
 from contextlib import asynccontextmanager
 
+from anyio import to_thread
 from anyio.from_thread import BlockingPortalProvider
 
 from ..domain import Auto
@@ -75,7 +76,9 @@ class AsyncCheckCollector(CheckCollector):
         while self._running:
             checks = await self._bus.uow.store.checks.list_due_checks_async()
             print("due checks: ", checks)
-            self._bus.handle(ExecuteChecks(checks=checks))
+            if len(checks) > 0:
+                # Use a worker thread to run the checks
+                await to_thread.run_sync(self._bus.handle, ExecuteChecks(checks=checks))
             i += 1
             await anyio.sleep(self.interval)
 
