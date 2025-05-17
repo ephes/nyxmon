@@ -17,17 +17,13 @@ dashboard = [
     "django",
     "django-environ",
 ]
-dashboard-dev = [
-    "django-debug-toolbar",
-    "pytest-django",
-]
 
 [project.scripts]
 start-agent = "nyxmon.entrypoints.cli:start_agent"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.7.5,<0.8.0"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
@@ -37,8 +33,13 @@ dev = [
 ]
 dashboard-dev = [
     "django-debug-toolbar",
+    "django-environ",
+    "django-stubs[compatible-mypy]",
     "pytest-django",
 ]
+
+[tool.uv]
+default-groups = ["dev", "dashboard-dev"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
