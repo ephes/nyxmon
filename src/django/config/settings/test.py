@@ -4,8 +4,6 @@ Test settings
 - Used to run tests fast on the continuous integration server and locally
 """
 
-# noqa: F401
-
 from .base import *  # noqa
 
 
