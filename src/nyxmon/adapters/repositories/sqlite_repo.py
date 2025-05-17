@@ -215,7 +215,7 @@ class SqliteResultRepository(ResultRepository):
             await self._ensure_schema(db)
             db.row_factory = aiosqlite.Row
             [row] = await db.execute_fetchall(
-                "SELECT id, check_id, status, data FROM check_result WHERE id = ?",
+                "SELECT id, health_check_id, status, data FROM check_result WHERE id = ?",
                 (result_id,),
             )
             if row is None:
