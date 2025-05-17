@@ -60,10 +60,6 @@ class Check:
         # Logic to execute the check
         pass
 
-    def add_result(self, _result: Result) -> None:
-        # self.events.append(CheckGotResult(check_id=self.check_id, result=result))
-        self.schedule_next_check()
-
     def schedule_next_check(self) -> None:
         """Schedule the next execution of this check."""
         current_time = int(time.time())
@@ -72,6 +68,21 @@ class Check:
         self.next_check_time = current_time + check_interval
         self.status = "idle"
         self.processing_started_at = 0
+
+
+class CheckResult:
+    def __init__(self, check: Check, result: Result) -> None:
+        self.check = check
+        self.result = result
+        self.events: list["Event"] = []
+
+    @property
+    def passed(self) -> bool:
+        return self.result.status == OK
+
+    @property
+    def should_notify(self) -> bool:
+        return self.result.status == ERROR
 
 
 class Service:

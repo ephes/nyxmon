@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from .models import Check, Result
+from .models import Check, CheckResult
 
 
 class Command:
@@ -38,11 +38,10 @@ class AddCheck(Command):
 
 
 @dataclass
-class AddResult(Command):
+class AddCheckResult(Command):
     """Add a result for a check."""
 
-    check: Check
-    result: Result
+    check_result: CheckResult
 
 
 @dataclass

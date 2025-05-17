@@ -5,10 +5,10 @@ from anyio.from_thread import BlockingPortalProvider
 from ..adapters.collector import CheckCollector
 from ..adapters.notification import Notifier
 from ..domain import events, commands
-from ..domain.models import OK, ERROR
+from ..domain.models import CheckResult
 from ..adapters.runner import CheckRunner
 from .unit_of_work import UnitOfWork
-from ..domain.commands import AddResult
+from ..domain.commands import AddCheckResult
 
 
 def execute_checks(
@@ -19,11 +19,9 @@ def execute_checks(
 
     def result_received(result):
         check = check_by_check_id[result.check_id]
-        inner_cmd = AddResult(check=check, result=result)
-        check.add_result(result)  # raise events
-        uow.store.checks.seen.add(
-            check
-        )  # mark as seen so that raised events will be collected
+        check.schedule_next_check()  # Schedule the next check after a result is received
+        check_result = CheckResult(check=check, result=result)
+        inner_cmd = AddCheckResult(check_result=check_result)
         uow.add_command(inner_cmd)  # add command to the unit of work
 
     runner.run_all(cmd.checks, result_received)
@@ -37,26 +35,20 @@ def add_check(cmd: commands.AddCheck, uow: UnitOfWork) -> None:
         uow.commit()
 
 
-def add_result(cmd: commands.AddResult, uow: UnitOfWork, notifier: Notifier) -> None:
+def add_check_result(
+    cmd: commands.AddCheckResult, uow: UnitOfWork, notifier: Notifier
+) -> None:
     """Add a check to the repository and trigger notifications if needed."""
-    result = cmd.result
-    check = cmd.check
+    check_result = cmd.check_result
+    check, result = check_result.check, check_result.result
     with uow:
         uow.store.results.add(result)
         uow.store.checks.add(check)
-
-        # If the result indicates an error, notify about the failed check
-        if result.status == ERROR:
-            notifier.notify_check_failed(check, result)
-            # Raise a CheckFailed event
-            check.events.append(
-                events.CheckFailed(check_id=check.check_id, result=False)
-            )
-        elif result.status == OK:
-            # Raise a CheckSucceeded event
-            check.events.append(events.CheckSucceeded(check_id=check.check_id))
-
         uow.commit()
+
+    # If the check_result should be notified, use the notifier to send notifications
+    if check_result.should_notify:
+        notifier.notify_check_failed(check, result)
 
 
 def start_collector(
@@ -108,7 +100,7 @@ EVENT_HANDLERS: dict[type[events.Event], list[Callable]] = {
 COMMAND_HANDLERS: dict[type[commands.Command], Callable] = {
     commands.ExecuteChecks: execute_checks,
     commands.AddCheck: add_check,
-    commands.AddResult: add_result,
+    commands.AddCheckResult: add_check_result,
     commands.StartCollector: start_collector,
     commands.StopCollector: stop_collector,
 }

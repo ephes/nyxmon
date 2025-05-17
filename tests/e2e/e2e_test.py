@@ -45,6 +45,9 @@ class FakeCheck:
     def add_result(self, result):
         self.result = result
 
+    def schedule_next_check(self):
+        pass
+
 
 def test_run_checks_with_result():
     # Given a message bus with a pending check
