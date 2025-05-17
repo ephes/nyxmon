@@ -60,6 +60,9 @@ Django dashboard. You can start both of them using `honcho`:
 uvx honcho start
 ```
 
+This will start the monitoring agent and the Django dashboard in separate processes.
+You can add services and health checks through the Django dashboard.
+
 ### The start-agent command
 
 The monitoring agent registers an entrypoint named `start-agent` in the
@@ -94,10 +97,7 @@ To enable Telegram notifications:
    export TELEGRAM_BOT_TOKEN=your_bot_token
    export TELEGRAM_CHAT_ID=your_chat_id
    ```
-4. Start the monitoring agent with notifications enabled:
-   ```shell
-   python -m src.nyxmon.entrypoints.cli --db /path/to/database.sqlite --enable-telegram
-   ```
+   Or set them in your `.env` file. They'll get loaded automatically by `honcho`.
 
 ### Creating a Custom Notifier
 
