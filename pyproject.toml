@@ -43,7 +43,7 @@ default-groups = ["dev", "dashboard-dev"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
-DJANGO_SETTINGS_MODULE = "config.settings.local"
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 django_find_project = false
 pythonpath = [
     ".",
