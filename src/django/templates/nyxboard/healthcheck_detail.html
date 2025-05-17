@@ -178,7 +178,7 @@
 
 <div class="health-check-info">
     <div class="health-check-id">
-        {{ health_check.get_check_type_display }} Check #{{ health_check.id }}
+        {{ health_check.name }}
         <span class="health-check-status {{ health_check.get_status }}">{{ health_check.get_status|title }}</span>
     </div>
     
@@ -187,6 +187,9 @@
     </a>
     
     <div class="health-check-details">
+        <div class="health-check-detail">
+            <strong>ID:</strong> #{{ health_check.id }}
+        </div>
         <div class="health-check-detail">
             <strong>Check Type:</strong> {{ health_check.get_check_type_display }}
         </div>

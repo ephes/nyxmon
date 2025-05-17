@@ -87,6 +87,11 @@ class HealthCheck(models.Model):
         ("processing", "Processing"),
     ]
 
+    name: models.CharField = models.CharField(
+        "Check Name",
+        max_length=255,
+        help_text="A descriptive name for this health check",
+    )
     service: models.ForeignKey = models.ForeignKey(Service, on_delete=models.CASCADE)
     check_type: models.CharField = models.CharField(
         "Check Type", max_length=20, choices=CHECK_TYPE_CHOICES, default="http"
@@ -117,7 +122,7 @@ class HealthCheck(models.Model):
         db_table = "health_check"
 
     def __str__(self):
-        return f"{self.get_check_type_display()} Check ({self.id}) for {self.service}"
+        return f"{self.name} ({self.get_check_type_display()} Check {self.id})"
 
     def get_status(self):
         """

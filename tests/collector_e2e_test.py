@@ -33,6 +33,7 @@ async def test_agent_executes_checks(db_path):
     # and a check in the repository
     check = Check(
         check_id=1,
+        name="my-check",
         service_id=1,
         check_type="http",
         url="http://127.0.0.1:1337",

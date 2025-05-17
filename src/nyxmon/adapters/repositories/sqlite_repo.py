@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 def row_to_check(row: aiosqlite.Row) -> Check:
     check_id = row["id"]
     service_id = row["service_id"]
+    name = row["name"]
     check_type = row["check_type"]
     url = row["url"]
     check_interval = row["check_interval"]
@@ -33,6 +34,7 @@ def row_to_check(row: aiosqlite.Row) -> Check:
     check = Check(
         check_id=check_id,
         service_id=service_id,
+        name=name,
         check_type=check_type,
         url=url,
         check_interval=check_interval,
@@ -72,7 +74,7 @@ class SqliteCheckRepository(CheckRepository):
             await self._ensure_schema(db)
             db.row_factory = aiosqlite.Row
             [row] = await db.execute_fetchall(
-                "SELECT id, service_id, check_type, url, check_interval FROM health_check WHERE id = ?",
+                "SELECT id, service_id, name, check_type, url, check_interval FROM health_check WHERE id = ?",
                 (check_id,),
             )
             if row is None:
@@ -85,7 +87,7 @@ class SqliteCheckRepository(CheckRepository):
 
             db.row_factory = aiosqlite.Row
             rows = await db.execute_fetchall(
-                "SELECT id, service_id, check_type, url, check_interval, next_check_time,  processing_started_at, status FROM health_check"
+                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status FROM health_check"
             )
             return [row_to_check(r) for r in rows]
 
@@ -108,7 +110,7 @@ class SqliteCheckRepository(CheckRepository):
                                   AND status = 'idle'
                                 LIMIT 100 -- Optional: process a batch at a time
                    )
-                   RETURNING id, service_id, check_type, url, check_interval, next_check_time,  processing_started_at, status""",
+                   RETURNING id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status""",
                 (current_time, current_time),
             )
 
@@ -123,12 +125,13 @@ class SqliteCheckRepository(CheckRepository):
 
             await db.execute(
                 """INSERT OR REPLACE INTO health_check
-                   (id, service_id, check_type, url, check_interval, 
+                   (id, service_id, name, check_type, url, check_interval, 
                     status, next_check_time, processing_started_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     check.check_id,
                     check.service_id,
+                    check.name,
                     check.check_type,
                     check.url,
                     check.check_interval,
@@ -156,6 +159,7 @@ class SqliteCheckRepository(CheckRepository):
             CREATE TABLE IF NOT EXISTS health_check (
                 id               INTEGER PRIMARY KEY,
                 service_id       INTEGER NOT NULL,
+                name             TEXT    DEFAULT '',
                 check_type       TEXT    NOT NULL,
                 url              TEXT    NOT NULL,
                 check_interval   INTEGER NOT NULL,

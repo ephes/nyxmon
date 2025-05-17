@@ -118,7 +118,7 @@
             {% with check_status=check.get_status %}
             <li class="health-check-card">
                 <div class="health-check-header">
-                    <div class="health-check-name">{{ check.get_check_type_display }} Check #{{ check.id }}</div>
+                    <div class="health-check-name">{{ check.name }}</div>
                     <div class="health-check-status {{ check_status }}">{{ check_status|title }}</div>
                 </div>
                 <div class="health-check-content">
@@ -126,6 +126,7 @@
                         {{ check.service.name }}
                     </a>
                     <div class="health-check-url">
+                        <strong>Type:</strong> {{ check.get_check_type_display }} Check #{{ check.id }}<br>
                         <strong>URL:</strong> <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer">{{ check.url }}</a>
                     </div>
                     <div class="health-check-actions">

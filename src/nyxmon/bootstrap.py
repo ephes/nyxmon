@@ -6,7 +6,7 @@ from .adapters.runner import CheckRunner, AsyncCheckRunner
 from .domain import Auto
 from .adapters.collector import CheckCollector, AsyncCheckCollector
 from .adapters.repositories import RepositoryStore, InMemoryStore
-from .adapters.notification import Notifier, AsyncTelegramNotifier
+from .adapters.notification import Notifier, LoggingNotifier
 from .service_layer import handlers, UnitOfWork, MessageBus
 
 
@@ -46,8 +46,8 @@ def bootstrap(
         runner = AsyncCheckRunner(portal_provider=portal_provider)
 
     if not notifier:
-        # Use telegram notifier by default
-        notifier = AsyncTelegramNotifier()
+        # Use logging notifier by default
+        notifier = LoggingNotifier()
 
     if hasattr(notifier, "set_portal_provider"):
         notifier.set_portal_provider(portal_provider)

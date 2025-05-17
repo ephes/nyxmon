@@ -94,11 +94,15 @@ class AsyncTelegramNotifier(Notifier):
         status_code = result.data.get("status_code", "")
 
         # Escape all text for MarkdownV2
+        escaped_name = (
+            self.escape_markdown_v2(check.name) if check.name else "Unnamed Check"
+        )
         escaped_url = self.escape_markdown_v2(check.url)
         escaped_error_msg = self.escape_markdown_v2(str(error_msg))
         escaped_error_type = self.escape_markdown_v2(str(error_type))
 
         message = "🔴 *Check Failed*\n"
+        message += f"Name: {escaped_name}\n"
         message += f"URL: {escaped_url}\n"
         if status_code:
             message += f"Status: {status_code}\n"
@@ -154,7 +158,10 @@ class LoggingNotifier(Notifier):
 
     def notify_check_failed(self, check: Check, result: Result) -> None:
         """Log a failed check notification."""
-        logger.error(f"Check failed: {check.check_id}, Result: {result}")
+        check_name = check.name if check.name else f"Check {check.check_id}"
+        logger.error(
+            f"Check failed: {check_name} (ID: {check.check_id}), Result: {result}"
+        )
 
     def notify_service_status_changed(self, service: Service, status: str) -> None:
         """Log a service status change notification."""

@@ -29,6 +29,7 @@ class Check:
         *,
         check_id: int,
         service_id: int,
+        name: str = "",
         check_type: str,
         url: str,
         check_interval: int = 300,
@@ -39,6 +40,7 @@ class Check:
     ) -> None:
         self.check_id = check_id
         self.service_id = service_id
+        self.name = name
         self.check_type = check_type
         self.url = url
         self.check_interval = check_interval
@@ -52,9 +54,7 @@ class Check:
         self.result: "Result" = None  # type: ignore
 
     def __repr__(self) -> str:
-        return (
-            f"Check(check={self.check_id}, service_id={self.service_id} url={self.url})"
-        )
+        return f"Check(check={self.check_id}, name='{self.name}', service_id={self.service_id} url={self.url})"
 
     def execute(self) -> None:
         # Logic to execute the check
