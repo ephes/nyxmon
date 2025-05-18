@@ -36,10 +36,7 @@ def dashboard(request):
         else:
             check.last_result = None
 
-        # Make sure we're printing out check.check_mode to debug
-        print(f"Check {check.id}: {check.name} - Mode: {check.check_mode}")
-
-    # Set default theme if not in session
+    # Set the default theme if not in session
     if "theme" not in request.session:
         request.session["theme"] = "light"
 
