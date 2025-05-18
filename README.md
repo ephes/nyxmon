@@ -58,6 +58,27 @@ uvx honcho start
 This will start the monitoring agent and the Django dashboard in separate processes.
 You can add services and health checks through the Django dashboard.
 
+### Creating development data
+
+For development and testing purposes, you can quickly generate sample services and checks using the `create_devdata` management command:
+
+```shell
+uv run src/django/manage.py create_devdata
+```
+
+This command creates:
+- A "Development Server" service
+- A "Dashboard Check" that monitors http://localhost:8000/ (should pass when the server is running)
+- A "Failing Check" that monitors a non-existent URL http://localhost:8000/non-existent-url/ (will fail)
+
+If you already have data and want to add the development data anyway, use the `--force` flag:
+
+```shell
+uv run src/django/manage.py create_devdata --force
+```
+
+The checks run every 60 seconds, so after starting the monitoring agent, you'll see results within a minute.
+
 ### The start-agent command
 
 The monitoring agent registers an entrypoint named `start-agent` in the

@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Check Combined Design</title>
+    <style>
+        :root {
+            --color-passed: #4ade80;
+            --color-failed: #f87171;
+            --color-warning: #fbbf24;
+            --color-recovering: #facc15;
+            --color-unknown: #d1d5db;
+            --color-processing: #2563eb;
+            --color-bg: #0f0f0f;
+            --color-card-bg: #1a1a1a;
+            --color-border: #333;
+            --color-text: #e0e0e0;
+            --color-text-secondary: #999;
+            --color-header-bg: #1e3a8a;
+            --color-header-text: #f9fafb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #fff;
+            font-weight: 300;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            color: #fff;
+            font-weight: 400;
+            margin: 30px 0 15px 0;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .demo-description {
+            margin-bottom: 20px;
+            color: var(--color-text-secondary);
+        }
+
+        /* Services Grid */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        /* Service Card */
+        .service-card {
+            background: var(--color-card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid var(--color-border);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            border-color: #555;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Service States */
+        .service-card.passed { border-top: 4px solid var(--color-passed); }
+        .service-card.failed { border-top: 4px solid var(--color-failed); }
+        .service-card.warning { border-top: 4px solid var(--color-warning); }
+        .service-card.recovering { border-top: 4px solid var(--color-recovering); }
+        .service-card.unknown { border-top: 4px solid var(--color-unknown); }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .service-name {
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .service-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-passed {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--color-passed);
+            border: 1px solid var(--color-passed);
+        }
+
+        .status-failed {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--color-failed);
+            border: 1px solid var(--color-failed);
+        }
+
+        .status-warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--color-warning);
+            border: 1px solid var(--color-warning);
+        }
+
+        .status-recovering {
+            background: rgba(250, 204, 21, 0.15);
+            color: var(--color-recovering);
+            border: 1px solid var(--color-recovering);
+        }
+
+        .status-unknown {
+            background: rgba(209, 213, 219, 0.15);
+            color: var(--color-unknown);
+            border: 1px solid var(--color-unknown);
+        }
+
+        /* Service Progress Ring */
+        .service-progress-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+        }
+
+        .service-progress-ring {
+            transform: rotate(-90deg);
+            width: 120px;
+            height: 120px;
+        }
+
+        .service-progress-ring-bg {
+            fill: none;
+            stroke: #333;
+            stroke-width: 8;
+            r: 50;
+            cx: 60;
+            cy: 60;
+        }
+
+        .service-progress-ring-progress {
+            fill: none;
+            stroke-width: 8;
+            r: 50;
+            cx: 60;
+            cy: 60;
+            stroke-dasharray: 314.16;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        /* Service progress rings for different percentages */
+        .service-progress-25 {
+            stroke: var(--color-passed);
+            stroke-dashoffset: 235.62; /* 75% of 314.16 */
+        }
+
+        .service-progress-50 {
+            stroke: var(--color-passed);
+            stroke-dashoffset: 157.08; /* 50% of 314.16 */
+        }
+
+        .service-progress-75 {
+            stroke: var(--color-warning);
+            stroke-dashoffset: 78.54; /* 25% of 314.16 */
+        }
+
+        .service-progress-90 {
+            stroke: var(--color-failed);
+            stroke-dashoffset: 31.416; /* 10% of 314.16 */
+        }
+
+        .service-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #fff;
+        }
+
+        .service-progress-percentage {
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: block;
+        }
+
+        .service-progress-label {
+            font-size: 0.8rem;
+            color: var(--color-text-secondary);
+            margin-top: 3px;
+        }
+
+        .service-details {
+            font-size: 0.9rem;
+            color: var(--color-text);
+            line-height: 1.5;
+        }
+
+        .service-details div {
+            margin-bottom: 8px;
+        }
+
+        .service-details strong {
+            color: #fff;
+            margin-right: 5px;
+        }
+
+        .service-time-remaining {
+            color: var(--color-passed);
+            font-weight: 600;
+        }
+
+        .service-url {
+            color: #8b5cf6;
+            text-decoration: none;
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        .service-url:hover {
+            text-decoration: underline;
+        }
+
+        /* Health Check Section */
+        .service-section {
+            margin-bottom: 40px;
+        }
+
+        .service-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .service-section-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .service-section-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Health Check Cards Grid */
+        .health-checks {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            grid-gap: 20px;
+            list-style: none;
+        }
+
+        /* Health Check Card */
+        .health-check {
+            background: var(--color-card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .health-check:hover {
+            transform: translateY(-5px);
+            border-color: #555;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Card States */
+        .health-check.passed { border-top: 4px solid var(--color-passed); }
+        .health-check.failed { border-top: 4px solid var(--color-failed); }
+        .health-check.warning { border-top: 4px solid var(--color-warning); }
+        .health-check.recovering { border-top: 4px solid var(--color-recovering); }
+        .health-check.unknown { border-top: 4px solid var(--color-unknown); }
+
+        /* Card Header */
+        .health-check-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--color-border);
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .health-check-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .health-check-url {
+            font-size: 0.875rem;
+            color: #8b5cf6;
+            font-family: monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 8px;
+            text-decoration: none;
+        }
+
+        .health-check-url:hover {
+            text-decoration: underline;
+        }
+
+        /* Card Status Badge */
+        .health-check-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-passed {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--color-passed);
+            border: 1px solid var(--color-passed);
+        }
+
+        .badge-failed {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--color-failed);
+            border: 1px solid var(--color-failed);
+        }
+
+        .badge-warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--color-warning);
+            border: 1px solid var(--color-warning);
+        }
+
+        .badge-recovering {
+            background: rgba(250, 204, 21, 0.15);
+            color: var(--color-recovering);
+            border: 1px solid var(--color-recovering);
+        }
+
+        .badge-unknown {
+            background: rgba(209, 213, 219, 0.15);
+            color: var(--color-unknown);
+            border: 1px solid var(--color-unknown);
+        }
+
+        .badge-processing {
+            background: rgba(37, 99, 235, 0.15);
+            color: var(--color-processing);
+            border: 1px solid var(--color-processing);
+            animation: pulse 1.5s infinite;
+        }
+
+        .badge-due {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--color-warning);
+            border: 1px solid var(--color-warning);
+        }
+
+        /* Card Content */
+        .health-check-content {
+            padding: 16px;
+            flex-grow: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Progress Ring */
+        .progress-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+            width: 80px;
+            height: 80px;
+        }
+
+        .progress-ring-bg {
+            fill: none;
+            stroke: #333;
+            stroke-width: 6;
+            r: 34;
+            cx: 40;
+            cy: 40;
+        }
+
+        .progress-ring-progress {
+            fill: none;
+            stroke-width: 6;
+            r: 34;
+            cx: 40;
+            cy: 40;
+            stroke-dasharray: 213.63;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        .progress-ring-progress-25 {
+            stroke: var(--color-passed);
+            stroke-dashoffset: 160.22; /* 75% of 213.63 */
+        }
+
+        .progress-ring-progress-50 {
+            stroke: var(--color-passed);
+            stroke-dashoffset: 106.81; /* 50% of 213.63 */
+        }
+
+        .progress-ring-progress-75 {
+            stroke: var(--color-warning);
+            stroke-dashoffset: 53.41; /* 25% of 213.63 */
+        }
+
+        .progress-ring-progress-90 {
+            stroke: var(--color-failed);
+            stroke-dashoffset: 21.36; /* 10% of 213.63 */
+        }
+
+        .progress-ring-progress-100 {
+            stroke: var(--color-failed);
+            stroke-dashoffset: 0; /* 0% of 213.63 */
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .progress-percentage {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            display: block;
+        }
+
+        .progress-label {
+            font-size: 0.6rem;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Check Details */
+        .check-details {
+            flex-grow: 1;
+            padding-left: 16px;
+        }
+
+        .check-detail {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: baseline;
+        }
+
+        .check-detail-label {
+            color: var(--color-text-secondary);
+            margin-right: 8px;
+            font-size: 0.75rem;
+            min-width: 80px;
+        }
+
+        .check-detail-value {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .time-value {
+            color: var(--color-passed);
+        }
+
+        /* Card Footer */
+        .health-check-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Run Now Button */
+        .run-check-button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .run-check-button:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .run-check-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Check Result Info */
+        .check-result-info {
+            font-size: 0.8rem;
+            color: var(--color-text-secondary);
+        }
+
+        /* Processing Animation */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .health-checks {
+                grid-template-columns: 1fr;
+            }
+
+            .health-check-content {
+                flex-direction: column;
+            }
+
+            .progress-container {
+                margin: 0 auto 20px;
+            }
+
+            .check-details {
+                padding-left: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Health Check Combined Design</h1>
+    </header>
+
+    <div class="container">
+        <h2>Services Overview</h2>
+        <p class="demo-description">Overview of all monitored services with their status.</p>
+
+        <div class="services-grid">
+            <!-- Service Card 1 - Passed -->
+            <div class="service-card passed">
+                <div class="service-header">
+                    <div class="service-name">API Gateway</div>
+                    <div class="service-status status-passed">Passed</div>
+                </div>
+                
+                <div class="service-progress-container">
+                    <svg class="service-progress-ring">
+                        <circle class="service-progress-ring-bg"></circle>
+                        <circle class="service-progress-ring-progress service-progress-25"></circle>
+                    </svg>
+                    <div class="service-progress-text">
+                        <span class="service-progress-percentage">25%</span>
+                        <div class="service-progress-label">elapsed</div>
+                    </div>
+                </div>
+                
+                <div class="service-details">
+                    <div><strong>Checks:</strong> 5 Passed</div>
+                    <div><strong>Next check:</strong> <span class="service-time-remaining">45m 30s</span></div>
+                    <div><strong>URL:</strong> <a href="https://api.example.com" class="service-url" target="_blank">https://api.example.com</a></div>
+                </div>
+            </div>
+
+            <!-- Service Card 2 - Warning -->
+            <div class="service-card warning">
+                <div class="service-header">
+                    <div class="service-name">Database Cluster</div>
+                    <div class="service-status status-warning">Warning</div>
+                </div>
+                
+                <div class="service-progress-container">
+                    <svg class="service-progress-ring">
+                        <circle class="service-progress-ring-bg"></circle>
+                        <circle class="service-progress-ring-progress service-progress-50"></circle>
+                    </svg>
+                    <div class="service-progress-text">
+                        <span class="service-progress-percentage">50%</span>
+                        <div class="service-progress-label">elapsed</div>
+                    </div>
+                </div>
+                
+                <div class="service-details">
+                    <div><strong>Checks:</strong> 3 Passed, 1 Warning</div>
+                    <div><strong>Next check:</strong> <span class="service-time-remaining">30m 15s</span></div>
+                    <div><strong>URL:</strong> <a href="https://db.example.com" class="service-url" target="_blank">https://db.example.com</a></div>
+                </div>
+            </div>
+
+            <!-- Service Card 3 - Failed -->
+            <div class="service-card failed">
+                <div class="service-header">
+                    <div class="service-name">Payment Gateway</div>
+                    <div class="service-status status-failed">Failed</div>
+                </div>
+                
+                <div class="service-progress-container">
+                    <svg class="service-progress-ring">
+                        <circle class="service-progress-ring-bg"></circle>
+                        <circle class="service-progress-ring-progress service-progress-75"></circle>
+                    </svg>
+                    <div class="service-progress-text">
+                        <span class="service-progress-percentage">75%</span>
+                        <div class="service-progress-label">elapsed</div>
+                    </div>
+                </div>
+                
+                <div class="service-details">
+                    <div><strong>Checks:</strong> 2 Passed, 1 Failed</div>
+                    <div><strong>Next check:</strong> <span class="service-time-remaining">15m 0s</span></div>
+                    <div><strong>URL:</strong> <a href="https://payments.example.com" class="service-url" target="_blank">https://payments.example.com</a></div>
+                </div>
+            </div>
+
+            <!-- Service Card 4 - Recovering -->
+            <div class="service-card recovering">
+                <div class="service-header">
+                    <div class="service-name">Auth Service</div>
+                    <div class="service-status status-recovering">Recovering</div>
+                </div>
+                
+                <div class="service-progress-container">
+                    <svg class="service-progress-ring">
+                        <circle class="service-progress-ring-bg"></circle>
+                        <circle class="service-progress-ring-progress service-progress-90"></circle>
+                    </svg>
+                    <div class="service-progress-text">
+                        <span class="service-progress-percentage">90%</span>
+                        <div class="service-progress-label">elapsed</div>
+                    </div>
+                </div>
+                
+                <div class="service-details">
+                    <div><strong>Checks:</strong> 4 Passed, 1 Recovering</div>
+                    <div><strong>Next check:</strong> <span class="service-time-remaining">3m 0s</span></div>
+                    <div><strong>URL:</strong> <a href="https://auth.example.com" class="service-url" target="_blank">https://auth.example.com</a></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Gateway Service Checks -->
+        <div class="service-section">
+            <div class="service-section-header">
+                <div class="service-section-title">API Gateway Checks</div>
+                <div class="service-section-badge status-passed">Passed</div>
+            </div>
+
+            <ul class="health-checks">
+                <!-- Check 1 - Normal (25% Progress) -->
+                <li class="health-check passed">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">API Status Endpoint</h3>
+                        <a href="https://api.example.com/status" class="health-check-url" target="_blank">https://api.example.com/status</a>
+                        <span class="health-check-badge badge-passed">Passed</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-25"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">25%</span>
+                                <div class="progress-label">elapsed</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Next Check:</span>
+                                <span class="check-detail-value time-value">Today at 14:30</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Remaining:</span>
+                                <span class="check-detail-value time-value">45m 30s</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">300s (5min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">13:15</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: 200 OK (43ms)</div>
+                        <button class="run-check-button">Run now</button>
+                    </div>
+                </li>
+
+                <!-- Check 2 - Normal (50% Progress) -->
+                <li class="health-check passed">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">API Metrics Endpoint</h3>
+                        <a href="https://api.example.com/metrics" class="health-check-url" target="_blank">https://api.example.com/metrics</a>
+                        <span class="health-check-badge badge-passed">Passed</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-50"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">50%</span>
+                                <div class="progress-label">elapsed</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Next Check:</span>
+                                <span class="check-detail-value time-value">Today at 13:45</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Remaining:</span>
+                                <span class="check-detail-value time-value">30m 15s</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">300s (5min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">13:15</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: 200 OK (52ms)</div>
+                        <button class="run-check-button">Run now</button>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Database Service Checks -->
+        <div class="service-section">
+            <div class="service-section-header">
+                <div class="service-section-title">Database Cluster Checks</div>
+                <div class="service-section-badge status-warning">Warning</div>
+            </div>
+
+            <ul class="health-checks">
+                <!-- Check 1 - Normal (75% Progress) -->
+                <li class="health-check passed">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">Primary DB Connection</h3>
+                        <a href="https://db.example.com/primary" class="health-check-url" target="_blank">https://db.example.com/primary</a>
+                        <span class="health-check-badge badge-passed">Passed</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-75"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">75%</span>
+                                <div class="progress-label">elapsed</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Next Check:</span>
+                                <span class="check-detail-value time-value">Today at 13:15</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Remaining:</span>
+                                <span class="check-detail-value time-value">15m 0s</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">300s (5min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">13:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: Connection Successful (32ms)</div>
+                        <button class="run-check-button">Run now</button>
+                    </div>
+                </li>
+
+                <!-- Check 2 - Warning (90% Progress) -->
+                <li class="health-check warning">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">Database Replica Lag</h3>
+                        <a href="https://db.example.com/replica-lag" class="health-check-url" target="_blank">https://db.example.com/replica-lag</a>
+                        <span class="health-check-badge badge-warning">Warning</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-90"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">90%</span>
+                                <div class="progress-label">elapsed</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Next Check:</span>
+                                <span class="check-detail-value time-value">Today at 13:03</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Remaining:</span>
+                                <span class="check-detail-value time-value">3m 0s</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">180s (3min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">13:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: Replica Lag: 23s (Warning)</div>
+                        <button class="run-check-button">Run now</button>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Payment Gateway Service Checks -->
+        <div class="service-section">
+            <div class="service-section-header">
+                <div class="service-section-title">Payment Gateway Checks</div>
+                <div class="service-section-badge status-failed">Failed</div>
+            </div>
+
+            <ul class="health-checks">
+                <!-- Check 1 - Failed -->
+                <li class="health-check failed">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">Payment Processing API</h3>
+                        <a href="https://payments.example.com/api" class="health-check-url" target="_blank">https://payments.example.com/api</a>
+                        <span class="health-check-badge badge-failed">Failed</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-75"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">75%</span>
+                                <div class="progress-label">elapsed</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Next Check:</span>
+                                <span class="check-detail-value time-value">Today at 13:15</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Remaining:</span>
+                                <span class="check-detail-value time-value">15m 0s</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">300s (5min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">13:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: 503 Service Unavailable</div>
+                        <button class="run-check-button">Run now</button>
+                    </div>
+                </li>
+
+                <!-- Check 2 - Due State -->
+                <li class="health-check passed">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">Payment Gateway Status</h3>
+                        <a href="https://payments.example.com/status" class="health-check-url" target="_blank">https://payments.example.com/status</a>
+                        <span class="health-check-badge badge-passed">Passed</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-100"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">100%</span>
+                                <div class="progress-label">due</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Status:</span>
+                                <span class="check-detail-value">
+                                    <span class="health-check-badge badge-due">Check due</span>
+                                </span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Remaining:</span>
+                                <span class="check-detail-value time-value">0s</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">300s (5min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">12:55</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: 200 OK (67ms)</div>
+                        <button class="run-check-button">Run now</button>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Auth Service Checks -->
+        <div class="service-section">
+            <div class="service-section-header">
+                <div class="service-section-title">Auth Service Checks</div>
+                <div class="service-section-badge status-recovering">Recovering</div>
+            </div>
+
+            <ul class="health-checks">
+                <!-- Check 1 - Processing State -->
+                <li class="health-check passed">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">Auth API Endpoint</h3>
+                        <a href="https://auth.example.com/api" class="health-check-url" target="_blank">https://auth.example.com/api</a>
+                        <span class="health-check-badge badge-passed">Passed</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-100"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">100%</span>
+                                <div class="progress-label">running</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Status:</span>
+                                <span class="check-detail-value">
+                                    <span class="health-check-badge badge-processing">In progress</span>
+                                </span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Started:</span>
+                                <span class="check-detail-value time-value">15s ago</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">300s (5min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">12:55</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: 200 OK (39ms)</div>
+                        <button class="run-check-button" disabled>Running...</button>
+                    </div>
+                </li>
+
+                <!-- Check 2 - Recovering State -->
+                <li class="health-check recovering">
+                    <div class="health-check-header">
+                        <h3 class="health-check-title">Auth Token Service with a Much Longer Title That Could Potentially Wrap</h3>
+                        <a href="https://auth.example.com/token" class="health-check-url" target="_blank">https://auth.example.com/token</a>
+                        <span class="health-check-badge badge-recovering">Recovering</span>
+                    </div>
+                    
+                    <div class="health-check-content">
+                        <div class="progress-container">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring-bg"></circle>
+                                <circle class="progress-ring-progress progress-ring-progress-90"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percentage">90%</span>
+                                <div class="progress-label">elapsed</div>
+                            </div>
+                        </div>
+                        
+                        <div class="check-details">
+                            <div class="check-detail">
+                                <span class="check-detail-label">Next Check:</span>
+                                <span class="check-detail-value time-value">Today at 13:03</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Remaining:</span>
+                                <span class="check-detail-value time-value">3m 0s</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Interval:</span>
+                                <span class="check-detail-value">180s (3min)</span>
+                            </div>
+                            <div class="check-detail">
+                                <span class="check-detail-label">Last Check:</span>
+                                <span class="check-detail-value">13:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-check-footer">
+                        <div class="check-result-info">Last Result: 200 OK (83ms) - Recovering</div>
+                        <button class="run-check-button">Run now</button>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
