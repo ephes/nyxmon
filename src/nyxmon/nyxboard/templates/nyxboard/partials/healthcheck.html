@@ -1,8 +1,12 @@
 {% load static %}
 
-{# This template partial displays a single health check with htmx integration #}
-<li class="health-check {{ check.get_status }}" 
+{# This template partial displays a single health check with htmx and web component integration #}
+<li is="health-check" 
+    class="health-check {{ check.get_status }}" 
     id="check-{{ check.id }}"
+    check-id="{{ check.id }}"
+    check-mode="{{ check_mode }}"
+    status="{{ check.status }}"
     {% if check_mode == "due" %}
         hx-get="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
         hx-trigger="every 3s"
@@ -26,48 +30,22 @@
     </div>
 
     <div class="health-check-details">
-        <div class="next-check-info {% if check_mode == 'due' %}check-due{% endif %}">
-            {% if check_mode == "due" %}
-                <!-- When in due mode, show status -->
-                <span class="check-status">
-                    {% if check.status == "processing" %}
-                        <span class="status-processing">In progress...</span>
-                    {% else %}
-                        <span class="status-due">Check due</span>
-                    {% endif %}
-                </span>
-            {% else %}
-                <!-- Only show next check time and countdown in normal mode -->
-                <span class="next-check-time" data-next-check="{{ check.next_check_time }}">
-                    <!-- Will be populated by JavaScript -->
-                </span>
-                <span class="next-check-countdown" data-next-check="{{ check.next_check_time }}">
-                    <!-- Will be populated by JavaScript -->
-                </span>
-            {% endif %}
-        </div>
+        <check-timer
+            next-check="{{ check.next_check_time }}"
+            mode="{{ check_mode }}"
+            status="{{ check.status }}"
+            class="next-check-info {% if check_mode == 'due' %}check-due{% endif %}">
+        </check-timer>
 
-        <!-- Always show progress ring -->
-        <div class="progress-container">
-            <svg class="progress-ring">
-                <circle class="progress-ring-circle progress-ring-bg"
-                        cx="30" cy="30" r="26"/>
-                <circle class="progress-ring-circle progress-ring-progress {% if check_mode == 'due' %}due{% endif %}"
-                        cx="30" cy="30" r="26"
-                        data-next-check="{{ check.next_check_time }}"
-                        data-check-interval="{{ check.check_interval }}"/>
-            </svg>
-            <div class="progress-text">
-                <span class="progress-percentage"
-                      data-next-check="{{ check.next_check_time }}"
-                      data-check-interval="{{ check.check_interval }}">
-                    {% if check_mode == "due" %}100%{% endif %}
-                    <!-- Will be populated by JavaScript -->
-                </span>
-            </div>
-        </div>
+        <!-- Progress ring as a web component -->
+        <progress-ring
+            next-check="{{ check.next_check_time }}"
+            check-interval="{{ check.check_interval }}"
+            mode="{{ check_mode }}"
+            class="progress-container">
+        </progress-ring>
         
-        <!-- Always show the run now button -->
+        <!-- Run now button with HTMX integration -->
         <div class="check-action-container">
             <button class="run-check-button"
                     hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
@@ -83,6 +61,13 @@
                 {{ check.get_status|title }}
             </a>
         </div>
-        
     </div>
+    
+    <!-- Direct HTMX trigger for when the progress reaches 100% -->
+    <span style="display:none" 
+          id="check-trigger-{{ check.id }}"
+          hx-get="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
+          hx-trigger="checkDue from:closest li"
+          hx-target="#check-{{ check.id }}"
+          hx-swap="outerHTML"></span>
 </li>

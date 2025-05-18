@@ -15,3 +15,6 @@ db.sqlite3
 
 # vim
 *.swp
+
+# javascript
+node_modules/
