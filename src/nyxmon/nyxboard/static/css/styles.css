@@ -349,6 +349,31 @@ h1, h2, h3, h4 {
     margin-left: 1rem;
 }
 
+/* Styling for check result timestamp */
+.check-result-info {
+    font-size: 0.75rem;
+    color: #6b7280;
+    min-height: 1.2rem; /* Ensures the space is reserved even when empty */
+    min-width: 5rem; /* Ensures a minimum width for consistency */
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+/* Health check footer - ensure proper spacing */
+.health-check-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.5rem;
+}
+
+/* Style for the 'No data yet' text */
+.no-data-text {
+    font-style: italic;
+    color: #9ca3af;
+}
+
 .result-link {
     text-decoration: none;
     color: inherit;

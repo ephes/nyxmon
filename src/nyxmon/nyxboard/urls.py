@@ -50,4 +50,6 @@ urlpatterns = [
         views.healthcheck_trigger,
         name="healthcheck_trigger",
     ),
+    # Theme setting endpoint
+    path("set-theme/", views.set_theme, name="set_theme"),
 ]

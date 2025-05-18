@@ -7,7 +7,7 @@ class ProgressRing extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     
-    // Set up the initial HTML
+    // Set up the initial HTML with CSS custom property support
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -17,10 +17,23 @@ class ProgressRing extends HTMLElement {
           height: 60px;
         }
         
-        svg {
-          transform: rotate(-90deg);
+        .progress-container {
+          position: relative;
           width: 60px;
           height: 60px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        
+        svg {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 60px;
+          height: 60px;
+          transform: rotate(-90deg);
+          z-index: 1;
         }
         
         circle {
@@ -35,7 +48,7 @@ class ProgressRing extends HTMLElement {
         }
         
         .progress-ring-bg {
-          stroke: #e5e7eb;
+          stroke: var(--progress-ring-bg, #e5e7eb);
         }
         
         .progress-ring-progress {
@@ -45,28 +58,34 @@ class ProgressRing extends HTMLElement {
         }
         
         .progress-ring-progress.due {
-          stroke: #f87171 !important;
+          stroke: var(--color-failed, #f87171) !important;
         }
         
         .progress-text {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
+          position: relative;
+          z-index: 2;
           text-align: center;
           font-size: 0.7rem;
           font-weight: 600;
-          color: inherit;
+          color: var(--timer-text-color, inherit);
+          /* Added fixed width/height to ensure consistent sizing */
+          width: 30px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
       </style>
       
-      <svg class="progress-ring">
-        <circle class="progress-ring-bg" cx="30" cy="30" r="26"/>
-        <circle class="progress-ring-progress" cx="30" cy="30" r="26"/>
-      </svg>
-      
-      <div class="progress-text">
-        <span class="progress-percentage">0%</span>
+      <div class="progress-container">
+        <svg class="progress-ring">
+          <circle class="progress-ring-bg" cx="30" cy="30" r="26"/>
+          <circle class="progress-ring-progress" cx="30" cy="30" r="26"/>
+        </svg>
+        
+        <div class="progress-text">
+          <span class="progress-percentage">0%</span>
+        </div>
       </div>
     `;
     
@@ -87,6 +106,7 @@ class ProgressRing extends HTMLElement {
     this.updateProgress = this.updateProgress.bind(this);
     this.startUpdates = this.startUpdates.bind(this);
     this.stopUpdates = this.stopUpdates.bind(this);
+    this.handleThemeChange = this.handleThemeChange.bind(this);
   }
   
   static get observedAttributes() {
@@ -97,6 +117,9 @@ class ProgressRing extends HTMLElement {
     // Start updating the progress ring
     this.startUpdates();
     
+    // Listen for theme changes
+    document.addEventListener('theme-changed', this.handleThemeChange);
+    
     if (this.debug) {
       console.log(`ProgressRing connected with next-check=${this.getAttribute('next-check')}, interval=${this.getAttribute('check-interval')}, mode=${this.getAttribute('mode')}`);
     }
@@ -106,8 +129,39 @@ class ProgressRing extends HTMLElement {
     // Clean up when element is removed
     this.stopUpdates();
     
+    // Remove event listeners
+    document.removeEventListener('theme-changed', this.handleThemeChange);
+    
     if (this.debug) {
       console.log(`ProgressRing disconnected`);
+    }
+  }
+  
+  handleThemeChange(event) {
+    // Apply theme by updating CSS variables regardless of themed class
+    // Get theme values based on current body class
+    const isDark = document.body.classList.contains('dark-theme');
+    
+    // Add/remove themed class
+    if (isDark) {
+      this.classList.add('themed');
+    } else {
+      this.classList.remove('themed');
+    }
+    
+    // Force component to update its ring colors with the new theme
+    // Direct values for better reliability
+    const ringBgColor = isDark ? '#444' : '#e5e7eb';
+    this.style.setProperty('--progress-ring-bg', ringBgColor);
+    
+    // Force a redraw when theme changes
+    this.updateProgressRing(this.calculateProgress(
+      this.getAttribute('next-check'),
+      this.getAttribute('check-interval')
+    ));
+    
+    if (this.debug) {
+      console.log(`Applied theme to progress-ring: ${isDark ? 'dark' : 'light'}`);
     }
   }
   
@@ -179,32 +233,46 @@ class ProgressRing extends HTMLElement {
         console.log('Firing check-due event from progress-ring');
       }
       
-      // Use requestAnimationFrame to ensure DOM is fully updated
-      requestAnimationFrame(() => {
-        // First dispatch standard custom event
-        const checkDueEvent = new CustomEvent('check-due', {
-          bubbles: true,
-          composed: true
-        });
+      // Add a debounce to prevent multiple events firing too quickly
+      if (!this._scheduledDueEvent) {
+        this._scheduledDueEvent = true;
         
-        this.dispatchEvent(checkDueEvent);
-        
-        // Then also dispatch an HTMX event that can be triggered directly by HTMX
-        const htmxEvent = new CustomEvent('checkDue', {
-          bubbles: true,
-          composed: true
-        });
-        
-        const healthCheck = this.closest('li[is="health-check"]');
-        if (healthCheck) {
-          healthCheck.dispatchEvent(htmxEvent);
-          if (this.debug) console.log('HTMX checkDue event dispatched to', healthCheck.id);
-        }
-        
-        if (this.debug) {
-          console.log('check-due event dispatched successfully');
-        }
-      });
+        // Use setTimeout with a small delay instead of requestAnimationFrame
+        setTimeout(() => {
+          try {
+            // First dispatch standard custom event
+            const checkDueEvent = new CustomEvent('check-due', {
+              bubbles: true,
+              composed: true
+            });
+            
+            this.dispatchEvent(checkDueEvent);
+            
+            // Only dispatch HTMX event if component is still in the DOM
+            if (document.body.contains(this)) {
+              const healthCheck = this.closest('li[is="health-check"]');
+              if (healthCheck) {
+                // Then also dispatch an HTMX event that can be triggered directly by HTMX
+                const htmxEvent = new CustomEvent('checkDue', {
+                  bubbles: true,
+                  composed: true
+                });
+                
+                healthCheck.dispatchEvent(htmxEvent);
+                if (this.debug) console.log('HTMX checkDue event dispatched to', healthCheck.id);
+              }
+              
+              if (this.debug) {
+                console.log('check-due event dispatched successfully');
+              }
+            }
+          } catch (error) {
+            console.error('Error dispatching check-due event:', error);
+          } finally {
+            this._scheduledDueEvent = false;
+          }
+        }, 100); // Small delay to prevent race conditions
+      }
     }
   }
   
@@ -237,13 +305,37 @@ class ProgressRing extends HTMLElement {
     // Update the text
     this.progressText.textContent = `${Math.round(progress)}%`;
     
+    // Get custom properties considering the themed state
+    const getColorProperty = (prop, fallback) => {
+      // Check if the component is in themed mode
+      const isThemed = this.classList.contains('themed');
+      const isDarkTheme = document.body.classList.contains('dark-theme');
+      const useThemedColors = isThemed && isDarkTheme;
+      
+      const style = getComputedStyle(document.documentElement);
+      const value = style.getPropertyValue(prop);
+      
+      if (useThemedColors && prop === '--progress-ring-bg') {
+        // Return a darker background for the progress ring in dark mode
+        return '#555';
+      }
+      
+      return value || fallback;
+    };
+    
     // Change color based on progress
     if (progress < 50) {
-      this.progressRing.style.stroke = "#4ade80"; // green
+      this.progressRing.style.stroke = getColorProperty('--color-passed', '#4ade80');
     } else if (progress < 80) {
-      this.progressRing.style.stroke = "#facc15"; // yellow
+      this.progressRing.style.stroke = getColorProperty('--color-warning', '#facc15');
     } else {
-      this.progressRing.style.stroke = "#f87171"; // red
+      this.progressRing.style.stroke = getColorProperty('--color-failed', '#f87171');
+    }
+    
+    // Update background ring color
+    const bgRing = this.shadowRoot.querySelector('.progress-ring-bg');
+    if (bgRing) {
+      bgRing.style.stroke = getColorProperty('--progress-ring-bg', '#e5e7eb');
     }
   }
 }

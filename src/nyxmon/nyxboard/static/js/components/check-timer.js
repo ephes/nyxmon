@@ -6,37 +6,40 @@ class CheckTimer extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     
-    // Set up the initial HTML
+    // Set up the initial HTML with CSS custom property support
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
           font-size: 0.875rem;
-          text-align: right;
-          color: #4b5563;
-          min-width: 100px;
-          background-color: #f9fafb;
-          padding: 0.375rem;
+          text-align: center;
+          color: var(--timer-text-color, #4b5563);
+          min-width: 120px;
+          width: 120px;
+          background-color: var(--timer-bg-color, #f9fafb);
+          padding: 0.5rem;
           border-radius: 0.375rem;
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--timer-border-color, #e5e7eb);
+          box-sizing: border-box;
         }
         
         :host(.check-due) {
-          background-color: rgba(245, 158, 11, 0.1);
-          border: 1px solid #f59e0b;
+          background-color: var(--timer-due-bg-color, rgba(245, 158, 11, 0.1));
+          border: 1px solid var(--timer-due-border-color, #f59e0b);
         }
         
         .next-check-time {
           font-weight: 600;
           display: block;
           margin-bottom: 0.25rem;
-          color: #1f2937;
+          color: var(--timer-text-color, #1f2937);
         }
         
         .next-check-countdown {
           font-size: 0.75rem;
           opacity: 0.8;
           font-weight: 500;
+          color: var(--color-passed, #4ade80);
         }
         
         .check-status {
@@ -46,13 +49,13 @@ class CheckTimer extends HTMLElement {
         }
         
         .status-processing {
-          color: #2563eb;
+          color: var(--color-processing, #2563eb);
           font-weight: bold;
           animation: pulse 1.5s infinite;
         }
         
         .status-due {
-          color: #f59e0b;
+          color: var(--color-warning, #f59e0b);
           font-weight: bold;
         }
         
@@ -86,6 +89,7 @@ class CheckTimer extends HTMLElement {
     this.updateDisplay = this.updateDisplay.bind(this);
     this.startUpdates = this.startUpdates.bind(this);
     this.stopUpdates = this.stopUpdates.bind(this);
+    this.handleThemeChange = this.handleThemeChange.bind(this);
   }
   
   static get observedAttributes() {
@@ -97,6 +101,9 @@ class CheckTimer extends HTMLElement {
       console.log(`CheckTimer connected with next-check=${this.getAttribute('next-check')}, mode=${this.getAttribute('mode')}`);
     }
     
+    // Listen for theme changes
+    document.addEventListener('theme-changed', this.handleThemeChange);
+    
     // Start updating the timer
     this.startUpdates();
   }
@@ -105,9 +112,43 @@ class CheckTimer extends HTMLElement {
     // Clean up when element is removed
     this.stopUpdates();
     
+    // Remove event listeners
+    document.removeEventListener('theme-changed', this.handleThemeChange);
+    
     if (this.debug) {
       console.log(`CheckTimer disconnected`);
     }
+  }
+  
+  handleThemeChange(event) {
+    // Apply theme by updating CSS variables regardless of themed class
+    // Get theme values based on current body class
+    const isDark = document.body.classList.contains('dark-theme');
+    
+    // Direct values for better reliability
+    const bgColor = isDark ? '#1a1a1a' : '#ffffff';
+    const textColor = isDark ? '#e0e0e0' : '#1f2937';
+    const borderColor = isDark ? '#333' : '#e5e7eb';
+    
+    // Apply directly to the shadow root
+    const host = this.shadowRoot.host;
+    host.style.setProperty('--timer-bg-color', bgColor);
+    host.style.setProperty('--timer-text-color', textColor);
+    host.style.setProperty('--timer-border-color', borderColor);
+    
+    // Add/remove themed class
+    if (isDark) {
+      this.classList.add('themed');
+    } else {
+      this.classList.remove('themed');
+    }
+    
+    if (this.debug) {
+      console.log(`Applied theme to check-timer: ${isDark ? 'dark' : 'light'}`);
+    }
+    
+    // Force display update
+    this.updateDisplay();
   }
   
   attributeChangedCallback(name, oldValue, newValue) {

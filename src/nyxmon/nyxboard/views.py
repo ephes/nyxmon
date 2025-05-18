@@ -1,4 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+import json
 from time import time
 
 from .models import Service, HealthCheck, StatusChoices
@@ -36,9 +39,14 @@ def dashboard(request):
         # Make sure we're printing out check.check_mode to debug
         print(f"Check {check.id}: {check.name} - Mode: {check.check_mode}")
 
+    # Set default theme if not in session
+    if "theme" not in request.session:
+        request.session["theme"] = "light"
+
     context = {
         "services": services,
         "status_choices": StatusChoices,
+        "theme": request.session.get("theme", "light"),
     }
 
     return render(request, "nyxboard/dashboard.html", context)
@@ -228,29 +236,41 @@ def healthcheck_update_status(request, check_id):
     # Determine if it's still due or back to normal
     current_time = time()
 
+    # Set last_result regardless of status
+    last_result = recent_results[0] if recent_results else None
+
+    # Log last_result to debug
+    if last_result:
+        print(f"Last result for check {check_id}: {last_result.created_at}")
+    else:
+        print(f"No last result for check {check_id}")
+
     if health_check.status == "processing":
         # If it's being processed, keep in due mode
         check_mode = "due"
-        last_result = None
     elif health_check.next_check_time <= current_time:
         # If it's past next check time, it's still due
         check_mode = "due"
-        last_result = recent_results[0] if recent_results else None
     else:
         # If next check time is in the future, it's back to normal
         check_mode = "normal"
-        last_result = recent_results[0] if recent_results else None
 
     # Debug output
     print(f"HTMX Update - Check {check_id}: {health_check.name} - Mode: {check_mode}")
+
+    # Determine which template to use based on what partial was requested
+    template_name = "nyxboard/partials/healthcheck-card.html"
+    if "healthcheck.html" in request.headers.get("HX-Request-URL", ""):
+        template_name = "nyxboard/partials/healthcheck.html"
 
     context = {
         "check": health_check,
         "check_mode": check_mode,
         "last_result": last_result,
+        "theme": request.session.get("theme", "light"),
     }
 
-    return render(request, "nyxboard/partials/healthcheck.html", context)
+    return render(request, template_name, context)
 
 
 def healthcheck_trigger(request, check_id):
@@ -263,21 +283,48 @@ def healthcheck_trigger(request, check_id):
 
     health_check = get_object_or_404(HealthCheck, id=check_id)
 
+    # Get data needed for the template first
+    recent_results = health_check.results.order_by("-created_at")[:5]
+    last_result = recent_results[0] if recent_results else None
+    health_check.recent_results = recent_results
+
     # Set the next check time to now, so it will be picked up by the agent
     health_check.next_check_time = int(time())
     health_check.save()
 
-    # Get data needed for the template
-    recent_results = health_check.results.order_by("-created_at")[:5]
-    health_check.recent_results = recent_results
-
     # Debug output
     print(f"HTMX Trigger - Check {check_id}: {health_check.name} - Mode: due")
+
+    # Log last_result to debug
+    if last_result:
+        print(f"Last result for trigger check {check_id}: {last_result.created_at}")
+    else:
+        print(f"No last result for trigger check {check_id}")
+
+    # Determine which template to use based on what partial was requested
+    template_name = "nyxboard/partials/healthcheck-card.html"
+    if "healthcheck.html" in request.headers.get("HX-Request-URL", ""):
+        template_name = "nyxboard/partials/healthcheck.html"
 
     context = {
         "check": health_check,
         "check_mode": "due",
-        "last_result": recent_results[0] if recent_results else None,
+        "last_result": last_result,  # Use the stored last_result variable
+        "theme": request.session.get("theme", "light"),
     }
 
-    return render(request, "nyxboard/partials/healthcheck.html", context)
+    return render(request, template_name, context)
+
+
+@require_POST
+def set_theme(request):
+    """
+    Set the theme preference in the session.
+    """
+    try:
+        data = json.loads(request.body)
+        theme = data.get("theme", "light")
+        request.session["theme"] = theme
+        return JsonResponse({"status": "success", "theme": theme})
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
