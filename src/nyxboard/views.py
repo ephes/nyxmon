@@ -176,7 +176,14 @@ def healthcheck_update(request, check_id):
     if request.method == "POST":
         form = HealthCheckForm(request.POST, instance=health_check)
         if form.is_valid():
-            form.save()
+            # Check if check_interval has changed
+            if "check_interval" in form.changed_data:
+                # Reset next_check_time to now to make the check due immediately
+                health_check = form.save(commit=False)
+                health_check.next_check_time = int(time())
+                health_check.save()
+            else:
+                form.save()
             return redirect("nyxboard:healthcheck_detail", check_id=health_check.id)
     else:
         form = HealthCheckForm(instance=health_check)
