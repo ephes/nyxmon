@@ -71,6 +71,7 @@ def dashboard(request):
         "status_choices": StatusChoices,
         "theme": request.session.get("theme", "light"),
         "check_results_json": json.dumps(check_results_json),
+        "check_results": check_results_json,
     }
 
     return render(request, "nyxboard/dashboard.html", context)

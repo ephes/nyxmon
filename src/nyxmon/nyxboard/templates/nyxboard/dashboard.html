@@ -96,9 +96,10 @@
 {% block extra_js %}
 <script type="module" src="{% static 'js/dashboard.js' %}"></script>
 
+{{ check_results|json_script:"check-results-data" }}
 <script>
 // Load check result data from server
-const checkResultData = {{ check_results_json|safe }};
+const checkResultData = JSON.parse(document.getElementById('check-results-data').textContent);
 
 // Populate result info elements on page load
 document.addEventListener('DOMContentLoaded', function() {
