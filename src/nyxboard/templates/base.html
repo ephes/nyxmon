@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load django_htmx %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,9 +7,10 @@
     <title>{% block title %}Nyxmon Dashboard{% endblock %}</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    {% htmx_script %}
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <header>
         <div class="container">
             <h1><a href="{% url 'nyxboard:dashboard' %}" class="header-link">Nyxmon Dashboard</a></h1>

@@ -92,6 +92,19 @@ wheels = [
 ]
 
 [[package]]
+name = "django-htmx"
+version = "1.23.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/3c/8bf0e45b60094bbfc2147d48088a6af712534f319765352d5463c7433064/django_htmx-1.23.0.tar.gz", hash = "sha256:71e6242ac6bd32a0e14fcb12b340f901c9a924f0b4e9b461a5e6a6eea8d9c6dd", size = 63450, upload-time = "2025-03-14T16:16:02.228Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/47/53ac27bd75d164fa6f3996367c082933ed7ff7a0d59463e09ae97c148ff8/django_htmx-1.23.0-py3-none-any.whl", hash = "sha256:bca2d7590f3df8611a32a436b9f098d8bccb9762b99b01c08dc42336966700a0", size = 60822, upload-time = "2025-03-14T16:16:00.016Z" },
+]
+
+[[package]]
 name = "django-stubs"
 version = "5.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -228,6 +241,7 @@ dependencies = [
 dashboard = [
     { name = "django" },
     { name = "django-environ" },
+    { name = "django-htmx" },
 ]
 
 [package.dev-dependencies]
@@ -248,6 +262,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
     { name = "django", marker = "extra == 'dashboard'" },
     { name = "django-environ", marker = "extra == 'dashboard'" },
+    { name = "django-htmx", marker = "extra == 'dashboard'" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "uvloop", specifier = ">=0.21.0" },
 ]

@@ -3,6 +3,177 @@
 {% block title %}Nyxmon Dashboard{% endblock %}
 
 {% block extra_css %}
+<style>
+/* Progress ring styles that complement your existing CSS */
+.progress-container {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    margin-left: 1rem;
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+    width: 60px;
+    height: 60px;
+}
+
+.progress-ring-circle {
+    fill: none;
+    stroke-width: 4;
+    r: 26;
+    cx: 30;
+    cy: 30;
+    stroke-dasharray: 163.36;
+    stroke-dashoffset: 163.36;
+    transition: stroke-dashoffset 0.3s ease;
+}
+
+.progress-ring-bg {
+    stroke: #e5e7eb;
+}
+
+.progress-ring-progress {
+    stroke: currentColor;
+    stroke-linecap: round;
+    opacity: 0.8;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: inherit;
+}
+
+/* Update health check layout to include progress ring */
+.health-check {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.health-check-main {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.health-check-details {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.next-check-info {
+    font-size: 0.875rem;
+    text-align: right;
+    color: #4b5563;
+    min-width: 100px;
+}
+
+.next-check-time {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.next-check-countdown {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+/* Check status indicators */
+.status-processing {
+    color: #2563eb;
+    font-weight: bold;
+    animation: pulse 1.5s infinite;
+}
+
+.status-due {
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+.check-action-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.run-check-button {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.run-check-button:hover {
+    background-color: #1d4ed8;
+}
+
+.last-result-info {
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.result-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.result-link:hover {
+    text-decoration: underline;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Ensure proper spacing on mobile */
+@media (max-width: 768px) {
+    .health-check {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .health-check-main {
+        width: 100%;
+    }
+
+    .health-check-details {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .progress-container {
+        margin-left: 0;
+    }
+
+    .next-check-info {
+        text-align: left;
+        min-width: auto;
+    }
+}
+
+/* Hide the old percentage display since we're replacing it with the ring */
+.health-check .health-check-info + div {
+    display: none;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -27,23 +198,11 @@
                     </div>
                     <div class="service-status">{{ service_status|title }}</div>
                 </div>
-                
+
                 <ul class="health-checks">
                     {% if service.healthcheck_set.all %}
                         {% for check in service.healthcheck_set.all %}
-                            {% with check_status=check.get_status %}
-                            <li class="health-check {{ check_status }}">
-                                <div class="health-check-info">
-                                    <div class="health-check-id">
-                                        <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="health-check-link">
-                                            {{ check.name }}
-                                        </a>
-                                    </div>
-                                    <div class="health-check-data">{{ check.url }}</div>
-                                </div>
-                                <div class="health-check-status">{{ check_status|title }}</div>
-                            </li>
-                            {% endwith %}
+                            {% include 'nyxboard/partials/healthcheck.html' with check=check check_mode=check.check_mode last_result=check.last_result %}
                         {% endfor %}
                     {% else %}
                         <li class="no-checks-message">
@@ -66,4 +225,199 @@
         </div>
     </div>
 {% endif %}
+
+<script>
+function calculateProgress(nextCheckTimestamp, checkInterval) {
+    const now = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
+    const nextCheck = parseInt(nextCheckTimestamp);
+    const interval = parseInt(checkInterval);
+
+    // If next check time is in the past, return 100% progress
+    if (nextCheck <= now) {
+        return 100;
+    }
+
+    // Calculate when the last check should have been
+    const lastCheck = nextCheck - interval;
+
+    // Calculate progress
+    const elapsed = now - lastCheck;
+    const progress = Math.min(100, Math.max(0, (elapsed / interval) * 100));
+
+    return progress;
+}
+
+function formatTimeRemaining(nextCheckTimestamp) {
+    const nextCheck = parseInt(nextCheckTimestamp);
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = nextCheck - now;
+
+    if (remaining <= 0) return "Due now";
+
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    const seconds = remaining % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    } else {
+        return `${seconds}s`;
+    }
+}
+
+function formatNextCheckTime(nextCheckTimestamp) {
+    const nextCheck = new Date(parseInt(nextCheckTimestamp) * 1000);
+    const now = new Date();
+    
+    // If next check is in the past, return "Due now"
+    if (nextCheck <= now) {
+        return "Due now";
+    }
+    
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const checkDate = new Date(nextCheck.getFullYear(), nextCheck.getMonth(), nextCheck.getDate());
+
+    const timeString = nextCheck.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    if (checkDate.getTime() === today.getTime()) {
+        return `Today at ${timeString}`;
+    } else if (checkDate.getTime() === today.getTime() + 86400000) {
+        return `Tomorrow at ${timeString}`;
+    } else {
+        return nextCheck.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+}
+
+function updateProgressRing(circle, progress) {
+    const circumference = 2 * Math.PI * 26; // r = 26
+    const offset = circumference - (progress / 100) * circumference;
+    circle.style.strokeDashoffset = offset;
+    
+    // Change color based on progress
+    if (progress < 50) {
+        circle.style.stroke = "#4ade80"; // green
+    } else if (progress < 80) {
+        circle.style.stroke = "#facc15"; // yellow
+    } else {
+        circle.style.stroke = "#f87171"; // red
+    }
+}
+
+function updateAllProgressRings() {
+    // Update progress rings
+    document.querySelectorAll('.progress-ring-progress').forEach(circle => {
+        const nextCheck = circle.getAttribute('data-next-check');
+        const checkInterval = circle.getAttribute('data-check-interval');
+
+        if (nextCheck && checkInterval) {
+            const progress = calculateProgress(nextCheck, checkInterval);
+            updateProgressRing(circle, progress);
+            
+            // If progress reaches 100%, we need to refresh the check
+            if (progress >= 100) {
+                const checkElement = circle.closest('.health-check');
+                
+                // Ensure the progress ring shows 100%
+                updateProgressRing(circle, 100);
+                
+                // If the check is not already in "due" mode and doesn't have htmx attributes
+                if (checkElement && 
+                    !checkElement.querySelector('.check-due') && 
+                    !checkElement.hasAttribute('hx-get')) {
+                    
+                    // Get the check ID from the element's ID
+                    const checkId = checkElement.id.replace('check-', '');
+                    
+                    console.log(`Progress reached 100% for check ${checkId}. Transitioning to due mode.`);
+                    
+                    // Use HTMX to make the request - this ensures event handlers are properly reattached
+                    // Create a temporary element with htmx attributes
+                    if (!window.htmx) {
+                        console.error('HTMX not loaded, falling back to fetch');
+                        fetch(`/healthchecks/${checkId}/status/`)
+                            .then(response => response.text())
+                            .then(html => {
+                                // Use a temporary div to create DOM elements
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = html;
+                                const newCheckElement = tempDiv.firstChild;
+                                
+                                // Replace the element
+                                checkElement.parentNode.replaceChild(newCheckElement, checkElement);
+                                
+                                // Process the new element with htmx if available
+                                if (window.htmx) {
+                                    window.htmx.process(newCheckElement);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error fetching check status:', error);
+                            });
+                    } else {
+                        // Use htmx's API directly
+                        window.htmx.ajax('GET', `/healthchecks/${checkId}/status/`, {target: `#check-${checkId}`, swap: 'outerHTML'});
+                    }
+                }
+            }
+        }
+    });
+
+    // Update progress percentages
+    document.querySelectorAll('.progress-percentage').forEach(span => {
+        const nextCheck = span.getAttribute('data-next-check');
+        const checkInterval = span.getAttribute('data-check-interval');
+
+        if (nextCheck && checkInterval) {
+            const progress = calculateProgress(nextCheck, checkInterval);
+            span.textContent = Math.round(progress) + '%';
+        }
+    });
+
+    // Update countdown timers
+    document.querySelectorAll('.next-check-countdown').forEach(span => {
+        const nextCheck = span.getAttribute('data-next-check');
+
+        if (nextCheck) {
+            const remaining = formatTimeRemaining(nextCheck);
+            span.textContent = remaining;
+        }
+    });
+
+    // Update next check times (only needs to be done once)
+    document.querySelectorAll('.next-check-time').forEach(span => {
+        const nextCheck = span.getAttribute('data-next-check');
+
+        if (nextCheck && !span.textContent.trim()) {
+            const timeString = formatNextCheckTime(nextCheck);
+            span.textContent = timeString;
+        }
+    });
+}
+
+// Initial update
+document.addEventListener('DOMContentLoaded', function() {
+    updateAllProgressRings();
+
+    // Update every second
+    setInterval(updateAllProgressRings, 1000);
+    
+    // We're using HTMX for AJAX requests, this event listener handles the dynamic transitions
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        // Refresh elements that may need JavaScript updates after HTMX swap
+        updateAllProgressRings();
+    });
+});
+</script>
 {% endblock %}

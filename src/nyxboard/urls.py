@@ -39,4 +39,15 @@ urlpatterns = [
         views.healthcheck_delete,
         name="healthcheck_delete",
     ),
+    # HTMX-enabled endpoints
+    path(
+        "healthchecks/<int:check_id>/status/",
+        views.healthcheck_update_status,
+        name="healthcheck_update_status",
+    ),
+    path(
+        "healthchecks/<int:check_id>/trigger/",
+        views.healthcheck_trigger,
+        name="healthcheck_trigger",
+    ),
 ]

@@ -1,3 +1,5 @@
+from time import time
+
 from django.db import models
 
 
@@ -144,7 +146,7 @@ class HealthCheck(models.Model):
         if not latest_result:
             return StatusChoices.UNKNOWN
 
-        # Check for Failed status (latest result is error)
+        # Check for Failed status (the latest result is error)
         if latest_result.status == "error":
             return StatusChoices.FAILED
 
@@ -160,6 +162,18 @@ class HealthCheck(models.Model):
 
         # Otherwise, it's a Warning status
         return StatusChoices.WARNING
+
+    @property
+    def percentage_until_next_check(self):
+        """
+        Calculate the percentage of time until the next check.
+        """
+        if self.check_interval == 0:
+            return 0
+        current_time = time()
+        return 100 - round(
+            (self.next_check_time - current_time) / self.check_interval * 100
+        )
 
 
 class Result(models.Model):

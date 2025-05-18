@@ -17,6 +17,7 @@ dependencies = [
 dashboard = [
     "django",
     "django-environ",
+    "django-htmx",
 ]
 
 [project.scripts]

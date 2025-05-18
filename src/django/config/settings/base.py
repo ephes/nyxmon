@@ -52,7 +52,9 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
 ]
 
-THIRD_PARTY_APPS: list[str] = []
+THIRD_PARTY_APPS: list[str] = [
+    "django_htmx",
+]
 
 LOCAL_APPS = [
     "nyxboard.apps.NyxboardConfig",
@@ -68,6 +70,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
