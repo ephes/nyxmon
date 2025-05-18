@@ -22,6 +22,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
+APPS_DIR = SRC_DIR / "nyxmon"
 
 # Load env file
 env = environ.Env(
@@ -57,7 +58,7 @@ THIRD_PARTY_APPS: list[str] = [
 ]
 
 LOCAL_APPS = [
-    "nyxboard.apps.NyxboardConfig",
+    "nyxmon.nyxboard.apps.NyxboardConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -78,7 +79,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES: list[dict[str, Any]] = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [APPS_DIR / "nyxboard/templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -141,7 +142,9 @@ STATIC_URL = "/static/"  # Make sure this has a leading slash
 STATIC_ROOT = (
     BASE_DIR / "staticfiles"
 )  # Directory where collected static files will be stored
-STATICFILES_DIRS = [BASE_DIR / "static"]  # Additional directories for static files
+STATICFILES_DIRS = [
+    APPS_DIR / "nyxboard/static"
+]  # Additional directories for static files
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

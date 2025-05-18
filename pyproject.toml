@@ -11,10 +11,6 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "httpx>=0.28.1",
     "uvloop>=0.21.0",
-]
-
-[project.optional-dependencies]
-dashboard = [
     "django",
     "django-environ",
     "django-htmx",
@@ -35,7 +31,6 @@ dev = [
 ]
 dashboard-dev = [
     "django-debug-toolbar",
-    "django-environ",
     "django-stubs[compatible-mypy]",
     "pytest-django",
 ]

@@ -19,22 +19,17 @@ uv venv
 uv sync
 ```
 
-4. Install local packages in editable mode:
-```shell
-uv pip install -e .
-```
-
-5. Install pre-commit hooks:
+4. Install pre-commit hooks:
 ```shell
 uvx pre-commit install
 ```
 
-6. Run tests:
+5. Run tests:
 ```shell
 uv run pytest
 ```
 
-7. Run static analysis:
+6. Run static analysis:
 ```shell
 uv run mypy src/
 ```
