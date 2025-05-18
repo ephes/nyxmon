@@ -17,7 +17,7 @@ function initDashboard() {
   
   // Listen for HTMX events
   document.body.addEventListener('htmx:afterSwap', function(evt) {
-    console.log('HTMX swap detected:', evt.detail.target);
+    // console.log('HTMX swap detected:', evt.detail.target);
     
     // Make sure newly added components get properly initialized
     // This shouldn't be necessary with the autoUpgrade feature of web components,

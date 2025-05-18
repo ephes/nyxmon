@@ -13,7 +13,7 @@ class HealthCheck extends HTMLElement {
     this.themeChangeHandler = this.handleThemeChange.bind(this);
     
     // Debug flag
-    this.debug = true;
+    this.debug = false;
   }
   
   static get observedAttributes() {

@@ -83,7 +83,7 @@ class CheckTimer extends HTMLElement {
     this.updateInterval = null;
     
     // Debug flag
-    this.debug = true;
+    this.debug = false;
     
     // Bind methods
     this.updateDisplay = this.updateDisplay.bind(this);

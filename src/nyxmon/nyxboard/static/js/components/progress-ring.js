@@ -100,7 +100,7 @@ class ProgressRing extends HTMLElement {
     this._hasFiredDueEvent = false;
     
     // Debug flag
-    this.debug = true;
+    this.debug = false;
     
     // Bind methods to ensure consistent 'this' context
     this.updateProgress = this.updateProgress.bind(this);
