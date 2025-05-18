@@ -63,9 +63,8 @@ class Check:
     def schedule_next_check(self) -> None:
         """Schedule the next execution of this check."""
         current_time = int(time.time())
-        check_interval = self.data.get("check_interval", 300)  # Default to 5 minutes
 
-        self.next_check_time = current_time + check_interval
+        self.next_check_time = current_time + self.check_interval
         self.status = "idle"
         self.processing_started_at = 0
 
