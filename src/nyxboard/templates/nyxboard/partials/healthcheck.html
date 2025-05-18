@@ -15,7 +15,13 @@
                     {{ check.name }}
                 </a>
             </div>
-            <div class="health-check-data">{{ check.url }}</div>
+            <div class="health-check-data">
+                {% if check.url|slice:":4" == "http" %}
+                    <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer">{{ check.url }}</a>
+                {% else %}
+                    {{ check.url }}
+                {% endif %}
+            </div>
         </div>
     </div>
 
