@@ -95,4 +95,25 @@
 
 {% block extra_js %}
 <script type="module" src="{% static 'js/dashboard.js' %}"></script>
+
+<script>
+// Load check result data from server
+const checkResultData = {{ check_results_json|safe }};
+
+// Populate result info elements on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Small delay to ensure DOM is fully rendered
+    setTimeout(function() {
+        Object.keys(checkResultData).forEach(function(checkId) {
+            const resultInfo = document.querySelector(`#check-${checkId} .check-result-info`);
+            if (resultInfo) {
+                const currentContent = resultInfo.textContent.trim();
+                if (!currentContent || currentContent === '\u00A0') {
+                    resultInfo.textContent = checkResultData[checkId].formattedTime;
+                }
+            }
+        });
+    }, 50);
+});
+</script>
 {% endblock %}

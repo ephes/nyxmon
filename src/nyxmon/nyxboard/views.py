@@ -18,11 +18,18 @@ def dashboard(request):
     # Fetch recent results for all health checks separately
     health_checks = HealthCheck.objects.filter(service__in=services)
 
+    # Dictionary to map check IDs to their last result
+    check_results = {}
+
     # For each health check, fetch its recent results separately and determine mode
     current_time = time()
 
     for check in health_checks:
-        check.recent_results = check.results.order_by("-created_at")[:5]
+        # Get recent results
+        recent_results = check.results.order_by("-created_at")[:5]
+        check.recent_results = list(
+            recent_results
+        )  # Force evaluation and convert to list
 
         # Set check mode - determines if progress ring is shown or if it's due for a check
         if check.next_check_time <= current_time:
@@ -33,17 +40,37 @@ def dashboard(request):
         # Get last result if any
         if check.recent_results:
             check.last_result = check.recent_results[0]
+            # Add to our mapping dictionary
+            check_results[check.id] = {
+                "formatted_time": check.last_result.created_at.strftime(
+                    "%b %-d, %H:%M"
+                ),
+                "timestamp": int(check.last_result.created_at.timestamp()),
+                "status": check.last_result.status,
+            }
         else:
             check.last_result = None
+
+        print(f"Check {check.id} last result: {check.last_result}")
+
+    print(f"Results dictionary: {check_results}")
 
     # Set the default theme if not in session
     if "theme" not in request.session:
         request.session["theme"] = "light"
 
+    # Create a JSON object with only the essential check result data
+    check_results_json = {}
+    for check_id, result_data in check_results.items():
+        check_results_json[str(check_id)] = {
+            "formattedTime": result_data["formatted_time"]
+        }
+
     context = {
         "services": services,
         "status_choices": StatusChoices,
         "theme": request.session.get("theme", "light"),
+        "check_results_json": json.dumps(check_results_json),
     }
 
     return render(request, "nyxboard/dashboard.html", context)
