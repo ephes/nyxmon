@@ -13,7 +13,7 @@
         {% csrf_token %}
         
         {% for field in form %}
-            <div class="form-field">
+            <div class="form-field {% if field.field.widget.input_type == 'checkbox' %}checkbox-field{% endif %}">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 {{ field }}
                 {% if field.help_text %}

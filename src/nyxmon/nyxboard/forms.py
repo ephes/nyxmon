@@ -17,7 +17,7 @@ class HealthCheckForm(forms.ModelForm):
 
     class Meta:
         model = HealthCheck
-        fields = ["name", "service", "check_type", "url", "check_interval"]
+        fields = ["name", "service", "check_type", "url", "check_interval", "disabled"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -34,10 +34,12 @@ class HealthCheckForm(forms.ModelForm):
                 }
             ),
             "check_interval": forms.Select(attrs={"class": "form-control"}),
+            "disabled": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
         help_texts = {
             "name": "A descriptive name for this health check.",
             "check_type": "Select the type of health check to perform.",
             "url": "Enter the URL to check for HTTP health checks.",
             "check_interval": "Select how frequently this health check should run.",
+            "disabled": "Check this box to temporarily disable this health check without deleting it.",
         }

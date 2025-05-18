@@ -119,6 +119,11 @@ class HealthCheck(models.Model):
         default=0,
         help_text="Unix timestamp when the check started processing",
     )
+    disabled: models.BooleanField = models.BooleanField(
+        "Disabled",
+        default=False,
+        help_text="If checked, this health check will not be executed",
+    )
 
     class Meta:
         db_table = "health_check"

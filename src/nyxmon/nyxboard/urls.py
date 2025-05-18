@@ -50,6 +50,11 @@ urlpatterns = [
         views.healthcheck_trigger,
         name="healthcheck_trigger",
     ),
+    path(
+        "healthchecks/<int:check_id>/toggle-disabled/",
+        views.healthcheck_toggle_disabled,
+        name="healthcheck_toggle_disabled",
+    ),
     # Theme setting endpoint
     path("set-theme/", views.set_theme, name="set_theme"),
 ]

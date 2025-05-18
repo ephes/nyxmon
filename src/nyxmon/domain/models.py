@@ -36,6 +36,7 @@ class Check:
         next_check_time: int = 0,
         processing_started_at: int = 0,
         status: str = "idle",
+        disabled: bool = False,
         data: dict,
     ) -> None:
         self.check_id = check_id
@@ -47,6 +48,7 @@ class Check:
         self.next_check_time = next_check_time
         self.processing_started_at = processing_started_at
         self.status = status
+        self.disabled = disabled
         self.data = data
         self.events: list["Event"] = []
 

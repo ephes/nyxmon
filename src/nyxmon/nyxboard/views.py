@@ -51,10 +51,6 @@ def dashboard(request):
         else:
             check.last_result = None
 
-        print(f"Check {check.id} last result: {check.last_result}")
-
-    print(f"Results dictionary: {check_results}")
-
     # Set the default theme if not in session
     if "theme" not in request.session:
         request.session["theme"] = "light"
@@ -207,6 +203,20 @@ def healthcheck_update(request, check_id):
     health_check = get_object_or_404(HealthCheck, id=check_id)
 
     if request.method == "POST":
+        # Check if this is a quick-toggle of the disabled flag from the card
+        if (
+            "disabled" in request.POST and len(request.POST) == 2
+        ):  # Just disabled and csrf token
+            new_disabled_value = request.POST.get("disabled") == "1"
+            health_check.disabled = new_disabled_value
+            health_check.save()
+
+            # Redirect back to referring page, or dashboard if no referrer
+            if request.META.get("HTTP_REFERER"):
+                return redirect(request.META.get("HTTP_REFERER"))
+            return redirect("nyxboard:dashboard")
+
+        # Normal form submission
         form = HealthCheckForm(request.POST, instance=health_check)
         if form.is_valid():
             # Check if check_interval has changed
@@ -264,12 +274,6 @@ def healthcheck_update_status(request, check_id):
     # Set last_result regardless of status
     last_result = recent_results[0] if recent_results else None
 
-    # Log last_result to debug
-    if last_result:
-        print(f"Last result for check {check_id}: {last_result.created_at}")
-    else:
-        print(f"No last result for check {check_id}")
-
     if health_check.status == "processing":
         # If it's being processed, keep in due mode
         check_mode = "due"
@@ -279,9 +283,6 @@ def healthcheck_update_status(request, check_id):
     else:
         # If next check time is in the future, it's back to normal
         check_mode = "normal"
-
-    # Debug output
-    print(f"HTMX Update - Check {check_id}: {health_check.name} - Mode: {check_mode}")
 
     # Determine which template to use based on what partial was requested
     template_name = "nyxboard/partials/healthcheck-card.html"
@@ -317,15 +318,6 @@ def healthcheck_trigger(request, check_id):
     health_check.next_check_time = int(time())
     health_check.save()
 
-    # Debug output
-    print(f"HTMX Trigger - Check {check_id}: {health_check.name} - Mode: due")
-
-    # Log last_result to debug
-    if last_result:
-        print(f"Last result for trigger check {check_id}: {last_result.created_at}")
-    else:
-        print(f"No last result for trigger check {check_id}")
-
     # Determine which template to use based on what partial was requested
     template_name = "nyxboard/partials/healthcheck-card.html"
     if "healthcheck.html" in request.headers.get("HX-Request-URL", ""):
@@ -335,6 +327,55 @@ def healthcheck_trigger(request, check_id):
         "check": health_check,
         "check_mode": "due",
         "last_result": last_result,  # Use the stored last_result variable
+        "theme": request.session.get("theme", "light"),
+    }
+
+    return render(request, template_name, context)
+
+
+def healthcheck_toggle_disabled(request, check_id):
+    """
+    Toggle the disabled status of a health check.
+    Uses HTMX to update the check card.
+    """
+    if request.method != "POST":
+        return redirect("nyxboard:dashboard")
+
+    health_check = get_object_or_404(HealthCheck, id=check_id)
+
+    # Get data needed for the template first
+    recent_results = health_check.results.order_by("-created_at")[:5]
+    last_result = recent_results[0] if recent_results else None
+    health_check.recent_results = recent_results
+
+    # Toggle the disabled status
+    health_check.disabled = not health_check.disabled
+
+    # If we're disabling, reset the next check time to now
+    # This prevents the progress ring from showing progress for disabled checks
+    if health_check.disabled:
+        health_check.next_check_time = int(time())
+
+    health_check.save()
+
+    # Determine check mode based on current status
+    current_time = time()
+    if health_check.disabled:
+        check_mode = "normal"  # Don't show due status for disabled checks
+    elif health_check.next_check_time <= current_time:
+        check_mode = "due"
+    else:
+        check_mode = "normal"
+
+    # Determine which template to use based on what partial was requested
+    template_name = "nyxboard/partials/healthcheck-card.html"
+    if "healthcheck.html" in request.headers.get("HX-Request-URL", ""):
+        template_name = "nyxboard/partials/healthcheck.html"
+
+    context = {
+        "check": health_check,
+        "check_mode": check_mode,
+        "last_result": last_result,
         "theme": request.session.get("theme", "light"),
     }
 

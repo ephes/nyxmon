@@ -2,12 +2,12 @@
 
 {# This template partial displays a single health check with improved card design #}
 <li is="health-check" 
-    class="health-check {{ check.get_status }}" 
+    class="health-check {{ check.get_status }} {% if check.disabled %}disabled{% endif %}" 
     id="check-{{ check.id }}"
     check-id="{{ check.id }}"
     check-mode="{{ check_mode }}"
     status="{{ check.status }}"
-    {% if check_mode == "due" %}
+    {% if check_mode == "due" and not check.disabled %}
         hx-get="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
         hx-trigger="every 1s"
         hx-swap="outerHTML"
@@ -66,14 +66,32 @@
             {% if last_result %}{{ last_result.created_at|date:"M j, H:i" }}{% else %}&nbsp;{% endif %}
         </div>
         
-        <!-- Run now button with HTMX integration -->
-        <button class="run-check-button"
-                hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
-                hx-swap="outerHTML"
-                hx-target="#check-{{ check.id }}"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-            {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
-        </button>
+        <div class="health-check-actions">
+            <!-- Disable toggle with HTMX and label -->
+            <div class="toggle-control">
+                <label class="toggle-switch" title="{% if check.disabled %}Enable{% else %}Disable{% endif %} check">
+                    <input type="checkbox" 
+                           {% if check.disabled %}checked{% endif %}
+                           hx-post="{% url 'nyxboard:healthcheck_toggle_disabled' check_id=check.id %}"
+                           hx-swap="outerHTML"
+                           hx-target="#check-{{ check.id }}"
+                           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">{% if check.disabled %}Disabled{% else %}Enabled{% endif %}</span>
+            </div>
+            
+            <!-- Run now button with HTMX integration, only show when not disabled -->
+            {% if not check.disabled %}
+                <button class="run-check-button"
+                        hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
+                        hx-swap="outerHTML"
+                        hx-target="#check-{{ check.id }}"
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                    {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
+                </button>
+            {% endif %}
+        </div>
     </div>
     
     <!-- Direct HTMX trigger for when the progress reaches 100% -->

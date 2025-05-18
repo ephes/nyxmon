@@ -930,6 +930,18 @@ progress-ring {
     gap: 0.5rem;
 }
 
+/* Special styling for checkbox form fields */
+.form-field.checkbox-field {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.form-field.checkbox-field label {
+    order: 2;
+    margin-bottom: 0;
+}
+
 .form-field label {
     font-weight: 600;
     color: var(--color-text);
@@ -946,6 +958,16 @@ progress-ring {
     background-color: var(--color-input-bg);
     color: var(--color-input-text);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Custom styling for form checkboxes */
+.form-field input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    accent-color: var(--color-btn-primary-bg);
+    cursor: pointer;
+    padding: 0;
 }
 
 .form-field input:focus,

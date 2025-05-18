@@ -31,6 +31,7 @@ def row_to_check(row: aiosqlite.Row) -> Check:
     next_check_time = row["next_check_time"]
     processing_started_at = row["processing_started_at"]
     status = row["status"]
+    disabled = bool(row["disabled"])  # SQLite stores booleans as 0/1
     check = Check(
         check_id=check_id,
         service_id=service_id,
@@ -41,6 +42,7 @@ def row_to_check(row: aiosqlite.Row) -> Check:
         next_check_time=next_check_time,
         processing_started_at=processing_started_at,
         status=status,
+        disabled=disabled,
         data={},
     )
     return check
@@ -74,7 +76,7 @@ class SqliteCheckRepository(CheckRepository):
             await self._ensure_schema(db)
             db.row_factory = aiosqlite.Row
             [row] = await db.execute_fetchall(
-                "SELECT id, service_id, name, check_type, url, check_interval FROM health_check WHERE id = ?",
+                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled FROM health_check WHERE id = ?",
                 (check_id,),
             )
             if row is None:
@@ -87,7 +89,7 @@ class SqliteCheckRepository(CheckRepository):
 
             db.row_factory = aiosqlite.Row
             rows = await db.execute_fetchall(
-                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status FROM health_check"
+                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled FROM health_check"
             )
             return [row_to_check(r) for r in rows]
 
@@ -108,9 +110,10 @@ class SqliteCheckRepository(CheckRepository):
                                 FROM health_check
                                 WHERE next_check_time <= ?
                                   AND status = 'idle'
+                                  AND disabled = 0
                                 LIMIT 100 -- Optional: process a batch at a time
                    )
-                   RETURNING id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status""",
+                   RETURNING id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled""",
                 (current_time, current_time),
             )
 
@@ -126,8 +129,8 @@ class SqliteCheckRepository(CheckRepository):
             await db.execute(
                 """INSERT OR REPLACE INTO health_check
                    (id, service_id, name, check_type, url, check_interval, 
-                    status, next_check_time, processing_started_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    status, next_check_time, processing_started_at, disabled)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     check.check_id,
                     check.service_id,
@@ -138,6 +141,7 @@ class SqliteCheckRepository(CheckRepository):
                     check.status,
                     check.next_check_time,
                     check.processing_started_at,
+                    int(check.disabled),  # Convert bool to int for SQLite
                 ),
             )
             await db.commit()
@@ -165,7 +169,8 @@ class SqliteCheckRepository(CheckRepository):
                 check_interval   INTEGER NOT NULL,
                 status           TEXT    DEFAULT 'idle',
                 next_check_time  INTEGER DEFAULT 0,
-                processing_started_at INTEGER DEFAULT 0
+                processing_started_at INTEGER DEFAULT 0,
+                disabled         INTEGER DEFAULT 0
             );
             """
         )
