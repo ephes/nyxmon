@@ -43,7 +43,7 @@ def create_dev_check(
 def create_sample_data() -> Dict[str, List]:
     """Create sample development data including services and checks."""
     # Track created objects
-    created = {
+    created: dict[str, list] = {
         "services": [],
         "checks": [],
     }
