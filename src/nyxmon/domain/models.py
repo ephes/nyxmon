@@ -12,6 +12,28 @@ class ResultStatus:
 ResultStatusType: TypeAlias = Literal["ok", "error"]
 
 
+class StatusChoices:
+    PASSED: Literal["passed"] = "passed"
+    FAILED: Literal["failed"] = "failed"
+    WARNING: Literal["warning"] = "warning"
+    RECOVERING: Literal["recovering"] = "recovering"
+    UNKNOWN: Literal["unknown"] = "unknown"
+
+    @classmethod
+    def get_css_class(cls, status: str) -> str:
+        css_classes = {
+            cls.PASSED: "status-passed",
+            cls.FAILED: "status-failed",
+            cls.WARNING: "status-warning",
+            cls.RECOVERING: "status-recovering",
+            cls.UNKNOWN: "status-unknown",
+        }
+        return css_classes.get(status, "")
+
+
+StatusType: TypeAlias = Literal["passed", "failed", "warning", "recovering", "unknown"]
+
+
 class Result:
     def __init__(
         self,

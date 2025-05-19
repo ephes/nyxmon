@@ -1,7 +1,15 @@
 from .events import Event
 from .commands import Command
 from .constants import Auto
-from .models import Result, Check, CheckResult, Service, ResultStatus, ResultStatusType
+from .models import (
+    Result,
+    Check,
+    CheckResult,
+    Service,
+    ResultStatus,
+    ResultStatusType,
+    StatusChoices,
+)
 
 
 __all__ = [
@@ -13,5 +21,6 @@ __all__ = [
     "Result",
     "ResultStatus",
     "ResultStatusType",
+    "StatusChoices",
     "Service",
 ]

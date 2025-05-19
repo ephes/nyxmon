@@ -2,34 +2,7 @@ from time import time
 
 from django.db import models
 
-from nyxmon.domain import ResultStatus
-
-
-class StatusChoices:
-    PASSED = "passed"
-    FAILED = "failed"
-    WARNING = "warning"
-    RECOVERING = "recovering"
-    UNKNOWN = "unknown"
-
-    CHOICES = [
-        (PASSED, "Passed"),
-        (FAILED, "Failed"),
-        (WARNING, "Warning"),
-        (RECOVERING, "Recovering"),
-        (UNKNOWN, "Unknown"),
-    ]
-
-    @classmethod
-    def get_css_class(cls, status):
-        css_classes = {
-            cls.PASSED: "status-passed",
-            cls.FAILED: "status-failed",
-            cls.WARNING: "status-warning",
-            cls.RECOVERING: "status-recovering",
-            cls.UNKNOWN: "status-unknown",
-        }
-        return css_classes.get(status, "")
+from nyxmon.domain import ResultStatus, StatusChoices
 
 
 class Service(models.Model):
