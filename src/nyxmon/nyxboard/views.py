@@ -6,6 +6,7 @@ from time import time
 
 from .models import Service, HealthCheck, StatusChoices
 from .forms import ServiceForm, HealthCheckForm
+from ..domain import CheckStatus
 
 
 def dashboard(request):
@@ -274,7 +275,7 @@ def healthcheck_update_status(request, check_id):
     # Set last_result regardless of status
     last_result = recent_results[0] if recent_results else None
 
-    if health_check.status == "processing":
+    if health_check.status == CheckStatus.PROCESSING:
         # If it's being processed, keep in due mode
         check_mode = "due"
     elif health_check.next_check_time <= current_time:

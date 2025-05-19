@@ -2,7 +2,7 @@ from time import time
 
 from django.db import models
 
-from nyxmon.domain import ResultStatus, StatusChoices
+from nyxmon.domain import ResultStatus, StatusChoices, CheckStatus
 
 
 class Service(models.Model):
@@ -60,8 +60,8 @@ class HealthCheck(models.Model):
     ]
 
     STATUS_CHOICES = [
-        ("idle", "Idle"),
-        ("processing", "Processing"),
+        (CheckStatus.IDLE, "Idle"),
+        (CheckStatus.PROCESSING, "Processing"),
     ]
 
     name: models.CharField = models.CharField(
@@ -84,7 +84,7 @@ class HealthCheck(models.Model):
         "Status",
         max_length=10,
         choices=STATUS_CHOICES,
-        default="idle",
+        default=CheckStatus.IDLE,
     )
     next_check_time: models.PositiveIntegerField = models.PositiveIntegerField(
         "Next Check Time", default=0, help_text="Unix timestamp of the next check"

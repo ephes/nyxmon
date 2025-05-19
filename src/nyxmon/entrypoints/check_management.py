@@ -13,7 +13,7 @@ from datetime import datetime
 
 from nyxmon.adapters.repositories import SqliteStore
 from nyxmon.bootstrap import bootstrap
-from nyxmon.domain import Check
+from nyxmon.domain import Check, CheckStatus
 from nyxmon.domain.commands import AddCheck
 
 
@@ -51,7 +51,7 @@ async def add_check_async(args):
             check_id=check_id,
             service_id=args.service_id,
             check_type="http",
-            status="idle",
+            status=CheckStatus.IDLE,
             url=args.url,
             check_interval=args.interval,
             data={},
@@ -175,7 +175,7 @@ async def show_due_checks(db_path: Path):
 
             # Categorize checks
             for row in rows_list:
-                if row["status"] == "processing":
+                if row["status"] == CheckStatus.PROCESSING:
                     processing_checks.append(row)
                 elif row["next_check_time"] <= current_time:
                     due_checks.append(row)

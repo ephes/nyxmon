@@ -3,7 +3,7 @@ import pytest
 
 from nyxmon.adapters.collector import running_collector, AsyncCheckCollector
 from nyxmon.bootstrap import bootstrap
-from nyxmon.domain import Check
+from nyxmon.domain import Check, CheckStatus
 from nyxmon.domain.commands import AddCheck
 from nyxmon.adapters.repositories import SqliteStore
 
@@ -52,7 +52,7 @@ async def test_agent_executes_checks(db_path):
 
         # And the check should be idle again
         [check] = await bus.uow.store.checks.list_async()
-        assert check.status == "idle"
+        assert check.status == CheckStatus.IDLE
 
         # And the next check time should be updated
         assert check.next_check_time > anyio.current_time()

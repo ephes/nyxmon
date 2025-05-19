@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from django.utils import timezone
 
+from nyxmon.domain import CheckStatus
 from nyxmon.nyxboard.models import Service, HealthCheck
 
 
@@ -32,7 +33,7 @@ def create_dev_check(
         check_type=check_type,
         url=url,
         check_interval=interval,
-        status="idle",
+        status=CheckStatus.IDLE,
         next_check_time=next_check_time,
         disabled=disabled,
     )

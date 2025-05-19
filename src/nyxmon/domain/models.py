@@ -53,6 +53,14 @@ class Result:
         return f"Result(result_id={self.result_id}, check_id={self.check_id} status={self.status}, data={self.data})"
 
 
+class CheckStatus:
+    IDLE: Literal["idle"] = "idle"
+    PROCESSING: Literal["processing"] = "processing"
+
+
+CheckStatusType: TypeAlias = Literal["idle", "processing"]
+
+
 class Check:
     def __init__(
         self,
@@ -65,7 +73,7 @@ class Check:
         check_interval: int = 300,
         next_check_time: int = 0,
         processing_started_at: int = 0,
-        status: str = "idle",
+        status: CheckStatusType = CheckStatus.IDLE,
         disabled: bool = False,
         data: dict,
     ) -> None:
@@ -97,7 +105,7 @@ class Check:
         current_time = int(time.time())
 
         self.next_check_time = current_time + self.check_interval
-        self.status = "idle"
+        self.status = CheckStatus.IDLE
         self.processing_started_at = 0
 
 
