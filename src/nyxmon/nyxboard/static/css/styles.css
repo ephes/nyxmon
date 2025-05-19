@@ -160,6 +160,7 @@ h1, h2, h3, h4 {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     background-color: white;
     border: 1px solid #e5e7eb;
+    min-height: 230px; /* Set minimum height to prevent resize during state changes */
 }
 
 .health-check:hover {

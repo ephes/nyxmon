@@ -21,6 +21,10 @@ class CheckTimer extends HTMLElement {
           border-radius: 0.375rem;
           border: 1px solid var(--timer-border-color, #e5e7eb);
           box-sizing: border-box;
+          min-height: 60px; /* Ensure consistent height across states */
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
         }
         
         :host(.check-due) {

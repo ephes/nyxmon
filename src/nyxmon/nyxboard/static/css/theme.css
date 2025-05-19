@@ -625,6 +625,7 @@ h3 {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    min-height: 140px; /* Set minimum height to prevent resize during state changes */
 }
 
 /* Progress Ring */
@@ -632,6 +633,7 @@ h3 {
     position: relative;
     width: 80px;
     height: 80px;
+    min-width: 80px; /* Ensure consistent width */
 }
 
 /* Check Details */
