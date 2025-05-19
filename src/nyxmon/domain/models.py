@@ -61,6 +61,18 @@ class CheckStatus:
 CheckStatusType: TypeAlias = Literal["idle", "processing"]
 
 
+class CheckType:
+    HTTP: Literal["http"] = "http"
+    JSON_HTTP: Literal["json-http"] = "json-http"
+    TCP: Literal["tcp"] = "tcp"
+    PING: Literal["ping"] = "ping"
+    DNS: Literal["dns"] = "dns"
+    CUSTOM: Literal["custom"] = "custom"
+
+
+CheckTypeType: TypeAlias = Literal["http", "json-http", "tcp", "ping", "dns", "custom"]
+
+
 class Check:
     def __init__(
         self,

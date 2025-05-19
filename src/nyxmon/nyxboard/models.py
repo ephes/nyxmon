@@ -2,7 +2,7 @@ from time import time
 
 from django.db import models
 
-from nyxmon.domain import ResultStatus, StatusChoices, CheckStatus
+from nyxmon.domain import ResultStatus, StatusChoices, CheckStatus, CheckType
 
 
 class Service(models.Model):
@@ -42,11 +42,12 @@ class Service(models.Model):
 
 class HealthCheck(models.Model):
     CHECK_TYPE_CHOICES = [
-        ("http", "HTTP"),
-        ("tcp", "TCP"),
-        ("ping", "Ping"),
-        ("dns", "DNS"),
-        ("custom", "Custom"),
+        (CheckType.HTTP, "HTTP"),
+        (CheckType.JSON_HTTP, "JSON-HTTP"),
+        (CheckType.TCP, "TCP"),
+        (CheckType.PING, "Ping"),
+        (CheckType.DNS, "DNS"),
+        (CheckType.CUSTOM, "Custom"),
     ]
 
     INTERVAL_CHOICES = [
