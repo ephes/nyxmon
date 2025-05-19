@@ -135,3 +135,8 @@ class CustomNotifier(Notifier):
 my_notifier = CustomNotifier()
 bus = bootstrap(notifier=my_notifier)
 ```
+
+## Deployment
+
+The choice of sqlite as a database backend was deliberate. How to monitor a database going down, when you depend
+on the database to monitor?
