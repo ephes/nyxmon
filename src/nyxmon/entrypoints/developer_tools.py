@@ -1,6 +1,10 @@
+"""
+CLI entrypoints for developer tools.
+"""
+
 import os
 import fnmatch
-
+import argparse
 from pathlib import Path
 
 
@@ -21,18 +25,32 @@ def llm_content():
             print(contents)
             print("---")
 
+    parser = argparse.ArgumentParser(
+        description="Output project code/documentation for LLM context"
+    )
+    parser.add_argument(
+        "--exclude-dirs",
+        nargs="+",
+        default=[".venv", "src/django", "src/nyxboard", "scripts"],
+        help="Directories to exclude",
+    )
+    parser.add_argument(
+        "--patterns",
+        nargs="+",
+        default=["*.py", "*.rst", "*.js", "*.ts", "*.html"],
+        help="File patterns to include",
+    )
+
+    args = parser.parse_args()
+
     project_root = Path.cwd()
     # Exclude files and directories. This is tuned to make the project fit into the
     # 200k token limit of the claude 3 models.
     exclude_files = {}
-    exclude_dirs = {
-        ".venv",
-        "src/django",
-        "src/nyxboard",
-        "scripts",
-    }
-    patterns = ["*.py", "*.rst", "*.js", "*.ts", "*.html"]
+    exclude_dirs = set(args.exclude_dirs)
+    patterns = args.patterns
     all_files = []
+
     for root, dirs, files in os.walk(project_root):
         root = Path(root)
         # d is the plain directory name
@@ -41,9 +59,5 @@ def llm_content():
             for filename in fnmatch.filter(files, pattern):
                 if filename not in exclude_files:
                     all_files.append(root / filename)
-    # print("\n".join([str(f) for f in all_files]))
+
     echo_filename_and_content(all_files)
-
-
-if __name__ == "__main__":
-    llm_content()

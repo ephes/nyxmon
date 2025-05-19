@@ -1,16 +1,112 @@
-#!/usr/bin/env python3
 """
-Script to show all due checks from the NyxMon database.
+CLI entrypoints for check management operations.
 """
 
 import argparse
 import sys
+import anyio
 import asyncio
 import time
+import aiosqlite
 from pathlib import Path
 from datetime import datetime
 
-import aiosqlite
+from nyxmon.adapters.repositories import SqliteStore
+from nyxmon.bootstrap import bootstrap
+from nyxmon.domain import Check
+from nyxmon.domain.commands import AddCheck
+
+
+# --- Add Check Functions ---
+
+
+async def add_check_async(args):
+    """Async function to add a check to the database."""
+    # Validate database path
+    db_path = Path(args.db)
+    if not db_path.exists():
+        print(f"Error: Database file not found: {db_path}")
+        sys.exit(1)
+
+    try:
+        # Initialize store and message bus
+        store = SqliteStore(db_path=db_path)
+        bus = bootstrap(store=store)
+
+        # Get next check ID if not provided
+        if args.check_id is None:
+            # Get all checks and find the highest ID - use async method
+            existing_checks = await bus.uow.store.checks.list_async()
+            existing_checks = False
+            if existing_checks:
+                max_id = max(check.check_id for check in existing_checks)
+                check_id = max_id + 1
+            else:
+                check_id = 1
+        else:
+            check_id = args.check_id
+
+        # Create the check
+        check = Check(
+            check_id=check_id,
+            service_id=args.service_id,
+            check_type="http",
+            status="idle",
+            url=args.url,
+            check_interval=args.interval,
+            data={},
+        )
+
+        # Add the check using the message bus
+        cmd = AddCheck(check=check)
+        bus.handle(cmd)
+
+        print(f"✓ Successfully added check ID {check_id}")
+        print(f"  Service ID: {args.service_id}")
+        print(f"  Type: {args.check_type}")
+        print(f"  URL: {args.url}")
+        print(f"  Interval: {args.interval} seconds")
+
+    except Exception as e:
+        print(f"Error adding check: {e}")
+        raise e
+
+
+def add_check_to_db():
+    """CLI script to add a health check to the database."""
+    parser = argparse.ArgumentParser(
+        description="Add a health check to NyxMon database"
+    )
+    parser.add_argument("--db", required=True, help="Path to SQLite database file")
+    parser.add_argument(
+        "--service-id", type=int, required=True, help="Service ID for the check"
+    )
+    parser.add_argument(
+        "--check-type",
+        default="http",
+        choices=["http", "tcp", "ping", "dns", "custom"],
+        help="Type of health check (default: http)",
+    )
+    parser.add_argument("--url", required=True, help="URL or endpoint to check")
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=300,
+        help="Check interval in seconds (default: 300)",
+    )
+    parser.add_argument(
+        "--check-id",
+        type=int,
+        help="Specific check ID (will auto-increment if not provided)",
+    )
+
+    args = parser.parse_args()
+
+    # Run the async function
+    anyio.run(add_check_async, args)
+
+
+# --- Show Checks Functions ---
 
 
 def format_time(timestamp):
@@ -66,8 +162,9 @@ async def show_due_checks(db_path: Path):
 
             cursor = await db.execute(query)
             rows = await cursor.fetchall()
+            rows_list = list(rows)  # Convert to list for type safety
 
-            if not rows:
+            if not rows_list:
                 print("No checks found in the database.")
                 return
 
@@ -77,7 +174,7 @@ async def show_due_checks(db_path: Path):
             processing_checks = []
 
             # Categorize checks
-            for row in rows:
+            for row in rows_list:
                 if row["status"] == "processing":
                     processing_checks.append(row)
                 elif row["next_check_time"] <= current_time:
@@ -151,7 +248,7 @@ async def show_due_checks(db_path: Path):
 
             # Summary
             print("\nSUMMARY:")
-            print(f"  Total checks: {len(rows)}")
+            print(f"  Total checks: {len(rows_list)}")
             print(f"  Due now:      {len(due_checks)}")
             print(f"  Processing:   {len(processing_checks)}")
             print(f"  Upcoming:     {len(upcoming_checks)}")
@@ -162,8 +259,8 @@ async def show_due_checks(db_path: Path):
         sys.exit(1)
 
 
-def main():
-    """Main function for the show due checks script."""
+def show_checks():
+    """CLI entrypoint for showing checks from the database."""
     parser = argparse.ArgumentParser(
         description="Show all due checks from NyxMon database"
     )
@@ -182,7 +279,3 @@ def main():
 
     # Run the async function
     asyncio.run(show_due_checks(db_path))
-
-
-if __name__ == "__main__":
-    main()

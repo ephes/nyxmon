@@ -18,6 +18,9 @@ dependencies = [
 
 [project.scripts]
 start-agent = "nyxmon.entrypoints.cli:start_agent"
+add-check = "nyxmon.entrypoints.check_management:add_check_to_db"
+show-checks = "nyxmon.entrypoints.check_management:show_checks"
+llm-content = "nyxmon.entrypoints.developer_tools:llm_content"
 
 [build-system]
 requires = ["uv_build>=0.7.5,<0.8.0"]

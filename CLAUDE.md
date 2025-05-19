@@ -7,10 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - The architecture is documented in [Architecture.md](/docs/Architecture.md).
 
 ## Build, Lint & Test Commands
-- Install dependencies: `uv sync && uv pip install -e .`
+- Install dependencies: `uv sync`
 - Package management: `uv pip install/uninstall <package>`
 - Lint: `uvx pre-commit run --all-files` (ruff runs automatically)
-- Type check: `uvx mypy src/`
+- Type check: `uv mypy src/`
 - Test (all): `uv run pytest`
 - Test (single): `uv run pytest path/to/test.py::TestClass::test_function -v`
 - Run Django server: `cd src/django && uv run manage.py runserver`
