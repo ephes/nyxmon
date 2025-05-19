@@ -3,15 +3,23 @@ from typing import Literal, TypeAlias
 
 from .events import Event
 
-OK: Literal["ok"] = "ok"
-ERROR: Literal["error"] = "error"
 
-Status: TypeAlias = Literal["ok", "error"]
+class ResultStatus:
+    OK: Literal["ok"] = "ok"
+    ERROR: Literal["error"] = "error"
+
+
+ResultStatusType: TypeAlias = Literal["ok", "error"]
 
 
 class Result:
     def __init__(
-        self, *, result_id: int | None = None, check_id: int, status: Status, data: dict
+        self,
+        *,
+        result_id: int | None = None,
+        check_id: int,
+        status: ResultStatusType,
+        data: dict,
     ) -> None:
         self.result_id = result_id
         self.check_id = check_id
@@ -79,11 +87,11 @@ class CheckResult:
 
     @property
     def passed(self) -> bool:
-        return self.result.status == OK
+        return self.result.status == ResultStatus.OK
 
     @property
     def should_notify(self) -> bool:
-        return self.result.status == ERROR
+        return self.result.status == ResultStatus.ERROR
 
 
 class Service:

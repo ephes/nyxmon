@@ -1,4 +1,4 @@
-from nyxmon.domain import Result
+from nyxmon.domain import Result, ResultStatus
 from nyxmon.bootstrap import bootstrap
 from nyxmon.domain.commands import ExecuteChecks
 
@@ -12,7 +12,7 @@ class DummyRunner:
             result = Result(
                 result_id=f"result-{check.check_id}",
                 check_id=check.check_id,
-                status="ok",
+                status=ResultStatus.OK,
                 data={},
             )
             callback(result)
@@ -40,7 +40,9 @@ class FakeCheck:
 
     def execute(self):
         # Simulate executing the check and generating a result
-        self.result = Result(result_id="result1", status="ok", data=self.data)
+        self.result = Result(
+            result_id="result1", status=ResultStatus.OK, data=self.data
+        )
 
     def add_result(self, result):
         self.result = result
@@ -63,4 +65,4 @@ def test_run_checks_with_result():
 
     # Then the check result is generated
     assert len(uow.store.results.list()) == 1
-    assert uow.store.results.list()[0].status == "ok"
+    assert uow.store.results.list()[0].status == ResultStatus.OK

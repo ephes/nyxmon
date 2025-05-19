@@ -2,6 +2,8 @@ from time import time
 
 from django.db import models
 
+from nyxmon.domain import ResultStatus
+
 
 class StatusChoices:
     PASSED = "passed"
@@ -152,16 +154,16 @@ class HealthCheck(models.Model):
             return StatusChoices.UNKNOWN
 
         # Check for Failed status (the latest result is error)
-        if latest_result.status == "error":
+        if latest_result.status == ResultStatus.ERROR:
             return StatusChoices.FAILED
 
         # Check for Passed status (all recent results are OK)
-        if all(result.status == "ok" for result in recent_results):
+        if all(result.status == ResultStatus.OK for result in recent_results):
             return StatusChoices.PASSED
 
         # Check for Recovering status (latest is OK but there were recent errors)
-        if latest_result.status == "ok" and any(
-            result.status == "error" for result in recent_results
+        if latest_result.status == ResultStatus.OK and any(
+            result.status == ResultStatus.ERROR for result in recent_results
         ):
             return StatusChoices.RECOVERING
 
@@ -186,7 +188,9 @@ class Result(models.Model):
         HealthCheck, on_delete=models.CASCADE, related_name="results"
     )
     status: models.CharField = models.CharField(
-        "Status", max_length=10, choices=[("ok", "OK"), ("error", "Error")]
+        "Status",
+        max_length=10,
+        choices=[(ResultStatus.OK, "OK"), (ResultStatus.ERROR, "Error")],
     )
     created_at: models.DateTimeField = models.DateTimeField(
         "Created At", auto_now_add=True

@@ -1,12 +1,15 @@
 import pytest
 
+from nyxmon.domain import ResultStatus
+
+from nyxmon.nyxboard.models import Result, Service, HealthCheck
+
 
 @pytest.fixture
 def service_factory():
     """
     Factory fixture to create Service instances.
     """
-    from nyxboard.models import Service
 
     def _create_service(name="Test Service"):
         return Service.objects.create(name=name)
@@ -19,7 +22,6 @@ def healthcheck_factory():
     """
     Factory fixture to create HealthCheck instances.
     """
-    from nyxboard.models import HealthCheck
 
     def _create_healthcheck(service, **kwargs):
         defaults = {
@@ -38,9 +40,8 @@ def result_factory():
     """
     Factory fixture to create Result instances.
     """
-    from nyxboard.models import Result
 
-    def _create_result(health_check, status="ok", data=None):
+    def _create_result(health_check, status=ResultStatus.OK, data=None):
         if data is None:
             data = {"response_time": 0.5}
         return Result.objects.create(

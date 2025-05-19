@@ -1,14 +1,14 @@
 import pytest
 
-from nyxmon.domain import Check, Result, OK, ERROR, CheckResult
+from nyxmon.domain import Check, Result, CheckResult, ResultStatus
 
 
 @pytest.mark.parametrize(
     "status, expected",
     [
-        (OK, True),
+        (ResultStatus.OK, True),
         (
-            ERROR,
+            ResultStatus.ERROR,
             False,
         ),
     ],

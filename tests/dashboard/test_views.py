@@ -1,5 +1,6 @@
 import pytest
 from django.urls import reverse
+from nyxmon.domain import ResultStatus
 from nyxmon.nyxboard.models import Service, HealthCheck, Result, StatusChoices
 
 
@@ -31,7 +32,9 @@ class TestDashboardView:
 
         # Create a result for the health check
         Result.objects.create(
-            health_check=health_check, status="ok", data={"response_time": 0.5}
+            health_check=health_check,
+            status=ResultStatus.OK,
+            data={"response_time": 0.5},
         )
 
         url = reverse("nyxboard:dashboard")
@@ -53,7 +56,7 @@ class TestDashboardView:
         # Check that the result exists
         results = updated_health_check.results.order_by("-created_at")[:5]
         assert len(results) == 1
-        assert results[0].status == "ok"
+        assert results[0].status == ResultStatus.OK
 
 
 @pytest.mark.django_db
@@ -129,7 +132,7 @@ class TestHealthCheckViews:
         )
 
         # Create some results
-        for status in ["ok", "error"]:
+        for status in [ResultStatus.OK, ResultStatus.ERROR]:
             Result.objects.create(
                 health_check=health_check, status=status, data={"response_time": 0.5}
             )

@@ -7,7 +7,7 @@ from typing import Iterable, Callable
 import httpx
 
 from .interface import CheckRunner
-from ...domain import Check, Result
+from ...domain import Check, Result, ResultStatus
 
 
 class AsyncCheckRunner(CheckRunner):
@@ -54,29 +54,31 @@ class AsyncCheckRunner(CheckRunner):
         try:
             r = await client.get(check.url)
             r.raise_for_status()
-            result = Result(check_id=check.check_id, status="ok", data={})
+            result = Result(check_id=check.check_id, status=ResultStatus.OK, data={})
         except httpx.HTTPStatusError as e:
             result = Result(
                 check_id=check.check_id,
-                status="error",
+                status=ResultStatus.ERROR,
                 data={"error_msg": str(e), "status_code": e.response.status_code},
             )
         except httpx.ConnectError as e:
             result = Result(
                 check_id=check.check_id,
-                status="error",
+                status=ResultStatus.ERROR,
                 data={"error_type": "connection_error", "error_msg": str(e)},
             )
         except httpx.RequestError as e:
             result = Result(
                 check_id=check.check_id,
-                status="error",
+                status=ResultStatus.ERROR,
                 data={"error_type": "request_error", "error_msg": str(e)},
             )
         except Exception as e:
             # Catch-all for any other exceptions
             result = Result(
-                check_id=check.check_id, status="error", data={"error_msg": str(e)}
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={"error_msg": str(e)},
             )
 
         await send_channel.send(result)
