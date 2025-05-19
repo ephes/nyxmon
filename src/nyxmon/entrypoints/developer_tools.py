@@ -31,7 +31,7 @@ def llm_content():
     parser.add_argument(
         "--exclude-dirs",
         nargs="+",
-        default=[".venv", "src/django", "src/nyxboard", "scripts"],
+        default=[".venv"],
         help="Directories to exclude",
     )
     parser.add_argument(
