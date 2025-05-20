@@ -1,0 +1,25 @@
+---
+# macOS-specific variables for deployment
+username: "nyxmon"
+realname: "Nyx Mon"
+fqdn: "macmini.fritz.box"
+project_name: "nyxmon"
+home_path: "/Users/{{ username }}"
+site_path: "{{ home_path }}/site"
+django_cache_location: "{{ home_path }}/Library/Caches/{{ project_name }}"
+logs_path: "{{ site_path }}/logs"
+launch_agents_path: "{{ home_path }}/Library/LaunchAgents"
+uid: 502
+
+# Python configuration
+global_python: python3.13
+uv_path: "/usr/local/uv"
+venv_bin: "{{ site_path }}/venv/bin"
+python: "{{ venv_bin }}/python"
+
+# Service configuration
+app_port: 10017
+django_settings_module: "config.settings.macos"
+
+# Granian settings
+granian_number_of_workers: 1

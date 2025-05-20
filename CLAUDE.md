@@ -19,11 +19,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Build and publish package: `uv build && uv pip publish`
 - Deploy to staging: `nyxmon-deploy-staging`
 - Deploy to production: `nyxmon-deploy-production`
+- Deploy to macOS: `nyxmon-deploy-macos`
 - Deployment uses Ansible playbooks in the `deploy/` directory
 - Package is installed from PyPI during deployment
 - Uses granian as WSGI server instead of gunicorn
 - Copies Django configuration from src/django to remote server
 - Does not require PostgreSQL (uses SQLite)
+
+### macOS Deployment
+- Uses launchd instead of systemd for service management
+- Services are installed in user's LaunchAgents directory
+- Direct connection to granian without reverse proxy
+- Designed for internal networks without SSL/TLS requirements
 
 ## Code Style Guidelines
 - **Python version**: Python 3.13+

@@ -1,0 +1,111 @@
+- hosts: macmini
+  vars_files:
+    - macos_vars.yml
+    - secrets.yml
+    - secrets_production.yml
+  tasks:
+    - name: Create user "{{ username }}"
+      ansible.builtin.user:
+        name: "{{ username }}"
+        create_home: yes
+        shell: /bin/zsh
+        uid: "{{ uid }}"
+        group: staff
+
+    - name: Create site-related directories
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+        owner: "{{ username }}"
+        group: staff
+      loop:
+        - "{{ site_path }}"
+        - "{{ logs_path }}"
+        - "{{ launch_agents_path }}"
+        - "{{ django_cache_location }}"
+
+    - name: Rsync project files excluding the database
+      become: true
+      ansible.builtin.synchronize:
+        src: "{{ playbook_dir }}/../src/django/"
+        dest: "{{ site_path }}/"
+        recursive: yes
+        rsync_opts:
+          - "--exclude=db.sqlite3"
+
+    - name: Create pyproject.toml
+      template:
+        src: templates/pyproject.toml.j2
+        dest: "{{ site_path }}/pyproject.toml"
+        mode: "0644"
+      become: true
+
+    - name: Create .env file
+      template:
+        src: templates/env.template.j2
+        dest: "{{ site_path }}/.env"
+        mode: "0600"
+      become: true
+
+    - name: Create virtualenv for python
+      shell: "cd {{ site_path }} && {{uv_path}} venv"
+      become: true
+
+    - name: Check if venv symlink already exists
+      stat:
+        path: "{{ site_path }}/venv"
+      register: venv_link
+      become: true
+
+    - name: Link .venv to venv
+      shell: "cd {{ site_path }} && ln -s .venv venv"
+      become: true
+      when: not venv_link.stat.exists
+
+    - name: Install dependencies with uv sync
+      shell: "cd {{ site_path }} && {{ uv_path }} sync"
+      become: true
+
+    - name: Install debug toolbar
+      shell: "cd {{ site_path }} && {{ uv_path }} pip install django-debug-toolbar"
+      become: true
+
+    - name: Run django migrations
+      shell: "cd {{ site_path }} && {{ venv_bin }}/python -m django migrate"
+      environment:
+        DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+      become: true
+
+    - name: Run django collectstatic
+      shell: "cd {{ site_path }} && {{ venv_bin }}/python -m django collectstatic --noinput"
+      environment:
+        DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+      become: true
+
+    - name: Install webapp LaunchAgent plist
+      template:
+        src: templates/webapp.plist.j2
+        dest: "{{ launch_agents_path }}/{{ project_name }}.webapp.plist"
+        mode: "0644"
+      become: true
+
+    - name: Install monitor LaunchAgent plist
+      template:
+        src: templates/monitor.plist.j2
+        dest: "{{ launch_agents_path }}/{{ project_name }}.monitor.plist"
+        mode: "0644"
+      become: true
+
+    - name: Restart webapp LaunchAgent
+      become: true
+      ansible.builtin.shell: |
+        launchctl unload -w {{ launch_agents_path }}/{{ project_name }}.webapp.plist || true
+        launchctl load   -w {{ launch_agents_path }}/{{ project_name }}.webapp.plist
+
+    - name: Restart monitor LaunchAgent
+      become: true
+      ansible.builtin.shell: |
+        launchctl unload -w {{ launch_agents_path }}/{{ project_name }}.monitor.plist || true
+        launchctl load   -w {{ launch_agents_path }}/{{ project_name }}.monitor.plist

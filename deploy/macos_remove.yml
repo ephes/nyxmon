@@ -1,0 +1,71 @@
+- hosts: macmini
+  vars_files:
+    - macos_vars.yml
+    - secrets.yml
+    - secrets_production.yml
+  tasks:
+    - name: Check if webapp LaunchAgent is loaded
+      shell: "launchctl list | grep {{ project_name }}.webapp"
+      register: webapp_loaded
+      ignore_errors: true
+      changed_when: false
+      become: true
+
+    - name: Check if monitor LaunchAgent is loaded
+      shell: "launchctl list | grep {{ project_name }}.monitor"
+      register: monitor_loaded
+      ignore_errors: true
+      changed_when: false
+      become: true
+
+    - name: Unload webapp LaunchAgent if loaded
+      shell: "launchctl unload {{ launch_agents_path }}/{{ project_name }}.webapp.plist"
+      become: true
+      when: webapp_loaded.rc == 0
+
+    - name: Unload monitor LaunchAgent if loaded
+      shell: "launchctl unload {{ launch_agents_path }}/{{ project_name }}.monitor.plist"
+      become: true
+      when: monitor_loaded.rc == 0
+
+    - name: Remove webapp LaunchAgent plist
+      file:
+        path: "{{ launch_agents_path }}/{{ project_name }}.webapp.plist"
+        state: absent
+      become: true
+
+    - name: Remove monitor LaunchAgent plist
+      file:
+        path: "{{ launch_agents_path }}/{{ project_name }}.monitor.plist"
+        state: absent
+      become: true
+
+    - name: Check if user exists
+      shell: "dscl . -list /Users | grep '^{{ username }}$'"
+      register: user_exists
+      ignore_errors: true
+      changed_when: false
+      become: true
+
+    - name: Get user ID for home directory removal
+      shell: "dscl . -read /Users/{{ username }} UniqueID | awk '{print $2}'"
+      register: user_uid
+      become: true
+      when: user_exists.rc == 0
+
+    - name: Remove site directory
+      file:
+        path: "{{ site_path }}"
+        state: absent
+      become: true
+
+    - name: Remove user from system
+      shell: "dscl . -delete /Users/{{ username }}"
+      become: true
+      when: user_exists.rc == 0
+
+    - name: Remove home directory
+      file:
+        path: "{{ home_path }}"
+        state: absent
+      become: true

@@ -27,6 +27,8 @@ show-checks = "nyxmon.entrypoints.check_management:show_checks"
 llm-content = "nyxmon.entrypoints.developer_tools:llm_content"
 deploy-staging = "nyxmon.entrypoints.deployment:deploy_staging"
 deploy-production = "nyxmon.entrypoints.deployment:deploy_production"
+deploy-macos = "nyxmon.entrypoints.deployment:deploy_macos"
+remove-macos = "nyxmon.entrypoints.deployment:remove_macos"
 db-from-production = "nyxmon.entrypoints.deployment:production_db_to_local"
 
 [build-system]

@@ -15,3 +15,4 @@ traefik_config_dir: "/etc/traefik/dynamic"
 traefik_config_path: "{{ traefik_config_dir }}/{{ username }}.traefik.yml"
 systemd_unit_path: "/etc/systemd/system/{{ username }}.service"
 granian_number_of_workers: 4
+django_allowed_host: "127.0.0.1"

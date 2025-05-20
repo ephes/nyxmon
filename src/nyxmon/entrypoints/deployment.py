@@ -62,6 +62,55 @@ def deploy_production() -> None:
     _deploy("production")
 
 
+def deploy_macos() -> None:
+    """
+    Deploy nyxmon to a macOS environment.
+
+    Uses a separate playbook with launchd services instead of systemd.
+    """
+    deploy_root = Path.cwd() / "deploy"
+    if not deploy_root.exists():
+        # Try to find it from the package location
+        import nyxmon
+
+        package_root = Path(nyxmon.__file__).parent.parent.parent
+        deploy_root = package_root / "deploy"
+
+    if not deploy_root.exists():
+        raise FileNotFoundError(
+            f"Could not find deploy directory at {deploy_root}. "
+            "Make sure you're running this command from the project root."
+        )
+
+    with working_directory(deploy_root):
+        subprocess.call(["ansible-playbook", "macos_deploy.yml"])
+
+
+def remove_macos() -> None:
+    """
+    Remove nyxmon from a macOS environment.
+
+    Stops and unloads launchd services, removes service files,
+    and optionally deletes the user account and home directory.
+    """
+    deploy_root = Path.cwd() / "deploy"
+    if not deploy_root.exists():
+        # Try to find it from the package location
+        import nyxmon
+
+        package_root = Path(nyxmon.__file__).parent.parent.parent
+        deploy_root = package_root / "deploy"
+
+    if not deploy_root.exists():
+        raise FileNotFoundError(
+            f"Could not find deploy directory at {deploy_root}. "
+            "Make sure you're running this command from the project root."
+        )
+
+    with working_directory(deploy_root):
+        subprocess.call(["ansible-playbook", "macos_remove.yml"])
+
+
 def production_db_to_local() -> None:
     """
     Use ansible to create and fetch a database backup from production.

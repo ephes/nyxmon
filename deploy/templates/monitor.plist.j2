@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{{ project_name }}.monitor</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ venv_bin }}/start-agent</string>
+        <string>--db</string>
+        <string>{{ site_path }}/db.sqlite3</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TELEGRAM_BOT_TOKEN</key>
+        <string>{{ telegram_bot_token }}</string>
+        <key>TELEGRAM_CHAT_ID</key>
+        <string>{{ telegram_chat_id }}</string>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>{{ site_path }}</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>{{ site_path }}/logs/monitor.err</string>
+    <key>StandardOutPath</key>
+    <string>{{ site_path }}/logs/monitor.log</string>
+</dict>
+</plist>
