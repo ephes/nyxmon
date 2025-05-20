@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Health Check Details - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- Detail view styles are now in theme.css for consistent dark/light theme support -->
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Health Check Details</h2>
+    <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="btn btn-secondary">&larr; Back to Service</a>
+</div>
+
+<div class="list-card health-check-info">
+    <div class="service-id health-check-id">
+        {{ health_check.name }}
+        <span class="health-check-status status-{{ health_check.get_status }}">{{ health_check.get_status|title }}</span>
+    </div>
+    
+    <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="service-link">
+        Service: {{ health_check.service.name }}
+    </a>
+    
+    <div class="health-check-details">
+        <div class="health-check-detail">
+            <strong>ID:</strong> #{{ health_check.id }}
+        </div>
+        <div class="health-check-detail">
+            <strong>Check Type:</strong> {{ health_check.get_check_type_display }}
+        </div>
+        <div class="health-check-detail">
+            <strong>URL:</strong> <a href="{{ health_check.url }}" target="_blank" rel="noopener noreferrer" class="service-link">{{ health_check.url }}</a>
+        </div>
+    </div>
+    
+    <div class="health-check-actions">
+        <a href="{% url 'nyxboard:healthcheck_update' check_id=health_check.id %}" class="btn btn-success">Edit Health Check</a>
+        <a href="{% url 'nyxboard:healthcheck_delete' check_id=health_check.id %}" class="btn btn-danger">Delete Health Check</a>
+    </div>
+</div>
+
+<div class="section-header">
+    <h3>Recent Results</h3>
+</div>
+
+{% if results %}
+    <ul class="results-list">
+        {% for result in results %}
+            <li class="list-card result-item">
+                <div class="list-header result-header">
+                    <div class="list-name result-id">Result #{{ result.id }}</div>
+                    <div class="result-status status-{{ result.status }}">
+                        {{ result.status|upper }}
+                    </div>
+                </div>
+                <div class="list-content result-content">
+                    <div class="result-date">{{ result.created_at }}</div>
+                    <h4>Result Data:</h4>
+                    <div class="list-data result-data">{{ result.data }}</div>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No results available for this health check yet.</p>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{% endblock %}

@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from nyxmon.domain import ResultStatus
-from nyxmon.nyxboard.models import Service, HealthCheck, Result, StatusChoices
+from nyxboard.models import Service, HealthCheck, Result, StatusChoices
 
 
 @pytest.mark.django_db

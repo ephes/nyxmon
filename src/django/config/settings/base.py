@@ -22,7 +22,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
-APPS_DIR = SRC_DIR / "nyxmon"
+APPS_DIR = SRC_DIR
 
 # Load env file
 env = environ.Env(
@@ -58,7 +58,7 @@ THIRD_PARTY_APPS: list[str] = [
 ]
 
 LOCAL_APPS = [
-    "nyxmon.nyxboard.apps.NyxboardConfig",
+    "nyxboard.apps.NyxboardConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

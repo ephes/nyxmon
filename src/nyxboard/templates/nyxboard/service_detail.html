@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Service Details - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- Detail view styles are now in theme.css for consistent dark/light theme support -->
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Service Details</h2>
+    <a href="{% url 'nyxboard:service_list' %}" class="btn btn-secondary">&larr; Back to Services</a>
+</div>
+
+<div class="service-info list-card">
+    <div class="service-id">
+        {{ service.name }}
+        <span class="service-status status-{{ service.get_status }}">{{ service.get_status|title }}</span>
+    </div>
+    
+    <div class="service-actions">
+        <a href="{% url 'nyxboard:service_update' service_id=service.id %}" class="btn btn-success">Edit Service</a>
+        <a href="{% url 'nyxboard:service_delete' service_id=service.id %}" class="btn btn-danger">Delete Service</a>
+    </div>
+</div>
+
+<div class="section-header">
+    <h3>Health Checks</h3>
+    <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}" class="btn btn-primary">Add Health Check</a>
+</div>
+
+{% if health_checks %}
+    <ul class="healthcheck-list">
+        {% for check in health_checks %}
+            {% with check_status=check.get_status %}
+            <li class="list-card health-check">
+                <div class="list-header health-check-header">
+                    <div class="list-name health-check-name">{{ check.name }} ({{ check.get_check_type_display }})</div>
+                    <div class="health-check-status status-{{ check_status }}">{{ check_status|title }}</div>
+                </div>
+                <div class="list-content health-check-content">
+                    <div class="list-data health-check-url">
+                        <strong>URL:</strong> <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer">{{ check.url }}</a>
+                    </div>
+                    <div class="list-actions health-check-actions">
+                        <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="btn btn-secondary">View</a>
+                        <a href="{% url 'nyxboard:healthcheck_update' check_id=check.id %}" class="btn btn-success">Edit</a>
+                        <a href="{% url 'nyxboard:healthcheck_delete' check_id=check.id %}" class="btn btn-danger">Delete</a>
+                    </div>
+                </div>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No health checks for this service. Start by adding a new health check.</p>
+        <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}" class="btn btn-primary">Add Health Check</a>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{% endblock %}

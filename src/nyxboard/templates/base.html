@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+{% load django_htmx %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nyxmon Dashboard{% endblock %}</title>
+    {% load static %}
+    <!-- Immediate theme application to prevent flash -->
+    <script>
+        // Apply theme immediately to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('nyxmon-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDarkTheme = savedTheme === 'dark' || (!savedTheme && prefersDark);
+            
+            // Store the theme state in the document for immediate access
+            document.documentElement.dataset.theme = isDarkTheme ? 'dark' : 'light';
+            
+            if (isDarkTheme) {
+                document.documentElement.classList.add('dark-theme');
+            }
+            
+            // Set the toggle state IMMEDIATELY after DOM parsing starts
+            document.addEventListener('readystatechange', () => {
+                if (document.readyState === 'interactive' || document.readyState === 'complete') {
+                    const themeToggle = document.getElementById('themeToggle');
+                    if (themeToggle) {
+                        themeToggle.checked = isDarkTheme;
+                    }
+                }
+            });
+        })();
+    </script>
+    <link rel="stylesheet" href="{% static 'css/theme.css' %}">
+    {% htmx_script %}
+    {% block extra_css %}{% endblock %}
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <header>
+        <div class="container header-container">
+            <h1><a href="{% url 'nyxboard:dashboard' %}" class="header-link">Nyxmon Dashboard</a></h1>
+            <div class="theme-switch">
+                <span class="theme-label light-label">Light</span>
+                <label id="theme-toggle-container" class="theme-switch-toggle">
+                    <!-- We set the checked state on page load via JavaScript -->
+                    <input type="checkbox" id="themeToggle">
+                    <span class="theme-switch-slider"></span>
+                </label>
+                <span class="theme-label dark-label">Dark</span>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer class="container">
+        <p>Nyxmon Monitoring System</p>
+    </footer>
+    
+    <script>
+    // Theme switcher logic
+    // Initialize theme as soon as DOM is available
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeTheme();
+    });
+    
+    // Initialize theme based on preferences
+    function initializeTheme() {
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        const body = document.body;
+        
+        // Get the theme that was applied in the early script in the <head>
+        const isDarkTheme = html.dataset.theme === 'dark';
+        
+        if (isDarkTheme) {
+            // Apply to both html and body for consistency
+            html.classList.add('dark-theme');
+            body.classList.add('dark-theme');
+            if (themeToggle) themeToggle.checked = true;
+            
+            // Dispatch custom event for theme change
+            document.dispatchEvent(new CustomEvent('theme-changed', {
+                detail: { theme: 'dark' } 
+            }));
+        }
+        
+        // Toggle theme when the checkbox changes
+        if (themeToggle) {
+            themeToggle.addEventListener('change', () => {
+                const html = document.documentElement;
+                
+                if (themeToggle.checked) {
+                    // Apply to both html and body for consistency
+                    html.classList.add('dark-theme');
+                    body.classList.add('dark-theme');
+                    localStorage.setItem('nyxmon-theme', 'dark');
+                    
+                    // Dispatch custom event for theme change
+                    document.dispatchEvent(new CustomEvent('theme-changed', {
+                        detail: { theme: 'dark' } 
+                    }));
+                    
+                    // Store theme in session via AJAX
+                    fetch('{% url "nyxboard:set_theme" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ theme: 'dark' })
+                    });
+                } else {
+                    // Remove from both html and body for consistency
+                    html.classList.remove('dark-theme');
+                    body.classList.remove('dark-theme');
+                    localStorage.setItem('nyxmon-theme', 'light');
+                    
+                    // Dispatch custom event for theme change
+                    document.dispatchEvent(new CustomEvent('theme-changed', {
+                        detail: { theme: 'light' } 
+                    }));
+                    
+                    // Store theme in session via AJAX
+                    fetch('{% url "nyxboard:set_theme" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ theme: 'light' })
+                    });
+                }
+            });
+        }
+    }
+    
+    // Handle HTMX events to maintain theme after content swaps
+    document.addEventListener('htmx:afterSwap', function(event) {
+        const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+        
+        // Apply theme to web components in swapped content
+        if (event.detail && event.detail.target) {
+            try {
+                // If the target was replaced (outerHTML), we need to check the parentNode
+                const targetNode = event.detail.target;
+                
+                // Skip if the target is no longer in the DOM
+                if (!targetNode || !document.body.contains(targetNode)) {
+                    return;
+                }
+                
+                const containerNode = targetNode.tagName === 'BODY' ? targetNode : targetNode.parentNode;
+                
+                // First apply theme to all web components
+                const webComponents = containerNode.querySelectorAll('check-timer, progress-ring');
+                webComponents.forEach(component => {
+                    if (currentTheme === 'dark') {
+                        component.classList.add('themed');
+                    } else {
+                        component.classList.remove('themed');
+                    }
+                    
+                    // Only refresh components that are still in the DOM
+                    if (document.body.contains(component)) {
+                        // Apply styles directly without forcing redraw
+                        if (component.shadowRoot) {
+                            const isDark = document.body.classList.contains('dark-theme');
+                            component.style.setProperty('--timer-bg-color', isDark ? '#1a1a1a' : '#ffffff');
+                            component.style.setProperty('--timer-text-color', isDark ? '#e0e0e0' : '#1f2937');
+                            component.style.setProperty('--timer-border-color', isDark ? '#333' : '#e5e7eb');
+                            component.style.setProperty('--progress-ring-bg', isDark ? '#444' : '#e5e7eb');
+                        }
+                    }
+                });
+                
+                // Also check for health-check elements with the special component
+                const healthChecks = containerNode.querySelectorAll('li[is="health-check"]');
+                healthChecks.forEach(check => {
+                    if (currentTheme === 'dark') {
+                        check.classList.add('dark-themed');
+                    } else {
+                        check.classList.remove('dark-themed');
+                    }
+                });
+                
+                console.log(`Applied ${currentTheme} theme to ${webComponents.length} web components in swapped content`);
+            } catch (error) {
+                console.error('Error in htmx:afterSwap handler:', error);
+            }
+        }
+    });
+    
+    // Initial call for any htmx content loaded at page load
+    document.addEventListener('htmx:load', function() {
+        try {
+            const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+            
+            // Apply initial theme to all web components
+            const webComponents = document.querySelectorAll('check-timer, progress-ring');
+            let appliedCount = 0;
+            
+            webComponents.forEach(component => {
+                if (document.body.contains(component)) {
+                    if (currentTheme === 'dark') {
+                        component.classList.add('themed');
+                    } else {
+                        component.classList.remove('themed');
+                    }
+                    
+                    // Apply CSS variables directly
+                    if (component.shadowRoot) {
+                        const isDark = document.body.classList.contains('dark-theme');
+                        component.style.setProperty('--timer-bg-color', isDark ? '#1a1a1a' : '#ffffff');
+                        component.style.setProperty('--timer-text-color', isDark ? '#e0e0e0' : '#1f2937');
+                        component.style.setProperty('--timer-border-color', isDark ? '#333' : '#e5e7eb');
+                        component.style.setProperty('--progress-ring-bg', isDark ? '#444' : '#e5e7eb');
+                    }
+                    
+                    appliedCount++;
+                }
+            });
+            
+            // Also check for health-check elements
+            const healthChecks = document.querySelectorAll('li[is="health-check"]');
+            healthChecks.forEach(check => {
+                if (document.body.contains(check)) {
+                    if (currentTheme === 'dark') {
+                        check.classList.add('dark-themed');
+                    } else {
+                        check.classList.remove('dark-themed');
+                    }
+                }
+            });
+            
+            console.log(`Applied ${currentTheme} theme to ${appliedCount} web components on page load`);
+        } catch (error) {
+            console.error('Error in htmx:load handler:', error);
+        }
+    });
+    
+    // Function to safely apply theme to a component without mode toggling
+    function forceComponentRefresh(component) {
+        if (!component || !component.shadowRoot) return;
+        
+        // Skip if component is not in the DOM anymore
+        if (!document.body.contains(component)) return;
+        
+        try {
+            const isDark = document.body.classList.contains('dark-theme');
+            
+            // Apply CSS variables directly without forcing redraw
+            component.style.setProperty('--timer-bg-color', isDark ? '#1a1a1a' : '#ffffff');
+            component.style.setProperty('--timer-text-color', isDark ? '#e0e0e0' : '#1f2937');
+            component.style.setProperty('--timer-border-color', isDark ? '#333' : '#e5e7eb');
+            component.style.setProperty('--progress-ring-bg', isDark ? '#444' : '#e5e7eb');
+            
+            // Avoid toggling mode which can cause recursive updates and instability
+        } catch (error) {
+            console.error('Error refreshing component:', error);
+        }
+    }
+    
+    // Monitor theme changes and propagate to components
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            // Check if the class change happened on body or html
+            if (mutation.attributeName === 'class' && 
+                (mutation.target === document.body || mutation.target === document.documentElement)) {
+                try {
+                    // Use body as the source of truth for theme detection
+                    const isDark = document.body.classList.contains('dark-theme');
+                    const theme = isDark ? 'dark' : 'light';
+                    
+                    // Apply to top-level web components only, don't recurse deeply
+                    const webComponents = document.querySelectorAll('body > * check-timer, body > * progress-ring');
+                    webComponents.forEach(component => {
+                        if (isDark) {
+                            component.classList.add('themed');
+                        } else {
+                            component.classList.remove('themed');
+                        }
+                        
+                        // Apply styles directly without complex refresh logic
+                        if (component.shadowRoot) {
+                            component.style.setProperty('--timer-bg-color', isDark ? '#1a1a1a' : '#ffffff');
+                            component.style.setProperty('--timer-text-color', isDark ? '#e0e0e0' : '#1f2937');
+                            component.style.setProperty('--timer-border-color', isDark ? '#333' : '#e5e7eb');
+                            component.style.setProperty('--progress-ring-bg', isDark ? '#444' : '#e5e7eb');
+                        }
+                    });
+                    
+                    // Apply classes to health-check elements without recursive processing
+                    const healthChecks = document.querySelectorAll('li[is="health-check"]');
+                    healthChecks.forEach(check => {
+                        if (isDark) {
+                            check.classList.add('dark-themed');
+                        } else {
+                            check.classList.remove('dark-themed');
+                        }
+                    });
+                    
+                    console.log(`Theme switched to ${theme}, applied to ${webComponents.length} components`);
+                    
+                    // Dispatch a custom event that components can listen for
+                    document.dispatchEvent(new CustomEvent('theme-changed', {
+                        detail: { theme: theme }
+                    }));
+                } catch (error) {
+                    console.error('Error in mutation observer handler:', error);
+                }
+            }
+        });
+    });
+    
+    // Start observing theme changes on both html and body elements
+    observer.observe(document.documentElement, { attributes: true });
+    observer.observe(document.body, { attributes: true });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

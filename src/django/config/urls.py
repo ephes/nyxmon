@@ -5,7 +5,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
-    path("", include("nyxmon.nyxboard.urls", namespace="nyxboard")),
+    path("", include("nyxboard.urls", namespace="nyxboard")),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,29 @@
+{% extends "nyxboard/form_base.html" %}
+
+{% block title %}{{ action }} Health Check - Nyxmon Dashboard{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+{% endblock %}
+
+{% block form_title %}Health Check{% endblock %}
+
+{% block back_url %}
+    {% if health_check %}
+        {% url 'nyxboard:healthcheck_detail' check_id=health_check.id %}
+    {% elif service %}
+        {% url 'nyxboard:service_detail' service_id=service.id %}
+    {% else %}
+        {% url 'nyxboard:healthcheck_list' %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}
+    {% if health_check %}
+        {% url 'nyxboard:healthcheck_detail' check_id=health_check.id %}
+    {% elif service %}
+        {% url 'nyxboard:service_detail' service_id=service.id %}
+    {% else %}
+        {% url 'nyxboard:healthcheck_list' %}
+    {% endif %}
+{% endblock %}

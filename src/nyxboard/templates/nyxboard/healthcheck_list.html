@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Health Checks - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- List view styles are now in theme.css for consistent dark/light theme support -->
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Health Checks</h2>
+    <a href="{% url 'nyxboard:healthcheck_create' %}" class="btn btn-primary">New Health Check</a>
+</div>
+
+{% if health_checks %}
+    <ul class="healthcheck-list">
+        {% for check in health_checks %}
+            {% with check_status=check.get_status %}
+            <li class="list-card health-check-card">
+                <div class="list-header health-check-header">
+                    <div class="list-name health-check-name">{{ check.name }}</div>
+                    <div class="health-check-status status-{{ check_status }}">{{ check_status|title }}</div>
+                </div>
+                <div class="list-content health-check-content">
+                    <a href="{% url 'nyxboard:service_detail' service_id=check.service.id %}" class="service-link">
+                        {{ check.service.name }}
+                    </a>
+                    <div class="list-data health-check-url">
+                        <strong>Type:</strong> {{ check.get_check_type_display }}<br>
+                        <strong>URL:</strong> <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer">{{ check.url }}</a>
+                    </div>
+                    <div class="list-actions health-check-actions">
+                        <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="btn btn-secondary">View</a>
+                        <a href="{% url 'nyxboard:healthcheck_update' check_id=check.id %}" class="btn btn-success">Edit</a>
+                        <a href="{% url 'nyxboard:healthcheck_delete' check_id=check.id %}" class="btn btn-danger">Delete</a>
+                    </div>
+                </div>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No health checks available. Start by creating a new health check.</p>
+        <div class="empty-action">
+            <a href="{% url 'nyxboard:healthcheck_create' %}" class="btn btn-primary">Create Health Check</a>
+        </div>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{% endblock %}

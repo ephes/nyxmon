@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h2>Services Overview</h2>
+    <div class="dashboard-actions">
+        <a href="{% url 'nyxboard:service_list' %}" class="dashboard-btn service-btn">Manage Services</a>
+        <a href="{% url 'nyxboard:healthcheck_list' %}" class="dashboard-btn check-btn">Manage Health Checks</a>
+    </div>
+</div>
+
+{% if services %}
+    <!-- Service Cards Overview -->
+    <div class="services-overview">
+        <div class="section-header">
+            <h3>Services Overview</h3>
+            <a href="{% url 'nyxboard:service_create' %}" class="btn btn-primary btn-sm">Add Service</a>
+        </div>
+        <ul class="services-grid">
+            {% for service in services %}
+                {% with service_status=service.get_status %}
+                <li is="service-card" class="service-card {{ service_status }}" service-status="{{ service_status }}">
+                    <div class="service-header">
+                        <div class="service-name">
+                            <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="service-link">
+                                {{ service.name }}
+                            </a>
+                        </div>
+                        <div class="service-status status-{{ service_status }}">{{ service_status|title }}</div>
+                    </div>
+                    
+                    <div class="service-summary">
+                        <div class="service-checks-count">
+                            {% with checks_count=service.healthcheck_set.count %}
+                                {{ checks_count }} Check{{ checks_count|pluralize }}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </li>
+                {% endwith %}
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Health Checks Grouped by Service -->
+    <div class="health-checks-overview">
+        <div class="section-header">
+            <h3>Health Checks by Service</h3>
+        </div>
+        
+        {% for service in services %}
+            {% if service.healthcheck_set.all %}
+                <div class="service-checks-section">
+                    <div class="service-checks-header">
+                        <h4 class="service-checks-title">
+                            <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="service-checks-link">
+                                {{ service.name }}
+                            </a>
+                            <span class="service-status status-{{ service.get_status }}">{{ service.get_status|title }}</span>
+                        </h4>
+                        <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}" class="btn btn-success btn-sm">Add Check</a>
+                    </div>
+                    
+                    <ul class="health-checks-grid">
+                        {% for check in service.healthcheck_set.all %}
+                            {% include 'nyxboard/partials/healthcheck-card.html' with check=check check_mode=check.check_mode last_result=check.last_result %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% empty %}
+            <div class="no-checks-message">
+                <p>No health checks available. Please add health checks to monitor.</p>
+                <div class="empty-action">
+                    <a href="{% url 'nyxboard:healthcheck_create' %}" class="dashboard-btn check-btn">Add Health Check</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="no-services-message">
+        <p>No services available. Please add services to monitor.</p>
+        <div class="empty-action">
+            <a href="{% url 'nyxboard:service_create' %}" class="dashboard-btn service-btn">Create Service</a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/dashboard.js' %}"></script>
+
+{{ check_results|json_script:"check-results-data" }}
+<script>
+// Load check result data from server
+const checkResultData = JSON.parse(document.getElementById('check-results-data').textContent);
+
+// Populate result info elements on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Small delay to ensure DOM is fully rendered
+    setTimeout(function() {
+        Object.keys(checkResultData).forEach(function(checkId) {
+            const resultInfo = document.querySelector(`#check-${checkId} .check-result-info`);
+            if (resultInfo) {
+                const currentContent = resultInfo.textContent.trim();
+                if (!currentContent || currentContent === '\u00A0') {
+                    resultInfo.textContent = checkResultData[checkId].formattedTime;
+                }
+            }
+        });
+    }, 50);
+});
+</script>
+{% endblock %}

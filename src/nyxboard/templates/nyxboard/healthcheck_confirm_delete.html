@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Health Check - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- Delete confirm styles are now in theme.css for consistent dark/light theme support -->
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h2>Delete Health Check</h2>
+    </div>
+    
+    <div class="warning-message">
+        <p><strong>Warning:</strong> You are about to delete this health check. This action cannot be undone.</p>
+        <p>All results associated with this health check will also be deleted.</p>
+    </div>
+    
+    <div class="list-data">
+        <h3>Health Check: {{ health_check.name }}</h3>
+        <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="service-link">
+            Service: {{ health_check.service.name }}
+        </a>
+        <p>ID: {{ health_check.id }}</p>
+    </div>
+    
+    <form method="post" class="form">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">Confirm Delete</button>
+            <a href="{% url 'nyxboard:healthcheck_detail' check_id=health_check.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

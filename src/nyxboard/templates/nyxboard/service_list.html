@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Services - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- List view styles are now in theme.css for consistent dark/light theme support -->
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Services</h2>
+    <a href="{% url 'nyxboard:service_create' %}" class="btn btn-primary">New Service</a>
+</div>
+
+{% if services %}
+    <ul class="service-list">
+        {% for service in services %}
+            {% with service_status=service.get_status %}
+            <li class="list-card service-card">
+                <div class="list-header service-header">
+                    <div class="list-name service-name">{{ service.name }}</div>
+                    <div class="service-status status-{{ service_status }}">{{ service_status|title }}</div>
+                </div>
+                <div class="list-content service-content">
+                    <div class="list-actions service-actions">
+                        <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="btn btn-secondary">View</a>
+                        <a href="{% url 'nyxboard:service_update' service_id=service.id %}" class="btn btn-success">Edit</a>
+                        <a href="{% url 'nyxboard:service_delete' service_id=service.id %}" class="btn btn-danger">Delete</a>
+                    </div>
+                </div>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-message">
+        <p>No services available. Start by creating a new service.</p>
+        <div class="empty-action">
+            <a href="{% url 'nyxboard:service_create' %}" class="btn btn-primary">Create Service</a>
+        </div>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'nyxboard:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h2>{{ action }} {{ form_title|default:"Item" }}</h2>
+        {% if back_url %}
+            <a href="{{ back_url }}" class="back-link">&larr; Back</a>
+        {% endif %}
+    </div>
+    
+    <form method="post" class="form">
+        {% csrf_token %}
+        
+        {% for field in form %}
+            <div class="form-field {% if field.field.widget.input_type == 'checkbox' %}checkbox-field{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="help-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="field-errors">
+                        {% for error in field.errors %}
+                            <div class="error">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success">{{ action }}</button>
+            {% if cancel_url %}
+                <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<!-- Form styles are now in theme.css for consistent dark/light theme support -->
+{% endblock %}

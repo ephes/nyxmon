@@ -1,0 +1,104 @@
+{% load static %}
+
+{# This template partial displays a single health check with improved card design #}
+<li is="health-check" 
+    class="health-check {{ check.get_status }} {% if check.disabled %}disabled{% endif %}" 
+    id="check-{{ check.id }}"
+    check-id="{{ check.id }}"
+    check-mode="{{ check_mode }}"
+    status="{{ check.status }}"
+    {% if check_mode == "due" and not check.disabled %}
+        hx-get="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
+        hx-trigger="every 1s"
+        hx-swap="outerHTML"
+    {% endif %}>
+    
+    <div class="health-check-header">
+        <h3 class="health-check-title">{{ check.name }}</h3>
+        {% if check.url|slice:":4" == "http" %}
+            <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer" class="health-check-url">{{ check.url }}</a>
+        {% else %}
+            <span class="health-check-url">{{ check.url }}</span>
+        {% endif %}
+        <span class="health-check-badge badge-{{ check.get_status }}">{{ check.get_status|title }}</span>
+    </div>
+    <div class="health-check-content">
+        <!-- Progress ring as a web component -->
+        <progress-ring
+            next-check="{{ check.next_check_time }}"
+            check-interval="{{ check.check_interval }}"
+            mode="{{ check_mode }}"
+            class="progress-container">
+        </progress-ring>
+        
+        <div class="check-details">
+            <div class="check-detail">
+                <span class="check-detail-label">Next Check:</span>
+                <check-timer
+                    next-check="{{ check.next_check_time }}"
+                    mode="{{ check_mode }}"
+                    status="{{ check.status }}"
+                    class="check-detail-value time-value">
+                </check-timer>
+            </div>
+            
+            <div class="check-detail">
+                <span class="check-detail-label">Interval:</span>
+                <span class="check-detail-value">
+                    {{ check.check_interval }}s
+                    {% if check.check_interval == 60 %}(1 min)
+                    {% elif check.check_interval == 300 %}(5 mins)
+                    {% elif check.check_interval == 900 %}(15 mins)
+                    {% elif check.check_interval == 1800 %}(30 mins)
+                    {% elif check.check_interval == 3600 %}(1 hour)
+                    {% elif check.check_interval == 86400 %}(1 day)
+                    {% endif %}
+                </span>
+            </div>
+            
+            <!-- Removed problematic Last Result section -->
+        </div>
+    </div>
+    
+    <div class="health-check-footer">
+        <!-- Result timestamp info - show placeholder text if no result -->
+        <div class="check-result-info">
+            {% if last_result %}{{ last_result.created_at|date:"M j, H:i" }}{% else %}&nbsp;{% endif %}
+        </div>
+        
+        <div class="health-check-actions">
+            <!-- Disable toggle with HTMX and label -->
+            <div class="toggle-control">
+                <label class="toggle-switch" title="{% if check.disabled %}Enable{% else %}Disable{% endif %} check">
+                    <input type="checkbox" 
+                           {% if check.disabled %}checked{% endif %}
+                           hx-post="{% url 'nyxboard:healthcheck_toggle_disabled' check_id=check.id %}"
+                           hx-swap="outerHTML"
+                           hx-target="#check-{{ check.id }}"
+                           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">{% if check.disabled %}Disabled{% else %}Enabled{% endif %}</span>
+            </div>
+            
+            <!-- Run now button with HTMX integration, only show when not disabled -->
+            {% if not check.disabled %}
+                <button class="run-check-button"
+                        hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
+                        hx-swap="outerHTML"
+                        hx-target="#check-{{ check.id }}"
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                    {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
+                </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Direct HTMX trigger for when the progress reaches 100% -->
+    <span style="display:none" 
+          id="check-trigger-{{ check.id }}"
+          hx-get="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
+          hx-trigger="checkDue from:closest li"
+          hx-target="#check-{{ check.id }}"
+          hx-swap="outerHTML"></span>
+</li>

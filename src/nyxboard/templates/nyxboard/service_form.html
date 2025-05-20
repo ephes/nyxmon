@@ -1,0 +1,25 @@
+{% extends "nyxboard/form_base.html" %}
+
+{% block title %}{{ action }} Service - Nyxmon Dashboard{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+{% endblock %}
+
+{% block form_title %}Service{% endblock %}
+
+{% block back_url %}
+    {% if service %}
+        {% url 'nyxboard:service_detail' service_id=service.id %}
+    {% else %}
+        {% url 'nyxboard:service_list' %}
+    {% endif %}
+{% endblock %}
+
+{% block cancel_url %}
+    {% if service %}
+        {% url 'nyxboard:service_detail' service_id=service.id %}
+    {% else %}
+        {% url 'nyxboard:service_list' %}
+    {% endif %}
+{% endblock %}

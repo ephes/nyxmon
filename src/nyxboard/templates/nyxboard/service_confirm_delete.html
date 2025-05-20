@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Service - Nyxmon Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- Delete confirm styles are now in theme.css for consistent dark/light theme support -->
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h2>Delete Service</h2>
+    </div>
+    
+    <div class="warning-message">
+        <p><strong>Warning:</strong> You are about to delete this service. This action cannot be undone.</p>
+        <p>All health checks associated with this service will also be deleted.</p>
+    </div>
+    
+    <div class="list-data">
+        <h3>Service: {{ service.name }}</h3>
+        <p>ID: {{ service.id }}</p>
+    </div>
+    
+    <form method="post" class="form">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">Confirm Delete</button>
+            <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

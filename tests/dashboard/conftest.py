@@ -2,7 +2,7 @@ import pytest
 
 from nyxmon.domain import ResultStatus
 
-from nyxmon.nyxboard.models import Result, Service, HealthCheck
+from nyxboard.models import Result, Service, HealthCheck
 
 
 @pytest.fixture
