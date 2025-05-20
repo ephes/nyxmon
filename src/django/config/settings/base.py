@@ -20,9 +20,6 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
-SRC_DIR = PROJECT_ROOT / "src"
-APPS_DIR = SRC_DIR
 
 # Load env file
 env = environ.Env(
@@ -79,7 +76,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES: list[dict[str, Any]] = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [APPS_DIR / "nyxboard/templates"],
+        "DIRS": [],  # We'll rely on APP_DIRS to find templates in installed apps
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -100,7 +97,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": PROJECT_ROOT / "db.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -142,9 +139,7 @@ STATIC_URL = "/static/"  # Make sure this has a leading slash
 STATIC_ROOT = (
     BASE_DIR / "staticfiles"
 )  # Directory where collected static files will be stored
-STATICFILES_DIRS = [
-    APPS_DIR / "nyxboard/static"
-]  # Additional directories for static files
+STATICFILES_DIRS = []  # We'll collect static files from the installed apps
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

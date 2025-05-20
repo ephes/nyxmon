@@ -1,0 +1,16 @@
+# Contents of /etc/systemd/system/{{ username }}_monitor.service
+[Unit]
+Description={{ username }} monitoring agent
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+WorkingDirectory={{ site_path }}
+User={{ username }}
+ExecStart={{ venv_bin }}/start-agent --db {{ site_path }}/db.sqlite3 --enable-telegram
+Environment="TELEGRAM_BOT_TOKEN={{ telegram_bot_token }}"
+Environment="TELEGRAM_CHAT_ID={{ telegram_chat_id }}"
+
+[Install]
+WantedBy=multi-user.target

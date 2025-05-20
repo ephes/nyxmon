@@ -79,6 +79,19 @@ uv run src/django/manage.py create_devdata --force
 
 The checks run every 60 seconds, so after starting the monitoring agent, you'll see results within a minute.
 
+## Build the package
+The build backend has to be hatchling to allow for multiple top level packages (nyxmon and nyxboard). To build the
+package, run:
+
+```shell
+uv build --sdist --wheel
+```
+
+And then publish the package:
+```shell
+uv publish --token pypi-your-token
+```
+
 ### The start-agent command
 
 The monitoring agent registers an entrypoint named `start-agent` in the

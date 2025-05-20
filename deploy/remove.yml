@@ -1,0 +1,38 @@
+- hosts: staging
+  tasks:
+    - name: "Include secret vars"
+      include_vars: secrets.yml
+
+    - name: "Include public vars"
+      include_vars: vars.yml
+
+    - name: Make sure granian service is stopped
+      systemd:
+        state: stopped
+        name: "{{ username }}"
+
+    - name: Make sure monitoring agent is stopped
+      systemd:
+        state: stopped
+        name: "{{ username }}_monitor"
+
+    - name: Remove unit file for systemd service
+      file:
+        path: "{{ systemd_unit_path }}"
+        state: absent
+
+    - name: Remove unit file for monitoring service
+      file:
+        path: "/etc/systemd/system/{{ username }}_monitor.service"
+        state: absent
+
+    - name: Remove config file for traefik loadbalancer
+      file:
+        path: "{{ traefik_config_path }}"
+        state: absent
+
+    - name: Remove unix user
+      user:
+        name: "{{ username }}"
+        state: absent
+        remove: yes

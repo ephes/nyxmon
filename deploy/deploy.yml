@@ -1,0 +1,151 @@
+- hosts: all
+  tasks:
+    - name: "Include shared secret vars"
+      include_vars: secrets.yml
+
+    - name: "Include staging secret vars"
+      include_vars: secrets_staging.yml
+      when: deploy_environment == "staging"
+
+    - name: "Include production secret vars"
+      include_vars: secrets_production.yml
+      when: deploy_environment == "production"
+
+    - name: "Include public vars"
+      include_vars: vars.yml
+
+    - name: Add the unix user with a bash shell
+      user:
+        name: "{{ username }}"
+        shell: /usr/bin/fish
+
+    - name: Create site directory structure
+      file:
+        path: "{{ site_path }}"
+        state: directory
+        mode: "0755"
+        owner: "{{ username }}"
+      become: true
+
+    - name: Sync Django configuration to production
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../src/django/"
+        dest: "{{ site_path }}/"
+        rsync_opts:
+          - "--exclude=__pycache__"
+          - "--exclude=*.pyc"
+          - "--exclude=db.sqlite3"  # Don't overwrite the database
+      become: true
+      become_user: "{{ username }}"
+
+    - name: Create pyproject.toml
+      template:
+        src: templates/pyproject.toml.j2
+        dest: "{{ site_path }}/pyproject.toml"
+        mode: "0644"
+        owner: "{{ username }}"
+
+    - name: Create .env file
+      template:
+        src: templates/env.template.j2
+        dest: "{{ site_path }}/.env"
+        mode: "0600"
+        owner: "{{ username }}"
+
+    - name: Create directory for fish config
+      file:
+        path: "{{ home_path }}/.config/fish"
+        state: directory
+        owner: "{{ username }}"
+
+    - name: Create fish config
+      template:
+        src: templates/user_config.fish.template.j2
+        dest: "{{ home_path }}/.config/fish/config.fish"
+        mode: "0644"
+        owner: "{{ username }}"
+
+    - name: Create virtualenv for python
+      shell: "{{uv_path}} venv"
+      become: true
+      become_user: "{{ username }}"
+
+    - name: Check if venv symlink already exists
+      stat:
+        path: "{{ site_path }}/venv"
+      register: venv_link
+      become: true
+      become_user: "{{ username }}"
+
+    - name: Link .venv to venv
+      shell: "ln -s .venv venv"
+      args:
+        chdir: "{{ site_path }}"
+      become: true
+      become_user: "{{ username }}"
+      when: not venv_link.stat.exists
+
+    - name: Install dependencies with uv sync
+      shell: "{{ uv_path }} sync"
+      args:
+        chdir: "{{ site_path }}"
+      become: true
+      become_user: "{{ username }}"
+
+    - name: Create directory django cache
+      file:
+        path: "{{ django_cache_location }}"
+        state: directory
+        owner: "{{ username }}"
+
+    - name: Run django migrations
+      community.general.django_manage:
+        command: migrate
+        project_path: "{{ site_path }}"
+        virtualenv: "{{ site_path }}/venv"
+      become: true
+      become_user: "{{ username }}"
+      environment:
+        DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+
+    - name: Run django collectstatic
+      community.general.django_manage:
+        command: collectstatic
+        project_path: "{{ site_path }}"
+        virtualenv: "{{ site_path }}/venv"
+      become: true
+      become_user: "{{ username }}"
+      environment:
+        DJANGO_SETTINGS_MODULE: "{{ django_settings_module }}"
+
+    - name: Create directory for traefik config
+      file:
+        path: "{{ traefik_config_dir }}"
+        state: directory
+        owner: "{{ username }}"
+
+    - name: Create traefik service config
+      template:
+        src: templates/traefik.template.j2
+        dest: "{{ traefik_config_path }}"
+        mode: '0644'
+
+    - name: Create systemd service unit file for web server
+      template:
+        src: templates/systemd.service.j2
+        dest: "{{ systemd_unit_path }}"
+
+    - name: Create systemd service unit file for monitoring agent
+      template:
+        src: templates/monitor.service.j2
+        dest: "/etc/systemd/system/{{ username }}_monitor.service"
+
+    - name: Make sure monitoring agent is running first
+      systemd:
+        state: restarted
+        name: "{{ username }}_monitor"
+        
+    - name: Make sure granian service is running
+      systemd:
+        state: restarted
+        name: "{{ username }}"

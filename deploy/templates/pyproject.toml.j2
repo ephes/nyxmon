@@ -1,0 +1,12 @@
+[project]
+name = "nyxmon-site"
+version = "0"  # this is an application without a version
+description = "Nyxmon deployment site"
+requires-python = "==3.13.*"  # also tells uv which python version to fetch if none is installed
+dependencies = [
+    "nyxmon>=0.1.2",
+    "granian>=0.8.0",
+    "django",
+    "django-environ",
+    "django-htmx",
+]

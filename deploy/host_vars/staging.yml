@@ -1,0 +1,6 @@
+fqdn: "{{ project_name }}.staging.django-cast.com"
+deploy_environment: "staging"
+postgres_backup: "{{ home_path }}/site/backups/db.staging.psql.gz"
+traefik_host_rule: "Host(`{{ fqdn }}`)"
+username: nyxmon
+host_name: staging

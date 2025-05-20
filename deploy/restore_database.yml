@@ -1,0 +1,32 @@
+- hosts: all
+  tasks:
+    - name: "Include secret vars"
+      include_vars: secrets.yml
+
+    - name: "Include staging secret vars"
+      include_vars: secrets_staging.yml
+      when: deploy_environment == "staging"
+
+    - name: "Include production secret vars"
+      include_vars: secrets_production.yml
+      when: deploy_environment == "production"
+
+    - name: "Include public vars"
+      include_vars: vars.yml
+
+    - name: Sync backups to production
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../backups/"
+        dest: "{{ site_path }}/backups/"
+      become: true
+      become_user: "{{ username }}"
+
+    - name: Make sure gunicorn service is stopped
+      systemd:
+        state: stopped
+        name: "{{ username }}"
+
+    - name: Make sure gunicorn service is started
+      systemd:
+        state: started
+        name: "{{ username }}"

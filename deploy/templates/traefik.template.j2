@@ -1,0 +1,52 @@
+http:
+  routers:
+    {{ fqdn }}-router:
+      rule: "{{ traefik_host_rule }}"
+
+      entryPoints:
+        - web
+      middlewares:
+        - redirect
+        - csrf
+      service: {{ fqdn }}
+
+    {{ fqdn }}-secure-router:
+      rule: "{{ traefik_host_rule }}"
+
+      entryPoints:
+        - web-secure
+      middlewares:
+        - csrf
+        - sslHeaders
+        - gzip-compress
+        - redirect-www
+      service: {{ fqdn }}
+      tls:
+        certResolver: letsencrypt
+
+  middlewares:
+    redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    csrf:
+      headers:
+        hostsProxyHeaders: ["X-CSRFToken"]
+    sslHeaders:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+          X-Forwarded-Port: "443"
+    gzip-compress:
+      compress: {}
+    redirect-www:
+      redirectRegex:
+        regex: "^https?://www\\.(.+)"
+        replacement: "https://${1}"
+        permanent: false
+
+  services:
+    {{ fqdn }}:
+      loadBalancer:
+        servers:
+          - url: http://localhost:{{ port }}

@@ -1,6 +1,6 @@
 [project]
 name = "nyxmon"
-version = "0.1.0"
+version = "0.1.3"
 description = "Minimal monitoring package"
 readme = "README.md"
 authors = [
@@ -11,10 +11,13 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "httpx>=0.28.1",
     "uvloop>=0.21.0",
+    "psutil>=5.9.5",
     # Django dashboard (nyxboard) dependencies
     "django",
     "django-environ",
     "django-htmx",
+    "granian>=0.8.0",  # ASGI/WSGI server for production deployment
+    "whitenoise",  # serving CSS and javascript
 ]
 
 [project.scripts]
@@ -22,10 +25,19 @@ start-agent = "nyxmon.entrypoints.cli:start_agent"
 add-check = "nyxmon.entrypoints.check_management:add_check_to_db"
 show-checks = "nyxmon.entrypoints.check_management:show_checks"
 llm-content = "nyxmon.entrypoints.developer_tools:llm_content"
+deploy-staging = "nyxmon.entrypoints.deployment:deploy_staging"
+deploy-production = "nyxmon.entrypoints.deployment:deploy_production"
+db-from-production = "nyxmon.entrypoints.deployment:production_db_to_local"
 
 [build-system]
-requires = ["uv_build>=0.7.5,<0.8.0"]
-build-backend = "uv_build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+packages = ["src/nyxmon", "src/nyxboard"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nyxmon", "src/nyxboard"]
 
 [dependency-groups]
 dev = [

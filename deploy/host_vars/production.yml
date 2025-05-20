@@ -1,0 +1,5 @@
+fqdn: "nyxmon.django-cast.com"
+deploy_environment: "production"
+username: "{{ project_name }}"
+traefik_host_rule: "Host(`nyxmon.django-cast.com`) || Host(`www.nyxmon.django-cast.com`)"
+host_name: production
