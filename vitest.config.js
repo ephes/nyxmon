@@ -5,12 +5,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/nyxmon/nyxboard/static/js/tests/setup.js'],
+    setupFiles: ['./src/nyxboard/static/js/tests/setup.js'],
   },
   resolve: {
     alias: {
-      '@components': resolve(__dirname, './src/nyxmon/nyxboard/static/js/components'),
-      '@tests': resolve(__dirname, './src/nyxmon/nyxboard/static/js/tests')
+      '@components': resolve(__dirname, './src/nyxboard/static/js/components'),
+      '@tests': resolve(__dirname, './src/nyxboard/static/js/tests')
     }
   }
 });
