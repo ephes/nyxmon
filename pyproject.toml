@@ -46,6 +46,5 @@ addopts = "-ra"
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 django_find_project = false
 pythonpath = [
-    ".",
-    "src/django",
+    "src/django",  # to make config.settings.test work
 ]
