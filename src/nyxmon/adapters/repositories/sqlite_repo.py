@@ -2,6 +2,7 @@ import sqlite3
 import json
 import logging
 import time
+import datetime
 from typing import List
 import anyio
 import aiosqlite
@@ -248,6 +249,59 @@ class SqliteResultRepository(ResultRepository):
                 )
                 for row in rows
             ]
+
+    async def delete_old_results_async(
+        self, retention_seconds: int = 86400, batch_size: int = 1000
+    ) -> int:
+        """Delete check results older than the specified period."""
+        async with aiosqlite.connect(self._db_path) as db:
+            await self._ensure_schema(db)
+
+            # Calculate the cutoff timestamp (SQLite timestamp format)
+            cutoff_time = datetime.datetime.now() - datetime.timedelta(
+                seconds=retention_seconds
+            )
+            cutoff_time_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
+
+            # First, get the IDs to delete (with limit)
+            # SQLite doesn't support LIMIT in DELETE directly, so we need to do this in two steps
+            cursor = await db.execute(
+                "SELECT id FROM check_result WHERE created_at < ? ORDER BY id LIMIT ?",
+                (cutoff_time_str, batch_size),
+            )
+            rows = await cursor.fetchall()
+
+            if not rows:
+                return 0
+
+            # Get the IDs to delete as a tuple
+            ids_to_delete = tuple(row[0] for row in rows)
+
+            # If only one ID to delete, we need special SQL syntax (can't use 'IN' with a single value tuple)
+            if len(ids_to_delete) == 1:
+                delete_sql = "DELETE FROM check_result WHERE id = ?"
+                params = (ids_to_delete[0],)
+            else:
+                placeholders = ",".join(["?"] * len(ids_to_delete))
+                delete_sql = f"DELETE FROM check_result WHERE id IN ({placeholders})"
+                params = ids_to_delete
+
+            # Delete the records
+            cursor = await db.execute(delete_sql, params)
+            deleted_count = cursor.rowcount
+            await db.commit()
+
+            return deleted_count
+
+    def delete_old_results(
+        self, retention_seconds: int = 86400, batch_size: int = 1000
+    ) -> int:
+        """Delete check results older than the specified period."""
+        return self._await(
+            self.delete_old_results_async(
+                retention_seconds=retention_seconds, batch_size=batch_size
+            )
+        )
 
     # ---------- Bridge sync → async ----------
     def _await(self, coro):

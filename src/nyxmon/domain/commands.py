@@ -56,3 +56,17 @@ class StopCollector(Command):
     """Stop the collector."""
 
     pass
+
+
+@dataclass
+class StartCleaner(Command):
+    """Start the results cleaner."""
+
+    pass
+
+
+@dataclass
+class StopCleaner(Command):
+    """Stop the results cleaner."""
+
+    pass

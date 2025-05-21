@@ -5,6 +5,7 @@ from anyio.from_thread import BlockingPortalProvider
 from .adapters.runner import CheckRunner, AsyncCheckRunner
 from .domain import Auto
 from .adapters.collector import CheckCollector, AsyncCheckCollector
+from .adapters.cleaner import ResultsCleaner, AsyncResultsCleaner
 from .adapters.repositories import RepositoryStore, InMemoryStore
 from .adapters.notification import Notifier, LoggingNotifier
 from .service_layer import handlers, UnitOfWork, MessageBus
@@ -23,6 +24,7 @@ def bootstrap(
     portal_provider: BlockingPortalProvider = Auto,
     store: RepositoryStore = Auto,
     collector: CheckCollector = Auto,
+    cleaner: ResultsCleaner = Auto,
     runner: CheckRunner = Auto,
     notifier: Notifier = Auto,
 ) -> MessageBus:
@@ -42,6 +44,10 @@ def bootstrap(
     if not collector:
         collector = AsyncCheckCollector(interval=1)
 
+    if not cleaner:
+        # Use default values for the cleaner (run every hour, keep results for 24 hours)
+        cleaner = AsyncResultsCleaner()
+
     if not runner:
         runner = AsyncCheckRunner(portal_provider=portal_provider)
 
@@ -52,10 +58,15 @@ def bootstrap(
     if hasattr(notifier, "set_portal_provider"):
         notifier.set_portal_provider(portal_provider)
 
+    # Set store for cleaner
+    cleaner.set_portal_provider(portal_provider)
+    cleaner.set_store(store)
+
     dependencies = {
         "uow": uow,
         "portal_provider": portal_provider,
         "collector": collector,
+        "cleaner": cleaner,
         "runner": runner,
         "notifier": notifier,
     }

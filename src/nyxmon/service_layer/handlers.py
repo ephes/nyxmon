@@ -3,6 +3,7 @@ from typing import Callable
 from anyio.from_thread import BlockingPortalProvider
 
 from ..adapters.collector import CheckCollector
+from ..adapters.cleaner import ResultsCleaner
 from ..adapters.notification import Notifier
 from ..domain import events, commands
 from ..domain.models import CheckResult
@@ -66,6 +67,21 @@ def stop_collector(_cmd: commands.StopCollector, collector: CheckCollector) -> N
     collector.stop()
 
 
+def start_cleaner(
+    _cmd: commands.StartCleaner,
+    cleaner: ResultsCleaner,
+    portal_provider: BlockingPortalProvider,
+) -> None:
+    """Start the results cleaner."""
+    cleaner.set_portal_provider(portal_provider)
+    cleaner.start()
+
+
+def stop_cleaner(_cmd: commands.StopCleaner, cleaner: ResultsCleaner) -> None:
+    """Stop the results cleaner."""
+    cleaner.stop()
+
+
 def service_status_changed(
     event: events.ServiceStatusChanged, uow: UnitOfWork, notifier: Notifier
 ) -> None:
@@ -103,4 +119,6 @@ COMMAND_HANDLERS: dict[type[commands.Command], Callable] = {
     commands.AddCheckResult: add_check_result,
     commands.StartCollector: start_collector,
     commands.StopCollector: stop_collector,
+    commands.StartCleaner: start_cleaner,
+    commands.StopCleaner: stop_cleaner,
 }

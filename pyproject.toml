@@ -46,6 +46,7 @@ dev = [
     "mypy",
     "pytest",
     "pytest-anyio",
+    "types-psutil",
 ]
 dashboard-dev = [
     "django-debug-toolbar",

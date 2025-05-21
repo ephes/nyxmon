@@ -139,7 +139,7 @@ STATIC_URL = "/static/"  # Make sure this has a leading slash
 STATIC_ROOT = (
     BASE_DIR / "staticfiles"
 )  # Directory where collected static files will be stored
-STATICFILES_DIRS = []  # We'll collect static files from the installed apps
+STATICFILES_DIRS: list[str] = []  # We'll collect static files from the installed apps
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

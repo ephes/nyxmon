@@ -7,6 +7,7 @@ import uvloop
 from pathlib import Path
 
 from nyxmon.adapters.collector import running_collector, AsyncCheckCollector
+from nyxmon.adapters.cleaner import running_cleaner, AsyncResultsCleaner
 from ..bootstrap import bootstrap
 from ..adapters.repositories import SqliteStore
 from ..adapters.notification import AsyncTelegramNotifier, LoggingNotifier
@@ -26,27 +27,65 @@ def signal_handler(agent, signum, frame):
     agent.stop()
 
 
-async def run_agent_with_collector(store, interval, enable_telegram=False):
-    """Async function to run the agent with collector"""
+async def run_monitoring_services(
+    store,
+    check_interval,
+    cleanup_interval=3600,
+    retention_period=86400,
+    batch_size=1000,
+    disable_cleaner=False,
+    enable_telegram=False,
+):
+    """Async function to run the monitoring services (collector and cleaner)"""
     if enable_telegram:
         notifier = AsyncTelegramNotifier()
         logger.info("Telegram notifications enabled")
     else:
         notifier = LoggingNotifier()
 
+    # Create components
+    collector = AsyncCheckCollector(interval=check_interval)
+
+    if not disable_cleaner:
+        cleaner = AsyncResultsCleaner(
+            interval=cleanup_interval,
+            retention_period=retention_period,
+            batch_size=batch_size,
+        )
+    else:
+        cleaner = None
+
     bus = bootstrap(
-        store=store, collector=AsyncCheckCollector(interval=interval), notifier=notifier
+        store=store, collector=collector, cleaner=cleaner, notifier=notifier
     )
 
-    async with running_collector(bus):
-        logger.info(f"Agent started with {interval}s check interval")
+    if disable_cleaner:
+        # Only run the collector
+        async with running_collector(bus):
+            logger.info(f"Monitoring started with {check_interval}s check interval")
+            logger.info("Results cleaner is disabled")
 
-        # Wait forever until cancelled (e.g., by Ctrl+C)
-        try:
-            await anyio.sleep_forever()
-        except BaseException:
-            logger.info("Agent shutting down...")
-            raise
+            # Wait forever until cancelled (e.g., by Ctrl+C)
+            try:
+                await anyio.sleep_forever()
+            except BaseException:
+                logger.info("Monitoring services shutting down...")
+                raise
+    else:
+        # Run both collector and cleaner
+        async with running_collector(bus), running_cleaner(bus):
+            logger.info("Monitoring services started:")
+            logger.info(f"- Check collector interval: {check_interval}s")
+            logger.info(
+                f"- Results cleaner interval: {cleanup_interval}s, retention: {retention_period}s"
+            )
+
+            # Wait forever until cancelled (e.g., by Ctrl+C)
+            try:
+                await anyio.sleep_forever()
+            except BaseException:
+                logger.info("Monitoring services shutting down...")
+                raise
 
 
 def start_agent():
@@ -55,6 +94,29 @@ def start_agent():
     parser.add_argument("--db", required=True, help="Path to SQLite database file")
     parser.add_argument(
         "--interval", type=int, default=5, help="Check interval in seconds (default: 5)"
+    )
+    parser.add_argument(
+        "--cleanup-interval",
+        type=int,
+        default=3600,
+        help="Results cleanup interval in seconds (default: 3600 - 1 hour)",
+    )
+    parser.add_argument(
+        "--retention-period",
+        type=int,
+        default=86400,
+        help="Results retention period in seconds (default: 86400 - 24 hours)",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=1000,
+        help="Maximum number of old results to delete in a single batch (default: 1000)",
+    )
+    parser.add_argument(
+        "--disable-cleaner",
+        action="store_true",
+        help="Disable the results cleaner",
     )
     parser.add_argument(
         "--log-level",
@@ -80,21 +142,27 @@ def start_agent():
         sys.exit(1)
 
     try:
-        logger.info(f"Initializing agent with database: {args.db}")
+        logger.info(f"Initializing monitoring services with database: {args.db}")
         store = SqliteStore(db_path=db_path)
 
         async def main():
-            await run_agent_with_collector(
-                store, args.interval, enable_telegram=args.enable_telegram
+            await run_monitoring_services(
+                store,
+                args.interval,
+                cleanup_interval=args.cleanup_interval,
+                retention_period=args.retention_period,
+                batch_size=args.batch_size,
+                disable_cleaner=args.disable_cleaner,
+                enable_telegram=args.enable_telegram,
             )
 
         # anyio automatically handles SIGINT and SIGTERM
         anyio.run(main, backend_options={"loop_factory": uvloop.new_event_loop})
 
     except KeyboardInterrupt:
-        logger.info("Agent stopped by user")
+        logger.info("Monitoring services stopped by user")
     except Exception:
-        logger.exception("Error running agent")
+        logger.exception("Error running monitoring services")
         sys.exit(1)
 
 
