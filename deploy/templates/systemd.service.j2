@@ -9,7 +9,7 @@ Restart=always
 WorkingDirectory={{ site_path }}
 User={{ username }}
 Environment="DJANGO_SETTINGS_MODULE={{ django_settings_module }}"
-ExecStart={{ site_path }}/venv/bin/granian --workers 4 --interface wsgi --host 127.0.0.1 --port 10017 --access-log config.wsgi
+ExecStart={{ site_path }}/venv/bin/granian --workers 4 --interface wsgi --host 0.0.0.0 --port {{ app_port }} --access-log config.wsgi
 
 [Install]
 WantedBy=multi-user.target
