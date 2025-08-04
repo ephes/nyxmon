@@ -1,0 +1,64 @@
+---
+- name: Install Astral UV
+  hosts: all
+  become: yes  # This enables sudo privileges
+  tasks:
+    - name: Create temporary directory
+      tempfile:
+        state: directory
+      register: temp_dir
+
+    - name: Download and run UV installer script
+      shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+      args:
+        executable: /bin/bash
+        chdir: "{{ temp_dir.path }}"
+      register: install_result
+
+    - name: Display installation output
+      debug:
+        var: install_result.stdout_lines
+
+    - name: Find the UV binary
+      shell: |
+        # Check common locations for uv
+        for dir in /root/.local/bin $HOME/.local/bin /root/.cargo/bin $HOME/.cargo/bin; do
+          if [ -f "$dir/uv" ]; then
+            echo "$dir/uv"
+            exit 0
+          fi
+        done
+        # If not found, search more broadly
+        find /root /home -name uv -type f 2>/dev/null | head -1
+      register: uv_binary
+      changed_when: false
+
+    - name: Copy UV binary to /usr/local/bin
+      copy:
+        src: "{{ uv_binary.stdout }}"
+        dest: /usr/local/bin/uv
+        mode: '0755'
+        remote_src: yes
+      when: uv_binary.stdout != ""
+
+    - name: Also copy uvx binary if it exists
+      copy:
+        src: "{{ uv_binary.stdout | dirname }}/uvx"
+        dest: /usr/local/bin/uvx
+        mode: '0755'
+        remote_src: yes
+      when: uv_binary.stdout != ""
+      ignore_errors: yes
+
+    - name: Verify installation
+      command: /usr/local/bin/uv --version
+      register: version_output
+
+    - name: Display UV version
+      debug:
+        var: version_output.stdout
+
+    - name: Clean up temporary directory
+      file:
+        path: "{{ temp_dir.path }}"
+        state: absent
