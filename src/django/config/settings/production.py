@@ -20,6 +20,7 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")  # noqa
 # This ensures that Django will be able to detect a secure connection
 # properly on Heroku.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True  # Trust the X-Forwarded-Host header from Traefik
 
 # Use Whitenoise to serve static files
 # See: https://whitenoise.readthedocs.io/
@@ -54,10 +55,21 @@ SECURE_HSTS_PRELOAD = True
 # ------------------------------------------------------------------------------
 # Hosts/domain names that are valid for this site
 # See https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
+# Use wildcard for all subdomains of the IDN domain (punycode)
 ALLOWED_HOSTS = env.list(  # noqa
     "DJANGO_ALLOWED_HOSTS",
     default=[
-        "nyxmon.django-cast.com",
+        ".xn--wersdrfer-47a.de",  # Wildcard for all subdomains
+        "localhost",  # For local testing
+    ],
+)
+
+# CSRF Trusted Origins - must include scheme and use punycode for IDN
+CSRF_TRUSTED_ORIGINS = env.list(  # noqa
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    default=[
+        "https://nyxmon.home.xn--wersdrfer-47a.de",  # Exact match
+        "https://*.xn--wersdrfer-47a.de",  # Wildcard for all HTTPS subdomains
     ],
 )
 # END SITE CONFIGURATION

@@ -64,13 +64,14 @@
         <!-- Right section: action button -->
         <div class="health-check-right">
             <div class="check-action-container">
-                <button class="run-check-button"
-                        hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
-                        hx-swap="outerHTML"
-                        hx-target="#check-{{ check.id }}"
-                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-                    {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
-                </button>
+                <form hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
+                      hx-target="#check-{{ check.id }}"
+                      hx-swap="outerHTML">
+                    {% csrf_token %}
+                    <button type="submit" class="run-check-button">
+                        {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
+                    </button>
+                </form>
             </div>
         </div>
     </div>

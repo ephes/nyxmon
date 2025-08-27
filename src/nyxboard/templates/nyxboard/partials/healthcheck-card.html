@@ -74,8 +74,7 @@
                            {% if check.disabled %}checked{% endif %}
                            hx-post="{% url 'nyxboard:healthcheck_toggle_disabled' check_id=check.id %}"
                            hx-swap="outerHTML"
-                           hx-target="#check-{{ check.id }}"
-                           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                           hx-target="#check-{{ check.id }}">
                     <span class="toggle-slider"></span>
                 </label>
                 <span class="toggle-label">{% if check.disabled %}Disabled{% else %}Enabled{% endif %}</span>
@@ -83,13 +82,15 @@
             
             <!-- Run now button with HTMX integration, only show when not disabled -->
             {% if not check.disabled %}
-                <button class="run-check-button"
-                        hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
-                        hx-swap="outerHTML"
-                        hx-target="#check-{{ check.id }}"
-                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-                    {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
-                </button>
+                <form hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
+                      hx-target="#check-{{ check.id }}"
+                      hx-swap="outerHTML"
+                      style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="run-check-button">
+                        {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
+                    </button>
+                </form>
             {% endif %}
         </div>
     </div>
