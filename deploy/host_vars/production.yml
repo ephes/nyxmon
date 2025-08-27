@@ -1,5 +1,5 @@
-fqdn: "nyxmon.django-cast.com"
+fqdn: "nyxmon.home.xn--wersdrfer-47a.de"
 deploy_environment: "production"
 username: "{{ project_name }}"
-traefik_host_rule: "Host(`nyxmon.django-cast.com`) || Host(`www.nyxmon.django-cast.com`)"
+traefik_host_rule: "Host(`nyxmon.home.xn--wersdrfer-47a.de`)"
 host_name: production

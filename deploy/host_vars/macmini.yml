@@ -1,6 +1,7 @@
-fqdn: "*"  # Allow all hosts for local network access
+fqdn: "nyxmon.home.xn--wersdrfer-47a.de"
 deploy_environment: "macmini"
 username: "nyxmon"
 host_name: macmini
 django_settings_module: "config.settings.macos"  # Use macOS settings (no SSL redirect)
+traefik_host_rule: "Host(`nyxmon.home.xn--wersdrfer-47a.de`)"
 # app_port is defined in vars.yml as 10017

@@ -125,6 +125,22 @@
         src: templates/monitor.service.j2
         dest: "/etc/systemd/system/{{ username }}_monitor.service"
 
+    - name: Create directory for traefik config
+      file:
+        path: "{{ traefik_config_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create traefik service config
+      template:
+        src: templates/traefik.template.j2
+        dest: "{{ traefik_config_path }}"
+        mode: '0644'
+        owner: root
+        group: root
+
     - name: Make sure monitoring agent is running first
       systemd:
         state: restarted
