@@ -12,6 +12,7 @@ db.sqlite3
 
 # environment variables
 .env
+.envrc
 
 # vim
 *.swp
