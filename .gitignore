@@ -22,3 +22,7 @@ node_modules/
 
 # ansible
 .vault_password
+
+# specs
+/specs/
+/.specsync.env

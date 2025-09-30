@@ -64,3 +64,11 @@ django_find_project = false
 pythonpath = [
     "src/django",  # to make config.settings.test work
 ]
+
+[tool.specsync]
+workspace_subdir = "specs"
+repo_specs_dir = "specs"
+
+[tool.specsync.filter]
+require_expose = true
+match_project = true
