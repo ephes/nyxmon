@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
 from ...domain import Result, Check, Service
 from .interface import (
     Repository,
@@ -92,6 +96,10 @@ class InMemoryCheckRepository(CheckRepository):
     def list(self) -> list[Check]:
         return list(self.checks.values())
 
+    async def list_async(self) -> list[Check]:
+        """Return checks in an awaitable form for async callers."""
+        return self.list()
+
 
 class InMemoryServiceRepository(ServiceRepository):
     """An in-memory implementation of the ServiceRepository interface."""
@@ -111,19 +119,15 @@ class InMemoryServiceRepository(ServiceRepository):
         return list(self.services.values())
 
 
+@dataclass(slots=True)
 class InMemoryStore(RepositoryStore):
     """An in-memory store for the repositories."""
 
-    def __init__(
-        self,
-        *,
-        results: InMemoryResultRepository = InMemoryResultRepository(),
-        checks: InMemoryCheckRepository = InMemoryCheckRepository(),
-        services: InMemoryServiceRepository = InMemoryServiceRepository(),
-    ) -> None:
-        self.results = results
-        self.checks = checks
-        self.services = services
+    results: InMemoryResultRepository = field(default_factory=InMemoryResultRepository)
+    checks: InMemoryCheckRepository = field(default_factory=InMemoryCheckRepository)
+    services: InMemoryServiceRepository = field(
+        default_factory=InMemoryServiceRepository
+    )
 
     def list(self) -> list[Repository]:
         return [

@@ -11,6 +11,7 @@ from nyxmon.adapters.cleaner import running_cleaner, AsyncResultsCleaner
 from ..bootstrap import bootstrap
 from ..adapters.repositories import SqliteStore
 from ..adapters.notification import AsyncTelegramNotifier, LoggingNotifier
+from ..startup_validation import validate_check_types
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +56,29 @@ async def run_monitoring_services(
     else:
         cleaner = None
 
+    # Bootstrap creates the runner internally, but we need access to it for validation
+    # Create runner explicitly so we can validate check types
+    from ..adapters.runner import AsyncCheckRunner
+    from anyio.from_thread import BlockingPortalProvider
+
+    portal_provider = BlockingPortalProvider()
+    runner = AsyncCheckRunner(portal_provider=portal_provider)
+
     bus = bootstrap(
-        store=store, collector=collector, cleaner=cleaner, notifier=notifier
+        store=store,
+        collector=collector,
+        cleaner=cleaner,
+        notifier=notifier,
+        runner=runner,
+        portal_provider=portal_provider,
     )
+
+    # Validate that all persisted checks have registered executors
+    # This catches configuration issues early before attempting to run checks
+    from ..service_layer import UnitOfWork
+
+    uow = UnitOfWork(store=store)
+    await validate_check_types(uow, runner)
 
     if disable_cleaner:
         # Only run the collector
