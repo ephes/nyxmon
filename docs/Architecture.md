@@ -28,7 +28,6 @@ The core library contains the business logic for monitoring and is published as 
    - `DeleteCheck`: Removes a check
 
 4. **Events**
-   - `CheckExecuted`: Emitted when a check is executed
    - `CheckSucceeded`: Emitted when a check succeeds
    - `CheckFailed`: Emitted when a check fails
    - `ServiceStatusChanged`: Emitted when service status changes
@@ -39,9 +38,9 @@ The core library contains the business logic for monitoring and is published as 
    - Emit events
 
 6. **Check Executors**
-   - `HttpJsonCheck`: Validates JSON responses from HTTP endpoints
-   - `PingCheck`: Tests if a host is reachable
-   - `MetricCheck`: Validates if a metric is within expected bounds
+   - `HttpCheckExecutor`: Performs HTTP requests and reports status (current implementation)
+   - `DnsCheckExecutor`: Resolves DNS records and validates expected IPs
+   - *Planned:* Additional executors (JSON validation, ping, metrics) will extend the same interface in future iterations
 
 7. **Repository Interfaces**
    - `CheckRepository`: Interface for storing and retrieving checks
@@ -60,6 +59,8 @@ The agent executes checks and has no direct knowledge of the database implementa
 2. **Check Runner**
    - Executes checks using appropriate check executors
    - Publishes check results
+   - See `docs/async-check-runner.md` for a detailed walkthrough of the asynchronous runner implementation
+   - See `docs/concurrency-overview.md` for a high-level description of the runtime threading & event-loop model
 
 3. **Repository Implementations**
    - Concrete implementation of repository interfaces for SQLite
