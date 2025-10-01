@@ -44,3 +44,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Testing**: Write pytest tests for monitoring agents and Django views
 - **Documentation**: Document functions with docstrings (Google style)
 - **Logging**: Use Python's logging module for operational logs
+- src/django holds manage.py and django settings, but no web UI business logic
+- src/nyxboard contains the main Django web UI

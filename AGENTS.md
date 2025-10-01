@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-NyxMon separates the monitoring engine from its Django UI. Agent code, adapters, and CLI entrypoints live in `src/nyxmon`. The Django app that powers NyxBoard (templates, views, static assets) resides in `src/nyxboard`. `src/django` only hosts the project wrapper—`manage.py`, settings, and ASGI/WSGI bootstrap—so treat it as config glue. Tests mirror this split: unit specs in `tests/unit`, dashboard coverage in `tests/dashboard`, and integration flows in `tests/e2e`. Keep new fixtures near their consumers and avoid committing generated artifacts from Django collects.
+NyxMon separates the monitoring engine from its Django UI. Agent code, adapters, and CLI entrypoints live in `src/nyxmon`. The main Django app lives in `src/nyxboard` (templates, views, static assets for NyxBoard). `src/django` only hosts the project wrapper—`manage.py`, Django settings modules, and ASGI/WSGI bootstrap—so treat it as config glue. Tests mirror this split: unit specs in `tests/unit`, dashboard coverage in `tests/dashboard`, and integration flows in `tests/e2e`. Keep new fixtures near their consumers and avoid committing generated artifacts from Django collects.
 
 ## Build, Test, and Development Commands
 Use the `justfile` as the main entry point (`just --list`). `just test` runs the Python suite, `just lint` executes the Ruff pre-commit hooks, and `just typecheck` wraps `uv run mypy src/`. Start the Django dev server with `just dev-server`, or run management tasks via `just manage <command>`. Under the hood we rely on `uv`: `uv sync` installs dependencies and `uv run` executes scripts. UI-specific checks (if you touch frontend JS) rely on `npm test` from the project root.
