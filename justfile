@@ -38,7 +38,7 @@ lint:
 
 # Type check
 typecheck:
-    uv run mypy src/
+    uv run mypy
 
 # Run all tests
 test:
@@ -75,6 +75,28 @@ build:
 # Publish package to PyPI
 publish: build
     uv publish
+
+# ========= Documentation Commands =========
+
+# Build documentation
+docs-build:
+    uv run sphinx-build -b html docs docs/_build/html
+
+# View documentation locally
+docs-serve:
+    uv run python -m http.server 8000 --directory docs/_build/html
+
+# Clean documentation build artifacts
+docs-clean:
+    rm -rf docs/_build
+
+# Check documentation for broken links
+docs-check:
+    uv run sphinx-build -b linkcheck docs docs/_build/linkcheck
+
+# Watch mode for documentation with auto rebuild
+docs-watch:
+    uv run sphinx-autobuild docs docs/_build/html
 
 # ========= ops-control Deployment Commands =========
 

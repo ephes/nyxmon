@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "aiosqlite>=0.21.0",
+    "dnspython>=2.8.0",
     "httpx>=0.28.1",
     "uvloop>=0.21.0",
     "psutil>=5.9.5",
@@ -47,6 +48,12 @@ dev = [
     "pytest",
     "pytest-anyio",
     "types-psutil",
+    "sphinx>=7.0,<8.0",
+    "myst-parser>=3.0,<4.0",
+    "furo>=2024.0.0",
+    "sphinx-copybutton>=0.5,<1.0",
+    "sphinxcontrib-mermaid>=0.9,<1.0",
+    "sphinx-autobuild>=2024.0.0",
 ]
 dashboard-dev = [
     "django-debug-toolbar",
@@ -64,6 +71,9 @@ django_find_project = false
 pythonpath = [
     "src/django",  # to make config.settings.test work
 ]
+
+[tool.mypy]
+files = ["src/"]
 
 [tool.specsync]
 workspace_subdir = "specs"
