@@ -2,6 +2,10 @@
 
 A monitoring application for services and health checks.
 
+## Documentation
+
+Full documentation is available at [nyxmon.readthedocs.io](https://nyxmon.readthedocs.io/en/latest/)
+
 ## Setup for Development
 
 1. Install Python (3.12 or higher)
