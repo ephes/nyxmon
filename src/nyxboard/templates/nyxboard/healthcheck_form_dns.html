@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} DNS Health Check - Nyxmon Dashboard{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <div class="form-header">
+    <h2>🔍 {{ action }} DNS Health Check</h2>
+    <a href="{% url 'nyxboard:healthcheck_list' %}" class="back-link">&larr; Back</a>
+  </div>
+
+  <p class="help-text">Monitor DNS resolution and validate expected IP addresses</p>
+
+  <form method="post" class="form">
+    {% csrf_token %}
+
+    <h3 class="section-title">Basic Information</h3>
+
+    <div class="form-field">
+      <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+      {{ form.name }}
+      {% if form.name.help_text %}
+        <div class="help-text">{{ form.name.help_text }}</div>
+      {% endif %}
+      {% if form.name.errors %}
+        <div class="field-errors">
+          {% for error in form.name.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.service.id_for_label }}">{{ form.service.label }}</label>
+      {{ form.service }}
+      {% if form.service.errors %}
+        <div class="field-errors">
+          {% for error in form.service.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.check_interval.id_for_label }}">{{ form.check_interval.label }}</label>
+      {{ form.check_interval }}
+      {% if form.check_interval.help_text %}
+        <div class="help-text">{{ form.check_interval.help_text }}</div>
+      {% endif %}
+      {% if form.check_interval.errors %}
+        <div class="field-errors">
+          {% for error in form.check_interval.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field checkbox-field">
+      {{ form.disabled }}
+      <label for="{{ form.disabled.id_for_label }}">{{ form.disabled.label }}</label>
+      {% if form.disabled.help_text %}
+        <div class="help-text">{{ form.disabled.help_text }}</div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">DNS Configuration</h3>
+
+    <div class="form-field">
+      <label for="{{ form.url.id_for_label }}">{{ form.url.label }}</label>
+      {{ form.url }}
+      {% if form.url.help_text %}
+        <div class="help-text">{{ form.url.help_text }}</div>
+      {% endif %}
+      {% if form.url.errors %}
+        <div class="field-errors">
+          {% for error in form.url.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.expected_ips.id_for_label }}">{{ form.expected_ips.label }}</label>
+      {{ form.expected_ips }}
+      {% if form.expected_ips.help_text %}
+        <div class="help-text">{{ form.expected_ips.help_text }}</div>
+      {% endif %}
+      {% if form.expected_ips.errors %}
+        <div class="field-errors">
+          {% for error in form.expected_ips.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.query_type.id_for_label }}">{{ form.query_type.label }}</label>
+      {{ form.query_type }}
+      {% if form.query_type.help_text %}
+        <div class="help-text">{{ form.query_type.help_text }}</div>
+      {% endif %}
+      {% if form.query_type.errors %}
+        <div class="field-errors">
+          {% for error in form.query_type.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Advanced Options <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field">
+      <label for="{{ form.dns_server.id_for_label }}">{{ form.dns_server.label }}</label>
+      {{ form.dns_server }}
+      {% if form.dns_server.help_text %}
+        <div class="help-text">{{ form.dns_server.help_text }}</div>
+      {% endif %}
+      {% if form.dns_server.errors %}
+        <div class="field-errors">
+          {% for error in form.dns_server.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.source_ip.id_for_label }}">{{ form.source_ip.label }}</label>
+      {{ form.source_ip }}
+      {% if form.source_ip.help_text %}
+        <div class="help-text">{{ form.source_ip.help_text }}</div>
+      {% endif %}
+      {% if form.source_ip.errors %}
+        <div class="field-errors">
+          {% for error in form.source_ip.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.timeout.id_for_label }}">{{ form.timeout.label }}</label>
+      {{ form.timeout }}
+      {% if form.timeout.help_text %}
+        <div class="help-text">{{ form.timeout.help_text }}</div>
+      {% endif %}
+      {% if form.timeout.errors %}
+        <div class="field-errors">
+          {% for error in form.timeout.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {{ form.check_type }}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">{{ action }}</button>
+      <a href="{% url 'nyxboard:healthcheck_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
