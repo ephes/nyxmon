@@ -16,6 +16,10 @@ DNS checks use the following structure in the `check.data` field:
 }
 ```
 
+```{tip}
+**Prefer the NyxBoard UI?** The easiest way to create DNS checks is through the web dashboard. See {doc}`usage` → **Creating Checks via the Dashboard** for a visual guide to the DNS check form. The UI handles JSON structure automatically.
+```
+
 ## Example Configurations
 
 ### Basic DNS Check

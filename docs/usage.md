@@ -39,6 +39,79 @@ To force adding data even if checks already exist:
 uv run src/django/manage.py create_devdata --force
 ```
 
+### Creating Checks via the Dashboard
+
+The NyxBoard web UI provides an intuitive way to create and manage health checks without writing JSON or using the CLI.
+
+#### Check Type Selection
+
+When creating a new check, click any "Add Check" or "Create Health Check" button to reveal a dropdown menu with available check types:
+
+- **🌐 HTTP Check** - Monitor web endpoint availability
+- **📋 JSON HTTP Check** - Monitor JSON API endpoints
+- **🔍 DNS Check** - Monitor DNS resolution and validate IPs
+
+Select the check type to open the appropriate form.
+
+#### Creating DNS Checks
+
+DNS check forms are organized into logical sections:
+
+**Basic Information:**
+- **Name**: Descriptive name for the check (e.g., "DNS - home.wersdoerfer.de from LAN")
+- **Service**: Associate the check with a service
+- **Check Interval**: How often to run the check (in seconds)
+- **Disabled**: Toggle to temporarily disable the check
+
+**DNS Configuration:**
+- **Domain**: The domain to query (e.g., `home.wersdoerfer.de` or `example.com`)
+- **Expected IPs**: One IP per line - check succeeds if DNS returns any of these IPs
+- **Query Type**: A (IPv4) or AAAA (IPv6) record type
+
+**Advanced Options** (optional):
+- **DNS Server**: Specific DNS server to query (uses system default if empty)
+- **Source IP**: Source IP to bind for the query (for split-horizon DNS validation)
+- **Timeout**: Query timeout in seconds (default: 5.0)
+
+#### Form-to-JSON Mapping
+
+The dashboard form fields map directly to the DNS check JSON structure:
+
+| Form Field | JSON Field | Example |
+|------------|-----------|---------|
+| Domain | `url` | `"example.com"` |
+| Expected IPs (one per line) | `expected_ips` | `["192.168.1.1", "192.168.1.2"]` |
+| Query Type | `data.query_type` | `"A"` or `"AAAA"` |
+| DNS Server | `data.dns_server` | `"192.168.178.94"` |
+| Source IP | `data.source_ip` | `"192.168.178.50"` |
+| Timeout | `data.timeout` | `5.0` |
+
+**Example:** Creating a split-horizon DNS check via the form:
+```
+Name: DNS - home from LAN
+Domain: home.wersdoerfer.de
+Expected IPs:
+  192.168.178.94
+Query Type: A
+DNS Server: 192.168.178.94
+Source IP: 192.168.178.50
+```
+
+Results in this JSON:
+```json
+{
+  "url": "home.wersdoerfer.de",
+  "data": {
+    "expected_ips": ["192.168.178.94"],
+    "query_type": "A",
+    "dns_server": "192.168.178.94",
+    "source_ip": "192.168.178.50"
+  }
+}
+```
+
+**Tip:** For detailed DNS check examples and troubleshooting, see {doc}`dns-check-examples`.
+
 ### Using the CLI
 
 The monitoring agent can be run directly with custom options:
