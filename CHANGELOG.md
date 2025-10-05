@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.6] - 2025-10-05
+## [0.1.7] - 2025-10-05
+
+### Fixed
+- **Package Build Issue (Again)**: The 0.1.6 wheel published to PyPI was built before the pyproject.toml fix was applied
+  - Rebuilt wheel with correct configuration now properly includes all source code
+  - Wheel size: 96KB (vs 3.8KB broken version)
+  - Both `nyxmon` and `nyxboard` packages are now correctly included
+
+### Changed
+- **Build Process**: Must build wheel and sdist separately to avoid hatchling sdist-to-wheel build issues
+  - Use `uv build --wheel && uv build --sdist` instead of just `uv build`
+  - This ensures the wheel is built directly from source, not from the sdist
+
+## [0.1.6] - 2025-10-05 [YANKED - Broken Build]
 
 ### Fixed
 - **Critical Package Build Issue**: Fixed hatchling wheel build configuration to properly include both `nyxmon` and `nyxboard` packages

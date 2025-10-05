@@ -1,6 +1,6 @@
 [project]
 name = "nyxmon"
-version = "0.1.6"
+version = "0.1.7"
 description = "Minimal monitoring package"
 readme = "README.md"
 authors = [
@@ -40,8 +40,7 @@ build-backend = "hatchling.build"
 packages = ["src/nyxmon", "src/nyxboard"]
 
 [tool.hatch.build.targets.wheel]
-only-include = ["src/nyxmon", "src/nyxboard"]
-sources = ["src"]
+packages = ["src/nyxmon", "src/nyxboard"]
 
 [dependency-groups]
 dev = [
