@@ -5,8 +5,21 @@ import json
 from time import time
 
 from .models import Service, HealthCheck, StatusChoices
-from .forms import ServiceForm, HealthCheckForm
-from nyxmon.domain import CheckStatus
+from .forms import (
+    ServiceForm,
+    HttpHealthCheckForm,
+    DnsHealthCheckForm,
+    GenericHealthCheckForm,
+)
+from nyxmon.domain import CheckStatus, CheckType
+
+# Form class registry for per-type forms
+FORM_CLASSES = {
+    CheckType.HTTP: HttpHealthCheckForm,
+    CheckType.JSON_HTTP: HttpHealthCheckForm,  # Reuse for now
+    CheckType.DNS: DnsHealthCheckForm,
+    # Future check types here
+}
 
 
 def dashboard(request):
@@ -182,18 +195,39 @@ def healthcheck_create(request, service_id=None):
         service = get_object_or_404(Service, id=service_id)
         initial["service"] = service
 
+    # Get check type from query parameter, default to HTTP
+    check_type = request.GET.get("type", CheckType.HTTP)
+    # Use generic form as fallback to preserve check_type and data for unmapped types (TCP, Ping, etc.)
+    FormClass = FORM_CLASSES.get(check_type, GenericHealthCheckForm)
+
+    # Pass check_type in initial data to preserve it (important for JSON-HTTP and unmapped types)
+    initial["check_type"] = check_type
+
     if request.method == "POST":
-        form = HealthCheckForm(request.POST)
+        form = FormClass(request.POST)
         if form.is_valid():
             health_check = form.save()
             return redirect("nyxboard:healthcheck_detail", check_id=health_check.id)
     else:
-        form = HealthCheckForm(initial=initial)
+        form = FormClass(initial=initial)
+
+    # Select template based on check type
+    template_map = {
+        CheckType.HTTP: "nyxboard/healthcheck_form_http.html",
+        CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
+        CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
+    }
+    template_name = template_map.get(check_type, "nyxboard/healthcheck_form.html")
 
     return render(
         request,
-        "nyxboard/healthcheck_form.html",
-        {"form": form, "service": service, "action": "Create"},
+        template_name,
+        {
+            "form": form,
+            "service": service,
+            "action": "Create",
+            "check_type": check_type,
+        },
     )
 
 
@@ -202,6 +236,10 @@ def healthcheck_update(request, check_id):
     Update an existing health check.
     """
     health_check = get_object_or_404(HealthCheck, id=check_id)
+
+    # Get the appropriate form class based on the check type
+    # Use generic form as fallback to preserve check_type and data for unmapped types (TCP, Ping, etc.)
+    FormClass = FORM_CLASSES.get(health_check.check_type, GenericHealthCheckForm)
 
     if request.method == "POST":
         # Check if this is a quick-toggle of the disabled flag from the card
@@ -218,7 +256,7 @@ def healthcheck_update(request, check_id):
             return redirect("nyxboard:dashboard")
 
         # Normal form submission
-        form = HealthCheckForm(request.POST, instance=health_check)
+        form = FormClass(request.POST, instance=health_check)
         if form.is_valid():
             # Check if check_interval has changed
             if "check_interval" in form.changed_data:
@@ -230,12 +268,27 @@ def healthcheck_update(request, check_id):
                 form.save()
             return redirect("nyxboard:healthcheck_detail", check_id=health_check.id)
     else:
-        form = HealthCheckForm(instance=health_check)
+        form = FormClass(instance=health_check)
+
+    # Select template based on check type
+    template_map = {
+        CheckType.HTTP: "nyxboard/healthcheck_form_http.html",
+        CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
+        CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
+    }
+    template_name = template_map.get(
+        health_check.check_type, "nyxboard/healthcheck_form.html"
+    )
 
     return render(
         request,
-        "nyxboard/healthcheck_form.html",
-        {"form": form, "health_check": health_check, "action": "Update"},
+        template_name,
+        {
+            "form": form,
+            "health_check": health_check,
+            "action": "Update",
+            "check_type": health_check.check_type,
+        },
     )
 
 
