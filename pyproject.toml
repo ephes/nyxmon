@@ -1,6 +1,6 @@
 [project]
 name = "nyxmon"
-version = "0.1.4"
+version = "0.1.5"
 description = "Minimal monitoring package"
 readme = "README.md"
 authors = [
