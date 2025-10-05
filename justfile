@@ -68,9 +68,13 @@ db-shell:
 shell:
     @just manage shell_plus
 
-# Build package
+# Build package (wheel and sdist separately to avoid hatchling sdist-to-wheel issues)
 build:
-    uv build
+    @echo "Building wheel and sdist separately..."
+    uv build --wheel && uv build --sdist
+    @echo ""
+    @echo "Built packages:"
+    @ls -lh dist/
 
 # Publish package to PyPI
 publish: build
