@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from typing import List
+
 from ...domain import Result, Check, Service
 from .interface import (
     Repository,
@@ -33,7 +35,7 @@ class InMemoryResultRepository(ResultRepository):
     def get(self, result_id: int) -> Result:
         return self.results[result_id]
 
-    def list(self) -> list[Result]:
+    def list(self) -> List[Result]:
         return list(self.results.values())
 
     async def delete_old_results_async(
@@ -93,10 +95,10 @@ class InMemoryCheckRepository(CheckRepository):
     def get(self, check_id: int) -> Check:
         return self.checks[check_id]
 
-    def list(self) -> list[Check]:
+    def list(self) -> List[Check]:
         return list(self.checks.values())
 
-    async def list_async(self) -> list[Check]:
+    async def list_async(self) -> List[Check]:
         """Return checks in an awaitable form for async callers."""
         return self.list()
 
@@ -115,7 +117,7 @@ class InMemoryServiceRepository(ServiceRepository):
     def get(self, service_id: int) -> Service:
         return self.services[service_id]
 
-    def list(self) -> list[Service]:
+    def list(self) -> List[Service]:
         return list(self.services.values())
 
 
@@ -129,7 +131,7 @@ class InMemoryStore(RepositoryStore):
         default_factory=InMemoryServiceRepository
     )
 
-    def list(self) -> list[Repository]:
+    def list(self) -> List[Repository]:
         return [
             self.results,
             self.checks,

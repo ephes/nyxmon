@@ -3,7 +3,7 @@ import json
 import logging
 import time
 import datetime
-from typing import List
+from typing import Any, List, cast
 import anyio
 import aiosqlite
 
@@ -33,6 +33,26 @@ def row_to_check(row: aiosqlite.Row) -> Check:
     processing_started_at = row["processing_started_at"]
     status = row["status"]
     disabled = bool(row["disabled"])  # SQLite stores booleans as 0/1
+
+    # Parse JSON data column (handle missing column gracefully for migration)
+    # Note: aiosqlite.Row doesn't support .get(), use KeyError guard
+    try:
+        data_raw = row["data"]
+    except (KeyError, IndexError):
+        # Column doesn't exist yet (migration in progress)
+        data: dict[str, Any] = {}
+    else:
+        if data_raw is None:
+            data = {}
+        elif isinstance(data_raw, str):
+            data = json.loads(data_raw) if data_raw else {}
+        elif isinstance(data_raw, bytes):
+            data = json.loads(data_raw.decode("utf-8")) if data_raw else {}
+        elif isinstance(data_raw, dict):
+            data = data_raw
+        else:
+            data = cast(dict[str, Any], data_raw)
+
     check = Check(
         check_id=check_id,
         service_id=service_id,
@@ -44,14 +64,15 @@ def row_to_check(row: aiosqlite.Row) -> Check:
         processing_started_at=processing_started_at,
         status=status,
         disabled=disabled,
-        data={},
+        data=data,
     )
     return check
 
 
 class SqliteCheckRepository(CheckRepository):
-    def __init__(self, db_path: Path) -> None:
-        self._db_path = db_path
+    def __init__(self, db_path: Path | str) -> None:
+        self._db_path = str(db_path)
+        self._use_uri = self._db_path.startswith("file:")
         self._portal_provider: BlockingPortalProvider | None = None
         self._schema_ready = False
         self.seen: set[Check] = set()
@@ -73,11 +94,11 @@ class SqliteCheckRepository(CheckRepository):
     # ---------- interne async-Implementierung ----------
     async def _get_async(self, check_id: int) -> Check:
         """Get a check from the repository by ID asynchronously."""
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
             db.row_factory = aiosqlite.Row
             [row] = await db.execute_fetchall(
-                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled FROM health_check WHERE id = ?",
+                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled, data FROM health_check WHERE id = ?",
                 (check_id,),
             )
             if row is None:
@@ -85,17 +106,17 @@ class SqliteCheckRepository(CheckRepository):
             return row_to_check(row)
 
     async def list_async(self) -> List[Check]:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
             db.row_factory = aiosqlite.Row
             rows = await db.execute_fetchall(
-                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled FROM health_check"
+                "SELECT id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled, data FROM health_check"
             )
             return [row_to_check(r) for r in rows]
 
     async def list_due_checks_async(self) -> List[Check]:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
             current_time = int(time.time())
@@ -114,7 +135,7 @@ class SqliteCheckRepository(CheckRepository):
                                   AND disabled = 0
                                 LIMIT 100 -- Optional: process a batch at a time
                    )
-                   RETURNING id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled""",
+                   RETURNING id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled, data""",
                 (current_time, current_time),
             )
 
@@ -124,14 +145,14 @@ class SqliteCheckRepository(CheckRepository):
             return [row_to_check(r) for r in rows]
 
     async def _add_async(self, check: Check) -> None:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
             await db.execute(
                 """INSERT OR REPLACE INTO health_check
-                   (id, service_id, name, check_type, url, check_interval, 
-                    status, next_check_time, processing_started_at, disabled)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (id, service_id, name, check_type, url, check_interval,
+                    status, next_check_time, processing_started_at, disabled, data)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     check.check_id,
                     check.service_id,
@@ -143,6 +164,7 @@ class SqliteCheckRepository(CheckRepository):
                     check.next_check_time,
                     check.processing_started_at,
                     int(check.disabled),  # Convert bool to int for SQLite
+                    json.dumps(check.data),  # Serialize to JSON
                 ),
             )
             await db.commit()
@@ -159,6 +181,8 @@ class SqliteCheckRepository(CheckRepository):
     async def _ensure_schema(self, db: aiosqlite.Connection) -> None:
         if self._schema_ready:
             return
+
+        # Create table if not exists
         await db.executescript(
             """
             CREATE TABLE IF NOT EXISTS health_check (
@@ -171,17 +195,31 @@ class SqliteCheckRepository(CheckRepository):
                 status           TEXT    DEFAULT 'idle',
                 next_check_time  INTEGER DEFAULT 0,
                 processing_started_at INTEGER DEFAULT 0,
-                disabled         INTEGER DEFAULT 0
+                disabled         INTEGER DEFAULT 0,
+                data             TEXT    DEFAULT '{}'
             );
             """
         )
+
+        # Add data column to existing tables (idempotent migration)
+        # This handles databases created before data column was added
+        try:
+            await db.execute(
+                """ALTER TABLE health_check ADD COLUMN data TEXT DEFAULT '{}'"""
+            )
+        except sqlite3.OperationalError as e:
+            # Column already exists, ignore
+            if "duplicate column name" not in str(e).lower():
+                raise
+
         await db.commit()
         self._schema_ready = True
 
 
 class SqliteResultRepository(ResultRepository):
-    def __init__(self, db_path: Path) -> None:
-        self._db_path = db_path
+    def __init__(self, db_path: Path | str) -> None:
+        self._db_path = str(db_path)
+        self._use_uri = self._db_path.startswith("file:")
         self._schema_ready = False
         self.seen = set()
         self._portal_provider: BlockingPortalProvider | None = None
@@ -201,7 +239,7 @@ class SqliteResultRepository(ResultRepository):
 
     # ---------- interne async-Implementierung ----------
     async def _add_async(self, result: Result) -> None:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
             await db.execute(
                 """INSERT INTO check_result (id, health_check_id, status, data, created_at)
@@ -217,7 +255,7 @@ class SqliteResultRepository(ResultRepository):
             self.seen.add(result)
 
     async def _get_async(self, result_id: int) -> Result:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
             db.row_factory = aiosqlite.Row
             [row] = await db.execute_fetchall(
@@ -234,7 +272,7 @@ class SqliteResultRepository(ResultRepository):
             )
 
     async def _list_async(self) -> List[Result]:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
             db.row_factory = aiosqlite.Row
             rows = await db.execute_fetchall(
@@ -254,7 +292,7 @@ class SqliteResultRepository(ResultRepository):
         self, retention_seconds: int = 86400, batch_size: int = 1000
     ) -> int:
         """Delete check results older than the specified period."""
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
             # Calculate the cutoff timestamp (SQLite timestamp format)

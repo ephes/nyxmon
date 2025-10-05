@@ -74,7 +74,11 @@ class HealthCheck(models.Model):
     check_type: models.CharField = models.CharField(
         "Check Type", max_length=20, choices=CHECK_TYPE_CHOICES, default="http"
     )
-    url: models.URLField = models.URLField("URL", max_length=512)
+    url: models.CharField = models.CharField(
+        "URL / Domain",
+        max_length=512,
+        help_text="Enter URL for HTTP checks or domain name for DNS checks",
+    )
     check_interval: models.IntegerField = models.IntegerField(
         "Check Interval",
         choices=INTERVAL_CHOICES,
@@ -99,6 +103,12 @@ class HealthCheck(models.Model):
         "Disabled",
         default=False,
         help_text="If checked, this health check will not be executed",
+    )
+    data = models.JSONField(
+        "Configuration Data",
+        default=dict,
+        blank=True,
+        help_text="Check-type-specific configuration (e.g., DNS parameters)",
     )
 
     class Meta:

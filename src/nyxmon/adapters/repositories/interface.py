@@ -1,4 +1,4 @@
-from typing import Protocol, TypeAlias
+from typing import List, Protocol, TypeAlias
 
 from ...domain import Result, Check, Service
 
@@ -16,7 +16,7 @@ class ResultRepository(Protocol):
         """Get a result from the repository by ID."""
         ...
 
-    def list(self) -> list[Result]:
+    def list(self) -> List[Result]:
         """Get a list of all results."""
         ...
 
@@ -34,8 +34,12 @@ class CheckRepository(Protocol):
         """Get a check from the repository by ID."""
         ...
 
-    def list(self) -> list[Check]:
+    def list(self) -> List[Check]:
         """Get a list of all checks."""
+        ...
+
+    async def list_async(self) -> List[Check]:
+        """Get a list of all checks asynchronously."""
         ...
 
 
@@ -52,7 +56,7 @@ class ServiceRepository(Protocol):
         """Get a service from the repository by ID."""
         ...
 
-    def list(self) -> list[Service]:
+    def list(self) -> List[Service]:
         """Get a list of all services."""
         ...
 
@@ -67,6 +71,6 @@ class RepositoryStore(Protocol):
     checks: CheckRepository
     services: ServiceRepository
 
-    def list(self) -> list[Repository]:
+    def list(self) -> List[Repository]:
         """Get a list of all repositories."""
         ...
