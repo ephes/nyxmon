@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2025-10-05
+
+### Fixed
+- **Critical Package Build Issue**: Fixed hatchling wheel build configuration to properly include both `nyxmon` and `nyxboard` packages
+  - The 0.1.5 wheel was missing all Python source files, causing `ModuleNotFoundError: No module named 'nyxboard'`
+  - Updated `pyproject.toml` to use `only-include` and `sources` directives for proper package discovery
+  - Verified wheel contents include all necessary modules and templates
+
+### Changed
+- Build configuration: Added explicit `only-include` and `sources` settings in `[tool.hatch.build.targets.wheel]`
+
 ## [0.1.5] - 2025-10-05
 
 ### Added
