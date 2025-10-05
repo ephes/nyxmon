@@ -9,7 +9,20 @@
 {% block content %}
 <div class="page-header">
     <h2>Health Checks</h2>
-    <a href="{% url 'nyxboard:healthcheck_create' %}" class="btn btn-primary">New Health Check</a>
+    <details class="dropdown">
+        <summary class="btn btn-primary">New Health Check</summary>
+        <div class="dropdown-menu">
+            <a href="{% url 'nyxboard:healthcheck_create' %}?type=http">
+                🌐 HTTP Check
+            </a>
+            <a href="{% url 'nyxboard:healthcheck_create' %}?type=json-http">
+                📋 JSON HTTP Check
+            </a>
+            <a href="{% url 'nyxboard:healthcheck_create' %}?type=dns">
+                🔍 DNS Check
+            </a>
+        </div>
+    </details>
 </div>
 
 {% if health_checks %}
@@ -27,7 +40,12 @@
                     </a>
                     <div class="list-data health-check-url">
                         <strong>Type:</strong> {{ check.get_check_type_display }}<br>
-                        <strong>URL:</strong> <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer">{{ check.url }}</a>
+                        <strong>{% if check.check_type == 'dns' %}Domain:{% else %}URL:{% endif %}</strong>
+                        {% if check.url|slice:":4" == "http" %}
+                            <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer">{{ check.url }}</a>
+                        {% else %}
+                            {{ check.url }}
+                        {% endif %}
                     </div>
                     <div class="list-actions health-check-actions">
                         <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="btn btn-secondary">View</a>
@@ -43,7 +61,20 @@
     <div class="empty-message">
         <p>No health checks available. Start by creating a new health check.</p>
         <div class="empty-action">
-            <a href="{% url 'nyxboard:healthcheck_create' %}" class="btn btn-primary">Create Health Check</a>
+            <details class="dropdown">
+                <summary class="btn btn-primary">Create Health Check</summary>
+                <div class="dropdown-menu">
+                    <a href="{% url 'nyxboard:healthcheck_create' %}?type=http">
+                        🌐 HTTP Check
+                    </a>
+                    <a href="{% url 'nyxboard:healthcheck_create' %}?type=json-http">
+                        📋 JSON HTTP Check
+                    </a>
+                    <a href="{% url 'nyxboard:healthcheck_create' %}?type=dns">
+                        🔍 DNS Check
+                    </a>
+                </div>
+            </details>
         </div>
     </div>
 {% endif %}

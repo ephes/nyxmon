@@ -64,7 +64,20 @@
                             </a>
                             <span class="service-status status-{{ service.get_status }}">{{ service.get_status|title }}</span>
                         </h4>
-                        <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}" class="btn btn-success btn-sm">Add Check</a>
+                        <details class="dropdown">
+                            <summary class="btn btn-success btn-sm">Add Check</summary>
+                            <div class="dropdown-menu">
+                                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=http">
+                                    🌐 HTTP Check
+                                </a>
+                                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=json-http">
+                                    📋 JSON HTTP Check
+                                </a>
+                                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=dns">
+                                    🔍 DNS Check
+                                </a>
+                            </div>
+                        </details>
                     </div>
                     
                     <ul class="health-checks-grid">
@@ -78,7 +91,20 @@
             <div class="no-checks-message">
                 <p>No health checks available. Please add health checks to monitor.</p>
                 <div class="empty-action">
-                    <a href="{% url 'nyxboard:healthcheck_create' %}" class="dashboard-btn check-btn">Add Health Check</a>
+                    <details class="dropdown">
+                        <summary class="btn btn-primary">Add Health Check</summary>
+                        <div class="dropdown-menu">
+                            <a href="{% url 'nyxboard:healthcheck_create' %}?type=http">
+                                🌐 HTTP Check
+                            </a>
+                            <a href="{% url 'nyxboard:healthcheck_create' %}?type=json-http">
+                                📋 JSON HTTP Check
+                            </a>
+                            <a href="{% url 'nyxboard:healthcheck_create' %}?type=dns">
+                                🔍 DNS Check
+                            </a>
+                        </div>
+                    </details>
                 </div>
             </div>
         {% endfor %}

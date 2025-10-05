@@ -30,7 +30,12 @@
             <strong>Check Type:</strong> {{ health_check.get_check_type_display }}
         </div>
         <div class="health-check-detail">
-            <strong>URL:</strong> <a href="{{ health_check.url }}" target="_blank" rel="noopener noreferrer" class="service-link">{{ health_check.url }}</a>
+            <strong>{% if health_check.check_type == 'dns' %}Domain:{% else %}URL:{% endif %}</strong>
+            {% if health_check.url|slice:":4" == "http" %}
+                <a href="{{ health_check.url }}" target="_blank" rel="noopener noreferrer" class="service-link">{{ health_check.url }}</a>
+            {% else %}
+                <span class="service-link">{{ health_check.url }}</span>
+            {% endif %}
         </div>
     </div>
     
