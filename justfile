@@ -108,13 +108,29 @@ docs-watch:
 deploy:
     #!/usr/bin/env bash
     cd {{OPS_CONTROL}} && \
+    SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt \
     {{ANSIBLE_PLAYBOOK}} \
       -i inventories/prod/hosts.yml \
-      playbooks/site.yml \
-      -l {{LIMIT}} \
-      --extra-vars 'filter=nyxmon' \
-      --extra-vars "rsync_src_override=$PWD/src/django/" \
-      --extra-vars "rsync_additional_src_override=$PWD/src/nyxboard/"
+      playbooks/deploy-nyxmon.yml
+
+# Remove: completely remove Nyxmon from the target host
+remove:
+    #!/usr/bin/env bash
+    echo "⚠️  WARNING: This will completely remove Nyxmon from {{HOST}}"
+    echo "This includes all monitoring data, database, users, and configuration!"
+    echo ""
+    read -p "Are you ABSOLUTELY sure? Type 'REMOVE' to confirm: " confirm
+    if [ "$confirm" = "REMOVE" ]; then
+        cd {{OPS_CONTROL}} && \
+        SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt \
+        {{ANSIBLE_PLAYBOOK}} \
+          -i inventories/prod/hosts.yml \
+          playbooks/remove-nyxmon.yml \
+          -l {{HOST}} \
+          -e nyxmon_confirm_removal=true
+    else
+        echo "Removal cancelled"
+    fi
 
 # Optional: push code only (no playbook), handy for quick file transfers
 push:
