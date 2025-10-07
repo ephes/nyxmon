@@ -29,9 +29,6 @@ install:
 add PACKAGE:
     uv pip install {{PACKAGE}}
 
-remove PACKAGE:
-    uv pip uninstall {{PACKAGE}}
-
 # Lint code
 lint:
     uvx pre-commit run --all-files
