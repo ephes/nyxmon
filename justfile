@@ -172,36 +172,6 @@ bootstrap-ops:
     cd {{OPS_CONTROL}} && \
       ansible-galaxy collection install -r collections/requirements.yml -p ./collections
 
-# ========= Legacy Deployment Commands (for reference) =========
-# These commands use the old deployment method via local playbooks in deploy/
-
-deploy-staging-legacy:
-    cd deploy && ansible-playbook deploy.yml --limit staging
-
-deploy-production-legacy:
-    cd deploy && ansible-playbook deploy.yml --limit production
-
-deploy-macmini-legacy:
-    cd deploy && ansible-playbook linux_macmini_deploy.yml
-
-# Backup database from production
-backup-production:
-    cd deploy && ansible-playbook backup_database.yml --limit production
-
-# Remove deployment
-remove-staging:
-    cd deploy && ansible-playbook remove.yml --limit staging
-
-remove-production:
-    cd deploy && ansible-playbook remove.yml --limit production
-
-remove-macmini:
-    cd deploy && ansible-playbook remove.yml --limit macmini
-
-# Deploy to macOS (legacy - for reference)
-deploy-macos-legacy:
-    cd deploy && ansible-playbook macos_deploy_backup.yml
-
 # Help for deployment
 deploy-help:
     @echo "ops-control Deployment Commands:"
@@ -214,12 +184,6 @@ deploy-help:
     @echo "  just status         # Check service status"
     @echo "  just dev            # Deploy and follow logs (dev workflow)"
     @echo "  just bootstrap-ops  # Install Ansible collections (first time only)"
-    @echo ""
-    @echo "Legacy Deployment Commands (old method):"
-    @echo ""
-    @echo "  just deploy-staging-legacy     # Deploy to staging (old method)"
-    @echo "  just deploy-production-legacy  # Deploy to production (old method)"
-    @echo "  just deploy-macmini-legacy     # Deploy to macmini (old method)"
     @echo ""
     @echo "Configuration:"
     @echo "  Edit .envrc to change deployment settings"
