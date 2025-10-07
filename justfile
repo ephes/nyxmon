@@ -114,7 +114,7 @@ deploy:
       playbooks/deploy-nyxmon.yml
 
 # Remove: completely remove Nyxmon from the target host
-remove:
+undeploy:
     #!/usr/bin/env bash
     echo "⚠️  WARNING: This will completely remove Nyxmon from {{HOST}}"
     echo "This includes all monitoring data, database, users, and configuration!"
