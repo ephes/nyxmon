@@ -7,7 +7,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Optional, Union
 from urllib.parse import urlparse
 
 import anyio

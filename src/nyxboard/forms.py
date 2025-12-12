@@ -1,3 +1,5 @@
+from typing import Any
+
 from django import forms
 from django.core.validators import URLValidator
 
@@ -680,7 +682,7 @@ class TcpHealthCheckForm(HealthCheckForm):
         help_text="Disable only for debugging",
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         # Force check_type to TCP
@@ -713,8 +715,8 @@ class TcpHealthCheckForm(HealthCheckForm):
             self.fields["sni"].initial = tcp_config.get("sni", "")
             self.fields["verify"].initial = tcp_config.get("verify", True)
 
-    def clean(self):
-        cleaned_data = super().clean()
+    def clean(self) -> dict[str, Any]:
+        cleaned_data = super().clean() or {}
         self.warnings: list[str] = []
 
         tls_mode = cleaned_data.get("tls_mode")
@@ -737,7 +739,7 @@ class TcpHealthCheckForm(HealthCheckForm):
 
         return cleaned_data
 
-    def save(self, commit=True):
+    def save(self, commit: bool = True) -> HealthCheck:
         instance = super().save(commit=False)
         instance.check_type = CheckType.TCP
 

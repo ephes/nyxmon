@@ -157,7 +157,11 @@ class ImapLibSession:
             )
 
         if parsed_dt is not None:
-            return parsed_dt if parsed_dt.tzinfo else parsed_dt.replace(tzinfo=timezone.utc)
+            return (
+                parsed_dt
+                if parsed_dt.tzinfo
+                else parsed_dt.replace(tzinfo=timezone.utc)
+            )
 
         if parsed_tuple is None:
             return None

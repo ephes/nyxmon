@@ -162,6 +162,28 @@ def test_path_missing_counts_as_failure() -> None:
     assert result.data["failures"][0]["actual"] is None
 
 
+def test_bracket_array_path_is_supported() -> None:
+    client = StubClient(StubResponse(200, {"disks": [{"ok": True}]}))
+    executor = JsonMetricsExecutor(client=client)
+    check = _build_check(
+        config={
+            "url": "http://h",
+            "checks": [
+                {
+                    "path": "$.disks[0].ok",
+                    "op": "==",
+                    "value": True,
+                    "severity": "critical",
+                }
+            ],
+        }
+    )
+
+    result = anyio.run(executor.execute, check)
+
+    assert result.status == ResultStatus.OK
+
+
 def test_timeout_retries_then_fails(monkeypatch) -> None:
     timeout_exc = httpx.TimeoutException("boom")
     client = StubClient(timeout_exc)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import anyio
 import operator
+import re
 import time
 from typing import Any, Callable, Optional
 
@@ -148,7 +149,8 @@ class JsonMetricsExecutor:
         if path == "$":
             return payload
 
-        parts = [p for p in path.replace("$.", "").split(".") if p]
+        normalized = re.sub(r"\[(\d+)\]", r".\1", path)
+        parts = [p for p in normalized.replace("$.", "").split(".") if p]
         current = payload
         for part in parts:
             if isinstance(current, dict) and part in current:
