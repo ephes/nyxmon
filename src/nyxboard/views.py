@@ -9,6 +9,8 @@ from .forms import (
     ServiceForm,
     HttpHealthCheckForm,
     DnsHealthCheckForm,
+    SmtpHealthCheckForm,
+    ImapHealthCheckForm,
     GenericHealthCheckForm,
 )
 from nyxmon.domain import CheckStatus, CheckType
@@ -18,7 +20,8 @@ FORM_CLASSES = {
     CheckType.HTTP: HttpHealthCheckForm,
     CheckType.JSON_HTTP: HttpHealthCheckForm,  # Reuse for now
     CheckType.DNS: DnsHealthCheckForm,
-    # Future check types here
+    CheckType.SMTP: SmtpHealthCheckForm,
+    CheckType.IMAP: ImapHealthCheckForm,
 }
 
 
@@ -216,6 +219,8 @@ def healthcheck_create(request, service_id=None):
         CheckType.HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
+        CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
+        CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
     }
     template_name = template_map.get(check_type, "nyxboard/healthcheck_form.html")
 
@@ -275,6 +280,8 @@ def healthcheck_update(request, check_id):
         CheckType.HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
+        CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
+        CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
     }
     template_name = template_map.get(
         health_check.check_type, "nyxboard/healthcheck_form.html"

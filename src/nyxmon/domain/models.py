@@ -67,10 +67,23 @@ class CheckType:
     TCP: Literal["tcp"] = "tcp"
     PING: Literal["ping"] = "ping"
     DNS: Literal["dns"] = "dns"
+    SMTP: Literal["smtp"] = "smtp"
+    IMAP: Literal["imap"] = "imap"
+    JSON_METRICS: Literal["json-metrics"] = "json-metrics"
     CUSTOM: Literal["custom"] = "custom"
 
 
-CheckTypeType: TypeAlias = Literal["http", "json-http", "tcp", "ping", "dns", "custom"]
+CheckTypeType: TypeAlias = Literal[
+    "http",
+    "json-http",
+    "tcp",
+    "ping",
+    "dns",
+    "smtp",
+    "imap",
+    "json-metrics",
+    "custom",
+]
 
 
 class Check:

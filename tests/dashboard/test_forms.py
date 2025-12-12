@@ -5,6 +5,8 @@ import pytest
 from nyxboard.forms import (
     HttpHealthCheckForm,
     DnsHealthCheckForm,
+    SmtpHealthCheckForm,
+    ImapHealthCheckForm,
     GenericHealthCheckForm,
 )
 from nyxboard.models import Service, HealthCheck
@@ -410,6 +412,503 @@ class TestDnsHealthCheckForm:
         instance = form.save()
         # Should still be DNS, not HTTP
         assert instance.check_type == CheckType.DNS
+
+
+class TestSmtpHealthCheckForm:
+    """Tests for SmtpHealthCheckForm."""
+
+    def test_check_type_auto_set_to_smtp(self, service):
+        """Test that check_type is automatically set to SMTP."""
+        form = SmtpHealthCheckForm(
+            data={
+                "name": "Test SMTP Check",
+                "service": service.id,
+                "check_type": CheckType.SMTP,
+                "url": "smtp://mail.example.com:587",
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 587,
+                "tls_mode": "starttls",
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.check_type == CheckType.SMTP
+
+    def test_check_type_hidden_in_form(self, service):
+        """Test that check_type field is hidden."""
+        form = SmtpHealthCheckForm()
+        assert form.fields["check_type"].widget.__class__.__name__ == "HiddenInput"
+
+    def test_url_auto_generated_from_host_port(self, service):
+        """Test that url is auto-generated from host and port."""
+        form = SmtpHealthCheckForm(
+            data={
+                "name": "Test SMTP Check",
+                "service": service.id,
+                "check_type": CheckType.SMTP,
+                "url": "ignored",  # Will be overwritten
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 465,
+                "tls_mode": "implicit",
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.url == "mail.example.com"
+
+    def test_data_jsonfield_serialization(self, service):
+        """Test that data JSONField is properly serialized in save()."""
+        form = SmtpHealthCheckForm(
+            data={
+                "name": "Test SMTP Check",
+                "service": service.id,
+                "check_type": CheckType.SMTP,
+                "url": "smtp://mail.example.com:587",
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 587,
+                "tls_mode": "starttls",
+                "username": "user@example.com",
+                "password": "secret123",
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon-test]",
+                "timeout": 45.0,
+                "retries": 3,
+                "retry_delay": 10.0,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+
+        assert instance.data["host"] == "mail.example.com"
+        assert instance.data["port"] == 587
+        assert instance.data["tls"] == "starttls"
+        assert instance.data["username"] == "user@example.com"
+        assert instance.data["password"] == "secret123"
+        assert instance.data["from_addr"] == "monitor@example.com"
+        assert instance.data["to_addr"] == "test@example.com"
+        assert instance.data["subject_prefix"] == "[nyxmon-test]"
+        assert instance.data["timeout"] == 45.0
+        assert instance.data["retries"] == 3
+        assert instance.data["retry_delay"] == 10.0
+
+    def test_password_required_when_username_provided(self, service):
+        """Test that password is required when username is provided."""
+        form = SmtpHealthCheckForm(
+            data={
+                "name": "Test SMTP Check",
+                "service": service.id,
+                "check_type": CheckType.SMTP,
+                "url": "smtp://mail.example.com:587",
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 587,
+                "tls_mode": "starttls",
+                "username": "user@example.com",
+                "password": "",  # Empty password with username
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            }
+        )
+        assert not form.is_valid()
+        assert "password" in form.errors
+
+    def test_password_not_required_without_username(self, service):
+        """Test that password is not required when username is empty."""
+        form = SmtpHealthCheckForm(
+            data={
+                "name": "Test SMTP Check",
+                "service": service.id,
+                "check_type": CheckType.SMTP,
+                "url": "smtp://mail.example.com:25",
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 25,
+                "tls_mode": "none",
+                "username": "",  # No username
+                "password": "",  # No password - should be fine
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            }
+        )
+        assert form.is_valid(), form.errors
+
+    def test_editing_existing_smtp_check_populates_fields(self, service):
+        """Test that editing an existing SMTP check populates fields from data."""
+        health_check = HealthCheck.objects.create(
+            name="Existing SMTP Check",
+            service=service,
+            check_type=CheckType.SMTP,
+            url="smtp://mail.example.com:587",
+            check_interval=300,
+            data={
+                "host": "mail.example.com",
+                "port": 587,
+                "tls": "starttls",
+                "username": "user@example.com",
+                "password": "secret123",
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            },
+        )
+
+        form = SmtpHealthCheckForm(instance=health_check)
+
+        assert form.fields["host"].initial == "mail.example.com"
+        assert form.fields["port"].initial == 587
+        assert form.fields["tls_mode"].initial == "starttls"
+        assert form.fields["username"].initial == "user@example.com"
+        # Password should NOT be populated for security
+        assert form.fields["from_addr"].initial == "monitor@example.com"
+        assert form.fields["to_addr"].initial == "test@example.com"
+
+    def test_password_preserved_when_editing_without_new_password(self, service):
+        """Test that existing password is preserved when editing without providing new one."""
+        health_check = HealthCheck.objects.create(
+            name="Existing SMTP Check",
+            service=service,
+            check_type=CheckType.SMTP,
+            url="smtp://mail.example.com:587",
+            check_interval=300,
+            data={
+                "host": "mail.example.com",
+                "port": 587,
+                "tls": "starttls",
+                "username": "user@example.com",
+                "password": "original_secret",
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            },
+        )
+
+        form = SmtpHealthCheckForm(
+            data={
+                "name": "Updated SMTP Check",
+                "service": service.id,
+                "check_type": CheckType.SMTP,
+                "url": "smtp://mail.example.com:587",
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 587,
+                "tls_mode": "starttls",
+                "username": "user@example.com",
+                "password": "",  # Empty - should keep existing
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            },
+            instance=health_check,
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.data["password"] == "original_secret"
+
+    def test_check_type_tampering_prevention(self, service):
+        """Test that check_type is explicitly set in save() to prevent tampering."""
+        form = SmtpHealthCheckForm(
+            data={
+                "name": "Test SMTP Check",
+                "service": service.id,
+                "check_type": CheckType.HTTP,  # Attempt tampering
+                "url": "smtp://mail.example.com:587",
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 587,
+                "tls_mode": "starttls",
+                "from_addr": "monitor@example.com",
+                "to_addr": "test@example.com",
+                "subject_prefix": "[nyxmon]",
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 5.0,
+            }
+        )
+        assert form.is_valid()
+        instance = form.save()
+        assert instance.check_type == CheckType.SMTP
+
+
+class TestImapHealthCheckForm:
+    """Tests for ImapHealthCheckForm."""
+
+    def test_check_type_auto_set_to_imap(self, service):
+        """Test that check_type is automatically set to IMAP."""
+        form = ImapHealthCheckForm(
+            data={
+                "name": "Test IMAP Check",
+                "service": service.id,
+                "check_type": CheckType.IMAP,
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 993,
+                "tls_mode": "implicit",
+                "username": "user@example.com",
+                "password": "secret123",
+                "folder": "INBOX",
+                "search_subject": "[nyxmon]",
+                "max_age_minutes": 30,
+                "delete_after_check": True,
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 10.0,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.check_type == CheckType.IMAP
+
+    def test_hidden_fields_configuration(self, service):
+        """Test that check_type and url fields are hidden and url is optional."""
+        form = ImapHealthCheckForm()
+        assert form.fields["check_type"].widget.__class__.__name__ == "HiddenInput"
+        assert form.fields["url"].widget.__class__.__name__ == "HiddenInput"
+        assert form.fields["url"].required is False
+
+    def test_url_auto_generated_from_host_port(self, service):
+        """Test that url is auto-generated from host and port."""
+        form = ImapHealthCheckForm(
+            data={
+                "name": "Test IMAP Check",
+                "service": service.id,
+                "check_type": CheckType.IMAP,
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 143,
+                "tls_mode": "starttls",
+                "username": "user@example.com",
+                "password": "secret123",
+                "folder": "INBOX",
+                "search_subject": "[nyxmon]",
+                "max_age_minutes": 30,
+                "delete_after_check": True,
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 10.0,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.url == "mail.example.com"
+
+    def test_data_jsonfield_serialization(self, service):
+        """Test that data JSONField is properly serialized in save()."""
+        form = ImapHealthCheckForm(
+            data={
+                "name": "Test IMAP Check",
+                "service": service.id,
+                "check_type": CheckType.IMAP,
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 993,
+                "tls_mode": "implicit",
+                "username": "user@example.com",
+                "password": "secret123",
+                "folder": "Monitoring",
+                "search_subject": "[nyxmon-test]",
+                "max_age_minutes": 60,
+                "delete_after_check": False,
+                "timeout": 45.0,
+                "retries": 3,
+                "retry_delay": 15.0,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+
+        assert instance.data["host"] == "mail.example.com"
+        assert instance.data["port"] == 993
+        assert instance.data["tls_mode"] == "implicit"
+        assert instance.data["username"] == "user@example.com"
+        assert instance.data["password"] == "secret123"
+        assert instance.data["folder"] == "Monitoring"
+        assert instance.data["search_subject"] == "[nyxmon-test]"
+        assert instance.data["max_age_minutes"] == 60
+        assert instance.data["delete_after_check"] is False
+        assert instance.data["timeout"] == 45.0
+        assert instance.data["retries"] == 3
+        assert instance.data["retry_delay"] == 15.0
+
+    def test_password_required_for_imap(self, service):
+        """Test that password is required for IMAP checks."""
+        form = ImapHealthCheckForm(
+            data={
+                "name": "Test IMAP Check",
+                "service": service.id,
+                "check_type": CheckType.IMAP,
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 993,
+                "tls_mode": "implicit",
+                "username": "user@example.com",
+                "password": "",  # Empty password
+                "folder": "INBOX",
+                "search_subject": "[nyxmon]",
+                "max_age_minutes": 30,
+                "delete_after_check": True,
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 10.0,
+            }
+        )
+        assert not form.is_valid()
+        assert "password" in form.errors
+
+    def test_editing_existing_imap_check_populates_fields(self, service):
+        """Test that editing an existing IMAP check populates fields from data."""
+        health_check = HealthCheck.objects.create(
+            name="Existing IMAP Check",
+            service=service,
+            check_type=CheckType.IMAP,
+            url="imap://mail.example.com:993",
+            check_interval=300,
+            data={
+                "host": "mail.example.com",
+                "port": 993,
+                "tls_mode": "implicit",
+                "username": "user@example.com",
+                "password": "secret123",
+                "folder": "Monitoring",
+                "search_subject": "[nyxmon]",
+                "max_age_minutes": 45,
+                "delete_after_check": False,
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 10.0,
+            },
+        )
+
+        form = ImapHealthCheckForm(instance=health_check)
+
+        assert form.fields["host"].initial == "mail.example.com"
+        assert form.fields["port"].initial == 993
+        assert form.fields["tls_mode"].initial == "implicit"
+        assert form.fields["username"].initial == "user@example.com"
+        assert form.fields["folder"].initial == "Monitoring"
+        assert form.fields["search_subject"].initial == "[nyxmon]"
+        assert form.fields["max_age_minutes"].initial == 45
+        assert form.fields["delete_after_check"].initial is False
+
+    def test_password_preserved_when_editing_without_new_password(self, service):
+        """Test that existing password is preserved when editing without providing new one."""
+        health_check = HealthCheck.objects.create(
+            name="Existing IMAP Check",
+            service=service,
+            check_type=CheckType.IMAP,
+            url="imap://mail.example.com:993",
+            check_interval=300,
+            data={
+                "host": "mail.example.com",
+                "port": 993,
+                "tls_mode": "implicit",
+                "username": "user@example.com",
+                "password": "original_secret",
+                "folder": "INBOX",
+                "search_subject": "[nyxmon]",
+                "max_age_minutes": 30,
+                "delete_after_check": True,
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 10.0,
+            },
+        )
+
+        form = ImapHealthCheckForm(
+            data={
+                "name": "Updated IMAP Check",
+                "service": service.id,
+                "check_type": CheckType.IMAP,
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 993,
+                "tls_mode": "implicit",
+                "username": "user@example.com",
+                "password": "",  # Empty - should keep existing
+                "folder": "INBOX",
+                "search_subject": "[nyxmon]",
+                "max_age_minutes": 30,
+                "delete_after_check": True,
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 10.0,
+            },
+            instance=health_check,
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.data["password"] == "original_secret"
+
+    def test_check_type_tampering_prevention(self, service):
+        """Test that check_type is explicitly set in save() to prevent tampering."""
+        form = ImapHealthCheckForm(
+            data={
+                "name": "Test IMAP Check",
+                "service": service.id,
+                "check_type": CheckType.HTTP,  # Attempt tampering
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 993,
+                "tls_mode": "implicit",
+                "username": "user@example.com",
+                "password": "secret123",
+                "folder": "INBOX",
+                "search_subject": "[nyxmon]",
+                "max_age_minutes": 30,
+                "delete_after_check": True,
+                "timeout": 30.0,
+                "retries": 2,
+                "retry_delay": 10.0,
+            }
+        )
+        assert form.is_valid()
+        instance = form.save()
+        assert instance.check_type == CheckType.IMAP
 
 
 class TestGenericHealthCheckForm:

@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} SMTP Health Check - Nyxmon Dashboard{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <div class="form-header">
+    <h2>{{ action }} SMTP Health Check</h2>
+    <a href="{% url 'nyxboard:healthcheck_list' %}" class="back-link">&larr; Back</a>
+  </div>
+
+  <p class="help-text">Monitor SMTP server connectivity and email delivery</p>
+
+  <form method="post" class="form">
+    {% csrf_token %}
+
+    <h3 class="section-title">Basic Information</h3>
+
+    <div class="form-field">
+      <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+      {{ form.name }}
+      {% if form.name.help_text %}
+        <div class="help-text">{{ form.name.help_text }}</div>
+      {% endif %}
+      {% if form.name.errors %}
+        <div class="field-errors">
+          {% for error in form.name.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.service.id_for_label }}">{{ form.service.label }}</label>
+      {{ form.service }}
+      {% if form.service.errors %}
+        <div class="field-errors">
+          {% for error in form.service.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.check_interval.id_for_label }}">{{ form.check_interval.label }}</label>
+      {{ form.check_interval }}
+      {% if form.check_interval.help_text %}
+        <div class="help-text">{{ form.check_interval.help_text }}</div>
+      {% endif %}
+      {% if form.check_interval.errors %}
+        <div class="field-errors">
+          {% for error in form.check_interval.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field checkbox-field">
+      {{ form.disabled }}
+      <label for="{{ form.disabled.id_for_label }}">{{ form.disabled.label }}</label>
+      {% if form.disabled.help_text %}
+        <div class="help-text">{{ form.disabled.help_text }}</div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">SMTP Server Configuration</h3>
+
+    <div class="form-field">
+      <label for="{{ form.host.id_for_label }}">{{ form.host.label }}</label>
+      {{ form.host }}
+      {% if form.host.help_text %}
+        <div class="help-text">{{ form.host.help_text }}</div>
+      {% endif %}
+      {% if form.host.errors %}
+        <div class="field-errors">
+          {% for error in form.host.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.port.id_for_label }}">{{ form.port.label }}</label>
+      {{ form.port }}
+      {% if form.port.help_text %}
+        <div class="help-text">{{ form.port.help_text }}</div>
+      {% endif %}
+      {% if form.port.errors %}
+        <div class="field-errors">
+          {% for error in form.port.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.tls_mode.id_for_label }}">{{ form.tls_mode.label }}</label>
+      {{ form.tls_mode }}
+      {% if form.tls_mode.help_text %}
+        <div class="help-text">{{ form.tls_mode.help_text }}</div>
+      {% endif %}
+      {% if form.tls_mode.errors %}
+        <div class="field-errors">
+          {% for error in form.tls_mode.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Authentication <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field">
+      <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+      {{ form.username }}
+      {% if form.username.help_text %}
+        <div class="help-text">{{ form.username.help_text }}</div>
+      {% endif %}
+      {% if form.username.errors %}
+        <div class="field-errors">
+          {% for error in form.username.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+      {{ form.password }}
+      {% if form.password.help_text %}
+        <div class="help-text">{{ form.password.help_text }}</div>
+      {% endif %}
+      {% if form.password.errors %}
+        <div class="field-errors">
+          {% for error in form.password.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Email Configuration</h3>
+
+    <div class="form-field">
+      <label for="{{ form.from_addr.id_for_label }}">{{ form.from_addr.label }}</label>
+      {{ form.from_addr }}
+      {% if form.from_addr.help_text %}
+        <div class="help-text">{{ form.from_addr.help_text }}</div>
+      {% endif %}
+      {% if form.from_addr.errors %}
+        <div class="field-errors">
+          {% for error in form.from_addr.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.to_addr.id_for_label }}">{{ form.to_addr.label }}</label>
+      {{ form.to_addr }}
+      {% if form.to_addr.help_text %}
+        <div class="help-text">{{ form.to_addr.help_text }}</div>
+      {% endif %}
+      {% if form.to_addr.errors %}
+        <div class="field-errors">
+          {% for error in form.to_addr.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.subject_prefix.id_for_label }}">{{ form.subject_prefix.label }}</label>
+      {{ form.subject_prefix }}
+      {% if form.subject_prefix.help_text %}
+        <div class="help-text">{{ form.subject_prefix.help_text }}</div>
+      {% endif %}
+      {% if form.subject_prefix.errors %}
+        <div class="field-errors">
+          {% for error in form.subject_prefix.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Advanced Options <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field">
+      <label for="{{ form.timeout.id_for_label }}">{{ form.timeout.label }}</label>
+      {{ form.timeout }}
+      {% if form.timeout.help_text %}
+        <div class="help-text">{{ form.timeout.help_text }}</div>
+      {% endif %}
+      {% if form.timeout.errors %}
+        <div class="field-errors">
+          {% for error in form.timeout.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.retries.id_for_label }}">{{ form.retries.label }}</label>
+      {{ form.retries }}
+      {% if form.retries.help_text %}
+        <div class="help-text">{{ form.retries.help_text }}</div>
+      {% endif %}
+      {% if form.retries.errors %}
+        <div class="field-errors">
+          {% for error in form.retries.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.retry_delay.id_for_label }}">{{ form.retry_delay.label }}</label>
+      {{ form.retry_delay }}
+      {% if form.retry_delay.help_text %}
+        <div class="help-text">{{ form.retry_delay.help_text }}</div>
+      {% endif %}
+      {% if form.retry_delay.errors %}
+        <div class="field-errors">
+          {% for error in form.retry_delay.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {{ form.check_type }}
+    {{ form.url }}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">{{ action }}</button>
+      <a href="{% url 'nyxboard:healthcheck_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -10,7 +10,11 @@ from .interface import CheckRunner
 from .executors import ExecutorRegistry
 from .executors.http_executor import HttpCheckExecutor
 from .executors.dns_executor import DnsCheckExecutor
-from ...domain import Check, Result, CheckType
+from .executors.json_metrics_executor import JsonMetricsExecutor
+from .executors.imap_executor import ImapCheckExecutor
+from .executors.smtp_executor import SmtpCheckExecutor
+from .executors.tcp_executor import TcpCheckExecutor
+from ...domain import Check, Result, CheckType, ResultStatus
 
 
 class AsyncCheckRunner(CheckRunner):
@@ -19,6 +23,20 @@ class AsyncCheckRunner(CheckRunner):
         self.executor_registry = ExecutorRegistry()
         # Pre-register executors for startup validation
         self._preregister_executors()
+
+    class _NotImplementedExecutor:
+        async def execute(self, check: Check):
+            return Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "not_implemented",
+                    "error_msg": f"Executor for '{check.check_type}' not implemented",
+                },
+            )
+
+        async def aclose(self) -> None:
+            return
 
     def _preregister_executors(self) -> None:
         """Pre-register executors without HTTP client for startup validation.
@@ -34,6 +52,27 @@ class AsyncCheckRunner(CheckRunner):
         # Register DNS executor
         dns_executor = DnsCheckExecutor()
         self.executor_registry.register(CheckType.DNS, dns_executor)
+
+        # Register TCP executor
+        tcp_executor = TcpCheckExecutor()
+        self.executor_registry.register(CheckType.TCP, tcp_executor)
+
+        # Register JSON metrics executor (shares HTTP client when available)
+        json_executor = JsonMetricsExecutor(None)
+        self.executor_registry.register(CheckType.JSON_METRICS, json_executor)
+
+        # Register IMAP executor
+        imap_executor = ImapCheckExecutor()
+        self.executor_registry.register(CheckType.IMAP, imap_executor)
+
+        # Register SMTP executor
+        smtp_executor = SmtpCheckExecutor()
+        self.executor_registry.register(CheckType.SMTP, smtp_executor)
+
+        # Placeholder executors
+        not_impl = self._NotImplementedExecutor()
+        self.executor_registry.register(CheckType.PING, not_impl)
+        self.executor_registry.register(CheckType.CUSTOM, not_impl)
 
     def run_all(self, checks: Iterable[Check], result_received: Callable) -> None:
         """Run all checks."""
@@ -61,7 +100,9 @@ class AsyncCheckRunner(CheckRunner):
         check_types = self._scan_check_types(checks_list)
 
         # Determine if we need an HTTP client
-        needs_http_client = bool(check_types & {CheckType.HTTP, CheckType.JSON_HTTP})
+        needs_http_client = bool(
+            check_types & {CheckType.HTTP, CheckType.JSON_HTTP, CheckType.JSON_METRICS}
+        )
 
         async with send_channel, receive_channel:
             # Only create HTTP client if needed
@@ -117,6 +158,27 @@ class AsyncCheckRunner(CheckRunner):
         # Register DNS executor
         dns_executor = DnsCheckExecutor()
         self.executor_registry.register(CheckType.DNS, dns_executor)
+
+        # Register TCP executor
+        tcp_executor = TcpCheckExecutor()
+        self.executor_registry.register(CheckType.TCP, tcp_executor)
+
+        # Register JSON metrics executor (reuse http client)
+        json_executor = JsonMetricsExecutor(http_client)
+        self.executor_registry.register(CheckType.JSON_METRICS, json_executor)
+
+        # Register IMAP executor
+        imap_executor = ImapCheckExecutor()
+        self.executor_registry.register(CheckType.IMAP, imap_executor)
+
+        # Register SMTP executor
+        smtp_executor = SmtpCheckExecutor()
+        self.executor_registry.register(CheckType.SMTP, smtp_executor)
+
+        # Placeholder executors
+        not_impl = self._NotImplementedExecutor()
+        self.executor_registry.register(CheckType.PING, not_impl)
+        self.executor_registry.register(CheckType.CUSTOM, not_impl)
 
     async def _run_one(
         self,

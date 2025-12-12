@@ -146,6 +146,432 @@ class HttpHealthCheckForm(HealthCheckForm):
         return instance
 
 
+class SmtpHealthCheckForm(HealthCheckForm):
+    """Form for SMTP health checks.
+
+    Adds SMTP-specific fields and validation.
+    Handles serialization to/from HealthCheck.data JSONField.
+    """
+
+    # SMTP-specific fields (not in model, stored in data JSONField)
+    host = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "mail.example.com"}
+        ),
+        label="SMTP Host",
+        help_text="SMTP server hostname",
+    )
+
+    port = forms.IntegerField(
+        initial=587,
+        min_value=1,
+        max_value=65535,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Port",
+        help_text="SMTP port (587 for STARTTLS, 465 for implicit TLS, 25 for plain)",
+    )
+
+    tls_mode = forms.ChoiceField(
+        choices=[
+            ("starttls", "STARTTLS (port 587)"),
+            ("implicit", "Implicit TLS (port 465)"),
+            ("none", "None (port 25)"),
+        ],
+        initial="starttls",
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="TLS Mode",
+        help_text="TLS encryption mode for the connection",
+    )
+
+    username = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "user@example.com"}
+        ),
+        label="Username",
+        help_text="SMTP authentication username (optional)",
+    )
+
+    password = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Leave blank to keep existing",
+            }
+        ),
+        label="Password",
+        help_text="SMTP authentication password (optional)",
+    )
+
+    from_addr = forms.EmailField(
+        widget=forms.EmailInput(
+            attrs={"class": "form-control", "placeholder": "monitor@example.com"}
+        ),
+        label="From Address",
+        help_text="Sender email address for test messages",
+    )
+
+    to_addr = forms.EmailField(
+        widget=forms.EmailInput(
+            attrs={"class": "form-control", "placeholder": "test@example.com"}
+        ),
+        label="To Address",
+        help_text="Recipient email address for test messages",
+    )
+
+    subject_prefix = forms.CharField(
+        max_length=100,
+        initial="[nyxmon]",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+        label="Subject Prefix",
+        help_text="Prefix for test email subjects (used by IMAP check to find messages)",
+    )
+
+    timeout = forms.FloatField(
+        initial=30.0,
+        min_value=1.0,
+        max_value=300.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Timeout (seconds)",
+        help_text="Connection timeout in seconds",
+    )
+
+    retries = forms.IntegerField(
+        initial=2,
+        min_value=0,
+        max_value=10,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Retries",
+        help_text="Number of retry attempts on failure",
+    )
+
+    retry_delay = forms.FloatField(
+        initial=5.0,
+        min_value=0.0,
+        max_value=60.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Retry Delay (seconds)",
+        help_text="Delay between retry attempts",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Force check_type to SMTP
+        self.fields["check_type"].initial = CheckType.SMTP
+        self.fields["check_type"].widget = forms.HiddenInput()
+
+        # Hide URL field; host is the source of truth
+        self.fields["url"].required = False
+        self.fields["url"].widget = forms.HiddenInput()
+        if self.instance.pk and self.instance.url:
+            self.fields["url"].initial = self.instance.url
+
+        # If editing existing SMTP check, populate fields from data
+        if self.instance.pk and self.instance.data:
+            smtp_config = self.instance.data
+            self.fields["host"].initial = smtp_config.get("host", "")
+            self.fields["port"].initial = smtp_config.get("port", 587)
+            self.fields["tls_mode"].initial = smtp_config.get("tls", "starttls")
+            self.fields["username"].initial = smtp_config.get("username", "")
+            # Don't populate password - security best practice
+            self.fields["from_addr"].initial = smtp_config.get("from_addr", "")
+            self.fields["to_addr"].initial = smtp_config.get("to_addr", "")
+            self.fields["subject_prefix"].initial = smtp_config.get(
+                "subject_prefix", "[nyxmon]"
+            )
+            self.fields["timeout"].initial = smtp_config.get("timeout", 30.0)
+            self.fields["retries"].initial = smtp_config.get("retries", 2)
+            self.fields["retry_delay"].initial = smtp_config.get("retry_delay", 5.0)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        username = cleaned_data.get("username")
+        password = cleaned_data.get("password")
+
+        # If username is provided, password is required (unless editing and keeping existing)
+        if username and not password:
+            # Check if we're editing and have existing password
+            if self.instance.pk and self.instance.data:
+                existing_password = self.instance.data.get("password")
+                if not existing_password:
+                    self.add_error(
+                        "password", "Password is required when username is provided"
+                    )
+            else:
+                self.add_error(
+                    "password", "Password is required when username is provided"
+                )
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        # Save existing data before super().save() modifies instance
+        existing_data = (
+            self.instance.data.copy() if self.instance.pk and self.instance.data else {}
+        )
+
+        instance = super().save(commit=False)
+
+        # Explicitly set check_type to prevent tampering
+        instance.check_type = CheckType.SMTP
+
+        # Build URL from host and port
+        host = self.cleaned_data["host"]
+        port = self.cleaned_data["port"]
+        instance.url = host
+
+        # Populate data JSONField from form fields
+        instance.data = {
+            "host": host,
+            "port": port,
+            "tls": self.cleaned_data["tls_mode"],
+            "from_addr": self.cleaned_data["from_addr"],
+            "to_addr": self.cleaned_data["to_addr"],
+            "subject_prefix": self.cleaned_data["subject_prefix"],
+            "timeout": self.cleaned_data["timeout"],
+            "retries": self.cleaned_data["retries"],
+            "retry_delay": self.cleaned_data["retry_delay"],
+        }
+
+        # Add optional auth fields
+        if self.cleaned_data.get("username"):
+            instance.data["username"] = self.cleaned_data["username"]
+
+        # Handle password - keep existing if not provided
+        if self.cleaned_data.get("password"):
+            instance.data["password"] = self.cleaned_data["password"]
+        elif existing_data.get("password"):
+            # Preserve existing password when editing
+            instance.data["password"] = existing_data["password"]
+
+        if commit:
+            instance.save()
+
+        return instance
+
+
+class ImapHealthCheckForm(HealthCheckForm):
+    """Form for IMAP health checks.
+
+    Adds IMAP-specific fields and validation.
+    Handles serialization to/from HealthCheck.data JSONField.
+    """
+
+    # IMAP-specific fields (not in model, stored in data JSONField)
+    host = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "mail.example.com"}
+        ),
+        label="IMAP Host",
+        help_text="IMAP server hostname (uses url field for display)",
+    )
+
+    port = forms.IntegerField(
+        initial=993,
+        min_value=1,
+        max_value=65535,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Port",
+        help_text="IMAP port (993 for implicit TLS, 143 for STARTTLS/plain)",
+    )
+
+    tls_mode = forms.ChoiceField(
+        choices=[
+            ("implicit", "Implicit TLS (port 993)"),
+            ("starttls", "STARTTLS (port 143)"),
+            ("none", "None (port 143)"),
+        ],
+        initial="implicit",
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="TLS Mode",
+        help_text="TLS encryption mode for the connection",
+    )
+
+    username = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "user@example.com"}
+        ),
+        label="Username",
+        help_text="IMAP login username",
+    )
+
+    password = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Leave blank to keep existing",
+            }
+        ),
+        label="Password",
+        help_text="IMAP login password",
+    )
+
+    folder = forms.CharField(
+        max_length=255,
+        initial="INBOX",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+        label="Folder",
+        help_text="IMAP folder to search for test messages",
+    )
+
+    search_subject = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "[nyxmon]"}
+        ),
+        label="Search Subject",
+        help_text="Subject pattern to search for (should match SMTP subject prefix)",
+    )
+
+    max_age_minutes = forms.IntegerField(
+        initial=30,
+        min_value=1,
+        max_value=1440,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Max Age (minutes)",
+        help_text="Maximum age of messages to consider valid",
+    )
+
+    delete_after_check = forms.BooleanField(
+        initial=True,
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        label="Delete After Check",
+        help_text="Delete matched messages after successful check",
+    )
+
+    timeout = forms.FloatField(
+        initial=30.0,
+        min_value=1.0,
+        max_value=300.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Timeout (seconds)",
+        help_text="Connection timeout in seconds",
+    )
+
+    retries = forms.IntegerField(
+        initial=2,
+        min_value=0,
+        max_value=10,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Retries",
+        help_text="Number of retry attempts on failure",
+    )
+
+    retry_delay = forms.FloatField(
+        initial=10.0,
+        min_value=0.0,
+        max_value=60.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Retry Delay (seconds)",
+        help_text="Delay between retry attempts",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Force check_type to IMAP
+        self.fields["check_type"].initial = CheckType.IMAP
+        self.fields["check_type"].widget = forms.HiddenInput()
+
+        # Hide URL field - IMAP host/port is the source of truth
+        self.fields["url"].required = False
+        self.fields["url"].widget = forms.HiddenInput()
+        if self.instance.pk and self.instance.url:
+            self.fields["url"].initial = self.instance.url
+
+        # If editing existing IMAP check, populate fields from data
+        if self.instance.pk and self.instance.data:
+            imap_config = self.instance.data
+            # Host comes from url field parsing or direct storage
+            if "host" in imap_config:
+                self.fields["host"].initial = imap_config.get("host", "")
+            self.fields["port"].initial = imap_config.get("port", 993)
+            self.fields["tls_mode"].initial = imap_config.get("tls_mode", "implicit")
+            self.fields["username"].initial = imap_config.get("username", "")
+            # Don't populate password - security best practice
+            self.fields["folder"].initial = imap_config.get("folder", "INBOX")
+            self.fields["search_subject"].initial = imap_config.get(
+                "search_subject", ""
+            )
+            self.fields["max_age_minutes"].initial = imap_config.get(
+                "max_age_minutes", 30
+            )
+            self.fields["delete_after_check"].initial = imap_config.get(
+                "delete_after_check", True
+            )
+            self.fields["timeout"].initial = imap_config.get("timeout", 30.0)
+            self.fields["retries"].initial = imap_config.get("retries", 2)
+            self.fields["retry_delay"].initial = imap_config.get("retry_delay", 10.0)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+
+        # Password is required for IMAP (unless editing and keeping existing)
+        if not password:
+            if self.instance.pk and self.instance.data:
+                existing_password = self.instance.data.get("password")
+                if not existing_password:
+                    self.add_error("password", "Password is required")
+            else:
+                self.add_error("password", "Password is required")
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        # Save existing data before super().save() modifies instance
+        existing_data = (
+            self.instance.data.copy() if self.instance.pk and self.instance.data else {}
+        )
+
+        instance = super().save(commit=False)
+
+        # Explicitly set check_type to prevent tampering
+        instance.check_type = CheckType.IMAP
+
+        # Build URL from host and port
+        host = self.cleaned_data["host"]
+        port = self.cleaned_data["port"]
+        instance.url = host
+
+        # Populate data JSONField from form fields
+        instance.data = {
+            "host": host,
+            "port": port,
+            "tls_mode": self.cleaned_data["tls_mode"],
+            "username": self.cleaned_data["username"],
+            "folder": self.cleaned_data["folder"],
+            "search_subject": self.cleaned_data["search_subject"],
+            "max_age_minutes": self.cleaned_data["max_age_minutes"],
+            "delete_after_check": self.cleaned_data["delete_after_check"],
+            "timeout": self.cleaned_data["timeout"],
+            "retries": self.cleaned_data["retries"],
+            "retry_delay": self.cleaned_data["retry_delay"],
+        }
+
+        # Handle password - keep existing if not provided
+        if self.cleaned_data.get("password"):
+            instance.data["password"] = self.cleaned_data["password"]
+        elif existing_data.get("password"):
+            # Preserve existing password when editing
+            instance.data["password"] = existing_data["password"]
+
+        if commit:
+            instance.save()
+
+        return instance
+
+
 class DnsHealthCheckForm(HealthCheckForm):
     """Form for DNS health checks.
 

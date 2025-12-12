@@ -32,13 +32,16 @@ installation
 usage
 configuration
 dns-check-examples
+smtp-checks
+imap-checks
+json-metrics-check-examples
 ```
 
 ```{toctree}
 :maxdepth: 2
 :caption: Architecture
 
-architecture
+Architecture
 async-check-runner
 concurrency-overview
 ```
@@ -53,5 +56,5 @@ api
 ## Additional Resources
 
 - Source code: <https://github.com/ephes/nyxmon>
-- {doc}`Architecture Overview <architecture>` - detailed system design and component documentation
+- {doc}`Architecture Overview <Architecture>` - detailed system design and component documentation
 - {doc}`Async Check Runner <async-check-runner>` - detailed walkthrough of the asynchronous runner implementation

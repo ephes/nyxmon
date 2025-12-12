@@ -38,6 +38,12 @@
             <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=dns">
                 🔍 DNS Check
             </a>
+            <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=smtp">
+                📧 SMTP Check
+            </a>
+            <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=imap">
+                📬 IMAP Check
+            </a>
         </div>
     </details>
 </div>
@@ -84,6 +90,12 @@
                 </a>
                 <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=dns">
                     🔍 DNS Check
+                </a>
+                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=smtp">
+                    📧 SMTP Check
+                </a>
+                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=imap">
+                    📬 IMAP Check
                 </a>
             </div>
         </details>

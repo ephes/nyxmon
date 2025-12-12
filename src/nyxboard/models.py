@@ -47,6 +47,9 @@ class HealthCheck(models.Model):
         (CheckType.TCP, "TCP"),
         (CheckType.PING, "Ping"),
         (CheckType.DNS, "DNS"),
+        (CheckType.SMTP, "SMTP"),
+        (CheckType.IMAP, "IMAP"),
+        (CheckType.JSON_METRICS, "JSON Metrics"),
         (CheckType.CUSTOM, "Custom"),
     ]
 

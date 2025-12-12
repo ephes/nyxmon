@@ -43,17 +43,99 @@ The built-in HTTP executor issues a `GET` request and treats any non-error statu
 
 Additional response validation (JSON assertions, headers, etc.) is planned.
 
-### JSON-HTTP Checks *(planned)*
+### TCP Checks
 
-> **Not yet implemented:** A JSON-aware executor will validate JSON payloads (status codes, body fields) separately from plain HTTP checks.
+The TCP executor validates that a port is reachable and, optionally, that TLS negotiation works and certificates are not close to expiry:
+
+```python
+{
+    "type": "tcp",
+    "url": "smtp.home.wersdoerfer.de",
+    "port": 587,
+    "tls_mode": "starttls",           # "none", "implicit", or "starttls"
+    "connect_timeout": 10,
+    "tls_handshake_timeout": 10,
+    "retries": 1,                     # retry transient socket or TLS failures
+    "check_cert_expiry": true,        # optional certificate age check
+    "min_cert_days": 14,              # warning if below this threshold
+    "verify": true,                   # set false to skip certificate validation (e.g., self-signed tests)
+    "starttls_command": "STARTTLS\r\n"  # override if a different upgrade command is required
+}
+```
+
+If certificate expiry falls below `min_cert_days`, the executor returns an error result with `error_type="cert_expiry"` and `severity="warning"` in the payload.
+
+### SMTP Checks
+
+Sends an authenticated message (typically for outbound flow checks):
+
+```python
+{
+    "type": "smtp",
+    "url": "smtp.home.wersdoerfer.de",   # host
+    "port": 587,
+    "tls": "starttls",                   # "none", "starttls", "implicit"
+    "username": "monitor@xn--wersdrfer-47a.de",
+    "password_secret": "nyxmon_local_monitor_password",  # or password
+    "from_addr": "monitor@xn--wersdrfer-47a.de",
+    "to_addr": "wersdoerfer.mailmon@gmail.com",
+    "subject_prefix": "[nyxmon-outbound]",
+    "timeout": 30,
+    "retries": 2,
+    "retry_delay": 5
+}
+```
+
+Returns `error_type` on auth failures, 4xx/5xx responses, or timeouts; includes attempts count for retry visibility.
+
+### IMAP Checks
+
+Searches a mailbox for recent messages by subject and optionally deletes them:
+
+```python
+{
+    "type": "imap",
+    "url": "imap.gmail.com",             # host
+    "port": 993,
+    "tls_mode": "implicit",             # "implicit", "starttls", "none"
+    "username": "wersdoerfer.mailmon@gmail.com",
+    "password_secret": "nyxmon_gmail_app_password",  # or password
+    "folder": "INBOX",
+    "search_subject": "[nyxmon-outbound]",
+    "max_age_minutes": 30,
+    "delete_after_check": true,
+    "timeout": 30,
+    "retries": 2,
+    "retry_delay": 10
+}
+```
+
+On success returns `matched_uids` and `latest_internaldate`; failures include `error_type` such as `no_recent_message`, `timeout`, or `execution_error`.
+
+### JSON Metrics Checks
+
+Fetches a JSON endpoint (e.g., `/.well-known/health`) and evaluates threshold rules:
+
+```python
+{
+    "type": "json-metrics",
+    "url": "http://macmini.tailde2ec.ts.net:9100/.well-known/health",
+    "auth": {"username": "nyxmon", "password": "secret"},  # optional basic auth
+    "timeout": 10,
+    "retries": 1,
+    "retry_delay": 2,
+    "checks": [
+        {"path": "$.mail.queue_total", "op": "<", "value": 100, "severity": "warning"},
+        {"path": "$.services.postfix", "op": "==", "value": "active", "severity": "critical"}
+    ]
+}
+```
+
+Supports operators `<`, `<=`, `>`, `>=`, `==`, `!=`; severities `warning`/`critical`; simple path resolver `$.field.subfield` or `$.items.0.value`. Failures return `error_type="threshold_failed"` with all failing rules.
 
 ### Ping Checks *(planned)*
 
 > **Not yet implemented:** Future work will add ICMP reachability checks.
-
-### Metric Checks *(planned)*
-
-> **Not yet implemented:** Planned support for asserting numeric metrics fall within configured bounds.
 
 ### DNS Checks
 
