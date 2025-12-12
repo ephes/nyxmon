@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} TCP Health Check - Nyxmon Dashboard{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <div class="form-header">
+    <h2>{{ action }} TCP Health Check</h2>
+    <a href="{% url 'nyxboard:healthcheck_list' %}" class="back-link">&larr; Back</a>
+  </div>
+
+  <p class="help-text">Monitor raw TCP connectivity with optional TLS and certificate expiry</p>
+
+  {% if warnings %}
+    <div class="field-warnings">
+      {% for warning in warnings %}
+        <div class="help-text"><strong>Note:</strong> {{ warning }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" class="form">
+    {% csrf_token %}
+
+    <h3 class="section-title">Basic Information</h3>
+
+    <div class="form-field">
+      <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+      {{ form.name }}
+      {% if form.name.help_text %}<div class="help-text">{{ form.name.help_text }}</div>{% endif %}
+      {% if form.name.errors %}
+        <div class="field-errors">{% for error in form.name.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.service.id_for_label }}">{{ form.service.label }}</label>
+      {{ form.service }}
+      {% if form.service.errors %}
+        <div class="field-errors">{% for error in form.service.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.check_interval.id_for_label }}">{{ form.check_interval.label }}</label>
+      {{ form.check_interval }}
+      {% if form.check_interval.help_text %}<div class="help-text">{{ form.check_interval.help_text }}</div>{% endif %}
+      {% if form.check_interval.errors %}
+        <div class="field-errors">{% for error in form.check_interval.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field checkbox-field">
+      {{ form.disabled }}
+      <label for="{{ form.disabled.id_for_label }}">{{ form.disabled.label }}</label>
+      {% if form.disabled.help_text %}<div class="help-text">{{ form.disabled.help_text }}</div>{% endif %}
+    </div>
+
+    <h3 class="section-title">Connection</h3>
+
+    <div class="form-field">
+      <label for="{{ form.host.id_for_label }}">{{ form.host.label }}</label>
+      {{ form.host }}
+      {% if form.host.help_text %}<div class="help-text">{{ form.host.help_text }}</div>{% endif %}
+      {% if form.host.errors %}
+        <div class="field-errors">{% for error in form.host.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.port.id_for_label }}">{{ form.port.label }}</label>
+      {{ form.port }}
+      {% if form.port.help_text %}<div class="help-text">{{ form.port.help_text }}</div>{% endif %}
+      {% if form.port.errors %}
+        <div class="field-errors">{% for error in form.port.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.tls_mode.id_for_label }}">{{ form.tls_mode.label }}</label>
+      {{ form.tls_mode }}
+      {% if form.tls_mode.help_text %}<div class="help-text">{{ form.tls_mode.help_text }}</div>{% endif %}
+      {% if form.tls_mode.errors %}
+        <div class="field-errors">{% for error in form.tls_mode.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">TLS Options <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field checkbox-field">
+      {{ form.check_cert_expiry }}
+      <label for="{{ form.check_cert_expiry.id_for_label }}">{{ form.check_cert_expiry.label }}</label>
+      {% if form.check_cert_expiry.help_text %}<div class="help-text">{{ form.check_cert_expiry.help_text }}</div>{% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.min_cert_days.id_for_label }}">{{ form.min_cert_days.label }}</label>
+      {{ form.min_cert_days }}
+      {% if form.min_cert_days.help_text %}<div class="help-text">{{ form.min_cert_days.help_text }}</div>{% endif %}
+      {% if form.min_cert_days.errors %}
+        <div class="field-errors">{% for error in form.min_cert_days.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.sni.id_for_label }}">{{ form.sni.label }}</label>
+      {{ form.sni }}
+      {% if form.sni.help_text %}<div class="help-text">{{ form.sni.help_text }}</div>{% endif %}
+      {% if form.sni.errors %}
+        <div class="field-errors">{% for error in form.sni.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field checkbox-field">
+      {{ form.verify }}
+      <label for="{{ form.verify.id_for_label }}">{{ form.verify.label }}</label>
+      {% if form.verify.help_text %}<div class="help-text">{{ form.verify.help_text }}</div>{% endif %}
+    </div>
+
+    <h3 class="section-title">Advanced Options <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field">
+      <label for="{{ form.connect_timeout.id_for_label }}">{{ form.connect_timeout.label }}</label>
+      {{ form.connect_timeout }}
+      {% if form.connect_timeout.help_text %}<div class="help-text">{{ form.connect_timeout.help_text }}</div>{% endif %}
+      {% if form.connect_timeout.errors %}
+        <div class="field-errors">{% for error in form.connect_timeout.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.tls_handshake_timeout.id_for_label }}">{{ form.tls_handshake_timeout.label }}</label>
+      {{ form.tls_handshake_timeout }}
+      {% if form.tls_handshake_timeout.help_text %}<div class="help-text">{{ form.tls_handshake_timeout.help_text }}</div>{% endif %}
+      {% if form.tls_handshake_timeout.errors %}
+        <div class="field-errors">{% for error in form.tls_handshake_timeout.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.retries.id_for_label }}">{{ form.retries.label }}</label>
+      {{ form.retries }}
+      {% if form.retries.help_text %}<div class="help-text">{{ form.retries.help_text }}</div>{% endif %}
+      {% if form.retries.errors %}
+        <div class="field-errors">{% for error in form.retries.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.retry_delay.id_for_label }}">{{ form.retry_delay.label }}</label>
+      {{ form.retry_delay }}
+      {% if form.retry_delay.help_text %}<div class="help-text">{{ form.retry_delay.help_text }}</div>{% endif %}
+      {% if form.retry_delay.errors %}
+        <div class="field-errors">{% for error in form.retry_delay.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    {{ form.check_type }}
+    {{ form.url }}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">{{ action }}</button>
+      <a href="{% url 'nyxboard:healthcheck_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -7,6 +7,7 @@ from nyxboard.forms import (
     DnsHealthCheckForm,
     SmtpHealthCheckForm,
     ImapHealthCheckForm,
+    TcpHealthCheckForm,
     GenericHealthCheckForm,
 )
 from nyxboard.models import Service, HealthCheck
@@ -1013,3 +1014,58 @@ class TestGenericHealthCheckForm:
 
         # New checks should have empty data dict (model default)
         assert instance.data == {}
+
+
+class TestTcpHealthCheckForm:
+    """Tests for TcpHealthCheckForm warnings and serialization."""
+
+    def test_starttls_is_valid_but_warns(self, service):
+        form = TcpHealthCheckForm(
+            data={
+                "name": "SMTP STARTTLS probe",
+                "service": service.id,
+                "check_type": CheckType.TCP,
+                "check_interval": 300,
+                "disabled": False,
+                "host": "mail.example.com",
+                "port": 587,
+                "tls_mode": "starttls",
+                "connect_timeout": 10.0,
+                "tls_handshake_timeout": 10.0,
+                "retries": 1,
+                "retry_delay": 0.0,
+                "check_cert_expiry": True,
+                "min_cert_days": 14,
+                "sni": "",
+                "verify": True,
+            }
+        )
+        assert form.is_valid(), form.errors
+        assert hasattr(form, "warnings")
+        assert any("STARTTLS is a generic probe" in w for w in form.warnings)
+        assert any("Port 587 typically expects" in w for w in form.warnings)
+
+    def test_none_tls_disables_cert_expiry(self, service):
+        form = TcpHealthCheckForm(
+            data={
+                "name": "Plain TCP",
+                "service": service.id,
+                "check_type": CheckType.TCP,
+                "check_interval": 300,
+                "disabled": False,
+                "host": "example.com",
+                "port": 25,
+                "tls_mode": "none",
+                "connect_timeout": 10.0,
+                "tls_handshake_timeout": 10.0,
+                "retries": 0,
+                "retry_delay": 0.0,
+                "check_cert_expiry": True,  # should be cleared
+                "min_cert_days": 14,
+                "sni": "",
+                "verify": True,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.data["check_cert_expiry"] is False

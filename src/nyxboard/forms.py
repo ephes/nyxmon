@@ -572,6 +572,204 @@ class ImapHealthCheckForm(HealthCheckForm):
         return instance
 
 
+class TcpHealthCheckForm(HealthCheckForm):
+    """Form for TCP health checks.
+
+    Adds TCP-specific fields and validation.
+    Handles serialization to/from HealthCheck.data JSONField.
+    """
+
+    host = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "mail.example.com"}
+        ),
+        label="Host",
+        help_text="Hostname or IP address to connect to",
+    )
+
+    port = forms.IntegerField(
+        initial=443,
+        min_value=1,
+        max_value=65535,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Port",
+        help_text="TCP port to connect to",
+    )
+
+    tls_mode = forms.ChoiceField(
+        choices=[
+            ("none", "None"),
+            ("implicit", "Implicit TLS"),
+            ("starttls", "STARTTLS"),
+        ],
+        initial="none",
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="TLS Mode",
+        help_text="TLS negotiation mode; use STARTTLS for ports like 25/587",
+    )
+
+    connect_timeout = forms.FloatField(
+        initial=10.0,
+        min_value=1.0,
+        max_value=60.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Connect Timeout (seconds)",
+        help_text="Timeout for establishing the TCP connection",
+    )
+
+    tls_handshake_timeout = forms.FloatField(
+        initial=10.0,
+        min_value=1.0,
+        max_value=60.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="TLS Handshake Timeout (seconds)",
+        help_text="Timeout for TLS negotiation (when TLS is enabled)",
+    )
+
+    retries = forms.IntegerField(
+        initial=1,
+        min_value=0,
+        max_value=10,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Retries",
+        help_text="Number of retry attempts on failure",
+    )
+
+    retry_delay = forms.FloatField(
+        initial=0.0,
+        min_value=0.0,
+        max_value=60.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Retry Delay (seconds)",
+        help_text="Delay between retry attempts",
+    )
+
+    check_cert_expiry = forms.BooleanField(
+        initial=False,
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        label="Check Certificate Expiry",
+        help_text="Validate TLS certificate expiry (TLS only)",
+    )
+
+    min_cert_days = forms.IntegerField(
+        initial=14,
+        min_value=0,
+        max_value=365,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Min Certificate Days",
+        help_text="Fail when certificate expires sooner than this",
+    )
+
+    sni = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "mail.example.com"}
+        ),
+        label="SNI Hostname",
+        help_text="Optional SNI override for TLS connections",
+    )
+
+    verify = forms.BooleanField(
+        initial=True,
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        label="Verify TLS Certificates",
+        help_text="Disable only for debugging",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Force check_type to TCP
+        self.fields["check_type"].initial = CheckType.TCP
+        self.fields["check_type"].widget = forms.HiddenInput()
+
+        # Hide URL field; host is the source of truth
+        self.fields["url"].required = False
+        self.fields["url"].widget = forms.HiddenInput()
+        if self.instance.pk and self.instance.url:
+            self.fields["url"].initial = self.instance.url
+
+        if self.instance.pk and self.instance.data:
+            tcp_config = self.instance.data
+            self.fields["host"].initial = tcp_config.get("host") or self.instance.url
+            self.fields["port"].initial = tcp_config.get("port", 443)
+            self.fields["tls_mode"].initial = tcp_config.get("tls_mode", "none")
+            self.fields["connect_timeout"].initial = tcp_config.get(
+                "connect_timeout", 10.0
+            )
+            self.fields["tls_handshake_timeout"].initial = tcp_config.get(
+                "tls_handshake_timeout", 10.0
+            )
+            self.fields["retries"].initial = tcp_config.get("retries", 1)
+            self.fields["retry_delay"].initial = tcp_config.get("retry_delay", 0.0)
+            self.fields["check_cert_expiry"].initial = tcp_config.get(
+                "check_cert_expiry", False
+            )
+            self.fields["min_cert_days"].initial = tcp_config.get("min_cert_days", 14)
+            self.fields["sni"].initial = tcp_config.get("sni", "")
+            self.fields["verify"].initial = tcp_config.get("verify", True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        self.warnings: list[str] = []
+
+        tls_mode = cleaned_data.get("tls_mode")
+        port = cleaned_data.get("port")
+
+        if tls_mode == "none":
+            cleaned_data["check_cert_expiry"] = False
+
+        if tls_mode == "starttls":
+            self.warnings.append(
+                "TCP STARTTLS is a generic probe that sends STARTTLS immediately. "
+                "SMTP/IMAP servers usually require an EHLO/LOGIN exchange first. "
+                "Use SMTP/IMAP checks for protocol validation, or TLS=None for reachability."
+            )
+            if port in {25, 587, 143}:
+                self.warnings.append(
+                    f"Port {port} typically expects full SMTP/IMAP STARTTLS negotiation; "
+                    "this TCP check will likely fail even if the service is healthy."
+                )
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.check_type = CheckType.TCP
+
+        host = self.cleaned_data["host"]
+        instance.url = host
+
+        data = {
+            "host": host,
+            "port": self.cleaned_data["port"],
+            "tls_mode": self.cleaned_data["tls_mode"],
+            "connect_timeout": self.cleaned_data["connect_timeout"],
+            "tls_handshake_timeout": self.cleaned_data["tls_handshake_timeout"],
+            "retries": self.cleaned_data["retries"],
+            "retry_delay": self.cleaned_data["retry_delay"],
+            "check_cert_expiry": self.cleaned_data["check_cert_expiry"],
+            "min_cert_days": self.cleaned_data["min_cert_days"],
+            "verify": self.cleaned_data["verify"],
+        }
+
+        if self.cleaned_data["tls_mode"] == "starttls":
+            data["starttls_command"] = "STARTTLS\r\n"
+
+        if self.cleaned_data.get("sni"):
+            data["sni"] = self.cleaned_data["sni"]
+
+        instance.data = data
+
+        if commit:
+            instance.save()
+        return instance
+
+
 class DnsHealthCheckForm(HealthCheckForm):
     """Form for DNS health checks.
 

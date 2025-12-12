@@ -11,6 +11,7 @@ from .forms import (
     DnsHealthCheckForm,
     SmtpHealthCheckForm,
     ImapHealthCheckForm,
+    TcpHealthCheckForm,
     GenericHealthCheckForm,
 )
 from nyxmon.domain import CheckStatus, CheckType
@@ -20,6 +21,7 @@ FORM_CLASSES = {
     CheckType.HTTP: HttpHealthCheckForm,
     CheckType.JSON_HTTP: HttpHealthCheckForm,  # Reuse for now
     CheckType.DNS: DnsHealthCheckForm,
+    CheckType.TCP: TcpHealthCheckForm,
     CheckType.SMTP: SmtpHealthCheckForm,
     CheckType.IMAP: ImapHealthCheckForm,
 }
@@ -219,6 +221,7 @@ def healthcheck_create(request, service_id=None):
         CheckType.HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
+        CheckType.TCP: "nyxboard/healthcheck_form_tcp.html",
         CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
         CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
     }
@@ -232,6 +235,7 @@ def healthcheck_create(request, service_id=None):
             "service": service,
             "action": "Create",
             "check_type": check_type,
+            "warnings": getattr(form, "warnings", []),
         },
     )
 
@@ -280,6 +284,7 @@ def healthcheck_update(request, check_id):
         CheckType.HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
+        CheckType.TCP: "nyxboard/healthcheck_form_tcp.html",
         CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
         CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
     }
@@ -295,6 +300,7 @@ def healthcheck_update(request, check_id):
             "health_check": health_check,
             "action": "Update",
             "check_type": health_check.check_type,
+            "warnings": getattr(form, "warnings", []),
         },
     )
 
