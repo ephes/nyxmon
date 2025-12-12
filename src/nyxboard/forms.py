@@ -2,6 +2,7 @@ from typing import Any
 
 from django import forms
 from django.core.validators import URLValidator
+import json
 
 from .models import Service, HealthCheck
 from nyxmon.domain import CheckType
@@ -764,6 +765,173 @@ class TcpHealthCheckForm(HealthCheckForm):
 
         if self.cleaned_data.get("sni"):
             data["sni"] = self.cleaned_data["sni"]
+
+        instance.data = data
+
+        if commit:
+            instance.save()
+        return instance
+
+
+class JsonMetricsHealthCheckForm(HealthCheckForm):
+    """Form for JSON metrics health checks.
+
+    Stores configuration in HealthCheck.data JSONField.
+    """
+
+    url = forms.CharField(
+        max_length=512,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "http://host:9100/.well-known/health",
+            }
+        ),
+        label="URL",
+        help_text="JSON health endpoint URL",
+    )
+
+    auth_username = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "nyxmon"}),
+        label="Auth Username",
+        help_text="Optional HTTP Basic Auth username",
+    )
+
+    auth_password = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={"class": "form-control", "placeholder": "Leave blank to keep existing"}
+        ),
+        label="Auth Password",
+        help_text="Optional HTTP Basic Auth password",
+    )
+
+    timeout = forms.FloatField(
+        initial=10.0,
+        min_value=1.0,
+        max_value=120.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Timeout (seconds)",
+        help_text="HTTP request timeout in seconds",
+    )
+
+    retries = forms.IntegerField(
+        initial=1,
+        min_value=0,
+        max_value=10,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Retries",
+        help_text="Number of retry attempts on failure",
+    )
+
+    retry_delay = forms.FloatField(
+        initial=2.0,
+        min_value=0.0,
+        max_value=60.0,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        label="Retry Delay (seconds)",
+        help_text="Delay between retry attempts",
+    )
+
+    checks_json = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 8,
+                "placeholder": """[
+  {"path": "$.mail.queue_total", "op": "<", "value": 100, "severity": "warning"},
+  {"path": "$.mail.queue_total", "op": "<", "value": 500, "severity": "critical"}
+]""",
+            }
+        ),
+        label="Checks (JSON)",
+        help_text="JSON array of threshold checks (path/op/value/severity).",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Force check_type to JSON_METRICS
+        self.fields["check_type"].initial = CheckType.JSON_METRICS
+        self.fields["check_type"].widget = forms.HiddenInput()
+
+        if self.instance.pk and self.instance.data:
+            cfg = self.instance.data
+            self.fields["url"].initial = cfg.get("url", self.instance.url)
+            auth = cfg.get("auth") or {}
+            self.fields["auth_username"].initial = auth.get("username", "")
+            # Don't populate password (keep existing)
+            self.fields["timeout"].initial = cfg.get("timeout", 10.0)
+            self.fields["retries"].initial = cfg.get("retries", 1)
+            self.fields["retry_delay"].initial = cfg.get("retry_delay", 2.0)
+            checks = cfg.get("checks", [])
+            try:
+                self.fields["checks_json"].initial = json.dumps(checks, indent=2)
+            except Exception:
+                self.fields["checks_json"].initial = "[]"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        self.warnings: list[str] = []
+
+        raw_checks = cleaned_data.get("checks_json", "")
+        try:
+            checks = json.loads(raw_checks)
+        except Exception as exc:
+            self.add_error("checks_json", f"Invalid JSON: {exc}")
+            return cleaned_data
+
+        if not isinstance(checks, list):
+            self.add_error("checks_json", "Checks must be a JSON array")
+            return cleaned_data
+
+        cleaned_data["_checks"] = checks
+
+        username = cleaned_data.get("auth_username") or ""
+        password = cleaned_data.get("auth_password") or ""
+        if bool(username) != bool(password):
+            if self.instance.pk and self.instance.data and username and not password:
+                # allow "username set, keep existing password" on edit
+                pass
+            else:
+                self.add_error(
+                    "auth_password",
+                    "Provide both username and password for Basic Auth",
+                )
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        existing_data = (
+            self.instance.data.copy() if self.instance.pk and self.instance.data else {}
+        )
+        instance = super().save(commit=False)
+        instance.check_type = CheckType.JSON_METRICS
+
+        url = self.cleaned_data["url"]
+        instance.url = url
+
+        data = {
+            "url": url,
+            "timeout": self.cleaned_data["timeout"],
+            "retries": self.cleaned_data["retries"],
+            "retry_delay": self.cleaned_data["retry_delay"],
+            "checks": self.cleaned_data.get("_checks", []),
+        }
+
+        username = self.cleaned_data.get("auth_username") or ""
+        password = self.cleaned_data.get("auth_password") or ""
+        if username:
+            data["auth"] = {"username": username}
+            if password:
+                data["auth"]["password"] = password
+            else:
+                existing_auth = (existing_data.get("auth") or {}) if existing_data else {}
+                if existing_auth.get("username") == username and existing_auth.get("password"):
+                    data["auth"]["password"] = existing_auth["password"]
 
         instance.data = data
 

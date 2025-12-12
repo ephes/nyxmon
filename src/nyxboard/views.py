@@ -12,6 +12,7 @@ from .forms import (
     SmtpHealthCheckForm,
     ImapHealthCheckForm,
     TcpHealthCheckForm,
+    JsonMetricsHealthCheckForm,
     GenericHealthCheckForm,
 )
 from nyxmon.domain import CheckStatus, CheckType
@@ -24,6 +25,7 @@ FORM_CLASSES = {
     CheckType.TCP: TcpHealthCheckForm,
     CheckType.SMTP: SmtpHealthCheckForm,
     CheckType.IMAP: ImapHealthCheckForm,
+    CheckType.JSON_METRICS: JsonMetricsHealthCheckForm,
 }
 
 
@@ -224,6 +226,7 @@ def healthcheck_create(request, service_id=None):
         CheckType.TCP: "nyxboard/healthcheck_form_tcp.html",
         CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
         CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
+        CheckType.JSON_METRICS: "nyxboard/healthcheck_form_json_metrics.html",
     }
     template_name = template_map.get(check_type, "nyxboard/healthcheck_form.html")
 
@@ -287,6 +290,7 @@ def healthcheck_update(request, check_id):
         CheckType.TCP: "nyxboard/healthcheck_form_tcp.html",
         CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
         CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
+        CheckType.JSON_METRICS: "nyxboard/healthcheck_form_json_metrics.html",
     }
     template_name = template_map.get(
         health_check.check_type, "nyxboard/healthcheck_form.html"

@@ -35,6 +35,9 @@
             <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=json-http">
                 📋 JSON HTTP Check
             </a>
+            <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=json-metrics">
+                📈 JSON Metrics Check
+            </a>
             <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=tcp">
                 🔌 TCP Check
             </a>
@@ -90,6 +93,9 @@
                 </a>
                 <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=json-http">
                     📋 JSON HTTP Check
+                </a>
+                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=json-metrics">
+                    📈 JSON Metrics Check
                 </a>
                 <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=tcp">
                     🔌 TCP Check

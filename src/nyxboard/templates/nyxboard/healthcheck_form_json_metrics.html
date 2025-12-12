@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} JSON Metrics Check - Nyxmon Dashboard{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <div class="form-header">
+    <h2>{{ action }} JSON Metrics Check</h2>
+    <a href="{% url 'nyxboard:healthcheck_list' %}" class="back-link">&larr; Back</a>
+  </div>
+
+  <p class="help-text">Fetch a JSON endpoint and evaluate threshold rules</p>
+
+  {% if warnings %}
+    <div class="field-warnings">
+      {% for warning in warnings %}
+        <div class="help-text"><strong>Note:</strong> {{ warning }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" class="form">
+    {% csrf_token %}
+
+    <h3 class="section-title">Basic Information</h3>
+
+    <div class="form-field">
+      <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+      {{ form.name }}
+      {% if form.name.help_text %}<div class="help-text">{{ form.name.help_text }}</div>{% endif %}
+      {% if form.name.errors %}
+        <div class="field-errors">{% for error in form.name.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.service.id_for_label }}">{{ form.service.label }}</label>
+      {{ form.service }}
+      {% if form.service.errors %}
+        <div class="field-errors">{% for error in form.service.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.check_interval.id_for_label }}">{{ form.check_interval.label }}</label>
+      {{ form.check_interval }}
+      {% if form.check_interval.help_text %}<div class="help-text">{{ form.check_interval.help_text }}</div>{% endif %}
+      {% if form.check_interval.errors %}
+        <div class="field-errors">{% for error in form.check_interval.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field checkbox-field">
+      {{ form.disabled }}
+      <label for="{{ form.disabled.id_for_label }}">{{ form.disabled.label }}</label>
+      {% if form.disabled.help_text %}<div class="help-text">{{ form.disabled.help_text }}</div>{% endif %}
+    </div>
+
+    <h3 class="section-title">Endpoint</h3>
+
+    <div class="form-field">
+      <label for="{{ form.url.id_for_label }}">{{ form.url.label }}</label>
+      {{ form.url }}
+      {% if form.url.help_text %}<div class="help-text">{{ form.url.help_text }}</div>{% endif %}
+      {% if form.url.errors %}
+        <div class="field-errors">{% for error in form.url.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Authentication <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field">
+      <label for="{{ form.auth_username.id_for_label }}">{{ form.auth_username.label }}</label>
+      {{ form.auth_username }}
+      {% if form.auth_username.help_text %}<div class="help-text">{{ form.auth_username.help_text }}</div>{% endif %}
+      {% if form.auth_username.errors %}
+        <div class="field-errors">{% for error in form.auth_username.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.auth_password.id_for_label }}">{{ form.auth_password.label }}</label>
+      {{ form.auth_password }}
+      {% if form.auth_password.help_text %}<div class="help-text">{{ form.auth_password.help_text }}</div>{% endif %}
+      {% if form.auth_password.errors %}
+        <div class="field-errors">{% for error in form.auth_password.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Rules</h3>
+
+    <div class="form-field">
+      <label for="{{ form.checks_json.id_for_label }}">{{ form.checks_json.label }}</label>
+      {{ form.checks_json }}
+      {% if form.checks_json.help_text %}<div class="help-text">{{ form.checks_json.help_text }}</div>{% endif %}
+      {% if form.checks_json.errors %}
+        <div class="field-errors">{% for error in form.checks_json.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Advanced Options <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field">
+      <label for="{{ form.timeout.id_for_label }}">{{ form.timeout.label }}</label>
+      {{ form.timeout }}
+      {% if form.timeout.help_text %}<div class="help-text">{{ form.timeout.help_text }}</div>{% endif %}
+      {% if form.timeout.errors %}
+        <div class="field-errors">{% for error in form.timeout.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.retries.id_for_label }}">{{ form.retries.label }}</label>
+      {{ form.retries }}
+      {% if form.retries.help_text %}<div class="help-text">{{ form.retries.help_text }}</div>{% endif %}
+      {% if form.retries.errors %}
+        <div class="field-errors">{% for error in form.retries.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.retry_delay.id_for_label }}">{{ form.retry_delay.label }}</label>
+      {{ form.retry_delay }}
+      {% if form.retry_delay.help_text %}<div class="help-text">{{ form.retry_delay.help_text }}</div>{% endif %}
+      {% if form.retry_delay.errors %}
+        <div class="field-errors">{% for error in form.retry_delay.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    {{ form.check_type }}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">{{ action }}</button>
+      <a href="{% url 'nyxboard:healthcheck_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+

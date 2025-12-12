@@ -8,6 +8,7 @@ from nyxboard.forms import (
     SmtpHealthCheckForm,
     ImapHealthCheckForm,
     TcpHealthCheckForm,
+    JsonMetricsHealthCheckForm,
     GenericHealthCheckForm,
 )
 from nyxboard.models import Service, HealthCheck
@@ -1069,3 +1070,57 @@ class TestTcpHealthCheckForm:
         assert form.is_valid(), form.errors
         instance = form.save()
         assert instance.data["check_cert_expiry"] is False
+
+
+class TestJsonMetricsHealthCheckForm:
+    """Tests for JsonMetricsHealthCheckForm parsing and serialization."""
+
+    def test_requires_checks_json_to_be_valid_json(self, service):
+        form = JsonMetricsHealthCheckForm(
+            data={
+                "name": "Mail metrics thresholds",
+                "service": service.id,
+                "check_type": CheckType.JSON_METRICS,
+                "check_interval": 300,
+                "disabled": False,
+                "url": "http://localhost:9100/.well-known/health",
+                "auth_username": "",
+                "auth_password": "",
+                "timeout": 10.0,
+                "retries": 1,
+                "retry_delay": 2.0,
+                "checks_json": "{not json}",
+            }
+        )
+        assert not form.is_valid()
+        assert "checks_json" in form.errors
+
+    def test_serializes_checks_and_optional_auth(self, service):
+        checks_json = """
+[
+  {"path": "$.mail.queue_total", "op": "<", "value": 100, "severity": "warning"}
+]
+""".strip()
+        form = JsonMetricsHealthCheckForm(
+            data={
+                "name": "Mail metrics thresholds",
+                "service": service.id,
+                "check_type": CheckType.JSON_METRICS,
+                "check_interval": 300,
+                "disabled": False,
+                "url": "http://localhost:9100/.well-known/health",
+                "auth_username": "nyxmon",
+                "auth_password": "secret",
+                "timeout": 10.0,
+                "retries": 1,
+                "retry_delay": 2.0,
+                "checks_json": checks_json,
+            }
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.check_type == CheckType.JSON_METRICS
+        assert instance.url == "http://localhost:9100/.well-known/health"
+        assert instance.data["checks"][0]["path"] == "$.mail.queue_total"
+        assert instance.data["auth"]["username"] == "nyxmon"
+        assert instance.data["auth"]["password"] == "secret"
