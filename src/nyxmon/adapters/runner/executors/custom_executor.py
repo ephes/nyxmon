@@ -1,6 +1,31 @@
 """Custom check executor.
 
 Currently supports running a command over SSH and evaluating JSON thresholds.
+
+SSH Host Key Handling
+---------------------
+By default, the executor uses ``BatchMode=yes`` which requires the target host's
+SSH key to already be in the nyxmon user's known_hosts file. If the key is not
+present, the SSH connection will fail with "Host key verification failed".
+
+Options to handle this:
+
+1. **Provision known_hosts beforehand** (recommended for production):
+   - SSH to the target host manually as the nyxmon user once
+   - Or use ssh-keyscan to add the key: ``ssh-keyscan <host> >> ~/.ssh/known_hosts``
+
+2. **Use StrictHostKeyChecking=accept-new** (convenient but less secure):
+   Set ``ssh_args`` in the check config to auto-accept new keys on first connect::
+
+       {
+           "ssh_args": ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=5"],
+           ...
+       }
+
+   This accepts new keys automatically but still rejects changed keys (MITM protection).
+
+3. **Disable host key checking entirely** (NOT recommended):
+   Only for isolated test environments where security is not a concern.
 """
 
 from __future__ import annotations
