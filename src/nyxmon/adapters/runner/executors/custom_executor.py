@@ -19,6 +19,15 @@ from .json_metrics_executor import OPERATORS
 
 class CustomExecutor:
     async def execute(self, check: Check) -> Result:
+        if check.data is not None and not isinstance(check.data, dict):
+            return Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": f"check.data must be a dict, got {type(check.data).__name__}",
+                },
+            )
         config = check.data or {}
         mode = config.get("mode", "ssh-json")
         if mode != "ssh-json":
@@ -81,12 +90,22 @@ class CustomExecutor:
         retries = int(config.get("retries", 0))
         retry_delay = float(config.get("retry_delay", 2.0))
 
-        ssh_args = config.get("ssh_args") or [
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=5",
-        ]
+        ssh_args_default = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5"]
+        if "ssh_args" in config:
+            ssh_args = config["ssh_args"]
+            if not isinstance(ssh_args, list) or not all(
+                isinstance(arg, str) for arg in ssh_args
+            ):
+                return Result(
+                    check_id=check.check_id,
+                    status=ResultStatus.ERROR,
+                    data={
+                        "error_type": "configuration_error",
+                        "error_msg": "ssh_args must be a list of strings",
+                    },
+                )
+        else:
+            ssh_args = ssh_args_default
 
         attempts = retries + 1
         last_error: Result | None = None

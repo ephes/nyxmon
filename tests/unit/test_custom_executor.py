@@ -179,3 +179,106 @@ def test_invalid_check_entry_bad_operator() -> None:
     assert result.data["error_type"] == "configuration_error"
     assert "errors" in result.data
     assert "invalid operator" in result.data["errors"][0]
+
+
+def test_check_data_not_dict() -> None:
+    """check.data must be a dict; non-dict should produce a configuration_error."""
+    from nyxmon.domain import Check
+
+    executor = CustomExecutor()
+    check = Check(
+        check_id=1,
+        service_id=1,
+        name="Custom",
+        check_type="custom",
+        url="root@fractal.fritz.box",
+        data="this is a string, not a dict",
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "must be a dict" in result.data["error_msg"]
+
+
+def test_ssh_args_must_be_list_of_strings() -> None:
+    """ssh_args must be a list of strings."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "nyxmon-storage-metrics",
+            "ssh_args": ["-o", 123],  # 123 is not a string
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "ssh_args must be a list of strings" in result.data["error_msg"]
+
+
+def test_ssh_args_not_list() -> None:
+    """ssh_args must be a list, not a string."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "nyxmon-storage-metrics",
+            "ssh_args": "-o BatchMode=yes",  # string, not a list
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "ssh_args must be a list of strings" in result.data["error_msg"]
+
+
+def test_explicit_empty_ssh_args(monkeypatch) -> None:
+    """Explicit empty ssh_args list should be allowed without falling back to defaults."""
+    captured_args = {}
+
+    def _stub_run(target, ssh_args, command, timeout):
+        captured_args["ssh_args"] = ssh_args
+        return '{"foo":"bar"}'
+
+    monkeypatch.setattr(
+        "nyxmon.adapters.runner.executors.custom_executor._run_ssh_json", _stub_run
+    )
+
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "nyxmon-storage-metrics",
+            "ssh_args": [],  # explicit empty list
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.OK
+    assert captured_args["ssh_args"] == []  # should be empty, not defaults
