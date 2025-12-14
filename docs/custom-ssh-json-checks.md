@@ -12,7 +12,7 @@ This is useful for executing custom scripts or commands that produce JSON metric
     "url": "user@host",  # fallback target if not specified in data
     "data": {
         "mode": "ssh-json",
-        "target": "user@host",              # required: SSH destination (user@host)
+        "target": "user@host",              # optional: SSH destination (defaults to check.url)
         "command": "/path/to/script",       # required: command to execute (str or list[str])
         "checks": [                          # required: threshold rules to evaluate
             {"path": "$.key", "op": "==", "value": "expected", "severity": "critical"}
@@ -30,7 +30,6 @@ This is useful for executing custom scripts or commands that produce JSON metric
 | Field | Type | Description |
 |-------|------|-------------|
 | `mode` | `str` | Must be `"ssh-json"` |
-| `target` | `str` | SSH destination in `user@host` format. Falls back to `check.url` if not specified. |
 | `command` | `str` or `list[str]` | Command to execute on the remote host. Can be a string (single command) or list of strings (command with arguments). |
 | `checks` | `list[dict]` | Non-empty list of threshold rules to evaluate against the JSON output. |
 
@@ -38,6 +37,7 @@ This is useful for executing custom scripts or commands that produce JSON metric
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `target` | `str` | `check.url` | SSH destination in `user@host` format. Falls back to `check.url` if not specified. |
 | `timeout` | `float` | `15.0` | Maximum time in seconds to wait for the SSH command to complete. |
 | `retries` | `int` | `0` | Number of times to retry on SSH connection or timeout failures. |
 | `retry_delay` | `float` | `2.0` | Seconds to wait between retry attempts. |
