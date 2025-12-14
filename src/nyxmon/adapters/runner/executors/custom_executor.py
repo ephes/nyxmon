@@ -62,6 +62,27 @@ class CustomExecutor:
                 },
             )
 
+        # Validate command type
+        if isinstance(command, list):
+            if not all(isinstance(c, str) for c in command):
+                return Result(
+                    check_id=check.check_id,
+                    status=ResultStatus.ERROR,
+                    data={
+                        "error_type": "configuration_error",
+                        "error_msg": "command list must contain only strings",
+                    },
+                )
+        elif not isinstance(command, str):
+            return Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": f"command must be a string or list of strings, got {type(command).__name__}",
+                },
+            )
+
         checks = config.get("checks", [])
         if not checks:
             return Result(
@@ -86,9 +107,42 @@ class CustomExecutor:
                 },
             )
 
-        timeout = float(config.get("timeout", 15.0))
-        retries = int(config.get("retries", 0))
-        retry_delay = float(config.get("retry_delay", 2.0))
+        # Validate numeric config values
+        try:
+            timeout = float(config.get("timeout", 15.0))
+        except (TypeError, ValueError):
+            return Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": f"timeout must be a number, got {type(config.get('timeout')).__name__}",
+                },
+            )
+
+        try:
+            retries = int(config.get("retries", 0))
+        except (TypeError, ValueError):
+            return Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": f"retries must be an integer, got {type(config.get('retries')).__name__}",
+                },
+            )
+
+        try:
+            retry_delay = float(config.get("retry_delay", 2.0))
+        except (TypeError, ValueError):
+            return Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": f"retry_delay must be a number, got {type(config.get('retry_delay')).__name__}",
+                },
+            )
 
         ssh_args_default = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5"]
         if "ssh_args" in config:

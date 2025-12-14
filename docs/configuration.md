@@ -155,6 +155,32 @@ DNS checks verify that resolved records include at least one expected IP and sup
 
 See {doc}`dns-check-examples` for more configuration scenarios.
 
+### Custom Checks (SSH-JSON)
+
+Custom checks execute a command on a remote host via SSH and evaluate threshold rules against the JSON output:
+
+```python
+{
+    "type": "custom",
+    "url": "root@target.host",
+    "data": {
+        "mode": "ssh-json",
+        "target": "root@target.host",
+        "command": "/usr/local/bin/metrics-script",
+        "timeout": 15,
+        "retries": 0,
+        "retry_delay": 2,
+        "ssh_args": ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5"],
+        "checks": [
+            {"path": "$.status", "op": "==", "value": "ok", "severity": "critical"},
+            {"path": "$.queue_size", "op": "<", "value": 100, "severity": "warning"}
+        ]
+    }
+}
+```
+
+Requires SSH key authentication from the Nyxmon host to the target. See {doc}`custom-ssh-json-checks` for complete documentation.
+
 ## Deployment Configuration
 
 ### systemd (Linux)

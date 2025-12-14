@@ -359,3 +359,126 @@ def test_ssh_argv_construction_with_list_command(monkeypatch) -> None:
         "-c",
         "print('hello')",
     ]
+
+
+def test_command_wrong_type() -> None:
+    """command must be a string or list[str], not int or other types."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": 123,  # wrong type
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "command must be a string or list of strings" in result.data["error_msg"]
+
+
+def test_command_list_with_non_strings() -> None:
+    """command list must contain only strings."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": ["python3", 123],  # 123 is not a string
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "command list must contain only strings" in result.data["error_msg"]
+
+
+def test_timeout_non_numeric() -> None:
+    """timeout must be a number."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "metrics",
+            "timeout": "not a number",
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "timeout must be a number" in result.data["error_msg"]
+
+
+def test_retries_non_numeric() -> None:
+    """retries must be an integer."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "metrics",
+            "retries": "not a number",
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "retries must be an integer" in result.data["error_msg"]
+
+
+def test_retry_delay_non_numeric() -> None:
+    """retry_delay must be a number."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "metrics",
+            "retry_delay": "not a number",
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "retry_delay must be a number" in result.data["error_msg"]
