@@ -282,3 +282,80 @@ def test_explicit_empty_ssh_args(monkeypatch) -> None:
     result = anyio.run(executor.execute, check)
     assert result.status == ResultStatus.OK
     assert captured_args["ssh_args"] == []  # should be empty, not defaults
+
+
+def test_ssh_argv_construction(monkeypatch) -> None:
+    """Verify the constructed SSH argv has correct argument ordering.
+
+    The -- separator must come BEFORE the target to properly separate
+    ssh options from the destination (POSIX convention).
+    """
+    from nyxmon.adapters.runner.executors.custom_executor import _run_ssh_json
+
+    captured_cmd = {}
+
+    def _mock_subprocess_run(cmd, **kwargs):
+        captured_cmd["argv"] = cmd
+
+        # Create a mock result object
+        class MockResult:
+            stdout = '{"result": "ok"}'
+
+        return MockResult()
+
+    monkeypatch.setattr(subprocess, "run", _mock_subprocess_run)
+
+    # Test with string command
+    _run_ssh_json(
+        target="user@host.example.com",
+        ssh_args=["-o", "BatchMode=yes", "-o", "ConnectTimeout=5"],
+        command="/usr/local/bin/metrics",
+        timeout=10.0,
+    )
+
+    assert captured_cmd["argv"] == [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=5",
+        "--",
+        "user@host.example.com",
+        "/usr/local/bin/metrics",
+    ]
+
+
+def test_ssh_argv_construction_with_list_command(monkeypatch) -> None:
+    """Verify SSH argv construction when command is a list."""
+    from nyxmon.adapters.runner.executors.custom_executor import _run_ssh_json
+
+    captured_cmd = {}
+
+    def _mock_subprocess_run(cmd, **kwargs):
+        captured_cmd["argv"] = cmd
+
+        class MockResult:
+            stdout = '{"result": "ok"}'
+
+        return MockResult()
+
+    monkeypatch.setattr(subprocess, "run", _mock_subprocess_run)
+
+    # Test with list command
+    _run_ssh_json(
+        target="root@server",
+        ssh_args=["-p", "2222"],
+        command=["python3", "-c", "print('hello')"],
+        timeout=5.0,
+    )
+
+    assert captured_cmd["argv"] == [
+        "ssh",
+        "-p",
+        "2222",
+        "--",
+        "root@server",
+        "python3",
+        "-c",
+        "print('hello')",
+    ]

@@ -192,7 +192,8 @@ def _run_ssh_json(
     command: str | list[str],
     timeout: float,
 ) -> str:
-    cmd = ["ssh", *ssh_args, target, "--"]
+    # Place -- before target to separate ssh options from destination (POSIX convention)
+    cmd = ["ssh", *ssh_args, "--", target]
     if isinstance(command, list):
         cmd.extend(command)
     else:
