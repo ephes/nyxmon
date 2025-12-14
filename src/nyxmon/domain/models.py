@@ -6,10 +6,11 @@ from .events import Event
 
 class ResultStatus:
     OK: Literal["ok"] = "ok"
+    WARNING: Literal["warning"] = "warning"
     ERROR: Literal["error"] = "error"
 
 
-ResultStatusType: TypeAlias = Literal["ok", "error"]
+ResultStatusType: TypeAlias = Literal["ok", "warning", "error"]
 
 
 class StatusChoices:
@@ -146,7 +147,7 @@ class CheckResult:
 
     @property
     def should_notify(self) -> bool:
-        return self.result.status == ResultStatus.ERROR
+        return self.result.status in (ResultStatus.ERROR, ResultStatus.WARNING)
 
 
 class Service:

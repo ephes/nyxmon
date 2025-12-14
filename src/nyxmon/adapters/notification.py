@@ -93,6 +93,9 @@ class AsyncTelegramNotifier(Notifier):
         error_type = result.data.get("error_type", "")
         status_code = result.data.get("status_code", "")
 
+        # Determine severity from result status (ERROR=critical, WARNING=warning)
+        is_critical = result.status == "error"
+
         # Escape all text for MarkdownV2
         escaped_name = (
             self.escape_markdown_v2(check.name) if check.name else "Unnamed Check"
@@ -101,7 +104,12 @@ class AsyncTelegramNotifier(Notifier):
         escaped_error_msg = self.escape_markdown_v2(str(error_msg))
         escaped_error_type = self.escape_markdown_v2(str(error_type))
 
-        message = "🔴 *Check Failed*\n"
+        # Use different emoji and title based on severity
+        if is_critical:
+            message = "🔴 *Check Failed \\(Critical\\)*\n"
+        else:
+            message = "⚠️ *Check Warning*\n"
+
         message += f"Name: {escaped_name}\n"
         message += f"URL: {escaped_url}\n"
         if status_code:
@@ -110,7 +118,8 @@ class AsyncTelegramNotifier(Notifier):
             message += f"Error Type: {escaped_error_type}\n"
         message += f"Error: {escaped_error_msg}"
 
-        await self.async_send(message, high_priority=True)
+        # Only use high priority (with sound) for critical failures
+        await self.async_send(message, high_priority=is_critical)
 
     async def async_notify_service_status_changed(
         self, service: Service, status: str

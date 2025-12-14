@@ -101,7 +101,8 @@ def test_successful_thresholds_pass() -> None:
     assert "failures" not in result.data
 
 
-def test_threshold_failure_returns_error() -> None:
+def test_threshold_failure_returns_warning_for_warning_severity() -> None:
+    """Warning-severity threshold failures return WARNING status."""
     client = StubClient(
         StubResponse(
             200,
@@ -114,9 +115,43 @@ def test_threshold_failure_returns_error() -> None:
 
     result = anyio.run(executor.execute, check)
 
-    assert result.status == ResultStatus.ERROR
+    # Warning-only threshold breaches return WARNING, not ERROR
+    assert result.status == ResultStatus.WARNING
     assert result.data["error_type"] == "threshold_failed"
     assert result.data["failures"][0]["severity"] == "warning"
+    assert "error_msg" in result.data  # Failure summary included
+
+
+def test_threshold_failure_returns_error_for_critical_severity() -> None:
+    """Critical-severity threshold failures return ERROR status."""
+    client = StubClient(
+        StubResponse(
+            200,
+            {"mail": {"queue_total": 150}},
+        )
+    )
+    executor = JsonMetricsExecutor(client=client)
+
+    check = _build_check(
+        config={
+            "url": "http://localhost:9100/.well-known/health",
+            "checks": [
+                {
+                    "path": "$.mail.queue_total",
+                    "op": "<",
+                    "value": 100,
+                    "severity": "critical",
+                }
+            ],
+        }
+    )
+
+    result = anyio.run(executor.execute, check)
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "threshold_failed"
+    assert result.data["failures"][0]["severity"] == "critical"
+    assert "error_msg" in result.data  # Failure summary included
 
 
 def test_handles_http_error() -> None:
@@ -152,13 +187,15 @@ def test_json_parse_error() -> None:
 
 
 def test_path_missing_counts_as_failure() -> None:
+    """Missing path in response counts as threshold failure."""
     client = StubClient(StubResponse(200, {"services": {}}))
     executor = JsonMetricsExecutor(client=client)
     check = _build_check()
 
     result = anyio.run(executor.execute, check)
 
-    assert result.status == ResultStatus.ERROR
+    # Default check uses warning severity, so returns WARNING
+    assert result.status == ResultStatus.WARNING
     assert result.data["failures"][0]["actual"] is None
 
 

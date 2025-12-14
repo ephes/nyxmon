@@ -140,17 +140,22 @@ class HealthCheck(models.Model):
         if not latest_result:
             return StatusChoices.UNKNOWN
 
-        # Check for Failed status (the latest result is error)
+        # Check for Failed status (the latest result is error - critical failures)
         if latest_result.status == ResultStatus.ERROR:
             return StatusChoices.FAILED
+
+        # Check for Warning status (the latest result is warning - non-critical failures)
+        if latest_result.status == ResultStatus.WARNING:
+            return StatusChoices.WARNING
 
         # Check for Passed status (all recent results are OK)
         if all(result.status == ResultStatus.OK for result in recent_results):
             return StatusChoices.PASSED
 
-        # Check for Recovering status (latest is OK but there were recent errors)
+        # Check for Recovering status (latest is OK but there were recent errors/warnings)
         if latest_result.status == ResultStatus.OK and any(
-            result.status == ResultStatus.ERROR for result in recent_results
+            result.status in (ResultStatus.ERROR, ResultStatus.WARNING)
+            for result in recent_results
         ):
             return StatusChoices.RECOVERING
 
@@ -177,7 +182,11 @@ class Result(models.Model):
     status: models.CharField = models.CharField(
         "Status",
         max_length=10,
-        choices=[(ResultStatus.OK, "OK"), (ResultStatus.ERROR, "Error")],
+        choices=[
+            (ResultStatus.OK, "OK"),
+            (ResultStatus.WARNING, "Warning"),
+            (ResultStatus.ERROR, "Error"),
+        ],
     )
     created_at: models.DateTimeField = models.DateTimeField(
         "Created At", auto_now_add=True

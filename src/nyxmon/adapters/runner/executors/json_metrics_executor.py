@@ -96,11 +96,17 @@ class JsonMetricsExecutor:
             duration_ms = int((time.time() - start) * 1000)
             failures = self._evaluate(body, config)
             if failures:
+                # Determine highest severity: if any critical failure, use ERROR; else WARNING
+                has_critical = any(f.get("severity") == "critical" for f in failures)
+                status = ResultStatus.ERROR if has_critical else ResultStatus.WARNING
+                # Build concise error message summarizing failures
+                error_msg = self._build_failure_summary(failures)
                 return Result(
                     check_id=check.check_id,
-                    status=ResultStatus.ERROR,
+                    status=status,
                     data={
                         "error_type": "threshold_failed",
+                        "error_msg": error_msg,
                         "failures": failures,
                         "duration_ms": duration_ms,
                     },
@@ -173,6 +179,25 @@ class JsonMetricsExecutor:
             status=ResultStatus.ERROR,
             data={"error_type": error_type, "error_msg": msg},
         )
+
+    def _build_failure_summary(self, failures: list[dict]) -> str:
+        """Build a concise summary of threshold failures for notifications."""
+        if not failures:
+            return ""
+
+        # Group by severity
+        critical = [f for f in failures if f.get("severity") == "critical"]
+        warning = [f for f in failures if f.get("severity") == "warning"]
+
+        parts = []
+        if critical:
+            paths = [f.get("path", "?") for f in critical]
+            parts.append(f"{len(critical)} critical: {', '.join(paths)}")
+        if warning:
+            paths = [f.get("path", "?") for f in warning]
+            parts.append(f"{len(warning)} warning: {', '.join(paths)}")
+
+        return "; ".join(parts)
 
     def _is_retryable_status(self, status: int) -> bool:
         """Retry on transient HTTP status codes."""

@@ -214,11 +214,17 @@ class CustomExecutor:
             duration_ms = int((time.time() - start) * 1000)
             failures = _evaluate(payload, checks)
             if failures:
+                # Determine highest severity: if any critical failure, use ERROR; else WARNING
+                has_critical = any(f.get("severity") == "critical" for f in failures)
+                status = ResultStatus.ERROR if has_critical else ResultStatus.WARNING
+                # Build concise error message summarizing failures
+                error_msg = _build_failure_summary(failures)
                 return Result(
                     check_id=check.check_id,
-                    status=ResultStatus.ERROR,
+                    status=status,
                     data={
                         "error_type": "threshold_failed",
+                        "error_msg": error_msg,
                         "failures": failures,
                         "duration_ms": duration_ms,
                     },
@@ -333,6 +339,26 @@ def _evaluate(payload: Any, checks: list[dict]) -> list[dict]:
             )
 
     return failures
+
+
+def _build_failure_summary(failures: list[dict]) -> str:
+    """Build a concise summary of threshold failures for notifications."""
+    if not failures:
+        return ""
+
+    # Group by severity
+    critical = [f for f in failures if f.get("severity") == "critical"]
+    warning = [f for f in failures if f.get("severity") == "warning"]
+
+    parts = []
+    if critical:
+        paths = [f.get("path", "?") for f in critical]
+        parts.append(f"{len(critical)} critical: {', '.join(paths)}")
+    if warning:
+        paths = [f.get("path", "?") for f in warning]
+        parts.append(f"{len(warning)} warning: {', '.join(paths)}")
+
+    return "; ".join(parts)
 
 
 def _resolve_path(payload: Any, path: str) -> Any:
