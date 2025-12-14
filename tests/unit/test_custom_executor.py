@@ -23,7 +23,12 @@ def _build_check(**overrides):
                 "timeout": 1,
                 "retries": 0,
                 "checks": [
-                    {"path": "$.pools.fast.health", "op": "==", "value": "ONLINE", "severity": "critical"}
+                    {
+                        "path": "$.pools.fast.health",
+                        "op": "==",
+                        "value": "ONLINE",
+                        "severity": "critical",
+                    }
                 ],
             },
         ),
@@ -60,7 +65,12 @@ def test_bracket_path_syntax(monkeypatch) -> None:
             "target": "root@fractal.fritz.box",
             "command": "nyxmon-storage-metrics",
             "checks": [
-                {"path": "$.disks[0].ok", "op": "==", "value": True, "severity": "critical"}
+                {
+                    "path": "$.disks[0].ok",
+                    "op": "==",
+                    "value": True,
+                    "severity": "critical",
+                }
             ],
         }
     )
@@ -106,3 +116,66 @@ def test_configuration_error(monkeypatch) -> None:
     result = anyio.run(executor.execute, check)
     assert result.status == ResultStatus.ERROR
     assert result.data["error_type"] == "configuration_error"
+
+
+def test_invalid_check_entry_not_dict() -> None:
+    """Non-dict entries in checks should produce a configuration_error."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "nyxmon-storage-metrics",
+            "checks": ["not a dict", 123],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "errors" in result.data
+    assert len(result.data["errors"]) == 2
+
+
+def test_invalid_check_entry_missing_keys() -> None:
+    """Check entries missing required keys should produce a configuration_error."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "nyxmon-storage-metrics",
+            "checks": [
+                {"path": "$.foo"},  # missing op, value, severity
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "errors" in result.data
+    assert "missing required keys" in result.data["errors"][0]
+
+
+def test_invalid_check_entry_bad_operator() -> None:
+    """Check entries with invalid operator should produce a configuration_error."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "nyxmon-storage-metrics",
+            "checks": [
+                {
+                    "path": "$.foo",
+                    "op": "invalid_op",
+                    "value": 1,
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "errors" in result.data
+    assert "invalid operator" in result.data["errors"][0]

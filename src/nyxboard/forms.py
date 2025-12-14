@@ -794,7 +794,9 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
     auth_username = forms.CharField(
         max_length=255,
         required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "nyxmon"}),
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "nyxmon"}
+        ),
         label="Auth Username",
         help_text="Optional HTTP Basic Auth username",
     )
@@ -803,7 +805,10 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
         max_length=255,
         required=False,
         widget=forms.PasswordInput(
-            attrs={"class": "form-control", "placeholder": "Leave blank to keep existing"}
+            attrs={
+                "class": "form-control",
+                "placeholder": "Leave blank to keep existing",
+            }
         ),
         label="Auth Password",
         help_text="Optional HTTP Basic Auth password",
@@ -929,8 +934,12 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
             if password:
                 data["auth"]["password"] = password
             else:
-                existing_auth = (existing_data.get("auth") or {}) if existing_data else {}
-                if existing_auth.get("username") == username and existing_auth.get("password"):
+                existing_auth = (
+                    (existing_data.get("auth") or {}) if existing_data else {}
+                )
+                if existing_auth.get("username") == username and existing_auth.get(
+                    "password"
+                ):
                     data["auth"]["password"] = existing_auth["password"]
 
         instance.data = data

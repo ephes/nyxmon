@@ -36,7 +36,10 @@ class CustomExecutor:
             return Result(
                 check_id=check.check_id,
                 status=ResultStatus.ERROR,
-                data={"error_type": "configuration_error", "error_msg": "target is required"},
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": "target is required",
+                },
             )
 
         command = config.get("command")
@@ -44,7 +47,10 @@ class CustomExecutor:
             return Result(
                 check_id=check.check_id,
                 status=ResultStatus.ERROR,
-                data={"error_type": "configuration_error", "error_msg": "command is required"},
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": "command is required",
+                },
             )
 
         checks = config.get("checks", [])
@@ -52,7 +58,23 @@ class CustomExecutor:
             return Result(
                 check_id=check.check_id,
                 status=ResultStatus.ERROR,
-                data={"error_type": "configuration_error", "error_msg": "checks must not be empty"},
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": "checks must not be empty",
+                },
+            )
+
+        # Validate each check entry is a dict with required keys
+        validation_errors = _validate_checks(checks)
+        if validation_errors:
+            return Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "configuration_error",
+                    "error_msg": "invalid check definitions",
+                    "errors": validation_errors,
+                },
             )
 
         timeout = float(config.get("timeout", 15.0))
@@ -156,8 +178,45 @@ def _run_ssh_json(
         cmd.extend(command)
     else:
         cmd.append(command)
-    proc = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(
+        cmd, check=True, capture_output=True, text=True, timeout=timeout
+    )
     return proc.stdout.strip()
+
+
+def _validate_checks(checks: list) -> list[str]:
+    """Validate that each check entry is a properly-formed dict.
+
+    Returns a list of error messages (empty if all valid).
+    """
+    errors: list[str] = []
+    required_keys = {"path", "op", "value", "severity"}
+    valid_ops = set(OPERATORS.keys())
+    valid_severities = {"warning", "critical"}
+
+    for idx, chk in enumerate(checks):
+        if not isinstance(chk, dict):
+            errors.append(f"checks[{idx}]: expected dict, got {type(chk).__name__}")
+            continue
+
+        missing = required_keys - set(chk.keys())
+        if missing:
+            errors.append(f"checks[{idx}]: missing required keys: {sorted(missing)}")
+            continue
+
+        op = chk.get("op")
+        if op not in valid_ops:
+            errors.append(
+                f"checks[{idx}]: invalid operator '{op}', must be one of {sorted(valid_ops)}"
+            )
+
+        severity = chk.get("severity")
+        if severity not in valid_severities:
+            errors.append(
+                f"checks[{idx}]: invalid severity '{severity}', must be 'warning' or 'critical'"
+            )
+
+    return errors
 
 
 def _evaluate(payload: Any, checks: list[dict]) -> list[dict]:
