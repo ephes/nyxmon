@@ -65,10 +65,93 @@ class GenericHealthCheckForm(HealthCheckForm):
 
     This prevents data loss when editing legacy or future check types before
     dedicated forms are implemented.
+
+    For legacy check types (like 'custom'), the check_type field is made read-only
+    so operators can still edit other fields (like 'disabled') without validation
+    errors from the removed check_type choice.
     """
+
+    # Supported check types - legacy types will show deprecation warning
+    SUPPORTED_CHECK_TYPES = {
+        CheckType.HTTP,
+        CheckType.JSON_HTTP,
+        CheckType.TCP,
+        CheckType.PING,
+        CheckType.DNS,
+        CheckType.SMTP,
+        CheckType.IMAP,
+        CheckType.JSON_METRICS,
+    }
+
+    def __init__(self, *args, **kwargs):
+        # Extract instance before calling super() to check legacy status
+        instance = kwargs.get("instance")
+
+        # Determine if this is a legacy check type BEFORE super().__init__
+        self._legacy_check_type = None
+        if instance and instance.pk:
+            check_type = instance.check_type
+            if check_type not in self.SUPPORTED_CHECK_TYPES:
+                self._legacy_check_type = check_type
+
+        super().__init__(*args, **kwargs)
+        self.warnings: list[str] = []
+
+        # Only apply legacy check_type handling for existing instances (not create)
+        # This prevents ?type=custom URL parameter from creating new legacy checks
+        if self._legacy_check_type:
+            self.warnings.append(
+                f"Check type '{self._legacy_check_type}' is deprecated and no longer supported. "
+                "This check will produce ERROR results when run. "
+                "Please disable or delete this check, or migrate to a supported type "
+                "(http, json-http, tcp, ping, dns, smtp, imap, json-metrics)."
+            )
+
+            # Add the legacy check_type to choices so form validation passes
+            # Make it display as deprecated and lock the field
+            current_choices = list(self.fields["check_type"].choices)
+            legacy_label = f"{self._legacy_check_type} (DEPRECATED)"
+            current_choices.append((self._legacy_check_type, legacy_label))
+            self.fields["check_type"].choices = current_choices
+
+            # Set field.initial explicitly - this is what Django uses for disabled fields
+            # when determining the bound value. Must be set AFTER choices are updated.
+            self.fields["check_type"].initial = self._legacy_check_type
+
+            # Also update form.initial dict for completeness
+            self.initial["check_type"] = self._legacy_check_type
+
+            # Mark field as disabled at the Django level (not just HTML attribute)
+            # This ensures proper server-side handling when browser omits the field
+            # Django will use the initial value as the bound value for disabled fields
+            self.fields["check_type"].disabled = True
+
+    def _get_validation_exclusions(self):
+        """Override to exclude check_type from model validation for legacy instances.
+
+        The model's check_type field has choices defined that don't include legacy
+        types like 'custom'. To allow editing legacy instances without validation
+        errors, we exclude check_type from model-level validation.
+        """
+        exclude = super()._get_validation_exclusions()
+        if self._legacy_check_type:
+            exclude.add("check_type")
+        return exclude
+
+    def clean_check_type(self):
+        """Preserve legacy check_type even when field is disabled."""
+        # When a field is disabled, browsers don't submit it, so cleaned_data
+        # won't have the value. We need to preserve the instance's value.
+        if self._legacy_check_type and self.instance.pk:
+            return self._legacy_check_type
+        return self.cleaned_data.get("check_type")
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+
+        # Preserve legacy check_type - disabled fields aren't submitted by browsers
+        if self._legacy_check_type and self.instance.pk:
+            instance.check_type = self._legacy_check_type
 
         # Preserve existing data field - don't modify it
         # TCP/Ping/Custom checks may store type-specific config here

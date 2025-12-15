@@ -1001,20 +1001,141 @@ class TestGenericHealthCheckForm:
         """Test that new checks get empty data dict by default."""
         form = GenericHealthCheckForm(
             data={
-                "name": "New Custom Check",
+                "name": "New Ping Check",
                 "service": service.id,
-                "check_type": CheckType.CUSTOM,
-                "url": "custom://test",
+                "check_type": CheckType.PING,
+                "url": "192.168.1.1",
                 "check_interval": 300,
                 "disabled": False,
             },
-            initial={"check_type": CheckType.CUSTOM},
+            initial={"check_type": CheckType.PING},
         )
         assert form.is_valid(), form.errors
         instance = form.save()
 
         # New checks should have empty data dict (model default)
         assert instance.data == {}
+
+
+class TestGenericHealthCheckFormLegacyTypes:
+    """Tests for GenericHealthCheckForm handling of legacy/deprecated check types."""
+
+    def test_legacy_check_type_preserved_when_browser_omits_field(self, service):
+        """Regression test: editing legacy instance where browser omits check_type from POST.
+
+        When a field has `disabled=True` at the Django level, browsers don't submit
+        it in POST data. This test verifies the form correctly preserves the legacy
+        check_type value from the instance in this scenario.
+        """
+        # Create a legacy 'custom' check in the database
+        # Note: In real usage, this would be a pre-existing check from before
+        # the CustomExecutor was removed. We simulate by directly setting check_type.
+        legacy_check = HealthCheck.objects.create(
+            name="Legacy Custom Check",
+            service=service,
+            check_type="custom",  # Legacy type not in SUPPORTED_CHECK_TYPES
+            url="legacy://example.com",
+            check_interval=300,
+            data={"host": "example.com", "command": "test"},
+        )
+
+        # Simulate browser POST where disabled field is omitted
+        # (no check_type in POST data, as browsers don't submit disabled fields)
+        form = GenericHealthCheckForm(
+            data={
+                "name": "Updated Legacy Check",
+                "service": service.id,
+                # check_type intentionally omitted - browser won't send disabled field
+                "url": "legacy://example.com",
+                "check_interval": 300,
+                "disabled": True,  # Operator disables the legacy check
+            },
+            instance=legacy_check,
+        )
+
+        assert form.is_valid(), form.errors
+        instance = form.save()
+
+        # Critical: check_type must be preserved as 'custom', not changed/lost
+        assert instance.check_type == "custom"
+        assert instance.name == "Updated Legacy Check"
+        assert instance.disabled is True
+
+    def test_legacy_check_type_field_is_disabled(self, service):
+        """Test that check_type field is disabled for legacy checks."""
+        legacy_check = HealthCheck.objects.create(
+            name="Legacy Custom Check",
+            service=service,
+            check_type="custom",
+            url="legacy://example.com",
+            check_interval=300,
+        )
+
+        form = GenericHealthCheckForm(instance=legacy_check)
+
+        # Field should be disabled at Django level
+        assert form.fields["check_type"].disabled is True
+        # Legacy type should be in choices
+        choices = dict(form.fields["check_type"].choices)
+        assert "custom" in choices
+        assert "DEPRECATED" in choices["custom"]
+
+    def test_legacy_check_type_not_added_on_create(self, service):
+        """Test that legacy types cannot be used to create new checks.
+
+        This prevents ?type=custom URL parameter from creating new legacy checks.
+        """
+        # Try to create a new check with a legacy type via initial data
+        form = GenericHealthCheckForm(
+            data={
+                "name": "New Check",
+                "service": service.id,
+                "check_type": "custom",  # Attempt to use legacy type
+                "url": "http://example.com",
+                "check_interval": 300,
+                "disabled": False,
+            },
+            initial={"check_type": "custom"},  # Simulate ?type=custom
+        )
+
+        # Form should not add 'custom' to choices for new instances
+        choices = dict(form.fields["check_type"].choices)
+        assert "custom" not in choices
+
+        # Form should be invalid because 'custom' is not a valid choice
+        assert not form.is_valid()
+        assert "check_type" in form.errors
+
+    def test_legacy_check_shows_deprecation_warning(self, service):
+        """Test that editing legacy checks shows deprecation warning."""
+        legacy_check = HealthCheck.objects.create(
+            name="Legacy Custom Check",
+            service=service,
+            check_type="custom",
+            url="legacy://example.com",
+            check_interval=300,
+        )
+
+        form = GenericHealthCheckForm(instance=legacy_check)
+
+        assert len(form.warnings) == 1
+        assert "deprecated" in form.warnings[0].lower()
+        assert "custom" in form.warnings[0]
+
+    def test_no_warning_for_supported_check_types(self, service):
+        """Test that supported check types don't show deprecation warning."""
+        tcp_check = HealthCheck.objects.create(
+            name="TCP Check",
+            service=service,
+            check_type=CheckType.TCP,
+            url="example.com",
+            check_interval=300,
+        )
+
+        form = GenericHealthCheckForm(instance=tcp_check)
+
+        assert len(form.warnings) == 0
+        assert form.fields["check_type"].disabled is False
 
 
 class TestTcpHealthCheckForm:
