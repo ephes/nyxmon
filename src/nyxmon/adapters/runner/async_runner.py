@@ -11,6 +11,7 @@ from .executors import ExecutorRegistry
 from .executors.http_executor import HttpCheckExecutor
 from .executors.dns_executor import DnsCheckExecutor
 from .executors.json_metrics_executor import JsonMetricsExecutor
+from .executors.custom_executor import CustomExecutor
 from .executors.imap_executor import ImapCheckExecutor
 from .executors.smtp_executor import SmtpCheckExecutor
 from .executors.tcp_executor import TcpCheckExecutor
@@ -72,7 +73,7 @@ class AsyncCheckRunner(CheckRunner):
         # Placeholder executors
         not_impl = self._NotImplementedExecutor()
         self.executor_registry.register(CheckType.PING, not_impl)
-        self.executor_registry.register(CheckType.CUSTOM, not_impl)
+        self.executor_registry.register(CheckType.CUSTOM, CustomExecutor())
 
     def run_all(self, checks: Iterable[Check], result_received: Callable) -> None:
         """Run all checks."""
@@ -178,7 +179,7 @@ class AsyncCheckRunner(CheckRunner):
         # Placeholder executors
         not_impl = self._NotImplementedExecutor()
         self.executor_registry.register(CheckType.PING, not_impl)
-        self.executor_registry.register(CheckType.CUSTOM, not_impl)
+        self.executor_registry.register(CheckType.CUSTOM, CustomExecutor())
 
     async def _run_one(
         self,
