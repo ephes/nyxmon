@@ -4,7 +4,6 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
 from nyxmon.adapters.runner.async_runner import AsyncCheckRunner
-from nyxmon.adapters.runner.executors import UnknownCheckTypeError
 from nyxmon.domain import Check, CheckType, Result, ResultStatus
 
 
@@ -155,8 +154,8 @@ class TestAsyncRunnerUnknownCheckType:
     """Tests for unknown check type error handling."""
 
     @pytest.mark.anyio
-    async def test_unknown_check_type_raises_error(self):
-        """Unknown check types should raise UnknownCheckTypeError."""
+    async def test_unknown_check_type_returns_error_result(self):
+        """Unknown check types should return an ERROR result, not raise exception."""
         mock_portal = MagicMock()
         runner = AsyncCheckRunner(mock_portal)
 
@@ -172,18 +171,94 @@ class TestAsyncRunnerUnknownCheckType:
             ),
         ]
 
-        # Should raise exception (wrapped in ExceptionGroup by anyio)
-        with pytest.raises(BaseExceptionGroup) as exc_info:
-            results = []
-            async for result in runner._async_run_all(checks):
-                results.append(result)
+        # Should NOT raise exception, but return error result
+        results = []
+        async for result in runner._async_run_all(checks):
+            results.append(result)
 
-        # Verify the wrapped exception is UnknownCheckTypeError
-        exceptions = exc_info.value.exceptions
-        assert len(exceptions) == 1
-        assert isinstance(exceptions[0], UnknownCheckTypeError)
-        assert "unknown_type" in str(exceptions[0])
-        assert "No executor registered" in str(exceptions[0])
+        # Verify we got an error result
+        assert len(results) == 1
+        result = results[0]
+        assert result.check_id == 1
+        assert result.status == ResultStatus.ERROR
+        assert result.data["error_type"] == "unknown_check_type"
+        assert "unknown_type" in result.data["error_msg"]
+        assert result.data["check_type"] == "unknown_type"
+
+    @pytest.mark.anyio
+    async def test_unknown_check_type_does_not_crash_other_checks(self):
+        """Unknown check types should not prevent other checks from running."""
+        mock_portal = MagicMock()
+        runner = AsyncCheckRunner(mock_portal)
+
+        # Create mixed batch: valid DNS check + unknown type + valid HTTP check
+        checks = [
+            Check(
+                check_id=1,
+                service_id=1,
+                name="DNS Check",
+                check_type=CheckType.DNS,
+                url="example.com",
+                data={"expected_ips": ["192.0.2.1"]},
+            ),
+            Check(
+                check_id=2,
+                service_id=1,
+                name="Legacy Custom Check",
+                check_type="custom",  # Legacy type, not registered
+                url="https://example.com",
+                data={},
+            ),
+            Check(
+                check_id=3,
+                service_id=1,
+                name="HTTP Check",
+                check_type=CheckType.HTTP,
+                url="https://example.com",
+                data={},
+            ),
+        ]
+
+        # Mock DNS and HTTP executors
+        with patch(
+            "nyxmon.adapters.runner.executors.dns_executor.DnsCheckExecutor.execute"
+        ) as mock_dns:
+            with patch(
+                "nyxmon.adapters.runner.executors.http_executor.HttpCheckExecutor.execute"
+            ) as mock_http:
+                mock_dns.return_value = Result(
+                    check_id=1,
+                    status=ResultStatus.OK,
+                    data={"resolved_ips": ["192.0.2.1"]},
+                )
+                mock_http.return_value = Result(
+                    check_id=3, status=ResultStatus.OK, data={}
+                )
+
+                with patch("httpx.AsyncClient") as mock_client_class:
+                    mock_client_instance = AsyncMock()
+                    mock_client_class.return_value = mock_client_instance
+
+                    results = []
+                    async for result in runner._async_run_all(checks):
+                        results.append(result)
+
+        # Verify all 3 checks ran
+        assert len(results) == 3
+
+        # Sort results by check_id for predictable assertions
+        results_by_id = {r.check_id: r for r in results}
+
+        # DNS check should succeed
+        assert results_by_id[1].status == ResultStatus.OK
+
+        # Unknown type should return error (not crash)
+        assert results_by_id[2].status == ResultStatus.ERROR
+        assert results_by_id[2].data["error_type"] == "unknown_check_type"
+        assert results_by_id[2].data["check_type"] == "custom"
+
+        # HTTP check should succeed despite the unknown type in the batch
+        assert results_by_id[3].status == ResultStatus.OK
 
 
 class TestAsyncRunnerExecutorCleanup:

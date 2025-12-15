@@ -35,7 +35,6 @@ dns-check-examples
 smtp-checks
 imap-checks
 json-metrics-check-examples
-custom-ssh-json-checks
 ```
 
 ```{toctree}

@@ -71,7 +71,6 @@ class CheckType:
     SMTP: Literal["smtp"] = "smtp"
     IMAP: Literal["imap"] = "imap"
     JSON_METRICS: Literal["json-metrics"] = "json-metrics"
-    CUSTOM: Literal["custom"] = "custom"
 
 
 CheckTypeType: TypeAlias = Literal[
@@ -83,7 +82,6 @@ CheckTypeType: TypeAlias = Literal[
     "smtp",
     "imap",
     "json-metrics",
-    "custom",
 ]
 
 

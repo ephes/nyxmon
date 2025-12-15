@@ -7,11 +7,10 @@ from typing import Iterable, Callable, Set, Optional
 import httpx
 
 from .interface import CheckRunner
-from .executors import ExecutorRegistry
+from .executors import ExecutorRegistry, UnknownCheckTypeError
 from .executors.http_executor import HttpCheckExecutor
 from .executors.dns_executor import DnsCheckExecutor
 from .executors.json_metrics_executor import JsonMetricsExecutor
-from .executors.custom_executor import CustomExecutor
 from .executors.imap_executor import ImapCheckExecutor
 from .executors.smtp_executor import SmtpCheckExecutor
 from .executors.tcp_executor import TcpCheckExecutor
@@ -73,7 +72,6 @@ class AsyncCheckRunner(CheckRunner):
         # Placeholder executors
         not_impl = self._NotImplementedExecutor()
         self.executor_registry.register(CheckType.PING, not_impl)
-        self.executor_registry.register(CheckType.CUSTOM, CustomExecutor())
 
     def run_all(self, checks: Iterable[Check], result_received: Callable) -> None:
         """Run all checks."""
@@ -179,7 +177,6 @@ class AsyncCheckRunner(CheckRunner):
         # Placeholder executors
         not_impl = self._NotImplementedExecutor()
         self.executor_registry.register(CheckType.PING, not_impl)
-        self.executor_registry.register(CheckType.CUSTOM, CustomExecutor())
 
     async def _run_one(
         self,
@@ -192,7 +189,19 @@ class AsyncCheckRunner(CheckRunner):
             check: Check to execute
             send_channel: Channel to send result to
         """
-        # Get executor for check type (raises UnknownCheckTypeError if not found)
-        executor = self.executor_registry.get_executor(check.check_type)
-        result = await executor.execute(check)
+        try:
+            # Get executor for check type (raises UnknownCheckTypeError if not found)
+            executor = self.executor_registry.get_executor(check.check_type)
+            result = await executor.execute(check)
+        except UnknownCheckTypeError as e:
+            # Handle legacy/unknown check types gracefully instead of crashing
+            result = Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "unknown_check_type",
+                    "error_msg": str(e),
+                    "check_type": check.check_type,
+                },
+            )
         await send_channel.send(result)

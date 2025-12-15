@@ -50,7 +50,7 @@ async def add_check_async(args):
         check = Check(
             check_id=check_id,
             service_id=args.service_id,
-            check_type="http",
+            check_type=args.check_type,
             status=CheckStatus.IDLE,
             url=args.url,
             check_interval=args.interval,
@@ -84,7 +84,16 @@ def add_check_to_db():
     parser.add_argument(
         "--check-type",
         default="http",
-        choices=["http", "tcp", "ping", "dns", "custom"],
+        choices=[
+            "http",
+            "tcp",
+            "ping",
+            "dns",
+            "smtp",
+            "imap",
+            "json-http",
+            "json-metrics",
+        ],
         help="Type of health check (default: http)",
     )
     parser.add_argument("--url", required=True, help="URL or endpoint to check")

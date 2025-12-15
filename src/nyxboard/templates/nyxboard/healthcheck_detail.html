@@ -12,6 +12,12 @@
     <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="btn btn-secondary">&larr; Back to Service</a>
 </div>
 
+{% if health_check.check_type == 'custom' %}
+<div class="field-warnings" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+    <div class="help-text" style="color: #856404;"><strong>Warning:</strong> This check uses a deprecated check type ('{{ health_check.check_type }}') that is no longer supported. It will produce ERROR results when run. Please disable or delete this check, or create a new check with a supported type.</div>
+</div>
+{% endif %}
+
 <div class="list-card health-check-info">
     <div class="service-id health-check-id">
         {{ health_check.name }}

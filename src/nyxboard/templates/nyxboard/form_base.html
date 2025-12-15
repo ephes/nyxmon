@@ -8,7 +8,15 @@
             <a href="{{ back_url }}" class="back-link">&larr; Back</a>
         {% endif %}
     </div>
-    
+
+    {% if warnings %}
+        <div class="field-warnings" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+            {% for warning in warnings %}
+                <div class="help-text" style="color: #856404; margin-bottom: 0.5rem;"><strong>Warning:</strong> {{ warning }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <form method="post" class="form">
         {% csrf_token %}
         
