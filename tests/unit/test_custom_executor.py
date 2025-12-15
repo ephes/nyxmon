@@ -482,3 +482,28 @@ def test_retry_delay_non_numeric() -> None:
     assert result.status == ResultStatus.ERROR
     assert result.data["error_type"] == "configuration_error"
     assert "retry_delay must be a number" in result.data["error_msg"]
+
+
+def test_check_path_non_string() -> None:
+    """checks[*].path must be a string, not an int or other type."""
+    executor = CustomExecutor()
+    check = _build_check(
+        data={
+            "mode": "ssh-json",
+            "target": "root@fractal.fritz.box",
+            "command": "metrics",
+            "checks": [
+                {
+                    "path": 123,  # wrong type - should be a string
+                    "op": "==",
+                    "value": "bar",
+                    "severity": "critical",
+                },
+            ],
+        }
+    )
+    result = anyio.run(executor.execute, check)
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "configuration_error"
+    assert "errors" in result.data
+    assert "path must be a string" in result.data["errors"][0]

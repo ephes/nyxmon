@@ -309,14 +309,28 @@ def _validate_checks(checks: list) -> list[str]:
             errors.append(f"checks[{idx}]: missing required keys: {sorted(missing)}")
             continue
 
+        path = chk.get("path")
+        if not isinstance(path, str):
+            errors.append(
+                f"checks[{idx}]: path must be a string, got {type(path).__name__}"
+            )
+
         op = chk.get("op")
-        if op not in valid_ops:
+        if not isinstance(op, str):
+            errors.append(
+                f"checks[{idx}]: op must be a string, got {type(op).__name__}"
+            )
+        elif op not in valid_ops:
             errors.append(
                 f"checks[{idx}]: invalid operator '{op}', must be one of {sorted(valid_ops)}"
             )
 
         severity = chk.get("severity")
-        if severity not in valid_severities:
+        if not isinstance(severity, str):
+            errors.append(
+                f"checks[{idx}]: severity must be a string, got {type(severity).__name__}"
+            )
+        elif severity not in valid_severities:
             errors.append(
                 f"checks[{idx}]: invalid severity '{severity}', must be 'warning' or 'critical'"
             )
