@@ -237,6 +237,9 @@ class SqliteResultRepository(ResultRepository):
     def list(self) -> List[Result]:
         return self._await(self._list_async())
 
+    def list_for_check(self, check_id: int, limit: int) -> List[Result]:
+        return self._await(self._list_for_check_async(check_id, limit))
+
     # ---------- interne async-Implementierung ----------
     async def _add_async(self, result: Result) -> None:
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
@@ -284,6 +287,30 @@ class SqliteResultRepository(ResultRepository):
                     check_id=row["health_check_id"],
                     status=row["status"],
                     data=json.loads(row["data"]),
+                )
+                for row in rows
+            ]
+
+    async def _list_for_check_async(self, check_id: int, limit: int) -> List[Result]:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            db.row_factory = aiosqlite.Row
+            rows = await db.execute_fetchall(
+                """
+                SELECT id, health_check_id, status, data
+                FROM check_result
+                WHERE health_check_id = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (check_id, limit),
+            )
+            return [
+                Result(
+                    result_id=row["id"],
+                    check_id=row["health_check_id"],
+                    status=row["status"],
+                    data=json.loads(row["data"] or "{}"),
                 )
                 for row in rows
             ]

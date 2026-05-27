@@ -38,6 +38,21 @@ class InMemoryResultRepository(ResultRepository):
     def list(self) -> List[Result]:
         return list(self.results.values())
 
+    def list_for_check(self, check_id: int, limit: int) -> List[Result]:
+        results = [
+            result for result in self.results.values() if result.check_id == check_id
+        ]
+
+        def result_id(result: Result) -> int:
+            assert result.result_id is not None
+            return result.result_id
+
+        return sorted(
+            results,
+            key=result_id,
+            reverse=True,
+        )[:limit]
+
     async def delete_old_results_async(
         self, retention_seconds: int = 86400, batch_size: int = 1000
     ) -> int:

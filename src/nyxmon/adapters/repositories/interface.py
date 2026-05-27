@@ -20,6 +20,10 @@ class ResultRepository(Protocol):
         """Get a list of all results."""
         ...
 
+    def list_for_check(self, check_id: int, limit: int) -> List[Result]:
+        """Get recent results for a check, newest first."""
+        ...
+
 
 class CheckRepository(Protocol):
     """A repository interface for storing and retrieving checks."""

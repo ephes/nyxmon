@@ -151,6 +151,19 @@ To enable Telegram notifications:
    ```
    Or set them in your `.env` file for automatic loading with honcho.
 
+By default, Nyxmon persists the first warning/error sample but waits for 2 consecutive non-OK samples before sending Telegram notifications or creating OpsGate tickets. Set `NYXMON_NOTIFY_CONSECUTIVE_FAILURES=1` to restore immediate first-failure alerts.
+
+### OpsGate Approval Workflow (Optional)
+
+To have Nyxmon create OpsGate remediation tickets directly and append approval links to
+Telegram alerts, set:
+
+```shell
+export OPSGATE_SUBMIT_BASE_URL=http://studio.tailde2ec.ts.net:8711
+export OPSGATE_SUBMIT_TOKEN=<opsgate_submit_token_nyxmon>
+export OPSGATE_APPROVAL_BASE_URL=http://studio.tailde2ec.ts.net:8711
+```
+
 ### Creating Custom Notifiers
 
 Implement the `Notifier` interface for custom notifications:

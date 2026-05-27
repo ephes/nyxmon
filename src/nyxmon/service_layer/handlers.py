@@ -1,3 +1,4 @@
+import os
 from typing import Callable
 
 from anyio.from_thread import BlockingPortalProvider
@@ -6,10 +7,46 @@ from ..adapters.collector import CheckCollector
 from ..adapters.cleaner import ResultsCleaner
 from ..adapters.notification import Notifier
 from ..domain import events, commands
-from ..domain.models import CheckResult
+from ..domain.models import CheckResult, ResultStatus
 from ..adapters.runner import CheckRunner
 from .unit_of_work import UnitOfWork
 from ..domain.commands import AddCheckResult
+
+
+DEFAULT_NOTIFY_CONSECUTIVE_FAILURES = 2
+
+
+def _notify_consecutive_failure_threshold() -> int:
+    value = os.environ.get("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "").strip()
+    if not value:
+        return DEFAULT_NOTIFY_CONSECUTIVE_FAILURES
+    try:
+        threshold = int(value)
+    except ValueError:
+        return DEFAULT_NOTIFY_CONSECUTIVE_FAILURES
+    if threshold <= 0:
+        return DEFAULT_NOTIFY_CONSECUTIVE_FAILURES
+    return threshold
+
+
+def _should_notify_check_result(
+    check_result: CheckResult, uow: UnitOfWork, threshold: int
+) -> bool:
+    if not check_result.should_notify:
+        return False
+
+    recent_results = uow.store.results.list_for_check(
+        check_result.check.check_id,
+        limit=threshold + 1,
+    )
+    consecutive_failures = 0
+    for result in recent_results:
+        if result.status in (ResultStatus.ERROR, ResultStatus.WARNING):
+            consecutive_failures += 1
+            continue
+        break
+
+    return consecutive_failures == threshold
 
 
 def execute_checks(
@@ -47,8 +84,13 @@ def add_check_result(
         uow.store.checks.add(check)
         uow.commit()
 
-    # If the check_result should be notified, use the notifier to send notifications
-    if check_result.should_notify:
+    # Persist every sample, but only trigger side effects when the failure streak
+    # crosses the configured threshold.
+    if _should_notify_check_result(
+        check_result,
+        uow,
+        _notify_consecutive_failure_threshold(),
+    ):
         notifier.notify_check_failed(check, result)
 
 

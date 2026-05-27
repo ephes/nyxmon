@@ -132,6 +132,30 @@ To enable Telegram notifications:
    ```
    Or set them in your `.env` file. They'll get loaded automatically by `honcho`.
 
+### OpsGate Ticket Producer (Phase 4A)
+
+Nyxmon can create OpsGate tickets directly on check failures and include an approval
+link in Telegram notifications.
+
+Set these optional environment variables on the monitor process:
+
+```shell
+export OPSGATE_SUBMIT_BASE_URL=http://studio.tailde2ec.ts.net:8711
+export OPSGATE_SUBMIT_TOKEN=<opsgate_submit_token_nyxmon>
+export OPSGATE_APPROVAL_BASE_URL=http://studio.tailde2ec.ts.net:8711
+```
+
+Optional tuning:
+
+```shell
+export NYXMON_NOTIFY_CONSECUTIVE_FAILURES=2
+export OPSGATE_TICKET_EXPIRES_SECONDS=14400
+export OPSGATE_SUBMIT_TIMEOUT_SECONDS=10
+export OPSGATE_SUBMIT_INCLUDE_WARNINGS=false
+```
+
+`NYXMON_NOTIFY_CONSECUTIVE_FAILURES` applies to Telegram and OpsGate. The first failing sample is still stored in history; notifications are sent when the configured warning/error streak is reached.
+
 ### Creating a Custom Notifier
 
 You can create a custom notifier by implementing the `Notifier` interface:

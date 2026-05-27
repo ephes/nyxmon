@@ -14,6 +14,7 @@ from .models import (
 )
 from .imap_config import ImapCheckConfig
 from .smtp_config import SmtpCheckConfig
+from .http_config import HttpCheckConfig
 from .json_metrics_config import JsonMetricsCheckConfig
 from .tcp_config import TcpCheckConfig
 
@@ -31,6 +32,7 @@ __all__ = [
     "ResultStatusType",
     "StatusChoices",
     "Service",
+    "HttpCheckConfig",
     "ImapCheckConfig",
     "SmtpCheckConfig",
     "JsonMetricsCheckConfig",

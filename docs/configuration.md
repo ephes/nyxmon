@@ -15,10 +15,20 @@ NyxMon's agent is configured primarily through CLI flags. When running `uv run s
 
 ### Environment Variables
 
-Only Telegram notifications currently read environment variables:
+Telegram notifications read:
 
 - `TELEGRAM_BOT_TOKEN`: Bot token from BotFather
 - `TELEGRAM_CHAT_ID`: Chat ID for notifications
+- `NYXMON_NOTIFY_CONSECUTIVE_FAILURES`: Consecutive warning/error samples required before sending Telegram notifications or creating OpsGate tickets (default `2`; set `1` for immediate first-failure alerts)
+
+OpsGate producer integration (optional) reads:
+
+- `OPSGATE_SUBMIT_BASE_URL`: OpsGate base URL (for example `http://studio.tailde2ec.ts.net:8711`)
+- `OPSGATE_SUBMIT_TOKEN`: Nyxmon submit token for OpsGate
+- `OPSGATE_APPROVAL_BASE_URL`: Base URL used for approval links in notifications (defaults to submit base URL)
+- `OPSGATE_TICKET_EXPIRES_SECONDS`: Ticket expiry window in seconds (default `14400`)
+- `OPSGATE_SUBMIT_TIMEOUT_SECONDS`: Submit HTTP timeout in seconds (default `10`)
+- `OPSGATE_SUBMIT_INCLUDE_WARNINGS`: Whether warning checks also create tickets (`false` by default)
 
 ### Django Settings
 
@@ -32,14 +42,22 @@ Django configuration is managed through environment variables in the `src/django
 
 ### HTTP Checks
 
-The built-in HTTP executor issues a `GET` request and treats any non-error status as success:
+The built-in HTTP executor issues a `GET` request and treats only 2xx responses as success. Redirects are followed automatically before the final response status is evaluated:
 
 ```python
 {
     "type": "http",
-    "url": "https://example.com/health"
+    "url": "https://example.com/health",
+    "data": {
+        "timeout": 10.0,
+        "retries": 3,
+        "retry_delay": 10.0,
+        "retry_status_codes": [502, 503, 504]
+    }
 }
 ```
+
+`timeout` defaults to `10.0`, `retries` defaults to `0`, `retry_delay` defaults to `2.0`, and `retry_status_codes` defaults to `[502, 503, 504]`. Timeouts and request/connection errors also retry when `retries` is greater than zero. Non-transient HTTP statuses such as `404` do not retry unless explicitly listed in `retry_status_codes`.
 
 Additional response validation (JSON assertions, headers, etc.) is planned.
 
