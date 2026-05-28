@@ -128,7 +128,7 @@ Searches a mailbox for recent messages by subject and optionally deletes them:
 }
 ```
 
-On success returns `matched_uids` and `latest_internaldate`; failures include `error_type` such as `no_recent_message`, `timeout`, or `execution_error`.
+On success returns `matched_uids` and `latest_internaldate`; empty searches are retried according to `retries`/`retry_delay` before returning `no_recent_message`, and other failures include `error_type` values such as `timeout` or `execution_error`.
 
 ### JSON Metrics Checks
 

@@ -32,11 +32,11 @@ Behavior:
 - Connects with the chosen TLS mode (implicit/starttls/none), logs in, and selects `folder`.
 - Searches undeleted messages matching `search_subject`, filters to those newer than `max_age_minutes`.
 - On success returns `matched_uids` and `latest_internaldate`; when `delete_after_check` is true, messages are deleted/expunged.
-- Failures surface as `error_type` values such as `no_recent_message`, `timeout`, `request_error`, or `execution_error`; retries/backoff apply to transient failures.
+- Failures surface as `error_type` values such as `no_recent_message`, `timeout`, `request_error`, or `execution_error`; retries/backoff apply to transient failures and to empty recent-message searches before `no_recent_message` is returned.
 
 Tips:
 - Use app passwords or vault references via `password_secret`.
-- Pair with the SMTP check that sends `[nyxmon-outbound]` messages; IMAP will stay red with `no_recent_message` until a fresh outbound test mail is delivered.
+- Pair with the SMTP check that sends `[nyxmon-outbound]` messages; IMAP retries briefly for a just-sent loopback before returning `no_recent_message`.
 - Keep `max_age_minutes` aligned with the SMTP check’s interval + expected delivery delay (consider greylisting on first contact).
 - If subjects contain special characters, they are quoted in the IMAP search to avoid parsing issues.
 

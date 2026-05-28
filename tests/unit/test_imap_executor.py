@@ -1,7 +1,7 @@
 """Unit tests for the IMAP check executor."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, List
+from typing import Any
 
 import anyio
 from nyxmon.adapters.runner.executors.imap_executor import (
@@ -38,11 +38,13 @@ class StubSession:
     def __init__(
         self,
         *,
-        messages: List[ImapMessage] | None = None,
+        messages: list[ImapMessage] | None = None,
+        search_results: list[list[ImapMessage]] | None = None,
         error: Exception | None = None,
         fail_first: bool = False,
     ) -> None:
         self.messages = messages or []
+        self.search_results = search_results
         self.error = error
         self.fail_first = fail_first
         self.deleted: list[str] = []
@@ -66,10 +68,18 @@ class StubSession:
         if self.error:
             raise self.error
 
+        messages = self.messages
+        if self.search_results is not None:
+            if not self.search_results:
+                messages = []
+            else:
+                result_index = min(self.search_calls - 1, len(self.search_results) - 1)
+                messages = self.search_results[result_index]
+
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
         return [
             msg
-            for msg in self.messages
+            for msg in messages
             if msg.internaldate >= cutoff and subject in msg.subject
         ]
 
@@ -110,7 +120,7 @@ def test_successful_search_and_delete(monkeypatch) -> None:
 
 
 def test_no_recent_messages_returns_error() -> None:
-    """Should return ERROR when no matching messages are recent enough."""
+    """Should return ERROR after retrying when no messages are recent enough."""
     old = datetime.now(timezone.utc) - timedelta(minutes=60)
     messages = [ImapMessage(uid="1", subject="[nyxmon]", internaldate=old)]
     session = StubSession(messages=messages)
@@ -122,6 +132,8 @@ def test_no_recent_messages_returns_error() -> None:
             "password": "secret",
             "search_subject": "[nyxmon]",
             "max_age_minutes": 15,
+            "retries": 2,
+            "retry_delay": 0,
         }
     )
 
@@ -129,6 +141,39 @@ def test_no_recent_messages_returns_error() -> None:
 
     assert result.status == ResultStatus.ERROR
     assert result.data["error_type"] == "no_recent_message"
+    assert result.data["attempts"] == 3
+    assert session.enter_count == 3
+    assert session.search_calls == 3
+    assert session.deleted == []
+
+
+def test_no_recent_message_retries_then_succeeds_and_deletes() -> None:
+    """A message delivered after the first search should be found on retry."""
+    now = datetime.now(timezone.utc)
+    message = ImapMessage(uid="4", subject="[nyxmon]", internaldate=now)
+    session = StubSession(search_results=[[], [message]])
+
+    executor = ImapCheckExecutor(session_factory=lambda *_: session)
+    check = _build_check(
+        config={
+            "username": "user",
+            "password": "secret",
+            "search_subject": "[nyxmon]",
+            "max_age_minutes": 15,
+            "delete_after_check": True,
+            "retries": 2,
+            "retry_delay": 0,
+        }
+    )
+
+    result = anyio.run(executor.execute, check)
+
+    assert result.status == ResultStatus.OK
+    assert result.data["matched_uids"] == ["4"]
+    assert result.data["latest_internaldate"] == now.isoformat()
+    assert session.enter_count == 2
+    assert session.search_calls == 2
+    assert session.deleted == ["4"]
 
 
 def test_transient_error_retries_then_succeeds(monkeypatch) -> None:

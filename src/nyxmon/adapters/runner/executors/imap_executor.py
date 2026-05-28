@@ -33,6 +33,10 @@ class ImapTransientError(ImapCheckError):
     """Errors that can be retried."""
 
 
+class ImapNoRecentMessage(ImapTransientError):
+    """No matching recent message was found on this attempt."""
+
+
 class ImapSession(Protocol):
     """Protocol describing the IMAP session interface used by the executor."""
 
@@ -203,6 +207,13 @@ class ImapCheckExecutor:
         for attempt in range(attempts):
             try:
                 return await self._run_once(check, config)
+            except ImapNoRecentMessage as err:
+                if attempt < config.retries:
+                    await anyio.sleep(config.retry_delay)
+                    continue
+                return self._error_result(
+                    check.check_id, "no_recent_message", str(err), attempt + 1
+                )
             except ImapTransientError as err:
                 if attempt < config.retries:
                     await anyio.sleep(config.retry_delay)
@@ -232,11 +243,8 @@ class ImapCheckExecutor:
             )
 
             if not messages:
-                return self._error_result(
-                    check.check_id,
-                    "no_recent_message",
+                raise ImapNoRecentMessage(
                     f"No messages with subject '{config.search_subject}' within {config.max_age_minutes} minutes",
-                    1,
                 )
 
             # Sort to ensure deterministic latest selection

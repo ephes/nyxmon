@@ -32,9 +32,7 @@ class HttpCheckConfig:
             else DEFAULT_RETRY_STATUS_CODES
         )
         if not isinstance(raw_retry_status_codes, list | tuple | set):
-            raise ValueError(
-                "retry_status_codes must be a list of HTTP status codes"
-            )
+            raise ValueError("retry_status_codes must be a list of HTTP status codes")
 
         try:
             return cls(

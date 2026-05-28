@@ -65,7 +65,9 @@ def _build_result(status: str = "error") -> Result:
 
 
 @pytest.mark.anyio
-async def test_create_opsgate_ticket_posts_expected_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_create_opsgate_ticket_posts_expected_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("OPSGATE_SUBMIT_BASE_URL", "https://opsgate.home")
     monkeypatch.setenv("OPSGATE_SUBMIT_TOKEN", "token-12345678901234567890")
     monkeypatch.delenv("OPSGATE_APPROVAL_BASE_URL", raising=False)
@@ -82,7 +84,10 @@ async def test_create_opsgate_ticket_posts_expected_payload(monkeypatch: pytest.
 
     created = await notifier._create_opsgate_ticket(_build_check(), _build_result())
 
-    assert created == {"status": "created", "ticket_id": "aaaaaaaa-1111-4111-8111-111111111111"}
+    assert created == {
+        "status": "created",
+        "ticket_id": "aaaaaaaa-1111-4111-8111-111111111111",
+    }
     assert captured["url"] == "https://opsgate.home/api/v1/tickets"
     assert captured["headers"]["Authorization"] == "Bearer token-12345678901234567890"
     assert captured["json"]["task_ref"] == "nyxmon-check-11"
@@ -90,7 +95,9 @@ async def test_create_opsgate_ticket_posts_expected_payload(monkeypatch: pytest.
 
 
 @pytest.mark.anyio
-async def test_create_opsgate_ticket_disabled_without_submit_config(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_create_opsgate_ticket_disabled_without_submit_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("OPSGATE_SUBMIT_BASE_URL", raising=False)
     monkeypatch.delenv("OPSGATE_SUBMIT_TOKEN", raising=False)
     notifier = AsyncTelegramNotifier(token="telegram-token", chat_id="123")
@@ -108,7 +115,10 @@ async def test_notify_check_failed_includes_approval_link_when_ticket_created(
     notifier = AsyncTelegramNotifier(token="telegram-token", chat_id="123")
 
     async def _fake_create_ticket(_check: Check, _result: Result) -> dict[str, str]:
-        return {"status": "created", "ticket_id": "bbbbbbbb-2222-4222-8222-222222222222"}
+        return {
+            "status": "created",
+            "ticket_id": "bbbbbbbb-2222-4222-8222-222222222222",
+        }
 
     sent: dict[str, Any] = {}
 
@@ -124,11 +134,16 @@ async def test_notify_check_failed_includes_approval_link_when_ticket_created(
     assert sent["high_priority"] is True
     assert "OpsGate Approval Needed" in sent["text"]
     assert "Open approval page" in sent["text"]
-    assert "https://opsgate.home/tickets/bbbbbbbb-2222-4222-8222-222222222222" in sent["text"]
+    assert (
+        "https://opsgate.home/tickets/bbbbbbbb-2222-4222-8222-222222222222"
+        in sent["text"]
+    )
 
 
 @pytest.mark.anyio
-async def test_notify_check_failed_includes_duplicate_notice(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_notify_check_failed_includes_duplicate_notice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("OPSGATE_SUBMIT_BASE_URL", "https://opsgate.home")
     monkeypatch.setenv("OPSGATE_SUBMIT_TOKEN", "token-12345678901234567890")
     notifier = AsyncTelegramNotifier(token="telegram-token", chat_id="123")
@@ -152,7 +167,9 @@ async def test_notify_check_failed_includes_duplicate_notice(monkeypatch: pytest
 
 
 @pytest.mark.anyio
-async def test_notify_check_failed_includes_ticket_error_notice(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_notify_check_failed_includes_ticket_error_notice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("OPSGATE_SUBMIT_BASE_URL", "https://opsgate.home")
     monkeypatch.setenv("OPSGATE_SUBMIT_TOKEN", "token-12345678901234567890")
     notifier = AsyncTelegramNotifier(token="telegram-token", chat_id="123")
