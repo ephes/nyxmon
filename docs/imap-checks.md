@@ -19,7 +19,7 @@ check = Check(
         "password_secret": "nyxmon_local_monitor_password",  # or password
         "folder": "INBOX",
         "search_subject": "[nyxmon-outbound]",
-        "max_age_minutes": 45,
+        "max_age_minutes": 120,
         "delete_after_check": False,
         "timeout": 30,
         "retries": 2,
@@ -43,5 +43,5 @@ Tips:
 
 Pairing guidance:
 - Use the same `subject_prefix` in SMTP and `search_subject` in IMAP.
-- If you forward via Gmail, initial deliveries may be delayed by greylisting; retries and a freshness window above two poll intervals, such as 45 minutes for a 15-minute poll, cover this.
+- If you forward via Gmail, deliveries may be delayed or skipped; retries and a freshness window well above the poll interval, such as 120 minutes for a 15-minute poll, cover multi-probe forwarding gaps.
 - IMAP deletes matched messages when `delete_after_check` is true, so SMTP should continue sending at least once per interval to keep IMAP green.
