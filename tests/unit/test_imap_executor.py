@@ -147,6 +147,30 @@ def test_no_recent_messages_returns_error() -> None:
     assert session.deleted == []
 
 
+def test_no_recent_messages_can_return_warning() -> None:
+    """Configured Gmail-style loopbacks can warn instead of paging critical."""
+    session = StubSession(messages=[])
+
+    executor = ImapCheckExecutor(session_factory=lambda *_: session)
+    check = _build_check(
+        config={
+            "username": "user",
+            "password": "secret",
+            "search_subject": "[nyxmon]",
+            "max_age_minutes": 15,
+            "retries": 0,
+            "no_recent_message_severity": "warning",
+        }
+    )
+
+    result = anyio.run(executor.execute, check)
+
+    assert result.status == ResultStatus.WARNING
+    assert result.data["error_type"] == "no_recent_message"
+    assert result.data["severity"] == "warning"
+    assert result.data["attempts"] == 1
+
+
 def test_no_recent_message_retries_then_succeeds_and_deletes() -> None:
     """A message delivered after the first search should be found on retry."""
     now = datetime.now(timezone.utc)

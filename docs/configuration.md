@@ -122,13 +122,14 @@ Searches a mailbox for recent messages by subject and optionally deletes them:
     "search_subject": "[nyxmon-outbound]",
     "max_age_minutes": 30,
     "delete_after_check": true,
+    "no_recent_message_severity": "critical",  # or "warning"
     "timeout": 30,
     "retries": 2,
     "retry_delay": 10
 }
 ```
 
-On success returns `matched_uids` and `latest_internaldate`; empty searches are retried according to `retries`/`retry_delay` before returning `no_recent_message`, and other failures include `error_type` values such as `timeout` or `execution_error`.
+On success returns `matched_uids` and `latest_internaldate`; empty searches are retried according to `retries`/`retry_delay` before returning `no_recent_message`, and other failures include `error_type` values such as `timeout` or `execution_error`. `no_recent_message_severity` defaults to `critical`; set it to `warning` for third-party forwarded loopback checks that should not page on forwarding gaps.
 
 ### JSON Metrics Checks
 

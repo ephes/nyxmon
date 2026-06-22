@@ -753,6 +753,7 @@ class TestImapHealthCheckForm:
                 "search_subject": "[nyxmon-test]",
                 "max_age_minutes": 60,
                 "delete_after_check": False,
+                "no_recent_message_severity": "warning",
                 "timeout": 45.0,
                 "retries": 3,
                 "retry_delay": 15.0,
@@ -770,6 +771,7 @@ class TestImapHealthCheckForm:
         assert instance.data["search_subject"] == "[nyxmon-test]"
         assert instance.data["max_age_minutes"] == 60
         assert instance.data["delete_after_check"] is False
+        assert instance.data["no_recent_message_severity"] == "warning"
         assert instance.data["timeout"] == 45.0
         assert instance.data["retries"] == 3
         assert instance.data["retry_delay"] == 15.0
@@ -818,6 +820,7 @@ class TestImapHealthCheckForm:
                 "search_subject": "[nyxmon]",
                 "max_age_minutes": 45,
                 "delete_after_check": False,
+                "no_recent_message_severity": "warning",
                 "timeout": 30.0,
                 "retries": 2,
                 "retry_delay": 10.0,
@@ -834,6 +837,7 @@ class TestImapHealthCheckForm:
         assert form.fields["search_subject"].initial == "[nyxmon]"
         assert form.fields["max_age_minutes"].initial == 45
         assert form.fields["delete_after_check"].initial is False
+        assert form.fields["no_recent_message_severity"].initial == "warning"
 
     def test_password_preserved_when_editing_without_new_password(self, service):
         """Test that existing password is preserved when editing without providing new one."""

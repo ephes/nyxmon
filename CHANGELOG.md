@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- IMAP checks now support `no_recent_message_severity` so missing fresh messages
+  can be warning-only for third-party forwarded loopback checks while other IMAP
+  execution failures remain critical.
 - Plain HTTP checks can now retry transient HTTP statuses (`502`, `503`, `504` by default), timeouts, connection errors, and request errors via `health_check.data`.
 - Notification dampening via `NYXMON_NOTIFY_CONSECUTIVE_FAILURES`, defaulting to 2 consecutive warning/error samples before Telegram or OpsGate side effects.
 

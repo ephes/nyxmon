@@ -21,6 +21,7 @@ check = Check(
         "search_subject": "[nyxmon-outbound]",
         "max_age_minutes": 120,
         "delete_after_check": False,
+        "no_recent_message_severity": "warning",
         "timeout": 30,
         "retries": 2,
         "retry_delay": 10,
@@ -33,6 +34,7 @@ Behavior:
 - Searches undeleted messages matching `search_subject`, filters to those newer than `max_age_minutes`.
 - On success returns `matched_uids` and `latest_internaldate`; when `delete_after_check` is true, messages are deleted/expunged.
 - Failures surface as `error_type` values such as `no_recent_message`, `timeout`, `request_error`, or `execution_error`; retries/backoff apply to transient failures and to empty recent-message searches before `no_recent_message` is returned.
+- `no_recent_message_severity` defaults to `critical`; set it to `warning` for third-party forwarded loopbacks where missing fresh mail means the forwarding path is stale but local IMAP/auth/connectivity should not page.
 
 Tips:
 - Use app passwords or vault references via `password_secret`.
@@ -44,4 +46,5 @@ Tips:
 Pairing guidance:
 - Use the same `subject_prefix` in SMTP and `search_subject` in IMAP.
 - If you forward via Gmail, deliveries may be delayed or skipped; retries and a freshness window well above the poll interval, such as 120 minutes for a 15-minute poll, cover multi-probe forwarding gaps.
+- For Gmail-forwarded loopbacks, consider `no_recent_message_severity: "warning"` and keep a separate Gmail-independent inbound check critical.
 - IMAP deletes matched messages when `delete_after_check` is true, so SMTP should continue sending at least once per interval to keep IMAP green.

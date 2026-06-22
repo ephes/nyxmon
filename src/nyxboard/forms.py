@@ -535,6 +535,18 @@ class ImapHealthCheckForm(HealthCheckForm):
         help_text="Delete matched messages after successful check",
     )
 
+    no_recent_message_severity = forms.ChoiceField(
+        choices=[
+            ("critical", "Critical"),
+            ("warning", "Warning"),
+        ],
+        initial="critical",
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="No Recent Message Severity",
+        help_text="Severity when no matching recent message is found",
+    )
+
     timeout = forms.FloatField(
         initial=30.0,
         min_value=1.0,
@@ -595,6 +607,9 @@ class ImapHealthCheckForm(HealthCheckForm):
             self.fields["delete_after_check"].initial = imap_config.get(
                 "delete_after_check", True
             )
+            self.fields["no_recent_message_severity"].initial = imap_config.get(
+                "no_recent_message_severity", "critical"
+            )
             self.fields["timeout"].initial = imap_config.get("timeout", 30.0)
             self.fields["retries"].initial = imap_config.get("retries", 2)
             self.fields["retry_delay"].initial = imap_config.get("retry_delay", 10.0)
@@ -640,6 +655,10 @@ class ImapHealthCheckForm(HealthCheckForm):
             "search_subject": self.cleaned_data["search_subject"],
             "max_age_minutes": self.cleaned_data["max_age_minutes"],
             "delete_after_check": self.cleaned_data["delete_after_check"],
+            "no_recent_message_severity": self.cleaned_data.get(
+                "no_recent_message_severity"
+            )
+            or "critical",
             "timeout": self.cleaned_data["timeout"],
             "retries": self.cleaned_data["retries"],
             "retry_delay": self.cleaned_data["retry_delay"],

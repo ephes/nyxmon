@@ -11,7 +11,7 @@ from typing import Callable, Protocol
 
 import anyio
 
-from ....domain import Check, Result, ResultStatus
+from ....domain import Check, Result, ResultStatus, ResultStatusType
 from ....domain.imap_config import ImapCheckConfig
 from urllib.parse import urlparse
 
@@ -212,7 +212,16 @@ class ImapCheckExecutor:
                     await anyio.sleep(config.retry_delay)
                     continue
                 return self._error_result(
-                    check.check_id, "no_recent_message", str(err), attempt + 1
+                    check.check_id,
+                    "no_recent_message",
+                    str(err),
+                    attempt + 1,
+                    status=(
+                        ResultStatus.WARNING
+                        if config.no_recent_message_severity == "warning"
+                        else ResultStatus.ERROR
+                    ),
+                    severity=config.no_recent_message_severity,
                 )
             except ImapTransientError as err:
                 if attempt < config.retries:
@@ -265,16 +274,27 @@ class ImapCheckExecutor:
             )
 
     def _error_result(
-        self, check_id: int, error_type: str, error_msg: str, attempts: int
+        self,
+        check_id: int,
+        error_type: str,
+        error_msg: str,
+        attempts: int,
+        *,
+        status: ResultStatusType = ResultStatus.ERROR,
+        severity: str | None = None,
     ) -> Result:
+        data = {
+            "error_type": error_type,
+            "error_msg": error_msg,
+            "attempts": attempts,
+        }
+        if severity is not None:
+            data["severity"] = severity
+
         return Result(
             check_id=check_id,
-            status=ResultStatus.ERROR,
-            data={
-                "error_type": error_type,
-                "error_msg": error_msg,
-                "attempts": attempts,
-            },
+            status=status,
+            data=data,
         )
 
     async def aclose(self) -> None:

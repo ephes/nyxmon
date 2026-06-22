@@ -200,6 +200,21 @@
       {% endif %}
     </div>
 
+    <div class="form-field">
+      <label for="{{ form.no_recent_message_severity.id_for_label }}">{{ form.no_recent_message_severity.label }}</label>
+      {{ form.no_recent_message_severity }}
+      {% if form.no_recent_message_severity.help_text %}
+        <div class="help-text">{{ form.no_recent_message_severity.help_text }}</div>
+      {% endif %}
+      {% if form.no_recent_message_severity.errors %}
+        <div class="field-errors">
+          {% for error in form.no_recent_message_severity.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
     <h3 class="section-title">Advanced Options <small class="help-text">(optional)</small></h3>
 
     <div class="form-field">

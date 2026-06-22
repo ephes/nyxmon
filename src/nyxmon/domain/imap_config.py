@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 ALLOWED_TLS_MODES = {"implicit", "starttls", "none"}
+ALLOWED_NO_RECENT_MESSAGE_SEVERITIES = {"critical", "warning"}
 
 
 @dataclass
@@ -22,6 +23,7 @@ class ImapCheckConfig:
     timeout: float = 30.0
     retries: int = 2
     retry_delay: float = 10.0
+    no_recent_message_severity: str = "critical"
 
     @classmethod
     def from_dict(cls, data: dict) -> "ImapCheckConfig":
@@ -32,6 +34,7 @@ class ImapCheckConfig:
         password_secret = data.get("password_secret")
         search_subject = data.get("search_subject", "")
         tls_mode = data.get("tls_mode", "implicit")
+        no_recent_message_severity = data.get("no_recent_message_severity", "critical")
 
         if not host:
             raise ValueError("host is required")
@@ -43,6 +46,11 @@ class ImapCheckConfig:
             raise ValueError("search_subject is required")
         if tls_mode not in ALLOWED_TLS_MODES:
             raise ValueError(f"tls_mode must be one of {ALLOWED_TLS_MODES}")
+        if no_recent_message_severity not in ALLOWED_NO_RECENT_MESSAGE_SEVERITIES:
+            raise ValueError(
+                "no_recent_message_severity must be one of "
+                f"{ALLOWED_NO_RECENT_MESSAGE_SEVERITIES}"
+            )
 
         return cls(
             host=host,
@@ -58,6 +66,7 @@ class ImapCheckConfig:
             timeout=data.get("timeout", 30.0),
             retries=data.get("retries", 2),
             retry_delay=float(data.get("retry_delay", 10.0)),
+            no_recent_message_severity=no_recent_message_severity,
         )
 
     def to_dict(self) -> dict:
@@ -76,6 +85,7 @@ class ImapCheckConfig:
             "retries": self.retries,
             "retry_delay": self.retry_delay,
             "password_secret": self.password_secret,
+            "no_recent_message_severity": self.no_recent_message_severity,
         }
 
     def validate(self) -> bool:

@@ -28,6 +28,7 @@ class TestImapCheckConfig:
         assert config.delete_after_check is True
         assert config.retries == 2
         assert config.retry_delay == 10
+        assert config.no_recent_message_severity == "critical"
 
     def test_from_dict_with_overrides(self) -> None:
         data = {
@@ -43,6 +44,7 @@ class TestImapCheckConfig:
             "timeout": 20.0,
             "retries": 1,
             "retry_delay": 5,
+            "no_recent_message_severity": "warning",
         }
 
         config = ImapCheckConfig.from_dict(data)
@@ -55,6 +57,7 @@ class TestImapCheckConfig:
         assert config.timeout == 20.0
         assert config.retries == 1
         assert config.retry_delay == 5
+        assert config.no_recent_message_severity == "warning"
 
     def test_to_dict_roundtrip(self) -> None:
         config = ImapCheckConfig(
@@ -71,6 +74,7 @@ class TestImapCheckConfig:
             retries=3,
             retry_delay=7.5,
             password_secret="secret-ref",
+            no_recent_message_severity="warning",
         )
 
         data = config.to_dict()
@@ -86,6 +90,7 @@ class TestImapCheckConfig:
         assert restored.retries == 3
         assert restored.retry_delay == 7.5
         assert restored.password_secret == "secret-ref"
+        assert restored.no_recent_message_severity == "warning"
 
     @pytest.mark.parametrize(
         "field, value, message",
@@ -121,6 +126,19 @@ class TestImapCheckConfig:
         }
 
         with pytest.raises(ValueError, match="tls_mode"):
+            ImapCheckConfig.from_dict(data)
+
+    @pytest.mark.parametrize("invalid", ["", "info", "high"])
+    def test_invalid_no_recent_message_severity(self, invalid: str) -> None:
+        data = {
+            "host": "imap.example.com",
+            "username": "user",
+            "password": "secret",
+            "search_subject": "[nyxmon]",
+            "no_recent_message_severity": invalid,
+        }
+
+        with pytest.raises(ValueError, match="no_recent_message_severity"):
             ImapCheckConfig.from_dict(data)
 
     def test_validate_numeric_limits(self) -> None:
