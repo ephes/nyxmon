@@ -11,6 +11,7 @@ from ..domain.models import CheckResult, ResultStatus
 from ..adapters.runner import CheckRunner
 from .unit_of_work import UnitOfWork
 from ..domain.commands import AddCheckResult
+from .notification_suppression import notification_suppression_details
 
 
 DEFAULT_NOTIFY_CONSECUTIVE_FAILURES = 2
@@ -41,6 +42,8 @@ def _should_notify_check_result(
     )
     consecutive_failures = 0
     for result in recent_results:
+        if result.data.get("notification_suppressed"):
+            break
         if result.status in (ResultStatus.ERROR, ResultStatus.WARNING):
             consecutive_failures += 1
             continue
@@ -79,6 +82,16 @@ def add_check_result(
     """Add a check to the repository and trigger notifications if needed."""
     check_result = cmd.check_result
     check, result = check_result.check, check_result.result
+    if result.status in (
+        ResultStatus.ERROR,
+        ResultStatus.WARNING,
+    ):
+        suppression_details = notification_suppression_details(check)
+        if suppression_details:
+            result.data = {
+                **result.data,
+                "notification_suppressed": suppression_details,
+            }
     with uow:
         uow.store.results.add(result)
         uow.store.checks.add(check)

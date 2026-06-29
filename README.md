@@ -156,6 +156,12 @@ export OPSGATE_SUBMIT_INCLUDE_WARNINGS=false
 
 `NYXMON_NOTIFY_CONSECUTIVE_FAILURES` applies to Telegram and OpsGate. The first failing sample is still stored in history; notifications are sent when the configured warning/error streak is reached.
 
+Checks can also set `data.notification_suppression` to suppress Telegram and
+OpsGate side effects while a maintenance endpoint reports an active or recently
+finished window. Nyxmon still stores the warning/error result with
+`notification_suppressed` metadata, and suppressed failures do not count toward
+the consecutive failure threshold.
+
 ### Creating a Custom Notifier
 
 You can create a custom notifier by implementing the `Notifier` interface:

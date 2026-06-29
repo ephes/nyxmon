@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   execution failures remain critical.
 - Plain HTTP checks can now retry transient HTTP statuses (`502`, `503`, `504` by default), timeouts, connection errors, and request errors via `health_check.data`.
 - Notification dampening via `NYXMON_NOTIFY_CONSECUTIVE_FAILURES`, defaulting to 2 consecutive warning/error samples before Telegram or OpsGate side effects.
+- Check-level `data.notification_suppression` can suppress Telegram and OpsGate
+  side effects during active or recently finished maintenance windows while
+  still storing the warning/error result.
 
 ### Fixed
 - IMAP checks now retry empty recent-message searches according to `retries` and `retry_delay` before returning `no_recent_message`.

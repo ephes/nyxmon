@@ -153,6 +153,32 @@ To enable Telegram notifications:
 
 By default, Nyxmon persists the first warning/error sample but waits for 2 consecutive non-OK samples before sending Telegram notifications or creating OpsGate tickets. Set `NYXMON_NOTIFY_CONSECUTIVE_FAILURES=1` to restore immediate first-failure alerts.
 
+Checks may suppress Telegram and OpsGate side effects during known maintenance by
+adding `data.notification_suppression`. The check still runs and the result is
+still stored; warning/error samples written during the window include
+`notification_suppressed` metadata and do not count toward the consecutive
+failure threshold.
+
+Example:
+
+```json
+{
+  "notification_suppression": {
+    "url": "http://host.example:9106/.well-known/os-apt-maintenance",
+    "timeout": 3.0,
+    "reason": "host_os_apt_maintenance",
+    "status_path": "$.last_status",
+    "active_statuses": ["running"],
+    "finished_epoch_path": "$.last_run_finished_epoch",
+    "active_for_seconds": 900,
+    "auth": {
+      "username": "nyxmon",
+      "password": "secret"
+    }
+  }
+}
+```
+
 ### OpsGate Approval Workflow (Optional)
 
 To have Nyxmon create OpsGate remediation tickets directly and append approval links to
