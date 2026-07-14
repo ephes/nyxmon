@@ -59,7 +59,20 @@ The built-in HTTP executor issues a `GET` request and treats only 2xx responses 
 
 `timeout` defaults to `10.0`, `retries` defaults to `0`, `retry_delay` defaults to `2.0`, and `retry_status_codes` defaults to `[502, 503, 504]`. Timeouts and request/connection errors also retry when `retries` is greater than zero. Non-transient HTTP statuses such as `404` do not retry unless explicitly listed in `retry_status_codes`.
 
-Additional response validation (JSON assertions, headers, etc.) is planned.
+Canonical redirects can be checked without following them by setting
+`follow_redirects` to `false`, `expected_status` to the required 3xx response,
+and `expected_location` to the exact absolute `Location` value. For example:
+
+```json
+{
+  "follow_redirects": false,
+  "expected_status": 301,
+  "expected_location": "https://example.com/probe/path?query=preserved"
+}
+```
+
+Additional response validation such as JSON assertions and response-body
+matching is planned.
 
 ### TCP Checks
 

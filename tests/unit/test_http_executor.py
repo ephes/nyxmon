@@ -18,11 +18,18 @@ class StubClient:
         self.responses = responses
         self.calls = 0
         self.timeouts: list[float | None] = []
+        self.follow_redirects: list[bool] = []
 
-    async def get(self, url: str, timeout: float | None = None) -> Any:
+    async def get(
+        self,
+        url: str,
+        timeout: float | None = None,
+        follow_redirects: bool = True,
+    ) -> Any:
         del url
         self.calls += 1
         self.timeouts.append(timeout)
+        self.follow_redirects.append(follow_redirects)
         response = self.responses.pop(0)
         if isinstance(response, Exception):
             raise response
@@ -33,8 +40,9 @@ class StubClient:
 
 
 class StubResponse:
-    def __init__(self, status_code: int) -> None:
+    def __init__(self, status_code: int, location: str | None = None) -> None:
         self.status_code = status_code
+        self.headers = {} if location is None else {"location": location}
 
 
 def _build_check(**data: Any) -> Check:
@@ -63,6 +71,91 @@ async def test_success_with_no_config_remains_ok() -> None:
     assert result.data == {}
     assert client.calls == 1
     assert client.timeouts == [10.0]
+    assert client.follow_redirects == [True]
+
+
+@pytest.mark.anyio
+async def test_exact_redirect_contract_succeeds_without_following() -> None:
+    location = "https://fabian-heis.de/probe/path?query=preserved"
+    client = StubClient([StubResponse(301, location=location)])
+    executor = HttpCheckExecutor(client=client)  # type: ignore[arg-type]
+
+    result = await executor.execute(
+        _build_check(
+            config={
+                "follow_redirects": False,
+                "expected_status": 301,
+                "expected_location": location,
+            }
+        )
+    )
+
+    assert result.status == ResultStatus.OK
+    assert result.data == {"status_code": 301, "location": location}
+    assert client.follow_redirects == [False]
+
+
+@pytest.mark.anyio
+async def test_exact_redirect_contract_retries_transient_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "nyxmon.adapters.runner.executors.http_executor.anyio.sleep",
+        _fast_sleep,
+    )
+    location = "https://fabian-heis.de/probe/path?query=preserved"
+    client = StubClient([StubResponse(502), StubResponse(301, location=location)])
+    executor = HttpCheckExecutor(client=client)  # type: ignore[arg-type]
+
+    result = await executor.execute(
+        _build_check(
+            config={
+                "follow_redirects": False,
+                "expected_status": 301,
+                "expected_location": location,
+                "retries": 1,
+                "retry_delay": 0,
+            }
+        )
+    )
+
+    assert result.status == ResultStatus.OK
+    assert result.data["attempt"] == 2
+    assert client.calls == 2
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("response", "error_type"),
+    [
+        (
+            StubResponse(302, location="https://fabian-heis.de/probe"),
+            "unexpected_status",
+        ),
+        (
+            StubResponse(301, location="https://wrong.example/probe"),
+            "unexpected_location",
+        ),
+    ],
+)
+async def test_redirect_contract_rejects_status_or_location_drift(
+    response: StubResponse, error_type: str
+) -> None:
+    client = StubClient([response])
+    executor = HttpCheckExecutor(client=client)  # type: ignore[arg-type]
+
+    result = await executor.execute(
+        _build_check(
+            config={
+                "follow_redirects": False,
+                "expected_status": 301,
+                "expected_location": "https://fabian-heis.de/probe",
+            }
+        )
+    )
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == error_type
 
 
 @pytest.mark.anyio

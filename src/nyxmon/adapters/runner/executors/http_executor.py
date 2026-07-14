@@ -73,9 +73,35 @@ class HttpCheckExecutor:
         for attempt in range(1, attempts + 1):
             start = time.time()
             try:
-                response = await client.get(check.url, timeout=config.timeout)
+                response = await client.get(
+                    check.url,
+                    timeout=config.timeout,
+                    follow_redirects=config.follow_redirects,
+                )
                 status_code = self._response_status_code(response)
-                if status_code is not None and not 200 <= status_code < 300:
+                if (
+                    config.expected_status is not None
+                    and status_code != config.expected_status
+                ):
+                    if status_code in config.retry_status_codes and attempt < attempts:
+                        await anyio.sleep(config.retry_delay)
+                        continue
+                    return self._error(
+                        check.check_id,
+                        "unexpected_status",
+                        f"Expected HTTP {config.expected_status}, got {status_code}",
+                        {
+                            "expected_status": config.expected_status,
+                            "status_code": status_code,
+                            "attempt": attempt,
+                            "attempts": attempts,
+                        },
+                    )
+                if (
+                    config.expected_status is None
+                    and status_code is not None
+                    and not 200 <= status_code < 300
+                ):
                     result = await self._http_status_error_result(
                         check.check_id,
                         status_code,
@@ -89,6 +115,23 @@ class HttpCheckExecutor:
                 if status_code is None:
                     response.raise_for_status()
 
+                location = getattr(response, "headers", {}).get("location")
+                if (
+                    config.expected_location is not None
+                    and location != config.expected_location
+                ):
+                    return self._error(
+                        check.check_id,
+                        "unexpected_location",
+                        "HTTP Location header does not match the configured target",
+                        {
+                            "expected_location": config.expected_location,
+                            "location": location,
+                            "attempt": attempt,
+                            "attempts": attempts,
+                        },
+                    )
+
                 duration_ms = int((time.time() - start) * 1000)
                 data: dict[str, Any] = {}
                 if attempt > 1 or attempts > 1:
@@ -99,6 +142,10 @@ class HttpCheckExecutor:
                             "duration_ms": duration_ms,
                         }
                     )
+                if config.expected_status is not None:
+                    data["status_code"] = status_code
+                if config.expected_location is not None:
+                    data["location"] = location
                 return Result(
                     check_id=check.check_id,
                     status=ResultStatus.OK,
