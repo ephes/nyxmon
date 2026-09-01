@@ -27,9 +27,7 @@ async def test_http_failure_log_redacts_bot_token(monkeypatch, caplog) -> None:
         async def post(self, *args, **kwargs):
             return response
 
-    monkeypatch.setattr(
-        "nyxmon.adapters.notification.httpx.AsyncClient", FakeClient
-    )
+    monkeypatch.setattr("nyxmon.adapters.notification.httpx.AsyncClient", FakeClient)
     notifier = AsyncTelegramNotifier(token=token, chat_id="123")
 
     await notifier.async_send("test")
@@ -40,7 +38,9 @@ async def test_http_failure_log_redacts_bot_token(monkeypatch, caplog) -> None:
 
 
 @pytest.mark.anyio
-async def test_http_failure_redacts_before_detail_truncation(monkeypatch, caplog) -> None:
+async def test_http_failure_redacts_before_detail_truncation(
+    monkeypatch, caplog
+) -> None:
     token = "TOPSECRETVALUE"
     response = httpx.Response(
         400,
@@ -60,9 +60,7 @@ async def test_http_failure_redacts_before_detail_truncation(monkeypatch, caplog
         async def post(self, *args, **kwargs):
             return response
 
-    monkeypatch.setattr(
-        "nyxmon.adapters.notification.httpx.AsyncClient", FakeClient
-    )
+    monkeypatch.setattr("nyxmon.adapters.notification.httpx.AsyncClient", FakeClient)
     notifier = AsyncTelegramNotifier(token=token, chat_id="123")
 
     await notifier.async_send("test")

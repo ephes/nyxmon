@@ -19,14 +19,33 @@ Telegram notifications read:
 
 - `TELEGRAM_BOT_TOKEN`: Bot token from BotFather
 - `TELEGRAM_CHAT_ID`: Chat ID for notifications
-- `NYXMON_NOTIFY_CONSECUTIVE_FAILURES`: Consecutive warning/error samples required before sending Telegram notifications or creating OpsGate tickets (default `2`; set `1` for immediate first-failure alerts)
-- `NYXMON_NOTIFY_REPEAT_FAILURES`: Additional consecutive warning/error samples
-  between persistent-failure reminders (default `12`)
-- `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`: Per-check cooldown for immediate
-  processing-lease expiry alerts (default `3600`)
+- `NYXMON_NOTIFY_CONSECUTIVE_FAILURES`: Consecutive warning/error samples
+  required before the *first* Telegram notification or OpsGate ticket of an
+  incident (default `2`, range `1`–`100`). Setting `1` restores immediate
+  first-failure alerting for every check; prefer the per-check override below
+  when only a few checks need it.
+- `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS`: Wall-clock seconds that must elapse
+  between reminders while an **error** incident stays open (default `21600`,
+  six hours; range `60`–`2592000`).
+- `NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS`: The same, for **warning**
+  incidents (default `86400`, 24 hours; range `60`–`2592000`). Warnings are
+  never silenced; they simply remind daily, because standing warnings are
+  usually acknowledged conditions waiting on an operator or a third party.
+- `NYXMON_NOTIFY_REPEAT_FAILURES`: **Deprecated and ignored.** Reminder cadence
+  is now elapsed time rather than a sample count. A sample count cannot be
+  translated into a duration, because twelve samples mean about one hour for a
+  five-minute check and about twelve hours for an hourly one — exactly the
+  interval dependence this setting was removed for. If the variable is still
+  set, the worker logs one warning per distinct value naming the replacement
+  and then ignores it. Replace it with `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS`.
+- `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`: Per-check cooldown for results
+  that explicitly ask for an immediate alert through
+  `data.notification_immediate` (default `3600`). The collector no longer sets
+  that flag when it reclaims an expired lease, so a stock installation does not
+  use this path.
 - `NYXMON_PROCESSING_LEASE_SECONDS`: Maximum time a claimed check may remain in
-  `processing` before it is reclaimed and emits an immediate
-  `stale_processing_lease` error (default `900`, minimum `30`). Invalid values
+  `processing` before it is reclaimed, recorded as a `stale_processing_lease`
+  result, and scheduled again (default `900`, minimum `30`). Invalid values
   fall back to the default and emit a warning in the worker log. Legacy claims
   without a timestamp receive a fresh full lease on first observation.
   Nyxmon automatically raises the effective lease to its conservative estimate
@@ -36,28 +55,132 @@ Telegram notifications read:
   when its valid runtime cannot be derived from the standard timeout, retry, and
   retry-delay fields. Derived estimates are capped at `3600` seconds; set the
   global lease explicitly if a deliberately longer recovery window is required.
-- `NYXMON_CHECK_BATCH_SIZE`: Maximum checks claimed or stale leases reclaimed
-  per collector iteration (default `5`, clamped to `1`–`100`). With the default
+- `NYXMON_CHECK_BATCH_SIZE`: Maximum checks claimed per collector iteration
+  (default `5`, clamped to `1`–`100`). With the default
   one-second collector interval, fast checks can drain about five due checks per
   second. Slow checks and serial notification I/O reduce that throughput.
   A batch additionally receives one minute per claimed check for serial result
-  persistence and notification handling. Claims and stale recoveries are
+  persistence and notification handling. Claims are
   processed in configurable bounded batches (five by default), so the default
   allowance is five minutes and scales with `NYXMON_CHECK_BATCH_SIZE`. With the
   default lease and batch size, a wedged batch therefore stops blocking lease
   recovery within twenty minutes. New executions
-  stay paused while that single abandoned thread remains alive, and an hourly
-  paused-collector reminder bypasses the ordinary per-check immediate cooldown
-  and maintenance suppression. A failed reminder attempt is retried after one
-  minute.
+  stay paused while that single abandoned thread remains alive, and the pause is
+  reported as one collector incident with hourly reminders. A failed reminder
+  attempt is retried after one minute. Stale-lease reclaim uses the same batch
+  size but is drained in up to 20 rounds per iteration, so a restart that
+  strands dozens of claims is recovered — and reported — in one go.
 
-Failure streak, reminder, and immediate-alert cooldown state is stored in
-Nyxmon's internal `check_notification_state` table. It is intentionally separate
-from editable check `data` and from prunable result history.
+Environment values that cannot be parsed, or that fall outside the documented
+range, are ignored in favour of the default and warned about once per distinct
+value, so a typo cannot flood the worker log.
+
+#### Suppression Freshness Guard
+
+`notification_suppression` fetches a payload from another endpoint to decide
+whether a failure is expected. When that endpoint is **the same one the check
+itself monitors**, a frozen payload becomes self-silencing: if the freeze
+captured a unit mid-run, the suppression source reports "still running" forever
+and suppresses every later failure — including the staleness assertion that
+exists to report the freeze.
+
+Guard against it by pointing `freshness_path` at the payload's own age field:
+
+```json
+{
+  "notification_suppression": {
+    "url": "https://metrics.example/endpoint",
+    "active_if": [
+      {"path": "$.units.backup.service.active_state", "op": "==", "value": "activating"}
+    ],
+    "freshness_path": "$.meta.age_seconds",
+    "freshness_max_seconds": 600
+  }
+}
+```
+
+| Key | Effect |
+| --- | --- |
+| `freshness_path` | JSON path to the payload's own age, in seconds. Omit to disable the guard (existing configs are unchanged). |
+| `freshness_max_seconds` | Suppress nothing once the reported age exceeds this. |
+
+The guard **fails open**: a missing field, a non-numeric value, an absent or
+non-positive `freshness_max_seconds`, or an age past the limit all mean
+*suppress nothing*. A stale source can therefore never silence an alert, which
+is the safe direction — an unnecessary page beats a permanently hidden outage.
+
+#### Per-Check Notification Policy
+
+A single check can override the global thresholds through a
+`notification_policy` object in its `data` JSON, alongside
+`notification_suppression`. Every key is optional:
+
+```json
+{
+  "notification_policy": {
+    "consecutive_failures": 1,
+    "reminder_seconds": 21600,
+    "warning_consecutive_failures": 3,
+    "warning_reminder_seconds": 86400
+  }
+}
+```
+
+| Key | Applies to | Range | Falls back to |
+| --- | --- | --- | --- |
+| `consecutive_failures` | error and warning results | `1`–`100` | `NYXMON_NOTIFY_CONSECUTIVE_FAILURES` |
+| `reminder_seconds` | error and warning results | `60`–`2592000` | `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS` (errors) / `NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS` (warnings) |
+| `warning_consecutive_failures` | warning results only | `1`–`100` | `consecutive_failures`, then the global default |
+| `warning_reminder_seconds` | warning results only | `60`–`2592000` | `reminder_seconds`, then the global warning default |
+
+Resolution is per result severity. A warning result prefers the `warning_*`
+key, then the unprefixed key, then the global default; an error result uses the
+unprefixed key, then the global default.
+
+Validation is fail-safe and follows the `notification_suppression` precedent:
+
+- A non-object `notification_policy`, a non-integer value, a boolean, `null`,
+  or a value outside the documented range is ignored and the global default is
+  used instead. Nothing raises into the check path.
+- Each rejected field is warned about once per `(check_id, field)`, so a single
+  malformed check cannot flood the worker log.
+- A missing key is not an error; it simply inherits the global default.
+- Unknown keys inside `notification_policy` are ignored, and the object as a
+  whole is ignored by the check executors, so it is safe to add to any check
+  type.
+
+Per-check policy is normally rendered by the playbook that upserts the check,
+not edited by hand — the dashboard has no form field for it, and a deployment
+that rewrites the whole `data` blob would drop an out-of-band edit.
+
+#### Notification State Storage
+
+Failure streak, incident start time, last-notification time, and the
+immediate-alert cooldown are stored in Nyxmon's internal
+`check_notification_state` table. It is intentionally separate from editable
+check `data` and from prunable result history, so neither dashboard edits nor
+result cleanup can restart an incident.
+
+Collector-level incidents (a wedged executor, a burst of expired leases) are
+stored in the `collector_incident` table, one row per incident key. Persisting
+them is what makes their deduplication and reminder cadence survive a service
+restart.
 
 When upgrading an existing installation, run `python manage.py migrate` so
-migration `0011_checknotificationstate` owns that table. The Ansible deployment
-role runs Django migrations automatically.
+migrations `0011_checknotificationstate` and
+`0012_notification_reminder_timestamps` own those tables. The Ansible deployment
+role runs Django migrations automatically. The worker applies the same schema
+upgrade idempotently on start, so either order is safe.
+
+Migration `0012_notification_reminder_timestamps` also decides how existing
+failures behave at rollout. A check that was already failing *and* had already
+alerted at least once is adopted as an ongoing incident: its `last_notified_at`
+is stamped with the migration time, so its next reminder is one full reminder
+window away instead of being re-paged as new. A check that was failing but had
+never reached the alert threshold keeps `last_notified_at = 0` and follows the
+normal initial-alert threshold.
+
+#### OpsGate Integration
 
 OpsGate producer integration (optional) reads:
 
@@ -227,6 +350,30 @@ See {doc}`dns-check-examples` for more configuration scenarios.
 
 ## Deployment Configuration
 
+### Database Location
+
+Keep the SQLite database outside the directory a deployment synchronises. The
+recommended location is a dedicated state directory such as
+`/var/lib/nyxmon/db.sqlite3`, owned by the service account, and passed to the
+agent with `--db` (and to Django with `DATABASE_URL`, using the four-slash
+absolute form `sqlite:////var/lib/nyxmon/db.sqlite3`).
+
+A database that lives inside the deployed source tree shares that tree's
+lifecycle, which produces two failure modes during a release:
+
+- A source synchronisation that deletes unknown files can remove a live
+  `db.sqlite3-journal`, `-wal`, or `-shm` sidecar. Excluding only the main
+  database file is not enough; exclude the whole `db.sqlite3*` family.
+- Rewriting the ownership of the directory that contains the database takes
+  write permission on that *directory* away from the service account. In the
+  default `journal_mode=delete`, SQLite must create a rollback journal next to
+  the database for every write transaction, so the agent immediately fails with
+  `sqlite3.OperationalError: attempt to write a readonly database` even though
+  the database file itself is untouched and still writable.
+
+Both disappear once the database lives in its own state directory. A systemd
+unit with `ProtectSystem=strict` must list that directory in `ReadWritePaths=`.
+
 ### systemd (Linux)
 
 NyxMon uses systemd for service management on Linux:
@@ -240,7 +387,7 @@ After=network.target
 Type=simple
 User=nyxmon
 WorkingDirectory=/home/nyxmon
-ExecStart=/usr/local/bin/start-agent --db /var/lib/nyxmon/db.sqlite
+ExecStart=/usr/local/bin/start-agent --db /var/lib/nyxmon/db.sqlite3
 Restart=always
 
 [Install]
@@ -262,7 +409,7 @@ For macOS deployment, NyxMon uses launchd:
     <array>
         <string>/usr/local/bin/start-agent</string>
         <string>--db</string>
-        <string>/var/lib/nyxmon/db.sqlite</string>
+        <string>/var/lib/nyxmon/db.sqlite3</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

@@ -103,10 +103,11 @@ def test_check_batch_size_configuration_is_bounded(monkeypatch, caplog) -> None:
 @pytest.mark.anyio
 async def test_collect_once_records_stale_and_still_executes_due_checks() -> None:
     collector = AsyncCheckCollector()
+    collector.set_incident_store(InMemoryStore())
     stale = _stale_check(1)
     due = _stale_check(2)
     checks = MagicMock()
-    checks.reclaim_stale_checks_async = AsyncMock(return_value=[stale])
+    checks.reclaim_stale_checks_async = AsyncMock(side_effect=[[stale], []])
     checks.list_async = AsyncMock(return_value=[])
     checks.list_due_checks_async = AsyncMock(return_value=[due])
     bus = MagicMock()
@@ -119,7 +120,13 @@ async def test_collect_once_records_stale_and_still_executes_due_checks() -> Non
 
     assert bus.handle.call_count == 2
     stale_command = bus.handle.call_args_list[0].args[0]
-    assert stale_command.check_result.result.data["notification_immediate"] is True
+    stale_data = stale_command.check_result.result.data
+    assert stale_data["error_type"] == "stale_processing_lease"
+    # The per-check result is persisted for history, but it can never page:
+    # the batch is reported once, at collector level.
+    assert "notification_immediate" not in stale_data
+    assert stale_data["collector_internal"] is True
+    assert stale_command.check_result.force_notification is False
     execute_command = bus.handle.call_args_list[1].args[0]
     assert execute_command.checks == [due]
 
@@ -131,7 +138,7 @@ async def test_disabled_reclaimed_check_does_not_emit_stale_alert() -> None:
     disabled.disabled = True
     enabled = _stale_check(2)
     checks = MagicMock()
-    checks.reclaim_stale_checks_async = AsyncMock(return_value=[disabled, enabled])
+    checks.reclaim_stale_checks_async = AsyncMock(side_effect=[[disabled, enabled], []])
     checks.list_async = AsyncMock(return_value=[])
     checks.list_due_checks_async = AsyncMock(return_value=[])
     bus = MagicMock()
@@ -142,12 +149,19 @@ async def test_disabled_reclaimed_check_does_not_emit_stale_alert() -> None:
     collector.set_message_bus(bus)
     collector.set_recovery_handler(stale_handler)
     collector.set_process_notifier(process_notifier)
+    collector.set_incident_store(InMemoryStore())
 
     await collector._collect_once()
 
     stale_handler.assert_called_once()
     command = stale_handler.call_args.args[0]
     assert command.check_result.check.check_id == enabled.check_id
+    # One collector-level incident for the batch, never one alert per member.
+    process_notifier.assert_called_once()
+    assert (
+        process_notifier.call_args.args[1].data["error_type"]
+        == "stale_processing_lease_batch"
+    )
 
 
 @pytest.mark.anyio
@@ -158,12 +172,17 @@ async def test_in_memory_claim_batch_is_bounded() -> None:
         check.next_check_time = 100 - check_id
         store.checks.add(check)
 
-    assert [
-        check.check_id for check in await store.checks.list_due_checks_async()
-    ] == [7, 6, 5, 4, 3]
-    assert [
-        check.check_id for check in await store.checks.list_due_checks_async()
-    ] == [2, 1]
+    assert [check.check_id for check in await store.checks.list_due_checks_async()] == [
+        7,
+        6,
+        5,
+        4,
+        3,
+    ]
+    assert [check.check_id for check in await store.checks.list_due_checks_async()] == [
+        2,
+        1,
+    ]
 
 
 @pytest.mark.anyio
@@ -185,8 +204,9 @@ async def test_in_memory_stale_reclaim_is_oldest_first_and_bounded() -> None:
 
 
 @pytest.mark.anyio
-async def test_collector_stale_result_reaches_notifier(monkeypatch) -> None:
-    monkeypatch.setenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "99")
+async def test_collector_stale_result_never_pages_per_check(monkeypatch) -> None:
+    """The 36-notification storm's mechanism: one stale lease, one alert."""
+    monkeypatch.setenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")
     collector = AsyncCheckCollector()
     notifier = MagicMock()
     store = InMemoryStore()
@@ -194,9 +214,10 @@ async def test_collector_stale_result_reaches_notifier(monkeypatch) -> None:
     stale = _stale_check(1)
     store.checks.add(stale)
 
-    await collector._record_stale_check(stale)
+    assert await collector._record_stale_check(stale) is True
 
-    notifier.notify_check_failed.assert_called_once()
+    assert len(store.results.list()) == 1
+    notifier.notify_check_failed.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -234,7 +255,7 @@ async def test_recovery_handler_has_independent_uow_during_live_sqlite_batch(
     assert not batch_thread.is_alive()
     assert batch_errors == []
     assert len(await store.results._list_async()) == 1
-    notifier.notify_check_failed.assert_called_once()
+    notifier.notify_check_failed.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -412,47 +433,42 @@ async def test_batch_deadline_bounds_wedged_thread_and_rearms_after_exit(
     monkeypatch.setattr(
         "nyxmon.adapters.collector.processing_lease_seconds", lambda: 0.05
     )
-    monkeypatch.setattr(
-        "nyxmon.adapters.collector.RESULT_HANDLING_BUDGET_SECONDS", 0
-    )
-    monkeypatch.setattr(
-        "nyxmon.adapters.collector.ABANDONED_BATCH_REMINDER_SECONDS", 0
-    )
-    monkeypatch.setattr("nyxmon.adapters.collector.ABANDONED_BATCH_RETRY_SECONDS", 0)
+    monkeypatch.setattr("nyxmon.adapters.collector.RESULT_HANDLING_BUDGET_SECONDS", 0)
     release = threading.Event()
     collector = AsyncCheckCollector()
+    collector.set_incident_store(InMemoryStore())
     abandoned = _stale_check(1)
     checks = MagicMock()
-    checks.list_async = AsyncMock(side_effect=[[], [abandoned], [abandoned]])
+    checks.list_async = AsyncMock(return_value=[])
     checks.reclaim_stale_checks_async = AsyncMock(return_value=[])
     checks.list_due_checks_async = AsyncMock(return_value=[abandoned])
     bus = MagicMock()
     bus.uow.store.checks = checks
     bus.handle.side_effect = lambda command: release.wait()
-    stale_handler = MagicMock(side_effect=[False, True])
+    stale_handler = MagicMock(return_value=False)
+    process_notifier = MagicMock()
     bus.command_handlers = {AddCheckResult: stale_handler}
     collector.set_message_bus(bus)
     collector.set_recovery_handler(stale_handler)
+    collector.set_process_notifier(process_notifier)
 
     try:
-        with anyio.fail_after(1):
-            await collector._collect_once()
-            collector._abandoned_batch_checks[0].disabled = True
+        with anyio.fail_after(2):
             await collector._collect_once()
             await collector._collect_once()
+            await collector._collect_once()
+        # The wedged batch is bounded and reported once, at collector level.
         assert bus.handle.call_count == 1
-        assert stale_handler.call_count == 2
-        reminder = stale_handler.call_args.args[0]
-        assert reminder.check_result.force_notification is True
-        assert (
-            reminder.check_result.result.data["error_type"]
-            == "collector_execution_paused"
-        )
+        assert process_notifier.call_count == 1
+        _, paused_result = process_notifier.call_args.args
+        assert paused_result.data["error_type"] == "collector_execution_paused"
+        # No per-check row is borrowed to carry the collector alert.
+        stale_handler.assert_not_called()
         assert abandoned.next_check_time == 0
         assert "new executions are paused" in caplog.text
 
         release.set()
-        with anyio.fail_after(1):
+        with anyio.fail_after(2):
             while (
                 collector._abandoned_batch_done is not None
                 and not collector._abandoned_batch_done.is_set()
@@ -465,12 +481,9 @@ async def test_batch_deadline_bounds_wedged_thread_and_rearms_after_exit(
 
 
 @pytest.mark.anyio
-async def test_abandoned_reminder_never_borrows_unrelated_check(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "nyxmon.adapters.collector.ABANDONED_BATCH_REMINDER_SECONDS", 0
-    )
-    monkeypatch.setattr("nyxmon.adapters.collector.ABANDONED_BATCH_RETRY_SECONDS", 0)
+async def test_abandoned_batch_alert_never_borrows_an_unrelated_check() -> None:
     collector = AsyncCheckCollector()
+    collector.set_incident_store(InMemoryStore())
     collector._abandoned_batch_done = threading.Event()
     collector._abandoned_batch_checks = [_stale_check(1)]
     unrelated = _stale_check(2)
@@ -491,6 +504,7 @@ async def test_abandoned_reminder_never_borrows_unrelated_check(monkeypatch) -> 
     stale_handler.assert_not_called()
     process_notifier.assert_called_once()
     process_check, process_result = process_notifier.call_args.args
-    assert process_check.name == "Nyxmon collector"
+    assert process_check.check_id == 0
+    assert process_check.name == "Nyxmon collector (execution paused)"
     assert process_result.data["error_type"] == "collector_execution_paused"
     assert unrelated.next_check_time == 0

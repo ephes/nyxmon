@@ -214,3 +214,109 @@ def test_suppressed_result_breaks_failure_notification_streak(monkeypatch) -> No
     assert len(notifier.failed_notifications) == 1
     notified_result = notifier.failed_notifications[0][1]
     assert notified_result.result_id == 2
+
+
+def _fresh_config(**overrides: Any) -> dict[str, Any]:
+    """Suppression config guarded by the payload's own freshness field."""
+    config = _suppression_config()
+    config["notification_suppression"].update(
+        {
+            "status_path": "$.units.mail_offsite.service.active_state",
+            "active_statuses": [],
+            "active_if": [
+                {
+                    "path": "$.units.mail_offsite.service.active_state",
+                    "op": "==",
+                    "value": "activating",
+                }
+            ],
+            "freshness_path": "$.meta.age_seconds",
+            "freshness_max_seconds": 600,
+        }
+    )
+    config["notification_suppression"].update(overrides)
+    return config
+
+
+def _frozen_payload(age_seconds: Any) -> dict[str, Any]:
+    """A payload mid-run, whose own reported age is the variable under test."""
+    return {
+        "meta": {"age_seconds": age_seconds},
+        "units": {"mail_offsite": {"service": {"active_state": "activating"}}},
+    }
+
+
+def test_suppression_active_when_the_payload_is_fresh(monkeypatch) -> None:
+    _patch_client(monkeypatch, FakeHttpClient(_frozen_payload(30)))
+
+    details = notification_suppression_details(
+        _build_check(_fresh_config()), now_epoch=1_000
+    )
+
+    assert details is not None
+    assert details["reason"] == "scheduled_maintenance"
+
+
+def test_stale_payload_never_suppresses(monkeypatch) -> None:
+    """Regression: a frozen payload must not silence the staleness alert.
+
+    The suppression source here is the same endpoint whose freshness the check
+    asserts. When the payload froze mid-run, `active_state` stayed
+    "activating" forever and every later critical - including the
+    `$.meta.age_seconds` staleness critical that exists to report the freeze -
+    was suppressed indefinitely. Suppression must fail open on a stale source.
+    """
+    _patch_client(monkeypatch, FakeHttpClient(_frozen_payload(3_618_791)))
+
+    details = notification_suppression_details(
+        _build_check(_fresh_config()), now_epoch=1_000
+    )
+
+    assert details is None
+
+
+def test_suppression_fails_open_when_the_freshness_field_is_missing(
+    monkeypatch,
+) -> None:
+    payload = _frozen_payload(30)
+    del payload["meta"]
+    _patch_client(monkeypatch, FakeHttpClient(payload))
+
+    details = notification_suppression_details(
+        _build_check(_fresh_config()), now_epoch=1_000
+    )
+
+    assert details is None
+
+
+def test_suppression_fails_open_on_a_non_numeric_freshness_value(monkeypatch) -> None:
+    _patch_client(monkeypatch, FakeHttpClient(_frozen_payload("recently")))
+
+    details = notification_suppression_details(
+        _build_check(_fresh_config()), now_epoch=1_000
+    )
+
+    assert details is None
+
+
+def test_suppression_fails_open_when_the_max_age_is_unusable(monkeypatch) -> None:
+    _patch_client(monkeypatch, FakeHttpClient(_frozen_payload(30)))
+
+    for bad in (0, -1, None, "soon"):
+        details = notification_suppression_details(
+            _build_check(_fresh_config(freshness_max_seconds=bad)),
+            now_epoch=1_000,
+        )
+        assert details is None, f"max_age={bad!r} must not suppress"
+
+
+def test_unguarded_configs_keep_their_existing_behaviour(monkeypatch) -> None:
+    """Absent freshness_path, suppression behaves exactly as before."""
+    _patch_client(monkeypatch, FakeHttpClient({"last_status": "running"}))
+
+    details = notification_suppression_details(
+        _build_check(_suppression_config()), now_epoch=1_000
+    )
+
+    assert details is not None
+    assert details["reason"] == "scheduled_maintenance"

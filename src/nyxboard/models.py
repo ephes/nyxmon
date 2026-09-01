@@ -191,9 +191,46 @@ class CheckNotificationState(models.Model):
     last_immediate_at: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
         default=0
     )
+    last_notified_at: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0,
+        help_text=(
+            "Unix timestamp of the last external notification for the current "
+            "incident; 0 means the incident has never alerted"
+        ),
+    )
+    first_failure_at: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0,
+        help_text="Unix timestamp of the first failing sample in the current incident",
+    )
 
     class Meta:
         db_table = "check_notification_state"
+
+
+class CollectorIncident(models.Model):
+    """A deduplicated collector/batch-level incident.
+
+    One row per incident key. Persisting it is what makes a wedged batch or a
+    stale-lease sweep a single bounded incident with timed reminders, instead of
+    one notification per affected check on every collector iteration - and what
+    makes that deduplication survive a service restart.
+    """
+
+    incident_key: models.CharField = models.CharField(max_length=200, primary_key=True)
+    opened_at: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0
+    )
+    last_alert_at: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0
+    )
+    alert_count: models.PositiveIntegerField = models.PositiveIntegerField(default=0)
+    payload = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "collector_incident"
+
+    def __str__(self) -> str:
+        return f"{self.incident_key} (opened {self.opened_at})"
 
 
 class Result(models.Model):

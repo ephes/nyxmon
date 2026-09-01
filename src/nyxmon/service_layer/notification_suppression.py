@@ -102,6 +102,26 @@ def notification_suppression_details(
     except Exception:
         return None
 
+    # Fail open on a stale suppression payload.
+    #
+    # The suppression source is often the SAME endpoint whose freshness the
+    # check itself asserts. If that payload freezes while a unit happens to be
+    # mid-run, every later failure - including the staleness critical that is
+    # supposed to report the freeze - would be suppressed indefinitely, and the
+    # alert would silence exactly the condition it exists to detect.
+    #
+    # When freshness_path is configured, a payload that is missing the field,
+    # carries a non-numeric value, or is older than freshness_max_seconds
+    # suppresses nothing. Absent config, behaviour is unchanged.
+    freshness_path = str(config.get("freshness_path") or "").strip()
+    if freshness_path:
+        max_age = _int_or_none(config.get("freshness_max_seconds"))
+        age = _resolve_path(payload, freshness_path)
+        if not isinstance(age, (int, float)) or isinstance(age, bool):
+            return None
+        if max_age is None or max_age <= 0 or float(age) > float(max_age):
+            return None
+
     active_statuses = config.get("active_statuses", ["running"])
     if not isinstance(active_statuses, list):
         active_statuses = ["running"]

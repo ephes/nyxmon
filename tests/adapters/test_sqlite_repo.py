@@ -10,7 +10,10 @@ from pathlib import Path
 
 from anyio.from_thread import BlockingPortalProvider
 from nyxmon.adapters.repositories.sqlite_repo import SqliteCheckRepository, SqliteStore
-from nyxmon.adapters.repositories.interface import NotificationStateConflict
+from nyxmon.adapters.repositories.interface import (
+    NotificationState,
+    NotificationStateConflict,
+)
 from nyxmon.domain import Check, CheckStatus, CheckType, Result, ResultStatus
 
 
@@ -239,13 +242,17 @@ class TestCheckDataRoundTrip:
                 data={},
             )
         )
-        await check_repo._set_notification_state_async(7, 4, 2, 1234)
-        assert await check_repo._get_notification_state_async(7) == (4, 2, 1234)
+        await check_repo._set_notification_state_async(7, NotificationState(4, 2, 1234))
+        assert await check_repo._get_notification_state_async(7) == NotificationState(
+            4, 2, 1234
+        )
 
         updated = (await check_repo.list_async())[0]
         updated.name = "State owner updated"
         await check_repo._add_async(updated)
-        assert await check_repo._get_notification_state_async(7) == (4, 2, 1234)
+        assert await check_repo._get_notification_state_async(7) == NotificationState(
+            4, 2, 1234
+        )
 
     @pytest.mark.anyio
     async def test_check_upsert_preserves_fk_children(self, temp_db):
@@ -262,7 +269,7 @@ class TestCheckDataRoundTrip:
         await store._persist_check_result_async(
             check,
             Result(check_id=1, status=ResultStatus.ERROR, data={}),
-            ((0, 0, 0), (1, 1, 123)),
+            (NotificationState(), NotificationState(1, 1, 123)),
         )
         check.name = "FK owner updated"
 
@@ -298,10 +305,14 @@ class TestCheckDataRoundTrip:
         )
         await store.checks._add_async(check)
 
-        await store._persist_check_result_async(check, result, ((0, 0, 0), (2, 2, 0)))
+        await store._persist_check_result_async(
+            check, result, (NotificationState(), NotificationState(2, 2, 0))
+        )
 
         assert len(await store.results._list_async()) == 1
-        assert await store.checks._get_notification_state_async(1) == (2, 2, 0)
+        assert await store.checks._get_notification_state_async(1) == NotificationState(
+            2, 2, 0
+        )
 
     @pytest.mark.anyio
     async def test_state_write_failure_rolls_back_result_and_check(self, temp_db):
@@ -335,7 +346,7 @@ class TestCheckDataRoundTrip:
 
         with pytest.raises(sqlite3.IntegrityError, match="state write rejected"):
             await store._persist_check_result_async(
-                check, result, ((0, 0, 0), (1, 1, 0))
+                check, result, (NotificationState(), NotificationState(1, 1, 0))
             )
 
         assert len(await store.checks.list_async()) == 1
@@ -356,7 +367,7 @@ class TestCheckDataRoundTrip:
         await store._persist_check_result_async(
             check,
             Result(check_id=1, status=ResultStatus.ERROR, data={}),
-            ((0, 0, 0), (1, 0, 0)),
+            (NotificationState(), NotificationState(1, 0, 0)),
         )
         check.name = "must roll back"
 
@@ -364,13 +375,98 @@ class TestCheckDataRoundTrip:
             await store._persist_check_result_async(
                 check,
                 Result(check_id=1, status=ResultStatus.ERROR, data={}),
-                ((0, 0, 0), (1, 1, 0)),
+                (NotificationState(), NotificationState(1, 1, 0)),
             )
 
         [persisted_check] = await store.checks.list_async()
         assert persisted_check.name == "CAS owner"
         assert len(await store.results._list_async()) == 1
-        assert await store.checks._get_notification_state_async(1) == (1, 0, 0)
+        assert await store.checks._get_notification_state_async(1) == NotificationState(
+            1, 0, 0
+        )
+
+    @pytest.mark.anyio
+    async def test_conflict_is_detected_on_reminder_timestamps_alone(self, temp_db):
+        """The compare-and-swap covers every field of the state record.
+
+        A concurrent writer that only moved ``last_notified_at`` must still be
+        detected, or two workers could each claim the same reminder window.
+        """
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Reminder CAS",
+            check_type=CheckType.HTTP,
+            url="https://example.test/reminder-cas",
+            data={},
+        )
+        await store.checks._add_async(check)
+        await store.checks._set_notification_state_async(
+            1, NotificationState(3, 3, 0, 5_000, 4_000)
+        )
+
+        stale_expectation = NotificationState(3, 3, 0, 1_000, 4_000)
+        with pytest.raises(NotificationStateConflict):
+            await store._persist_check_result_async(
+                check,
+                Result(check_id=1, status=ResultStatus.ERROR, data={}),
+                (stale_expectation, NotificationState(4, 4, 0, 9_000, 4_000)),
+                complete_check=False,
+            )
+
+        assert await store.checks._get_notification_state_async(1) == NotificationState(
+            3, 3, 0, 5_000, 4_000
+        )
+        assert await store.results._list_async() == []
+
+    @pytest.mark.anyio
+    async def test_reminder_timestamps_round_trip_through_persist(self, temp_db):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Reminder round trip",
+            check_type=CheckType.HTTP,
+            url="https://example.test/reminder-round-trip",
+            data={},
+        )
+        await store.checks._add_async(check)
+
+        assert await store._persist_check_result_async(
+            check,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            (NotificationState(), NotificationState(1, 1, 0, 7_000, 7_000)),
+        )
+
+        assert await store.checks._get_notification_state_async(1) == NotificationState(
+            1, 1, 0, 7_000, 7_000
+        )
+
+    @pytest.mark.anyio
+    async def test_notification_state_is_deleted_with_its_check(self, temp_db):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Cascade",
+            check_type=CheckType.HTTP,
+            url="https://example.test/cascade",
+            data={},
+        )
+        await store.checks._add_async(check)
+        await store.checks._set_notification_state_async(
+            1, NotificationState(2, 2, 0, 100, 90)
+        )
+
+        async with aiosqlite.connect(temp_db) as db:
+            await db.execute("PRAGMA foreign_keys = ON")
+            await db.execute("DELETE FROM health_check WHERE id = 1")
+            await db.commit()
+
+        assert (
+            await store.checks._get_notification_state_async(1) == NotificationState()
+        )
 
     @pytest.mark.anyio
     async def test_late_completion_cannot_release_newer_claim(
@@ -399,20 +495,24 @@ class TestCheckDataRoundTrip:
         await store.checks._add_async(reclaimed)
         now += 1
         [second_claim] = await store.checks.list_due_checks_async()
-        await store.checks._set_notification_state_async(1, 4, 2, 123)
+        await store.checks._set_notification_state_async(
+            1, NotificationState(4, 2, 123)
+        )
 
         first_claim.schedule_next_check()
         completion_applied = await store._persist_check_result_async(
             first_claim,
             Result(check_id=1, status=ResultStatus.OK, data={}),
-            ((4, 2, 123), (0, 0, 0)),
+            (NotificationState(4, 2, 123), NotificationState()),
         )
 
         assert completion_applied is False
         [persisted] = await store.checks.list_async()
         assert persisted.status == CheckStatus.PROCESSING
         assert persisted.processing_started_at == second_claim.processing_started_at
-        assert await store.checks._get_notification_state_async(1) == (4, 2, 123)
+        assert await store.checks._get_notification_state_async(1) == NotificationState(
+            4, 2, 123
+        )
         assert len(await store.results._list_async()) == 1
 
     @pytest.mark.anyio
@@ -441,7 +541,7 @@ class TestCheckDataRoundTrip:
         assert await store._persist_check_result_async(
             reclaimed,
             Result(check_id=1, status=ResultStatus.ERROR, data={}),
-            ((0, 0, 0), (0, 0, 123)),
+            (NotificationState(), NotificationState(0, 0, 123)),
         )
         [after_recovery] = await store.checks.list_async()
 
@@ -449,12 +549,14 @@ class TestCheckDataRoundTrip:
         assert not await store._persist_check_result_async(
             original_claim,
             Result(check_id=1, status=ResultStatus.OK, data={}),
-            ((0, 0, 123), (0, 0, 0)),
+            (NotificationState(0, 0, 123), NotificationState()),
         )
 
         [persisted] = await store.checks.list_async()
         assert persisted.next_check_time == after_recovery.next_check_time
-        assert await store.checks._get_notification_state_async(1) == (0, 0, 123)
+        assert await store.checks._get_notification_state_async(1) == NotificationState(
+            0, 0, 123
+        )
         assert len(await store.results._list_async()) == 2
 
     @pytest.mark.anyio
@@ -534,7 +636,7 @@ class TestCheckDataRoundTrip:
         assert await store._persist_check_result_async(
             snapshot,
             Result(check_id=1, status=ResultStatus.ERROR, data={}),
-            ((0, 0, 0), (0, 0, 0)),
+            (NotificationState(), NotificationState()),
             complete_check=False,
         )
 
@@ -664,12 +766,12 @@ class TestCheckDataRoundTrip:
         store.persist_check_result(
             check,
             Result(check_id=1, status=ResultStatus.ERROR, data={}),
-            ((0, 0, 0), (1, 0, 0)),
+            (NotificationState(), NotificationState(1, 0, 0)),
         )
         store.persist_check_result(
             check,
             Result(check_id=1, status=ResultStatus.ERROR, data={}),
-            ((1, 0, 0), (2, 2, 0)),
+            (NotificationState(1, 0, 0), NotificationState(2, 2, 0)),
         )
 
         with sqlite3.connect(temp_db) as db:

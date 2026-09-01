@@ -3,11 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import copy
 
-from typing import List
+from typing import Any, List
 import time
 
 from ...domain import Check, CheckStatus, Result, Service
 from .interface import (
+    CollectorIncident,
+    CollectorIncidentAlert,
+    NotificationState,
+    NotificationTransition,
     Repository,
     ResultRepository,
     CheckRepository,
@@ -105,7 +109,7 @@ class InMemoryCheckRepository(CheckRepository):
 
     def __init__(self) -> None:
         self.checks: dict[int, Check] = {}
-        self.notification_states: dict[int, tuple[int, int, int]] = {}
+        self.notification_states: dict[int, NotificationState] = {}
         self.seen: set[Check] = set()
 
     def add(self, check: Check) -> None:
@@ -178,21 +182,11 @@ class InMemoryCheckRepository(CheckRepository):
                     break
         return reclaimed
 
-    def get_notification_state(self, check_id: int) -> tuple[int, int, int]:
-        return self.notification_states.get(check_id, (0, 0, 0))
+    def get_notification_state(self, check_id: int) -> NotificationState:
+        return self.notification_states.get(check_id, NotificationState())
 
-    def set_notification_state(
-        self,
-        check_id: int,
-        failure_count: int,
-        last_attempt_count: int,
-        last_immediate_at: int,
-    ) -> None:
-        self.notification_states[check_id] = (
-            failure_count,
-            last_attempt_count,
-            last_immediate_at,
-        )
+    def set_notification_state(self, check_id: int, state: NotificationState) -> None:
+        self.notification_states[check_id] = state
 
 
 class InMemoryServiceRepository(ServiceRepository):
@@ -222,6 +216,7 @@ class InMemoryStore(RepositoryStore):
     services: InMemoryServiceRepository = field(
         default_factory=InMemoryServiceRepository
     )
+    collector_incidents: dict[str, CollectorIncident] = field(default_factory=dict)
 
     def fork_for_concurrent_uow(self) -> InMemoryStore:
         """Share backing data while isolating per-unit-of-work event sets."""
@@ -233,15 +228,18 @@ class InMemoryStore(RepositoryStore):
         checks.notification_states = self.checks.notification_states
         services = InMemoryServiceRepository()
         services.services = self.services.services
-        return InMemoryStore(results=results, checks=checks, services=services)
+        return InMemoryStore(
+            results=results,
+            checks=checks,
+            services=services,
+            collector_incidents=self.collector_incidents,
+        )
 
     def persist_check_result(
         self,
         check: Check,
         result: Result,
-        notification_transition: (
-            tuple[tuple[int, int, int], tuple[int, int, int]] | None
-        ),
+        notification_transition: NotificationTransition | None,
         *,
         complete_check: bool = True,
     ) -> bool:
@@ -274,8 +272,65 @@ class InMemoryStore(RepositoryStore):
         if notification_transition is not None:
             expected_state, notification_state = notification_transition
             if notification_state != expected_state:
-                self.checks.set_notification_state(check.check_id, *notification_state)
+                self.checks.set_notification_state(check.check_id, notification_state)
         return True
+
+    # ---------- collector-level incidents ----------
+    def get_collector_incident(self, incident_key: str) -> CollectorIncident | None:
+        return self.collector_incidents.get(incident_key)
+
+    def claim_collector_incident_alert(
+        self,
+        incident_key: str,
+        *,
+        now: int,
+        reminder_seconds: int,
+        payload: dict[str, Any] | None = None,
+    ) -> CollectorIncidentAlert:
+        existing = self.collector_incidents.get(incident_key)
+        if existing is None:
+            incident = CollectorIncident(
+                incident_key=incident_key,
+                opened_at=now,
+                last_alert_at=now,
+                alert_count=1,
+                payload=dict(payload or {}),
+            )
+            self.collector_incidents[incident_key] = incident
+            return CollectorIncidentAlert(
+                incident=incident, should_notify=True, is_new=True
+            )
+        should_notify = now - existing.last_alert_at >= max(1, reminder_seconds)
+        incident = CollectorIncident(
+            incident_key=incident_key,
+            opened_at=existing.opened_at,
+            last_alert_at=now if should_notify else existing.last_alert_at,
+            alert_count=existing.alert_count + (1 if should_notify else 0),
+            payload=dict(payload) if payload is not None else dict(existing.payload),
+        )
+        self.collector_incidents[incident_key] = incident
+        return CollectorIncidentAlert(
+            incident=incident, should_notify=should_notify, is_new=False
+        )
+
+    def close_collector_incident(self, incident_key: str) -> CollectorIncident | None:
+        return self.collector_incidents.pop(incident_key, None)
+
+    def set_collector_incident_payload(
+        self, incident_key: str, payload: dict[str, Any]
+    ) -> CollectorIncident | None:
+        existing = self.collector_incidents.get(incident_key)
+        if existing is None:
+            return None
+        updated = CollectorIncident(
+            incident_key=existing.incident_key,
+            opened_at=existing.opened_at,
+            last_alert_at=existing.last_alert_at,
+            alert_count=existing.alert_count,
+            payload=dict(payload),
+        )
+        self.collector_incidents[incident_key] = updated
+        return updated
 
     def list(self) -> List[Repository]:
         return [

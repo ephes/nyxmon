@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from nyxmon.adapters.repositories import InMemoryStore
-from nyxmon.adapters.repositories.interface import NotificationStateConflict
+from nyxmon.adapters.repositories.interface import (
+    NotificationState,
+    NotificationStateConflict,
+)
 from nyxmon.domain.commands import AddCheckResult
 from nyxmon.domain.models import (
     Check,
@@ -135,26 +138,44 @@ def test_threshold_one_notifies_first_failure(monkeypatch) -> None:
 
 def test_persistent_failure_sends_periodic_reminder(monkeypatch) -> None:
     monkeypatch.setenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "2")
-    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_FAILURES", "3")
+    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS", "900")
+    now = 10_000
+    monkeypatch.setattr("nyxmon.service_layer.handlers.current_epoch", lambda: now)
     uow = UnitOfWork(store=InMemoryStore())
     notifier = StubNotifier()
 
+    # Five samples 300s apart: the initial alert on sample two, one elapsed-time
+    # reminder once 900s have passed since it.
     for _ in range(5):
         _add_result(uow, notifier, ResultStatus.ERROR)
+        now += 300
 
     assert len(notifier.failed_notifications) == 2
     assert len(uow.store.results.list()) == 5
 
 
-def test_repeat_interval_can_be_shorter_than_initial_threshold(monkeypatch) -> None:
+def test_reminder_window_is_measured_from_the_last_notification(monkeypatch) -> None:
     monkeypatch.setenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "5")
-    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_FAILURES", "2")
+    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS", "600")
+    now = 10_000
+    monkeypatch.setattr("nyxmon.service_layer.handlers.current_epoch", lambda: now)
     uow = UnitOfWork(store=InMemoryStore())
     notifier = StubNotifier()
 
-    for _ in range(7):
+    # Four samples in the same second cannot reach the threshold of five.
+    for _ in range(4):
         _add_result(uow, notifier, ResultStatus.ERROR)
+    assert notifier.failed_notifications == []
 
+    _add_result(uow, notifier, ResultStatus.ERROR)
+    assert len(notifier.failed_notifications) == 1
+
+    now += 599
+    _add_result(uow, notifier, ResultStatus.ERROR)
+    assert len(notifier.failed_notifications) == 1
+
+    now += 1
+    _add_result(uow, notifier, ResultStatus.ERROR)
     assert len(notifier.failed_notifications) == 2
 
 
@@ -162,7 +183,6 @@ def test_immediate_failure_bypasses_streak_threshold_but_has_cooldown(
     monkeypatch,
 ) -> None:
     monkeypatch.setenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "5")
-    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_FAILURES", "12")
     monkeypatch.setenv("NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS", "3600")
     now = 10_000
     monkeypatch.setattr("nyxmon.service_layer.handlers.current_epoch", lambda: now)
@@ -250,7 +270,7 @@ def test_forced_internal_reminder_bypasses_cooldown_and_suppression(
         assert attempted is force_notification
 
     assert len(notifier.failed_notifications) == 1
-    assert store.checks.get_notification_state(check.check_id) == (0, 0, 0)
+    assert store.checks.get_notification_state(check.check_id) == NotificationState()
 
 
 def test_in_memory_store_drops_result_after_check_deletion() -> None:
@@ -327,7 +347,7 @@ def test_superseded_in_memory_result_cannot_alert_or_change_state(
     current.processing_started_at = 200
     current.claim_started_at = 200
     store.checks.add(current)
-    store.checks.set_notification_state(1, 4, 2, 123)
+    store.checks.set_notification_state(1, NotificationState(4, 2, 123))
     snapshot = _build_check()
     snapshot.status = CheckStatus.PROCESSING
     snapshot.processing_started_at = 100
@@ -347,14 +367,16 @@ def test_superseded_in_memory_result_cannot_alert_or_change_state(
     )
 
     assert attempted is False
-    assert store.checks.get_notification_state(1) == (4, 2, 123)
+    assert store.checks.get_notification_state(1) == NotificationState(4, 2, 123)
     assert len(store.results.list()) == 1
     assert notifier.failed_notifications == []
 
 
 def test_notification_state_survives_result_history_pruning(monkeypatch) -> None:
     monkeypatch.setenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "2")
-    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_FAILURES", "3")
+    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS", "900")
+    now = 10_000
+    monkeypatch.setattr("nyxmon.service_layer.handlers.current_epoch", lambda: now)
     uow = UnitOfWork(store=InMemoryStore())
     notifier = StubNotifier()
 
@@ -365,9 +387,12 @@ def test_notification_state_survives_result_history_pruning(monkeypatch) -> None
     # Result retention must not erase the persisted per-check reminder state.
     uow.store.results.results.clear()
     uow.store.results._timestamps.clear()
+    now += 300
     _add_result(uow, notifier, ResultStatus.ERROR)
+    now += 300
     _add_result(uow, notifier, ResultStatus.ERROR)
     assert len(notifier.failed_notifications) == 1
+    now += 300
     _add_result(uow, notifier, ResultStatus.ERROR)
     assert len(notifier.failed_notifications) == 2
 

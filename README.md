@@ -149,7 +149,8 @@ Optional tuning:
 
 ```shell
 export NYXMON_NOTIFY_CONSECUTIVE_FAILURES=2
-export NYXMON_NOTIFY_REPEAT_FAILURES=12
+export NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS=21600
+export NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS=86400
 export NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS=3600
 export NYXMON_PROCESSING_LEASE_SECONDS=900
 export NYXMON_CHECK_BATCH_SIZE=5
@@ -159,18 +160,73 @@ export OPSGATE_SUBMIT_INCLUDE_WARNINGS=false
 ```
 
 `NYXMON_NOTIFY_CONSECUTIVE_FAILURES` applies to Telegram and OpsGate. The first
-failing sample is still stored in history; notifications are sent when the
-configured warning/error streak is reached. Persistent failures send another
-notification after every `NYXMON_NOTIFY_REPEAT_FAILURES` additional samples.
-Lease-expiry notifications bypass that failure threshold but are limited to one
-per continuously failing check per `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`.
-A successful sample resets the cooldown so a later incident alerts immediately.
+failing sample is still stored in history; the first notification of an incident
+is sent once the configured warning/error streak is reached. The default is `2`,
+so a single transient blip no longer pages.
+
+While an incident stays open, reminders are timed on **elapsed wall-clock
+time**, never on a number of samples: `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS`
+(default six hours) for errors and `NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS`
+(default 24 hours) for warnings. A five-minute check and an hourly check
+therefore remind on the same schedule. A reminder is evaluated when a failing
+sample arrives, so it goes out on the first failing sample after the window has
+elapsed. Warnings are never silenced; they simply
+remind daily, because a standing warning is usually an acknowledged condition
+waiting on an operator or a third party. A successful sample closes the
+incident, resetting the streak, the reminder clock, and the immediate-alert
+cooldown.
+
+`NYXMON_NOTIFY_REPEAT_FAILURES` is **deprecated and ignored**. Twelve samples
+meant about an hour for a five-minute check and about twelve hours for an hourly
+one, and that interval dependence is exactly what the elapsed-time model
+removes, so the old value is not translated into a duration. If the variable is
+still set, the worker logs one warning naming its replacement and carries on.
+Values that cannot be parsed, or that fall outside the documented range, fall
+back to the default and warn once per distinct value.
+
+Individual checks can override both knobs with a `notification_policy` object in
+their `data`, which is how a critical check keeps first-sample paging while the
+global default stays at two:
+
+```json
+{
+  "notification_policy": {
+    "consecutive_failures": 1,
+    "reminder_seconds": 21600,
+    "warning_consecutive_failures": 3,
+    "warning_reminder_seconds": 86400
+  }
+}
+```
+
+Every key is optional; anything malformed or out of range is warned about once
+and falls back to the global default rather than raising or silently disabling
+alerts. See `docs/configuration.md` for the ranges and resolution order.
 
 The collector treats `processing` as a lease rather than a permanent state. A
 check still processing after `NYXMON_PROCESSING_LEASE_SECONDS` is released,
-records an immediate `stale_processing_lease` error, and is scheduled again.
+records a `stale_processing_lease` result, and is scheduled again.
 Legacy processing rows without a claim timestamp receive one full lease from
 the time the collector first sees them before recovery, avoiding duplicate work.
+That reclaimed result is kept in the check's history so the gap is explainable,
+but it never becomes a per-check notification: reclaiming a batch of checks
+after a restart is reported once, as a collector-level incident, not once per
+check. Reclaim is drained within a single collector iteration so that one alert
+reports the real size of the sweep.
+
+Nyxmon sends two kinds of alert. A per-check alert names one check and keys its
+OpsGate ticket on `nyxmon-check-<check_id>`. A collector incident describes the
+monitoring worker itself, is deduplicated across collector iterations and across
+process restarts, reminds hourly, and keys its ticket on
+`nyxmon-collector-<incident_key>`. There are two incident keys:
+`collector:stale_processing_lease` (expired leases were reclaimed; resolves
+after fifteen quiet minutes) and `collector:execution_paused` (a batch exceeded
+its deadline and new executions are paused; resolves when the wedged thread
+exits, and is closed automatically on the next worker startup because such a
+thread cannot outlive its process). Incident state lives in the
+`collector_incident` table, so a deploy in the middle of an incident does not
+restart its alert cadence.
+
 Recovery cannot cancel an executor that is still hung outside Nyxmon, so every
 executor must have a finite timeout and the lease must exceed its longest valid
 runtime. Nyxmon estimates that runtime from each check's timeout/retry settings
@@ -189,14 +245,10 @@ at least five minutes plus one minute per claimed check so a service restart
 during valid result handling cannot reclaim the batch early.
 Nyxmon permits only one abandoned batch at a time; lease recovery and alerts
 continue, but another execution batch is not launched until that thread exits.
-While execution remains paused, Nyxmon retries an hourly collector-wide reminder
-through an isolated unit of work. That reminder is not suppressed by the
-per-check immediate-alert cooldown or check-level maintenance suppression,
-including when the check was disabled after the abandoned batch started. A
-failed reminder attempt is retried after one minute instead of on every
-collector iteration.
-The reminder uses the distinct `collector_execution_paused` error type and does
-not reschedule its anchor check.
+The paused-collector incident is independent of any single check's cooldown or
+maintenance suppression and stays visible even if every member of the abandoned
+batch is disabled. A failed send is retried after one minute instead of waiting
+out the full hour.
 After recording expiry, Nyxmon waits the check's normal interval before the
 replacement run. A late result from the expired claim is stored but cannot
 release or reschedule a newer active claim, change its notification streak, or
@@ -204,6 +256,34 @@ trigger an alert.
 Unexpected executor exceptions are likewise converted into ordinary error
 results so a single broken check cannot strand its batch; exception details stay
 in the worker log rather than the stored result.
+
+Notification and incident state is persisted in Nyxmon's internal
+`check_notification_state` and `collector_incident` tables, separate from
+editable check `data` and from prunable result history. Run
+`python manage.py migrate` when upgrading so migration
+`0012_notification_reminder_timestamps` is applied; the worker performs the same
+schema upgrade idempotently on start, so either order is safe. Existing failure
+streaks that had already alerted are adopted as ongoing incidents at upgrade
+time rather than re-paged, so a rollout does not produce an alert storm.
+
+Keep the SQLite database in a state directory of its own (for example
+`/var/lib/nyxmon/db.sqlite3`), outside any tree a deployment synchronises. A
+database inside the deployed source tree can lose a live `-journal`/`-wal`/`-shm`
+sidecar to a delete-enabled sync, and a sync that rewrites the containing
+directory's ownership makes SQLite fail with
+`attempt to write a readonly database` even though the database file itself is
+still writable.
+
+Either mitigation works, and they are independent:
+
+- **Relocate** the database to its own state directory, or
+- **Exclude** `db.sqlite3` *and* every sidecar (`-wal`, `-shm`, `-journal`) from
+  the sync, and stop the sync from rewriting the containing directory's
+  ownership (with rsync that means not preserving owner/group on the
+  destination).
+
+Excluding only `db.sqlite3` is not sufficient - a delete-enabled sync will still
+remove a live sidecar.
 
 Checks can also set `data.notification_suppression` to suppress Telegram and
 OpsGate side effects while a maintenance endpoint reports an active or recently

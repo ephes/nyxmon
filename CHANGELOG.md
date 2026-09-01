@@ -7,15 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `notification_suppression` now supports a `freshness_path` /
+  `freshness_max_seconds` guard and fails open when the suppression source is
+  stale. Where the suppression endpoint is the same one a check monitors, a
+  frozen payload that captured a unit mid-run previously reported "still
+  running" indefinitely and suppressed every later failure — including the
+  staleness assertion meant to report the freeze, so the alert silenced exactly
+  the condition it existed to detect. Configs without `freshness_path` are
+  unchanged.
+
 ### Added
-- Persistent warning/error streaks now send reminder notifications after a
-  configurable number of additional failures (`NYXMON_NOTIFY_REPEAT_FAILURES`,
-  default `12`).
-- Immediate processing-lease alerts now have a per-check cooldown
+- Persistent warning/error incidents now send reminder notifications on
+  elapsed wall-clock time rather than a sample count:
+  `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS` (default `21600`, six hours) for
+  errors and `NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS` (default `86400`,
+  24 hours) for warnings. A five-minute check and an hourly check now remind on
+  the same schedule.
+- Per-check alerting policy via `data.notification_policy`, supporting
+  `consecutive_failures`, `reminder_seconds`, `warning_consecutive_failures`,
+  and `warning_reminder_seconds`. Malformed or out-of-range values are warned
+  about once per check and field and fall back to the global default, so a bad
+  edit can neither raise a threshold silently nor disable alerting.
+- Collector-level incidents are now persisted in a `collector_incident` table
+  and deduplicated across collector iterations and process restarts. Reclaiming
+  a batch of expired processing leases raises exactly one
+  `collector:stale_processing_lease` alert with an hourly reminder, and a wedged
+  executor raises exactly one `collector:execution_paused` alert, instead of one
+  notification per affected check.
+- Results that explicitly request an immediate alert through
+  `data.notification_immediate` have a per-check cooldown
   (`NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`, default `3600`).
 - The collector now reclaims checks abandoned in `processing` after a
-  configurable lease (`NYXMON_PROCESSING_LEASE_SECONDS`, default `900`) and
-  records an immediate `stale_processing_lease` alert.
+  configurable lease (`NYXMON_PROCESSING_LEASE_SECONDS`, default `900`),
+  records a `stale_processing_lease` result, and schedules the check again.
+  Stale-lease reclaim is drained within a single collector iteration so a
+  restart storm is recovered, and reported, in one go.
 - Claim and stale-recovery batch size is configurable with
   `NYXMON_CHECK_BATCH_SIZE` (default `5`, range `1`–`100`).
   This replaces the previous hardcoded batch size of `100`; synchronized bursts
@@ -32,7 +60,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   side effects during active or recently finished maintenance windows while
   still storing the warning/error result.
 
+### Changed
+- Reclaimed processing leases no longer produce a per-check notification. The
+  result is still stored so a check's history explains its gap, but it is marked
+  collector-internal: it never alerts on its own, not even under a per-check
+  `consecutive_failures: 1` policy, and it neither advances nor resets that
+  check's own incident. The batch is reported once at collector level. This
+  removes the failure mode where one wedged batch produced one Telegram message
+  per reclaimed check.
+- OpsGate tickets for collector incidents now use the task reference
+  `nyxmon-collector-<incident_key>` instead of `nyxmon-check-0`, so a wedged
+  executor and a stale-lease sweep no longer collide on one ticket while each
+  still deduplicates across reminders and restarts.
+- `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS` now applies only to results that
+  explicitly set `data.notification_immediate`. No production code path sets
+  that flag any more.
+
+### Deprecated
+- `NYXMON_NOTIFY_REPEAT_FAILURES` is ignored. A sample count cannot be
+  translated into a duration - twelve samples meant about one hour for a
+  five-minute check and about twelve hours for an hourly one, which is the
+  interval dependence the elapsed-time model removes - so no automatic
+  conversion is attempted. If the variable is still set, the worker logs one
+  warning per distinct value naming `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS` and
+  `NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS`, then continues with the
+  defaults. Remove it from deployment configuration.
+
 ### Fixed
+- Upgrade note: apply Django migration `0012_notification_reminder_timestamps`
+  (normally run automatically by the deployment role) before starting the
+  updated worker. It adds `last_notified_at` and `first_failure_at` to
+  `check_notification_state` and creates the `collector_incident` table. The
+  worker performs the same upgrade idempotently on start, so either order is
+  safe. Existing failure streaks are adopted rather than re-paged: a check that
+  was already failing and had already alerted gets `last_notified_at` stamped
+  with the upgrade time, so its next reminder is one full window away, while a
+  streak that had never reached the threshold keeps its normal first alert.
+  Healthy checks are untouched, so the rollout produces no alert storm.
+- Operators should either keep the SQLite database in a state directory of its
+  own (for example `/var/lib/nyxmon/db.sqlite3`), outside any tree a deployment
+  synchronises, or exclude the database *and every sidecar* from the sync while
+  preventing it from rewriting the containing directory's ownership. A database inside the deployed source tree can lose a live
+  `-journal`/`-wal`/`-shm` sidecar to a delete-enabled sync, and a sync that
+  rewrites the containing directory's ownership makes SQLite fail with
+  `attempt to write a readonly database` for the duration of the window even
+  though the database file itself stays writable.
 - Upgrade note: apply Django migration `0011_checknotificationstate` (normally
   run automatically by the deployment role) before starting the updated worker.
 - Unexpected executor exceptions now become error results instead of leaving
@@ -44,9 +116,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Untimestamped legacy processing claims now receive a full lease before
   recovery, and one failed stale-result write no longer blocks recovery of other
   checks in the same collector iteration.
-- Abandoned-batch reminders now use an independent unit of work, remain visible
-  when affected checks are disabled, bypass ordinary cooldown and maintenance
-  suppression, and retry failed attempts with a bounded backoff.
+- Abandoned-batch alerts no longer borrow an unrelated live check row. They are
+  sent as a collector-scoped incident that remains visible when affected checks
+  are disabled, is independent of per-check cooldown and maintenance
+  suppression, and retries a failed send after one minute instead of waiting out
+  the full reminder window.
 - In-memory and SQLite result persistence now both refuse to resurrect checks
   deleted while an execution or lease recovery was in flight, preserve
   concurrent check edits, and suppress notifications for dropped results.

@@ -1,7 +1,9 @@
 import logging
 import os
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
-from typing import List, Protocol, TypeAlias
+from typing import Any, List, Protocol, TypeAlias
 
 from ...domain import Result, Check, Service
 
@@ -32,6 +34,96 @@ def check_batch_size() -> int:
 
 class NotificationStateConflict(RuntimeError):
     """The notification state changed after a caller calculated its update."""
+
+
+@dataclass(frozen=True, slots=True)
+class NotificationState:
+    """Per-check alert cadence state.
+
+    Persisted in ``check_notification_state``. Compared as a whole for
+    optimistic concurrency control, so every field participates in the
+    compare-and-swap performed by :meth:`RepositoryStore.persist_check_result`.
+
+    Attributes:
+        failure_count: Consecutive non-OK samples in the current incident.
+        last_attempt_count: ``failure_count`` at the last external notification.
+            Bookkeeping/diagnostics only - it no longer drives reminder cadence.
+        last_immediate_at: Epoch of the last ``notification_immediate`` alert.
+        last_notified_at: Epoch of the last external notification for the
+            current incident. ``0`` means "this incident has never alerted".
+        first_failure_at: Epoch of the first sample in the current incident.
+    """
+
+    failure_count: int = 0
+    last_attempt_count: int = 0
+    last_immediate_at: int = 0
+    last_notified_at: int = 0
+    first_failure_at: int = 0
+
+    @classmethod
+    def from_row(cls, row: "Sequence[Any] | None") -> "NotificationState":
+        """Build a state from a database row, tolerating pre-upgrade rows."""
+        if row is None:
+            return cls()
+        values = [int(value or 0) for value in row[:5]]
+        values.extend([0] * (5 - len(values)))
+        return cls(*values)
+
+    def as_row(self) -> tuple[int, int, int, int, int]:
+        return (
+            self.failure_count,
+            self.last_attempt_count,
+            self.last_immediate_at,
+            self.last_notified_at,
+            self.first_failure_at,
+        )
+
+    def cleared(self) -> "NotificationState":
+        """Full reset used when a check recovers."""
+        return NotificationState()
+
+    def with_streak_reset(self) -> "NotificationState":
+        """Reset the incident but keep the immediate-alert cooldown."""
+        return NotificationState(last_immediate_at=self.last_immediate_at)
+
+    def evolve(self, **changes: int) -> "NotificationState":
+        return replace(self, **changes)
+
+
+NOTIFICATION_STATE_COLUMNS = (
+    "failure_count",
+    "last_attempt_count",
+    "last_immediate_at",
+    "last_notified_at",
+    "first_failure_at",
+)
+
+NotificationTransition: TypeAlias = tuple[NotificationState, NotificationState]
+
+
+@dataclass(frozen=True, slots=True)
+class CollectorIncident:
+    """A persisted, deduplicated collector/batch-level incident.
+
+    One row per ``incident_key``. Survives process restarts, which is what
+    turns a wedged-batch or stale-lease event into a single bounded incident
+    with timed reminders instead of one alert per affected check.
+    """
+
+    incident_key: str
+    opened_at: int
+    last_alert_at: int
+    alert_count: int
+    payload: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class CollectorIncidentAlert:
+    """Outcome of :meth:`RepositoryStore.claim_collector_incident_alert`."""
+
+    incident: CollectorIncident
+    should_notify: bool
+    is_new: bool
 
 
 class ResultRepository(Protocol):
@@ -85,17 +177,11 @@ class CheckRepository(Protocol):
         """Release and return checks whose processing lease expired."""
         ...
 
-    def get_notification_state(self, check_id: int) -> tuple[int, int, int]:
-        """Return failure count, last attempted count, and immediate-alert time."""
+    def get_notification_state(self, check_id: int) -> NotificationState:
+        """Return the persisted alert cadence state for a check."""
         ...
 
-    def set_notification_state(
-        self,
-        check_id: int,
-        failure_count: int,
-        last_attempt_count: int,
-        last_immediate_at: int,
-    ) -> None:
+    def set_notification_state(self, check_id: int, state: NotificationState) -> None:
         """Persist notification state independently from editable check data."""
         ...
 
@@ -136,13 +222,45 @@ class RepositoryStore(Protocol):
         self,
         check: Check,
         result: Result,
-        notification_transition: (
-            tuple[tuple[int, int, int], tuple[int, int, int]] | None
-        ),
+        notification_transition: NotificationTransition | None,
         *,
         complete_check: bool = True,
     ) -> bool:
         """Persist a result atomically; return false if its check was deleted."""
+        ...
+
+    def get_collector_incident(self, incident_key: str) -> CollectorIncident | None:
+        """Return the open collector incident for ``incident_key``, if any."""
+        ...
+
+    def claim_collector_incident_alert(
+        self,
+        incident_key: str,
+        *,
+        now: int,
+        reminder_seconds: int,
+        payload: dict[str, Any] | None = None,
+    ) -> CollectorIncidentAlert:
+        """Open or refresh a collector incident and claim the right to alert.
+
+        Atomic: at most one caller (across iterations, threads, and process
+        restarts) receives ``should_notify=True`` per reminder window.
+        """
+        ...
+
+    def close_collector_incident(self, incident_key: str) -> CollectorIncident | None:
+        """Close an incident, returning the state it had while open."""
+        ...
+
+    def set_collector_incident_payload(
+        self, incident_key: str, payload: dict
+    ) -> CollectorIncident | None:
+        """Replace an open incident's payload without claiming an alert.
+
+        Used to persist delivery state. Alert cadence fields (``last_alert_at``,
+        ``alert_count``) are deliberately untouched, so recording a failed send
+        cannot extend or shorten the reminder window.
+        """
         ...
 
     def list(self) -> List[Repository]:

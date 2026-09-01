@@ -95,4 +95,8 @@ def bootstrap(
         inject_dependencies(handlers.add_check_result, recovery_dependencies)
     )
     collector.set_process_notifier(notifier.notify_check_failed)
+    if hasattr(collector, "set_incident_store"):
+        # Collector-level incident dedup/reminder state must outlive the
+        # process, so it lives in the store rather than in collector fields.
+        collector.set_incident_store(uow.store)
     return bus

@@ -134,6 +134,21 @@ class AsyncTelegramNotifier(Notifier):
         ]
         return "\n".join(summary_lines)
 
+    @staticmethod
+    def _opsgate_task_ref(check: Check, result: Result) -> str:
+        """Stable dedup key for the ticket this alert would open.
+
+        Collector-level incidents share the synthetic ``check_id=0`` row, so
+        they key off their persisted incident key instead. That keeps a wedged
+        executor and a stale-lease batch from colliding on one task_ref while
+        still deduplicating each of them across reminders and restarts.
+        """
+        data = result.data if isinstance(result.data, dict) else {}
+        incident_key = data.get("incident_key")
+        if isinstance(incident_key, str) and incident_key.strip():
+            return f"nyxmon-collector-{incident_key.strip()}"
+        return f"nyxmon-check-{check.check_id}"
+
     def _build_opsgate_ticket_payload(
         self, check: Check, result: Result
     ) -> dict[str, Any]:
@@ -146,7 +161,7 @@ class AsyncTelegramNotifier(Notifier):
         return {
             "title": f"Nyxmon {severity} alert: {check_name}",
             "summary": f"Nyxmon detected a {severity} state for check {check_name} ({check.url}).",
-            "task_ref": f"nyxmon-check-{check.check_id}",
+            "task_ref": self._opsgate_task_ref(check, result),
             "execution_plan": [
                 {
                     "role": "investigator",
@@ -222,7 +237,7 @@ class AsyncTelegramNotifier(Notifier):
             logger.info(
                 "OpsGate duplicate open ticket ignored for check_id=%s task_ref=%s",
                 check.check_id,
-                f"nyxmon-check-{check.check_id}",
+                self._opsgate_task_ref(check, result),
             )
             return {"status": "duplicate"}
 
