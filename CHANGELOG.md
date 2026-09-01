@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `notification_suppression` freshness guard fails open on hostile numeric
+  values instead of raising or suppressing. An arbitrarily large JSON integer
+  made `float()` raise `OverflowError` and aborted result handling for the
+  check, while `nan`, `-inf` and negative ages compared as "fresh" and
+  permitted suppression from a value carrying no freshness information. An
+  unusable `freshness_max_seconds` (overflowing, non-finite, boolean) fails
+  open the same way.
+- The in-memory store's compare-and-swap on notification state is now covered
+  by regression tests for two forked units of work racing on the same
+  snapshot, mirroring the SQLite atomic-rollback tests.
 - `notification_suppression` now supports a `freshness_path` /
   `freshness_max_seconds` guard and fails open when the suppression source is
   stale. Where the suppression endpoint is the same one a check monitors, a

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import operator
 import time
 from typing import Any, Callable
@@ -62,8 +63,28 @@ def _build_auth(config: dict[str, Any]) -> httpx.BasicAuth | None:
 def _int_or_none(value: Any) -> int | None:
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
+
+
+def _finite_seconds(value: Any) -> float | None:
+    """Return ``value`` as a finite, non-negative number of seconds, else None.
+
+    Payload and config values are untrusted JSON. ``float()`` raises
+    ``OverflowError`` on an arbitrarily large integer, and ``nan``, ``inf``
+    and negative numbers compare in ways that would let an unusable value
+    pass a freshness comparison. Every such value is reported as unusable so
+    the caller can fail open instead of raising or suppressing.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        seconds = float(value)
+    except (OverflowError, ValueError):
+        return None
+    if not math.isfinite(seconds) or seconds < 0:
+        return None
+    return seconds
 
 
 def _float_or_default(value: Any, default: float) -> float:
@@ -111,15 +132,15 @@ def notification_suppression_details(
     # alert would silence exactly the condition it exists to detect.
     #
     # When freshness_path is configured, a payload that is missing the field,
-    # carries a non-numeric value, or is older than freshness_max_seconds
-    # suppresses nothing. Absent config, behaviour is unchanged.
+    # carries a non-numeric, non-finite, negative or overflowing value, or is
+    # older than freshness_max_seconds suppresses nothing. An unusable
+    # freshness_max_seconds fails open the same way. Absent config, behaviour
+    # is unchanged.
     freshness_path = str(config.get("freshness_path") or "").strip()
     if freshness_path:
-        max_age = _int_or_none(config.get("freshness_max_seconds"))
-        age = _resolve_path(payload, freshness_path)
-        if not isinstance(age, (int, float)) or isinstance(age, bool):
-            return None
-        if max_age is None or max_age <= 0 or float(age) > float(max_age):
+        max_age = _finite_seconds(_int_or_none(config.get("freshness_max_seconds")))
+        age = _finite_seconds(_resolve_path(payload, freshness_path))
+        if age is None or max_age is None or max_age <= 0 or age > max_age:
             return None
 
     active_statuses = config.get("active_statuses", ["running"])

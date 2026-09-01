@@ -302,12 +302,60 @@ def test_suppression_fails_open_on_a_non_numeric_freshness_value(monkeypatch) ->
 def test_suppression_fails_open_when_the_max_age_is_unusable(monkeypatch) -> None:
     _patch_client(monkeypatch, FakeHttpClient(_frozen_payload(30)))
 
-    for bad in (0, -1, None, "soon"):
+    for bad in (
+        0,
+        -1,
+        None,
+        "soon",
+        10**400,
+        float("inf"),
+        float("-inf"),
+        float("nan"),
+        True,
+    ):
         details = notification_suppression_details(
             _build_check(_fresh_config(freshness_max_seconds=bad)),
             now_epoch=1_000,
         )
         assert details is None, f"max_age={bad!r} must not suppress"
+
+
+def test_hostile_freshness_values_fail_open_without_raising(monkeypatch) -> None:
+    """Regression: numeric-but-unusable ages must neither raise nor suppress.
+
+    ``float()`` of an arbitrarily large JSON integer raises ``OverflowError``,
+    which would abort result handling for the whole check. ``nan``, ``-inf``
+    and negative ages compare as "not older than max_age" and would permit
+    suppression from a value that carries no freshness information at all.
+    """
+    for hostile in (
+        10**400,
+        -1,
+        -0.5,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ):
+        _patch_client(monkeypatch, FakeHttpClient(_frozen_payload(hostile)))
+
+        details = notification_suppression_details(
+            _build_check(_fresh_config()), now_epoch=1_000
+        )
+
+        assert details is None, f"age={hostile!r} must fail open"
+
+
+def test_a_fresh_payload_still_suppresses_after_the_hardening(monkeypatch) -> None:
+    """Zero and boundary ages are legitimate and keep suppressing."""
+    for fresh in (0, 0.0, 599.9, 600):
+        _patch_client(monkeypatch, FakeHttpClient(_frozen_payload(fresh)))
+
+        details = notification_suppression_details(
+            _build_check(_fresh_config()), now_epoch=1_000
+        )
+
+        assert details is not None, f"age={fresh!r} is fresh and must suppress"
 
 
 def test_unguarded_configs_keep_their_existing_behaviour(monkeypatch) -> None:
