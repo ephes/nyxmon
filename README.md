@@ -149,12 +149,61 @@ Optional tuning:
 
 ```shell
 export NYXMON_NOTIFY_CONSECUTIVE_FAILURES=2
+export NYXMON_NOTIFY_REPEAT_FAILURES=12
+export NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS=3600
+export NYXMON_PROCESSING_LEASE_SECONDS=900
+export NYXMON_CHECK_BATCH_SIZE=5
 export OPSGATE_TICKET_EXPIRES_SECONDS=14400
 export OPSGATE_SUBMIT_TIMEOUT_SECONDS=10
 export OPSGATE_SUBMIT_INCLUDE_WARNINGS=false
 ```
 
-`NYXMON_NOTIFY_CONSECUTIVE_FAILURES` applies to Telegram and OpsGate. The first failing sample is still stored in history; notifications are sent when the configured warning/error streak is reached.
+`NYXMON_NOTIFY_CONSECUTIVE_FAILURES` applies to Telegram and OpsGate. The first
+failing sample is still stored in history; notifications are sent when the
+configured warning/error streak is reached. Persistent failures send another
+notification after every `NYXMON_NOTIFY_REPEAT_FAILURES` additional samples.
+Lease-expiry notifications bypass that failure threshold but are limited to one
+per continuously failing check per `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`.
+A successful sample resets the cooldown so a later incident alerts immediately.
+
+The collector treats `processing` as a lease rather than a permanent state. A
+check still processing after `NYXMON_PROCESSING_LEASE_SECONDS` is released,
+records an immediate `stale_processing_lease` error, and is scheduled again.
+Legacy processing rows without a claim timestamp receive one full lease from
+the time the collector first sees them before recovery, avoiding duplicate work.
+Recovery cannot cancel an executor that is still hung outside Nyxmon, so every
+executor must have a finite timeout and the lease must exceed its longest valid
+runtime. Nyxmon estimates that runtime from each check's timeout/retry settings
+and uses the largest enabled-check estimate as the batch-wide lease, automatically
+extending an undersized configured value and logging a warning;
+`data.max_runtime_seconds` can provide an explicit budget for custom behavior.
+Derived per-check estimates are capped at one hour so a mistyped retry value
+cannot disable recovery; operators can still set a deliberately larger global
+`NYXMON_PROCESSING_LEASE_SECONDS`.
+The collector abandons its wait after that execution budget plus a conservative
+result persistence/notification allowance of one minute per claimed check, so lease
+recovery and alerting resume even if the underlying executor thread remains
+wedged. New executions stay paused until that thread exits. With the default
+lease, the worst-case batch wait is twenty minutes. Keep the configured lease
+at least five minutes plus one minute per claimed check so a service restart
+during valid result handling cannot reclaim the batch early.
+Nyxmon permits only one abandoned batch at a time; lease recovery and alerts
+continue, but another execution batch is not launched until that thread exits.
+While execution remains paused, Nyxmon retries an hourly collector-wide reminder
+through an isolated unit of work. That reminder is not suppressed by the
+per-check immediate-alert cooldown or check-level maintenance suppression,
+including when the check was disabled after the abandoned batch started. A
+failed reminder attempt is retried after one minute instead of on every
+collector iteration.
+The reminder uses the distinct `collector_execution_paused` error type and does
+not reschedule its anchor check.
+After recording expiry, Nyxmon waits the check's normal interval before the
+replacement run. A late result from the expired claim is stored but cannot
+release or reschedule a newer active claim, change its notification streak, or
+trigger an alert.
+Unexpected executor exceptions are likewise converted into ordinary error
+results so a single broken check cannot strand its batch; exception details stay
+in the worker log rather than the stored result.
 
 Checks can also set `data.notification_suppression` to suppress Telegram and
 OpsGate side effects while a maintenance endpoint reports an active or recently

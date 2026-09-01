@@ -1,12 +1,17 @@
 """Tests for SQLite repository data field handling."""
 
 import pytest
+import aiosqlite
 import json
+import sqlite3
 import tempfile
+import time
 from pathlib import Path
 
-from nyxmon.adapters.repositories.sqlite_repo import SqliteCheckRepository
-from nyxmon.domain import Check, CheckType, CheckStatus
+from anyio.from_thread import BlockingPortalProvider
+from nyxmon.adapters.repositories.sqlite_repo import SqliteCheckRepository, SqliteStore
+from nyxmon.adapters.repositories.interface import NotificationStateConflict
+from nyxmon.domain import Check, CheckStatus, CheckType, Result, ResultStatus
 
 
 @pytest.fixture
@@ -137,6 +142,543 @@ class TestCheckDataRoundTrip:
         checks = await check_repo.list_async()
         assert len(checks) == 1
         assert checks[0].data == {}
+
+    @pytest.mark.anyio
+    async def test_reclaims_only_expired_processing_leases(self, check_repo):
+        now = int(time.time())
+        stale = Check(
+            check_id=1,
+            service_id=1,
+            name="Stale",
+            check_type=CheckType.HTTP,
+            url="https://example.com/stale",
+            status=CheckStatus.PROCESSING,
+            processing_started_at=now - 601,
+            data={},
+        )
+        active = Check(
+            check_id=2,
+            service_id=1,
+            name="Active",
+            check_type=CheckType.HTTP,
+            url="https://example.com/active",
+            status=CheckStatus.PROCESSING,
+            processing_started_at=now - 10,
+            data={},
+        )
+        missing_timestamp = Check(
+            check_id=3,
+            service_id=1,
+            name="Missing timestamp",
+            check_type=CheckType.HTTP,
+            url="https://example.com/missing-timestamp",
+            status=CheckStatus.PROCESSING,
+            processing_started_at=0,
+            data={},
+        )
+        await check_repo._add_async(stale)
+        await check_repo._add_async(active)
+        await check_repo._add_async(missing_timestamp)
+
+        reclaimed = await check_repo.reclaim_stale_checks_async(300)
+
+        assert {check.check_id for check in reclaimed} == {stale.check_id}
+        checks = {check.check_id: check for check in await check_repo.list_async()}
+        assert checks[stale.check_id].status == CheckStatus.IDLE
+        assert checks[stale.check_id].processing_started_at == 0
+        assert checks[active.check_id].status == CheckStatus.PROCESSING
+        assert checks[missing_timestamp.check_id].status == CheckStatus.PROCESSING
+        assert checks[missing_timestamp.check_id].processing_started_at >= now
+
+    @pytest.mark.anyio
+    async def test_claim_completion_and_expiry_lifecycle(self, check_repo, monkeypatch):
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Lease lifecycle",
+            check_type=CheckType.HTTP,
+            url="https://example.com/lifecycle",
+            next_check_time=0,
+            data={},
+        )
+        await check_repo._add_async(check)
+        now = 10_000
+        monkeypatch.setattr(
+            "nyxmon.adapters.repositories.sqlite_repo.current_epoch", lambda: now
+        )
+
+        [claimed] = await check_repo.list_due_checks_async()
+        assert claimed.status == CheckStatus.PROCESSING
+        assert claimed.processing_started_at == now
+        assert await check_repo.reclaim_stale_checks_async(300) == []
+
+        now += 301
+        [reclaimed] = await check_repo.reclaim_stale_checks_async(300)
+        assert reclaimed.check_id == check.check_id
+        assert reclaimed.status == CheckStatus.IDLE
+        assert reclaimed.processing_started_at == 0
+
+        reclaimed.next_check_time = 0
+        await check_repo._add_async(reclaimed)
+        [claimed_again] = await check_repo.list_due_checks_async()
+        claimed_again.schedule_next_check()
+        await check_repo._add_async(claimed_again)
+        [completed] = await check_repo.list_async()
+        assert completed.status == CheckStatus.IDLE
+        assert completed.processing_started_at == 0
+
+    @pytest.mark.anyio
+    async def test_notification_state_is_separate_from_check_data(self, check_repo):
+        await check_repo._add_async(
+            Check(
+                check_id=7,
+                service_id=1,
+                name="State owner",
+                check_type=CheckType.HTTP,
+                url="https://example.test/state",
+                data={},
+            )
+        )
+        await check_repo._set_notification_state_async(7, 4, 2, 1234)
+        assert await check_repo._get_notification_state_async(7) == (4, 2, 1234)
+
+        updated = (await check_repo.list_async())[0]
+        updated.name = "State owner updated"
+        await check_repo._add_async(updated)
+        assert await check_repo._get_notification_state_async(7) == (4, 2, 1234)
+
+    @pytest.mark.anyio
+    async def test_check_upsert_preserves_fk_children(self, temp_db):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="FK owner",
+            check_type=CheckType.HTTP,
+            url="https://example.test/fk-owner",
+            data={},
+        )
+        await store.checks._add_async(check)
+        await store._persist_check_result_async(
+            check,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            ((0, 0, 0), (1, 1, 123)),
+        )
+        check.name = "FK owner updated"
+
+        async with aiosqlite.connect(temp_db) as db:
+            await db.execute("PRAGMA foreign_keys = ON")
+            await store.checks._upsert_on_connection(db, check)
+            await db.commit()
+            state_count = await db.execute_fetchall(
+                "SELECT COUNT(*) FROM check_notification_state WHERE check_id = 1"
+            )
+            result_count = await db.execute_fetchall(
+                "SELECT COUNT(*) FROM check_result WHERE health_check_id = 1"
+            )
+
+        assert state_count[0][0] == 1
+        assert result_count[0][0] == 1
+
+    @pytest.mark.anyio
+    async def test_result_and_notification_state_are_atomic(self, temp_db):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Atomic",
+            check_type=CheckType.HTTP,
+            url="https://example.test/atomic",
+            data={},
+        )
+        result = Result(
+            check_id=1,
+            status=ResultStatus.ERROR,
+            data={"error_type": "test"},
+        )
+        await store.checks._add_async(check)
+
+        await store._persist_check_result_async(check, result, ((0, 0, 0), (2, 2, 0)))
+
+        assert len(await store.results._list_async()) == 1
+        assert await store.checks._get_notification_state_async(1) == (2, 2, 0)
+
+    @pytest.mark.anyio
+    async def test_state_write_failure_rolls_back_result_and_check(self, temp_db):
+        store = SqliteStore(temp_db)
+        async with aiosqlite.connect(temp_db) as db:
+            await store.checks._ensure_schema(db)
+            await store.results._ensure_schema(db)
+            await db.execute(
+                """CREATE TRIGGER reject_notification_state
+                   BEFORE INSERT ON check_notification_state
+                   BEGIN
+                       SELECT RAISE(ABORT, 'state write rejected');
+                   END"""
+            )
+            await db.commit()
+
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Atomic rollback",
+            check_type=CheckType.HTTP,
+            url="https://example.test/rollback",
+            data={},
+        )
+        result = Result(
+            check_id=1,
+            status=ResultStatus.ERROR,
+            data={"error_type": "test"},
+        )
+        await store.checks._add_async(check)
+
+        with pytest.raises(sqlite3.IntegrityError, match="state write rejected"):
+            await store._persist_check_result_async(
+                check, result, ((0, 0, 0), (1, 1, 0))
+            )
+
+        assert len(await store.checks.list_async()) == 1
+        assert await store.results._list_async() == []
+
+    @pytest.mark.anyio
+    async def test_stale_notification_state_is_rejected_atomically(self, temp_db):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="CAS owner",
+            check_type=CheckType.HTTP,
+            url="https://example.test/cas",
+            data={},
+        )
+        await store.checks._add_async(check)
+        await store._persist_check_result_async(
+            check,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            ((0, 0, 0), (1, 0, 0)),
+        )
+        check.name = "must roll back"
+
+        with pytest.raises(NotificationStateConflict):
+            await store._persist_check_result_async(
+                check,
+                Result(check_id=1, status=ResultStatus.ERROR, data={}),
+                ((0, 0, 0), (1, 1, 0)),
+            )
+
+        [persisted_check] = await store.checks.list_async()
+        assert persisted_check.name == "CAS owner"
+        assert len(await store.results._list_async()) == 1
+        assert await store.checks._get_notification_state_async(1) == (1, 0, 0)
+
+    @pytest.mark.anyio
+    async def test_late_completion_cannot_release_newer_claim(
+        self, temp_db, monkeypatch
+    ):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Claim identity",
+            check_type=CheckType.HTTP,
+            url="https://example.test/claim",
+            next_check_time=0,
+            data={},
+        )
+        await store.checks._add_async(check)
+        now = 10_000
+        monkeypatch.setattr(
+            "nyxmon.adapters.repositories.sqlite_repo.current_epoch", lambda: now
+        )
+        [first_claim] = await store.checks.list_due_checks_async()
+
+        now += 301
+        [reclaimed] = await store.checks.reclaim_stale_checks_async(300)
+        reclaimed.next_check_time = 0
+        await store.checks._add_async(reclaimed)
+        now += 1
+        [second_claim] = await store.checks.list_due_checks_async()
+        await store.checks._set_notification_state_async(1, 4, 2, 123)
+
+        first_claim.schedule_next_check()
+        completion_applied = await store._persist_check_result_async(
+            first_claim,
+            Result(check_id=1, status=ResultStatus.OK, data={}),
+            ((4, 2, 123), (0, 0, 0)),
+        )
+
+        assert completion_applied is False
+        [persisted] = await store.checks.list_async()
+        assert persisted.status == CheckStatus.PROCESSING
+        assert persisted.processing_started_at == second_claim.processing_started_at
+        assert await store.checks._get_notification_state_async(1) == (4, 2, 123)
+        assert len(await store.results._list_async()) == 1
+
+    @pytest.mark.anyio
+    async def test_late_completion_cannot_override_reclaimed_idle_backoff(
+        self, temp_db, monkeypatch
+    ):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Idle generation",
+            check_type=CheckType.HTTP,
+            url="https://example.test/idle-generation",
+            next_check_time=0,
+            data={},
+        )
+        await store.checks._add_async(check)
+        now = 10_000
+        monkeypatch.setattr(
+            "nyxmon.adapters.repositories.sqlite_repo.current_epoch", lambda: now
+        )
+        [original_claim] = await store.checks.list_due_checks_async()
+        now += 301
+        [reclaimed] = await store.checks.reclaim_stale_checks_async(300)
+        reclaimed.schedule_next_check()
+        assert await store._persist_check_result_async(
+            reclaimed,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            ((0, 0, 0), (0, 0, 123)),
+        )
+        [after_recovery] = await store.checks.list_async()
+
+        original_claim.schedule_next_check()
+        assert not await store._persist_check_result_async(
+            original_claim,
+            Result(check_id=1, status=ResultStatus.OK, data={}),
+            ((0, 0, 123), (0, 0, 0)),
+        )
+
+        [persisted] = await store.checks.list_async()
+        assert persisted.next_check_time == after_recovery.next_check_time
+        assert await store.checks._get_notification_state_async(1) == (0, 0, 123)
+        assert len(await store.results._list_async()) == 2
+
+    @pytest.mark.anyio
+    async def test_due_check_claims_are_bounded(self, temp_db):
+        store = SqliteStore(temp_db)
+        for check_id in range(1, 8):
+            await store.checks._add_async(
+                Check(
+                    check_id=check_id,
+                    service_id=1,
+                    name=f"Batch {check_id}",
+                    check_type=CheckType.HTTP,
+                    url="https://example.test/batch",
+                    next_check_time=100 - check_id,
+                    data={},
+                )
+            )
+
+        claimed = await store.checks.list_due_checks_async()
+
+        assert {check.check_id for check in claimed} == {7, 6, 5, 4, 3}
+        assert {
+            check.check_id for check in await store.checks.list_due_checks_async()
+        } == {2, 1}
+
+    @pytest.mark.anyio
+    async def test_stale_reclaims_are_oldest_first_and_bounded(
+        self, temp_db, monkeypatch
+    ):
+        store = SqliteStore(temp_db)
+        for check_id in range(1, 8):
+            await store.checks._add_async(
+                Check(
+                    check_id=check_id,
+                    service_id=1,
+                    name=f"Stale {check_id}",
+                    check_type=CheckType.HTTP,
+                    url="https://example.test/stale-batch",
+                    status=CheckStatus.PROCESSING,
+                    processing_started_at=100 - check_id,
+                    data={},
+                )
+            )
+        monkeypatch.setattr(
+            "nyxmon.adapters.repositories.sqlite_repo.current_epoch", lambda: 1000
+        )
+
+        first = await store.checks.reclaim_stale_checks_async(300)
+        second = await store.checks.reclaim_stale_checks_async(300)
+
+        assert {check.check_id for check in first} == {7, 6, 5, 4, 3}
+        assert {check.check_id for check in second} == {2, 1}
+
+    @pytest.mark.anyio
+    async def test_result_only_persistence_never_mutates_anchor_check(self, temp_db):
+        store = SqliteStore(temp_db)
+        current = Check(
+            check_id=1,
+            service_id=1,
+            name="Reminder anchor",
+            check_type=CheckType.HTTP,
+            url="https://example.test/reminder-anchor",
+            next_check_time=123,
+            data={},
+        )
+        await store.checks._add_async(current)
+        snapshot = Check(
+            check_id=1,
+            service_id=1,
+            name="stale snapshot",
+            check_type=CheckType.HTTP,
+            url="https://example.test/stale",
+            next_check_time=999,
+            data={},
+        )
+
+        assert await store._persist_check_result_async(
+            snapshot,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            ((0, 0, 0), (0, 0, 0)),
+            complete_check=False,
+        )
+
+        [persisted] = await store.checks.list_async()
+        assert persisted.name == "Reminder anchor"
+        assert persisted.next_check_time == 123
+        assert len(await store.results._list_async()) == 1
+
+    @pytest.mark.anyio
+    async def test_disabled_claim_is_released_without_late_reenable(
+        self, temp_db, monkeypatch
+    ):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Disabled in flight",
+            check_type=CheckType.HTTP,
+            url="https://example.test/disabled",
+            next_check_time=0,
+            data={},
+        )
+        await store.checks._add_async(check)
+        now = 10_000
+        monkeypatch.setattr(
+            "nyxmon.adapters.repositories.sqlite_repo.current_epoch", lambda: now
+        )
+        [claimed] = await store.checks.list_due_checks_async()
+        async with aiosqlite.connect(temp_db) as db:
+            await db.execute("UPDATE health_check SET disabled = 1 WHERE id = 1")
+            await db.commit()
+
+        now += 301
+        [reclaimed] = await store.checks.reclaim_stale_checks_async(300)
+        assert reclaimed.disabled is True
+        assert reclaimed.status == CheckStatus.IDLE
+
+        claimed.schedule_next_check()
+        await store._persist_check_result_async(
+            claimed,
+            Result(check_id=1, status=ResultStatus.OK, data={}),
+            None,
+        )
+        [persisted] = await store.checks.list_async()
+        assert persisted.disabled is True
+
+    @pytest.mark.anyio
+    async def test_late_completion_does_not_resurrect_deleted_check(self, temp_db):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Delete in flight",
+            check_type=CheckType.HTTP,
+            url="https://example.test/deleted",
+            next_check_time=0,
+            data={},
+        )
+        await store.checks._add_async(check)
+        [claimed] = await store.checks.list_due_checks_async()
+        async with aiosqlite.connect(temp_db) as db:
+            await db.execute("DELETE FROM health_check WHERE id = 1")
+            await db.commit()
+
+        claimed.schedule_next_check()
+        await store._persist_check_result_async(
+            claimed,
+            Result(check_id=1, status=ResultStatus.OK, data={}),
+            None,
+        )
+
+        assert await store.checks.list_async() == []
+        assert await store.results._list_async() == []
+
+    @pytest.mark.anyio
+    async def test_reclaimed_result_does_not_resurrect_deleted_check(
+        self, temp_db, monkeypatch
+    ):
+        store = SqliteStore(temp_db)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="Delete after reclaim",
+            check_type=CheckType.HTTP,
+            url="https://example.test/deleted-reclaimed",
+            next_check_time=0,
+            data={},
+        )
+        await store.checks._add_async(check)
+        now = 10_000
+        monkeypatch.setattr(
+            "nyxmon.adapters.repositories.sqlite_repo.current_epoch", lambda: now
+        )
+        await store.checks.list_due_checks_async()
+        now += 301
+        [reclaimed] = await store.checks.reclaim_stale_checks_async(300)
+        async with aiosqlite.connect(temp_db) as db:
+            await db.execute("DELETE FROM health_check WHERE id = 1")
+            await db.commit()
+
+        reclaimed.schedule_next_check()
+        await store._persist_check_result_async(
+            reclaimed,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            None,
+        )
+
+        assert await store.checks.list_async() == []
+        assert await store.results._list_async() == []
+
+    def test_public_persist_accepts_uri_and_multiple_results(self, temp_db):
+        db_uri = f"file:{temp_db}?mode=rwc"
+        store = SqliteStore(db_uri)
+        portal_provider = BlockingPortalProvider()
+        store.set_portal_provider(portal_provider)
+        check = Check(
+            check_id=1,
+            service_id=1,
+            name="URI persistence",
+            check_type=CheckType.HTTP,
+            url="https://example.test/uri",
+            data={},
+        )
+        with portal_provider as portal:
+            portal.call(store.checks._add_async, check)
+
+        store.persist_check_result(
+            check,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            ((0, 0, 0), (1, 0, 0)),
+        )
+        store.persist_check_result(
+            check,
+            Result(check_id=1, status=ResultStatus.ERROR, data={}),
+            ((1, 0, 0), (2, 2, 0)),
+        )
+
+        with sqlite3.connect(temp_db) as db:
+            rows = db.execute(
+                "SELECT id, created_at FROM check_result ORDER BY id"
+            ).fetchall()
+        assert len(rows) == 2
+        assert rows[0][0] != rows[1][0]
+        assert all(row[1] for row in rows)
 
     @pytest.mark.anyio
     @pytest.mark.django_db(transaction=True)

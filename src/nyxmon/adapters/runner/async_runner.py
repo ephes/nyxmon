@@ -1,4 +1,5 @@
 import anyio
+import logging
 from anyio import to_thread
 
 from anyio.from_thread import BlockingPortalProvider
@@ -15,6 +16,8 @@ from .executors.imap_executor import ImapCheckExecutor
 from .executors.smtp_executor import SmtpCheckExecutor
 from .executors.tcp_executor import TcpCheckExecutor
 from ...domain import Check, Result, CheckType, ResultStatus
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncCheckRunner(CheckRunner):
@@ -201,6 +204,21 @@ class AsyncCheckRunner(CheckRunner):
                 data={
                     "error_type": "unknown_check_type",
                     "error_msg": str(e),
+                    "check_type": check.check_type,
+                },
+            )
+        except Exception as e:
+            logger.exception(
+                "check executor raised unexpectedly for check_id=%s check_type=%s",
+                check.check_id,
+                check.check_type,
+            )
+            result = Result(
+                check_id=check.check_id,
+                status=ResultStatus.ERROR,
+                data={
+                    "error_type": "executor_exception",
+                    "error_msg": type(e).__name__,
                     "check_type": check.check_type,
                 },
             )

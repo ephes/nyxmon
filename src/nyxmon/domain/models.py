@@ -109,6 +109,9 @@ class Check:
         self.check_interval = check_interval
         self.next_check_time = next_check_time
         self.processing_started_at = processing_started_at
+        # Preserve the claim identity after schedule_next_check() clears the
+        # persisted lease fields, so late completions cannot clobber a newer run.
+        self.claim_started_at = processing_started_at
         self.status = status
         self.disabled = disabled
         self.data = data
@@ -134,9 +137,12 @@ class Check:
 
 
 class CheckResult:
-    def __init__(self, check: Check, result: Result) -> None:
+    def __init__(
+        self, check: Check, result: Result, *, force_notification: bool = False
+    ) -> None:
         self.check = check
         self.result = result
+        self.force_notification = force_notification
         self.events: list["Event"] = []
 
     @property

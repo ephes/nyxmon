@@ -174,6 +174,28 @@ class HealthCheck(models.Model):
         )
 
 
+class CheckNotificationState(models.Model):
+    """Internal alert cadence state, kept separate from editable check data."""
+
+    health_check: models.OneToOneField = models.OneToOneField(
+        HealthCheck,
+        db_column="check_id",
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="notification_state",
+    )
+    failure_count: models.PositiveIntegerField = models.PositiveIntegerField(default=0)
+    last_attempt_count: models.PositiveIntegerField = models.PositiveIntegerField(
+        default=0
+    )
+    last_immediate_at: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0
+    )
+
+    class Meta:
+        db_table = "check_notification_state"
+
+
 class Result(models.Model):
     health_check: models.ForeignKey = models.ForeignKey(
         HealthCheck, on_delete=models.CASCADE, related_name="results"

@@ -86,4 +86,13 @@ def bootstrap(
         command_handlers=injected_command_handlers,
     )
     collector.set_message_bus(bus)
+    recovery_store = uow.store.fork_for_concurrent_uow()
+    recovery_dependencies = {
+        **dependencies,
+        "uow": UnitOfWork(store=recovery_store),
+    }
+    collector.set_recovery_handler(
+        inject_dependencies(handlers.add_check_result, recovery_dependencies)
+    )
+    collector.set_process_notifier(notifier.notify_check_failed)
     return bus

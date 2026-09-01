@@ -1,8 +1,9 @@
 import sqlite3
 import json
 import logging
-import time
+from time import time as current_epoch
 import datetime
+import threading
 from typing import Any, List, cast
 import anyio
 import aiosqlite
@@ -14,6 +15,8 @@ from anyio.from_thread import BlockingPortalProvider
 from ...domain import Check, Result, Service
 from .interface import (
     RepositoryStore,
+    NotificationStateConflict,
+    check_batch_size,
     CheckRepository,
     ResultRepository,
     ServiceRepository,
@@ -119,7 +122,7 @@ class SqliteCheckRepository(CheckRepository):
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
-            current_time = int(time.time())
+            current_time = int(current_epoch())
             db.row_factory = aiosqlite.Row
 
             # Single atomic operation to find and claim checks
@@ -133,10 +136,11 @@ class SqliteCheckRepository(CheckRepository):
                                 WHERE next_check_time <= ?
                                   AND status = 'idle'
                                   AND disabled = 0
-                                LIMIT 100 -- Optional: process a batch at a time
+                                ORDER BY next_check_time ASC, id ASC
+                                LIMIT ?
                    )
                    RETURNING id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled, data""",
-                (current_time, current_time),
+                (current_time, current_time, check_batch_size()),
             )
 
             rows = await result.fetchall()
@@ -144,30 +148,168 @@ class SqliteCheckRepository(CheckRepository):
 
             return [row_to_check(r) for r in rows]
 
+    async def reclaim_stale_checks_async(self, lease_seconds: int) -> List[Check]:
+        """Atomically release checks abandoned by an interrupted worker."""
+        current_time = int(current_epoch())
+        stale_before = current_time - lease_seconds
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            db.row_factory = aiosqlite.Row
+            candidate = await db.execute_fetchall(
+                """SELECT 1 FROM health_check
+                   WHERE status = 'processing'
+                     AND (COALESCE(processing_started_at, 0) = 0
+                          OR processing_started_at <= ?)
+                   LIMIT 1""",
+                (stale_before,),
+            )
+            if not candidate:
+                return []
+            # Legacy or malformed claims without a timestamp receive a full lease
+            # from first observation instead of being reclaimed immediately.
+            await db.execute(
+                """UPDATE health_check
+                   SET processing_started_at = ?
+                   WHERE status = 'processing'
+                     AND COALESCE(processing_started_at, 0) = 0""",
+                (current_time,),
+            )
+            result = await db.execute(
+                """UPDATE health_check
+                   SET status = 'idle', processing_started_at = 0
+                   WHERE id IN (
+                       SELECT id FROM health_check
+                       WHERE status = 'processing'
+                         AND processing_started_at > 0
+                         AND processing_started_at <= ?
+                       ORDER BY processing_started_at ASC, id ASC
+                       LIMIT ?
+                   )
+                   RETURNING id, service_id, name, check_type, url, check_interval,
+                             next_check_time, processing_started_at, status, disabled, data""",
+                (stale_before, check_batch_size()),
+            )
+            rows = await result.fetchall()
+            await db.commit()
+            return [row_to_check(row) for row in rows]
+
+    def get_notification_state(self, check_id: int) -> tuple[int, int, int]:
+        if self._portal_provider is None:
+            raise RuntimeError("portal provider is required for notification state")
+        with self._portal_provider as portal:
+            return portal.call(self._get_notification_state_async, check_id)
+
+    async def _get_notification_state_async(
+        self, check_id: int
+    ) -> tuple[int, int, int]:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            cursor = await db.execute(
+                """SELECT failure_count, last_attempt_count, last_immediate_at
+                   FROM check_notification_state WHERE check_id = ?""",
+                (check_id,),
+            )
+            row = await cursor.fetchone()
+            if not row:
+                return (0, 0, 0)
+            return (int(row[0]), int(row[1]), int(row[2]))
+
+    def set_notification_state(
+        self,
+        check_id: int,
+        failure_count: int,
+        last_attempt_count: int,
+        last_immediate_at: int,
+    ) -> None:
+        if self._portal_provider is None:
+            raise RuntimeError("portal provider is required for notification state")
+        with self._portal_provider as portal:
+            portal.call(
+                self._set_notification_state_async,
+                check_id,
+                failure_count,
+                last_attempt_count,
+                last_immediate_at,
+            )
+
+    async def _set_notification_state_async(
+        self,
+        check_id: int,
+        failure_count: int,
+        last_attempt_count: int,
+        last_immediate_at: int,
+    ) -> None:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            await db.execute(
+                """INSERT INTO check_notification_state
+                       (check_id, failure_count, last_attempt_count, last_immediate_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(check_id) DO UPDATE SET
+                       failure_count = excluded.failure_count,
+                       last_attempt_count = excluded.last_attempt_count,
+                       last_immediate_at = excluded.last_immediate_at""",
+                (check_id, failure_count, last_attempt_count, last_immediate_at),
+            )
+            await db.commit()
+
     async def _add_async(self, check: Check) -> None:
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
-
-            await db.execute(
-                """INSERT OR REPLACE INTO health_check
-                   (id, service_id, name, check_type, url, check_interval,
-                    status, next_check_time, processing_started_at, disabled, data)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    check.check_id,
-                    check.service_id,
-                    check.name,
-                    check.check_type,
-                    check.url,
-                    check.check_interval,
-                    check.status,
-                    check.next_check_time,
-                    check.processing_started_at,
-                    int(check.disabled),  # Convert bool to int for SQLite
-                    json.dumps(check.data),  # Serialize to JSON
-                ),
-            )
+            await self._upsert_on_connection(db, check)
             await db.commit()
+
+    @staticmethod
+    async def _upsert_on_connection(db: aiosqlite.Connection, check: Check) -> None:
+        await db.execute(
+            """INSERT INTO health_check
+               (id, service_id, name, check_type, url, check_interval,
+                status, next_check_time, processing_started_at, disabled, data)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   service_id = excluded.service_id,
+                   name = excluded.name,
+                   check_type = excluded.check_type,
+                   url = excluded.url,
+                   check_interval = excluded.check_interval,
+                   status = excluded.status,
+                   next_check_time = excluded.next_check_time,
+                   processing_started_at = excluded.processing_started_at,
+                   disabled = excluded.disabled,
+                   data = excluded.data""",
+            (
+                check.check_id,
+                check.service_id,
+                check.name,
+                check.check_type,
+                check.url,
+                check.check_interval,
+                check.status,
+                check.next_check_time,
+                check.processing_started_at,
+                int(check.disabled),
+                json.dumps(check.data),
+            ),
+        )
+
+    @staticmethod
+    async def _complete_on_connection(db: aiosqlite.Connection, check: Check) -> bool:
+        cursor = await db.execute(
+            """UPDATE health_check
+               SET status = ?, next_check_time = ?, processing_started_at = ?
+               WHERE id = ?
+                 AND ((status = 'processing' AND processing_started_at = ?)
+                      OR (status <> 'processing' AND ? = 0))""",
+            (
+                check.status,
+                check.next_check_time,
+                check.processing_started_at,
+                check.check_id,
+                check.claim_started_at,
+                check.claim_started_at,
+            ),
+        )
+        return bool(cursor.rowcount)
 
     # ---------- Bridge sync → async ----------
     def _await(self, coro):
@@ -197,6 +339,13 @@ class SqliteCheckRepository(CheckRepository):
                 processing_started_at INTEGER DEFAULT 0,
                 disabled         INTEGER DEFAULT 0,
                 data             TEXT    DEFAULT '{}'
+            );
+            CREATE TABLE IF NOT EXISTS check_notification_state (
+                check_id           INTEGER PRIMARY KEY
+                                   REFERENCES health_check(id) ON DELETE CASCADE,
+                failure_count      INTEGER NOT NULL DEFAULT 0,
+                last_attempt_count INTEGER NOT NULL DEFAULT 0,
+                last_immediate_at  INTEGER NOT NULL DEFAULT 0
             );
             """
         )
@@ -244,18 +393,23 @@ class SqliteResultRepository(ResultRepository):
     async def _add_async(self, result: Result) -> None:
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
-            await db.execute(
-                """INSERT INTO check_result (id, health_check_id, status, data, created_at)
-                   VALUES (?, ?, ?, ?, datetime('now'))""",
-                (
-                    result.result_id,
-                    result.check_id,
-                    result.status,
-                    json.dumps(result.data),
-                ),
-            )
+            await self._insert_on_connection(db, result)
             await db.commit()
             self.seen.add(result)
+
+    @staticmethod
+    async def _insert_on_connection(db: aiosqlite.Connection, result: Result) -> None:
+        await db.execute(
+            """INSERT INTO check_result
+                   (id, health_check_id, status, data, created_at)
+               VALUES (?, ?, ?, ?, datetime('now'))""",
+            (
+                result.result_id,
+                result.check_id,
+                result.status,
+                json.dumps(result.data),
+            ),
+        )
 
     async def _get_async(self, result_id: int) -> Result:
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
@@ -395,8 +549,9 @@ class SqliteResultRepository(ResultRepository):
 
 
 class SqliteServiceRepository(ServiceRepository):
-    def __init__(self, db_path: Path) -> None:
+    def __init__(self, db_path: Path | str) -> None:
         self._db_path = db_path
+        self._use_uri = str(db_path).startswith("file:")
         self._portal_provider: BlockingPortalProvider | None = None
         self._schema_ready = False
         self.seen: set[Service] = set()
@@ -416,7 +571,7 @@ class SqliteServiceRepository(ServiceRepository):
 
     # ---------- interne async-Implementierung ----------
     async def list_async(self) -> List[Service]:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
             db.row_factory = aiosqlite.Row
@@ -429,7 +584,7 @@ class SqliteServiceRepository(ServiceRepository):
             return services
 
     async def _add_async(self, service: Service) -> None:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
             await db.execute(
@@ -443,7 +598,7 @@ class SqliteServiceRepository(ServiceRepository):
             self.seen.add(service)
 
     async def _get_async(self, service_id: int) -> Service:
-        async with aiosqlite.connect(self._db_path) as db:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
             db.row_factory = aiosqlite.Row
@@ -482,10 +637,10 @@ class SqliteServiceRepository(ServiceRepository):
 
 
 class SqliteStore(RepositoryStore):
-    def __init__(self, db_path: Path) -> None:
+    def __init__(self, db_path: Path | str) -> None:
         self.db_path = db_path
-        self._connection: sqlite3.Connection | None = None
-        self._thread_id: int | None = None
+        self._use_uri = str(db_path).startswith("file:")
+        self._connection_state = threading.local()
 
         # Initialize repositories
         self.results = SqliteResultRepository(db_path)
@@ -502,30 +657,123 @@ class SqliteStore(RepositoryStore):
         self.checks._portal_provider = portal_provider
         self.services._portal_provider = portal_provider
 
+    def fork_for_concurrent_uow(self) -> "SqliteStore":
+        """Use independent repositories and event sets over the same database."""
+        store = SqliteStore(self.db_path)
+        if self._portal_provider is not None:
+            store.set_portal_provider(self._portal_provider)
+        return store
+
+    def persist_check_result(
+        self,
+        check: Check,
+        result: Result,
+        notification_transition: (
+            tuple[tuple[int, int, int], tuple[int, int, int]] | None
+        ),
+        *,
+        complete_check: bool = True,
+    ) -> bool:
+        if self._portal_provider is None:
+            raise RuntimeError("portal provider is required to persist check results")
+        with self._portal_provider as portal:
+            return portal.call(
+                self._persist_check_result_async,
+                check,
+                result,
+                notification_transition,
+                complete_check,
+            )
+
+    async def _persist_check_result_async(
+        self,
+        check: Check,
+        result: Result,
+        notification_transition: (
+            tuple[tuple[int, int, int], tuple[int, int, int]] | None
+        ),
+        complete_check: bool = True,
+    ) -> bool:
+        async with aiosqlite.connect(self.db_path, uri=self._use_uri) as db:
+            await self.checks._ensure_schema(db)
+            await self.results._ensure_schema(db)
+            await db.execute("PRAGMA foreign_keys = ON")
+            await db.execute("BEGIN IMMEDIATE")
+            completion_applied = True
+            if complete_check:
+                completion_applied = await self.checks._complete_on_connection(
+                    db, check
+                )
+            if not complete_check or not completion_applied:
+                exists = await db.execute(
+                    "SELECT 1 FROM health_check WHERE id = ?", (check.check_id,)
+                )
+                if await exists.fetchone() is None:
+                    await db.rollback()
+                    logger.info(
+                        "dropped late result for deleted check_id=%s",
+                        check.check_id,
+                    )
+                    return False
+                if complete_check:
+                    logger.info(
+                        "stored late result without changing newer claim for check_id=%s",
+                        check.check_id,
+                    )
+            await self.results._insert_on_connection(db, result)
+            if complete_check and not completion_applied:
+                await db.commit()
+                self.results.seen.add(result)
+                return False
+            if notification_transition is not None:
+                expected_state, notification_state = notification_transition
+                cursor = await db.execute(
+                    """SELECT failure_count, last_attempt_count, last_immediate_at
+                       FROM check_notification_state WHERE check_id = ?""",
+                    (check.check_id,),
+                )
+                row = await cursor.fetchone()
+                current_state = (
+                    (int(row[0]), int(row[1]), int(row[2]))
+                    if row is not None
+                    else (0, 0, 0)
+                )
+                if current_state != expected_state:
+                    await db.rollback()
+                    raise NotificationStateConflict(check.check_id)
+            if notification_transition is not None:
+                expected_state, notification_state = notification_transition
+                if notification_state != expected_state:
+                    await db.execute(
+                        """INSERT INTO check_notification_state
+                               (check_id, failure_count, last_attempt_count,
+                                last_immediate_at)
+                           VALUES (?, ?, ?, ?)
+                           ON CONFLICT(check_id) DO UPDATE SET
+                               failure_count = excluded.failure_count,
+                               last_attempt_count = excluded.last_attempt_count,
+                               last_immediate_at = excluded.last_immediate_at""",
+                        (check.check_id, *notification_state),
+                    )
+            await db.commit()
+            if complete_check:
+                self.checks.seen.add(check)
+            self.results.seen.add(result)
+            return True
+
     @property
     def connection(self) -> sqlite3.Connection:
-        # Create a new connection for the current thread if needed
-        import threading
-
-        thread_id = threading.get_ident()
-        if self._thread_id != thread_id or self._connection is None:
-            # Close existing connection if from a different thread
-            if self._connection is not None:
-                try:
-                    self._connection.close()
-                except Exception:
-                    pass
-
-            # Create new connection for current thread
-            conn = sqlite3.connect(self.db_path)
+        connection = getattr(self._connection_state, "connection", None)
+        if connection is None:
+            conn = sqlite3.connect(self.db_path, uri=self._use_uri)
             conn.row_factory = sqlite3.Row
-            self._connection = conn
-            self._thread_id = thread_id
-            logger.debug(f"Created new SQLite connection for thread {thread_id}")
-
-        # At this point self._connection should never be None
-        assert self._connection is not None
-        return self._connection
+            self._connection_state.connection = conn
+            connection = conn
+            logger.debug(
+                "Created new SQLite connection for thread %s",
+                threading.get_ident(),
+            )
+        return connection
 
     def list(self) -> List:
         return [

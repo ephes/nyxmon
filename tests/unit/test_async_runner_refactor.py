@@ -260,6 +260,37 @@ class TestAsyncRunnerUnknownCheckType:
         # HTTP check should succeed despite the unknown type in the batch
         assert results_by_id[3].status == ResultStatus.OK
 
+    @pytest.mark.anyio
+    async def test_executor_exception_becomes_error_result(self, caplog):
+        """A broken executor must not leave its check permanently processing."""
+        runner = AsyncCheckRunner(MagicMock())
+        checks = [
+            Check(
+                check_id=1,
+                service_id=1,
+                name="Broken HTTP check",
+                check_type=CheckType.HTTP,
+                url="https://example.com",
+                data={},
+            )
+        ]
+
+        with patch(
+            "nyxmon.adapters.runner.executors.http_executor.HttpCheckExecutor.execute",
+            side_effect=RuntimeError("boom"),
+        ):
+            results = [result async for result in runner._async_run_all(checks)]
+
+        assert len(results) == 1
+        assert results[0].status == ResultStatus.ERROR
+        assert results[0].data == {
+            "error_type": "executor_exception",
+            "error_msg": "RuntimeError",
+            "check_type": CheckType.HTTP,
+        }
+        assert "check executor raised unexpectedly" in caplog.text
+        assert "boom" in caplog.text
+
 
 class TestAsyncRunnerExecutorCleanup:
     """Tests for executor cleanup mechanism."""
@@ -327,11 +358,12 @@ class TestAsyncRunnerExecutorCleanup:
                 mock_client_instance = AsyncMock()
                 mock_client_class.return_value = mock_client_instance
 
-                # Should handle the error - anyio will wrap it in ExceptionGroup
-                with pytest.raises((RuntimeError, BaseExceptionGroup)):
-                    results = []
-                    async for result in runner._async_run_all(checks):
-                        results.append(result)
+                results = []
+                async for result in runner._async_run_all(checks):
+                    results.append(result)
 
                 # Verify cleanup still happened
                 mock_client_instance.aclose.assert_called_once()
+                assert len(results) == 1
+                assert results[0].status == ResultStatus.ERROR
+                assert results[0].data["error_type"] == "executor_exception"

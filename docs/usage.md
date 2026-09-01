@@ -151,7 +151,60 @@ To enable Telegram notifications:
    ```
    Or set them in your `.env` file for automatic loading with honcho.
 
-By default, Nyxmon persists the first warning/error sample but waits for 2 consecutive non-OK samples before sending Telegram notifications or creating OpsGate tickets. Set `NYXMON_NOTIFY_CONSECUTIVE_FAILURES=1` to restore immediate first-failure alerts.
+By default, Nyxmon persists the first warning/error sample but waits for 2
+consecutive non-OK samples before sending Telegram notifications or creating
+OpsGate tickets. Set `NYXMON_NOTIFY_CONSECUTIVE_FAILURES=1` to restore immediate
+first-failure alerts. While a failure persists, Nyxmon sends a reminder after
+every 12 additional failing samples; tune that with
+`NYXMON_NOTIFY_REPEAT_FAILURES`.
+
+Checks are claimed with a fifteen-minute processing lease. If a worker or executor
+disappears before storing a result, Nyxmon reclaims the check, emits an immediate
+`stale_processing_lease` error, and schedules it again. Configure the lease with
+`NYXMON_PROCESSING_LEASE_SECONDS`; keep it above the longest legitimate check
+runtime. A legacy processing row without a timestamp first receives a complete
+lease, preventing an immediate duplicate run while still guaranteeing recovery.
+Nyxmon cannot forcibly cancel an executor that remains hung outside its worker;
+use finite executor timeouts and keep the lease above the longest valid runtime.
+Nyxmon derives a conservative minimum from enabled checks' timeout and retry
+configuration and extends an undersized lease with a warning. The largest
+enabled-check estimate is used for the whole batch, so an unusually slow check
+also lengthens recovery detection for faster checks. For custom check behavior,
+set `data.max_runtime_seconds` to its maximum legitimate runtime. Derived
+per-check values are capped at one hour; a deliberately longer recovery
+window must be set globally with `NYXMON_PROCESSING_LEASE_SECONDS`. At the lease
+budget plus a result persistence/notification allowance of one minute per
+claimed check, the collector abandons waiting for the executor thread and resumes
+lease recovery and alerting; with the default lease this is at most twenty minutes.
+New executions remain paused while the wedged thread continues in the background.
+Only one abandoned batch is
+allowed at a time: stale leases continue to be released and alerted, while new
+executions wait for that thread to exit instead of consuming the worker pool.
+An hourly paused-collector reminder uses an isolated unit of work and bypasses
+the per-check immediate-alert cooldown and check-level maintenance suppression;
+disabling every member of the abandoned batch does not silence that process-level
+warning. Failed reminder attempts use a one-minute retry backoff.
+The reminder is recorded as `collector_execution_paused`, distinct from a
+single check's lease expiry, and does not alter the anchor check's schedule or
+ordinary immediate-alert cooldown.
+The recovered check waits one normal check interval after the lease alert before
+running again, avoiding an immediate retry pile-up. Results arriving from an
+expired claim remain in history but cannot clear a newer run's active lease.
+They also cannot change that run's notification streak or trigger an alert.
+
+Claim and stale-recovery batches default to five checks and can be tuned with
+`NYXMON_CHECK_BATCH_SIZE` (range 1–100). The collector runs once per second by
+default, so fast checks can drain roughly five due checks per second; slow or
+failing checks reduce that throughput. Keep the value low enough that its
+worst-case serial notifier time fits the intended abandon deadline.
+
+Notification streak and reminder counters are stored per check in an internal
+table rather than derived from retained result history, so result cleanup cannot
+cause an alert storm. The state does not live in the editable check JSON.
+Immediate lease-expiry alerts do not advance the ordinary reminder counter and
+are limited to one per continuously failing check per hour by default; a
+successful sample resets that cooldown for the next incident. Tune it with
+`NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`.
 
 Checks may suppress Telegram and OpsGate side effects during known maintenance by
 adding `data.notification_suppression`. The check still runs and the result is

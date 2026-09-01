@@ -37,6 +37,10 @@ class FakeCheck:
         self.data = data
         self.result = None
         self.events = []
+        self.status = "idle"
+        self.next_check_time = 0
+        self.processing_started_at = 0
+        self.claim_started_at = 0
 
     def execute(self):
         # Simulate executing the check and generating a result

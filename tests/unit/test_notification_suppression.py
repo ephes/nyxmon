@@ -8,7 +8,9 @@ from nyxmon.adapters.repositories import InMemoryStore
 from nyxmon.domain.commands import AddCheckResult
 from nyxmon.domain.models import Check, CheckResult, CheckType, Result, ResultStatus
 from nyxmon.service_layer import handlers
-from nyxmon.service_layer.notification_suppression import notification_suppression_details
+from nyxmon.service_layer.notification_suppression import (
+    notification_suppression_details,
+)
 from nyxmon.service_layer.unit_of_work import UnitOfWork
 
 
@@ -35,7 +37,9 @@ class FakeResponse:
 
 
 class FakeHttpClient:
-    def __init__(self, payload: dict[str, Any] | None = None, exc: Exception | None = None) -> None:
+    def __init__(
+        self, payload: dict[str, Any] | None = None, exc: Exception | None = None
+    ) -> None:
         self.payload = payload or {}
         self.exc = exc
         self.requests: list[dict[str, Any]] = []
@@ -165,9 +169,11 @@ def test_suppressed_result_is_persisted_without_notification(monkeypatch) -> Non
         "notification_suppression_details",
         lambda check: {"reason": "maintenance"},
     )
-    uow = UnitOfWork(store=InMemoryStore())
+    store = InMemoryStore()
+    uow = UnitOfWork(store=store)
     notifier = StubNotifier()
     check = _build_check({})
+    store.checks.add(check)
     result = Result(check_id=check.check_id, status=ResultStatus.ERROR, data={})
 
     handlers.add_check_result(
@@ -190,9 +196,11 @@ def test_suppressed_result_breaks_failure_notification_streak(monkeypatch) -> No
         "notification_suppression_details",
         lambda check: next(suppression_calls),
     )
-    uow = UnitOfWork(store=InMemoryStore())
+    store = InMemoryStore()
+    uow = UnitOfWork(store=store)
     notifier = StubNotifier()
     check = _build_check({})
+    store.checks.add(check)
 
     for _ in range(3):
         result = Result(check_id=check.check_id, status=ResultStatus.ERROR, data={})

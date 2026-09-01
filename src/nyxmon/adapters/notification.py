@@ -250,8 +250,26 @@ class AsyncTelegramNotifier(Notifier):
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.url, data=payload, timeout=10.0)
                 resp.raise_for_status()
-        except Exception as e:
-            logger.error(f"Failed to send Telegram notification: {e}")
+            logger.info("Telegram notification delivered")
+        except httpx.HTTPStatusError as exc:
+            response_detail = exc.response.text
+            if self.token:
+                response_detail = response_detail.replace(self.token, "<redacted>")
+            response_detail = response_detail[:500]
+            logger.error(
+                "Failed to send Telegram notification: HTTP status %s body=%s",
+                exc.response.status_code,
+                response_detail,
+            )
+        except Exception as exc:
+            detail = str(exc)
+            if self.token:
+                detail = detail.replace(self.token, "<redacted>")
+            logger.error(
+                "Failed to send Telegram notification: %s: %s",
+                type(exc).__name__,
+                detail[:500],
+            )
 
     @staticmethod
     def escape_markdown_v2(text: str) -> str:

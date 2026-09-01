@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import copy
 
 from typing import List
+import time
 
-from ...domain import Result, Check, Service
+from ...domain import Check, CheckStatus, Result, Service
 from .interface import (
     Repository,
     ResultRepository,
     CheckRepository,
     ServiceRepository,
     RepositoryStore,
+    NotificationStateConflict,
+    check_batch_size,
 )
 
 
@@ -101,6 +105,7 @@ class InMemoryCheckRepository(CheckRepository):
 
     def __init__(self) -> None:
         self.checks: dict[int, Check] = {}
+        self.notification_states: dict[int, tuple[int, int, int]] = {}
         self.seen: set[Check] = set()
 
     def add(self, check: Check) -> None:
@@ -116,6 +121,78 @@ class InMemoryCheckRepository(CheckRepository):
     async def list_async(self) -> List[Check]:
         """Return checks in an awaitable form for async callers."""
         return self.list()
+
+    async def list_due_checks_async(self) -> List[Check]:
+        current_time = int(time.time())
+        claimed: list[Check] = []
+        candidates = sorted(
+            self.checks.values(),
+            key=lambda check: (check.next_check_time, check.check_id),
+        )
+        for check in candidates:
+            if (
+                check.next_check_time <= current_time
+                and check.status == CheckStatus.IDLE
+                and not check.disabled
+            ):
+                check.status = CheckStatus.PROCESSING
+                check.processing_started_at = current_time
+                check.claim_started_at = current_time
+                claimed.append(copy.deepcopy(check))
+                if len(claimed) >= check_batch_size():
+                    break
+        return claimed
+
+    async def reclaim_stale_checks_async(self, lease_seconds: int) -> List[Check]:
+        current_time = int(time.time())
+        stale_before = current_time - lease_seconds
+        reclaimed: list[Check] = []
+        for check in self.checks.values():
+            if (
+                check.status == CheckStatus.PROCESSING
+                and not check.processing_started_at
+            ):
+                check.processing_started_at = current_time
+        candidates = sorted(
+            (
+                check
+                for check in self.checks.values()
+                if (
+                    check.status == CheckStatus.PROCESSING
+                    and check.processing_started_at > 0
+                    and check.processing_started_at <= stale_before
+                )
+            ),
+            key=lambda check: (check.processing_started_at, check.check_id),
+        )
+        for check in candidates:
+            if (
+                check.status == CheckStatus.PROCESSING
+                and check.processing_started_at <= stale_before
+            ):
+                check.status = CheckStatus.IDLE
+                check.processing_started_at = 0
+                check.claim_started_at = 0
+                reclaimed.append(copy.deepcopy(check))
+                if len(reclaimed) >= check_batch_size():
+                    break
+        return reclaimed
+
+    def get_notification_state(self, check_id: int) -> tuple[int, int, int]:
+        return self.notification_states.get(check_id, (0, 0, 0))
+
+    def set_notification_state(
+        self,
+        check_id: int,
+        failure_count: int,
+        last_attempt_count: int,
+        last_immediate_at: int,
+    ) -> None:
+        self.notification_states[check_id] = (
+            failure_count,
+            last_attempt_count,
+            last_immediate_at,
+        )
 
 
 class InMemoryServiceRepository(ServiceRepository):
@@ -145,6 +222,60 @@ class InMemoryStore(RepositoryStore):
     services: InMemoryServiceRepository = field(
         default_factory=InMemoryServiceRepository
     )
+
+    def fork_for_concurrent_uow(self) -> InMemoryStore:
+        """Share backing data while isolating per-unit-of-work event sets."""
+        results = InMemoryResultRepository()
+        results.results = self.results.results
+        results._timestamps = self.results._timestamps
+        checks = InMemoryCheckRepository()
+        checks.checks = self.checks.checks
+        checks.notification_states = self.checks.notification_states
+        services = InMemoryServiceRepository()
+        services.services = self.services.services
+        return InMemoryStore(results=results, checks=checks, services=services)
+
+    def persist_check_result(
+        self,
+        check: Check,
+        result: Result,
+        notification_transition: (
+            tuple[tuple[int, int, int], tuple[int, int, int]] | None
+        ),
+        *,
+        complete_check: bool = True,
+    ) -> bool:
+        current_check = self.checks.checks.get(check.check_id)
+        if current_check is None:
+            return False
+        completion_superseded = complete_check and (
+            (
+                current_check.status == CheckStatus.PROCESSING
+                and current_check.processing_started_at != check.claim_started_at
+            )
+            or (
+                current_check.status != CheckStatus.PROCESSING
+                and bool(check.claim_started_at)
+            )
+        )
+        if completion_superseded:
+            self.results.add(result)
+            return False
+        if notification_transition is not None:
+            expected_state, notification_state = notification_transition
+            if self.checks.get_notification_state(check.check_id) != expected_state:
+                raise NotificationStateConflict(check.check_id)
+        self.results.add(result)
+        if complete_check:
+            for attribute in ("status", "next_check_time", "processing_started_at"):
+                setattr(current_check, attribute, getattr(check, attribute))
+            current_check.claim_started_at = 0
+            self.checks.seen.add(current_check)
+        if notification_transition is not None:
+            expected_state, notification_state = notification_transition
+            if notification_state != expected_state:
+                self.checks.set_notification_state(check.check_id, *notification_state)
+        return True
 
     def list(self) -> List[Repository]:
         return [

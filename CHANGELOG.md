@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Persistent warning/error streaks now send reminder notifications after a
+  configurable number of additional failures (`NYXMON_NOTIFY_REPEAT_FAILURES`,
+  default `12`).
+- Immediate processing-lease alerts now have a per-check cooldown
+  (`NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`, default `3600`).
+- The collector now reclaims checks abandoned in `processing` after a
+  configurable lease (`NYXMON_PROCESSING_LEASE_SECONDS`, default `900`) and
+  records an immediate `stale_processing_lease` alert.
+- Claim and stale-recovery batch size is configurable with
+  `NYXMON_CHECK_BATCH_SIZE` (default `5`, range `1`–`100`).
+  This replaces the previous hardcoded batch size of `100`; synchronized bursts
+  can consequently incur more scheduling latency unless operators raise the
+  setting for their workload.
 - IMAP checks now support `no_recent_message_severity` so missing fresh messages
   can be warning-only for third-party forwarded loopback checks while other IMAP
   execution failures remain critical.
@@ -20,6 +33,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   still storing the warning/error result.
 
 ### Fixed
+- Upgrade note: apply Django migration `0011_checknotificationstate` (normally
+  run automatically by the deployment role) before starting the updated worker.
+- Unexpected executor exceptions now become error results instead of leaving
+  claimed checks permanently stuck in `processing`; detailed exception text is
+  logged but no longer copied into stored results.
+- Notification reminder state is now persisted in a dedicated internal table,
+  preventing check edits, stale workers, or result-history cleanup from turning
+  persistent failures into duplicate alerts.
+- Untimestamped legacy processing claims now receive a full lease before
+  recovery, and one failed stale-result write no longer blocks recovery of other
+  checks in the same collector iteration.
+- Abandoned-batch reminders now use an independent unit of work, remain visible
+  when affected checks are disabled, bypass ordinary cooldown and maintenance
+  suppression, and retry failed attempts with a bounded backoff.
+- In-memory and SQLite result persistence now both refuse to resurrect checks
+  deleted while an execution or lease recovery was in flight, preserve
+  concurrent check edits, and suppress notifications for dropped results.
+- Superseded late results remain in history but no longer change notification
+  state or emit alerts, and bounded five-check batches keep worst-case serial
+  notification time inside a result-handling allowance that scales with the
+  configured batch size.
+- Invalid reliability environment values now warn once per distinct value
+  instead of flooding the worker log on every collector iteration or result.
+- The effective processing lease now accounts for enabled checks' configured
+  timeout/retry budgets, caps derived estimates at one hour, and prevents late
+  results from overwriting a newer active claim.
+- Runtime estimation rejects non-finite numeric values, and lease recovery uses
+  repository views with independent event sets so a wedged batch cannot disable
+  or cross-drain recovery work.
+- Successful Telegram deliveries are now recorded in the worker log, making
+  notification transport verification observable.
+- Telegram HTTP failure logging now redacts the bot token while preserving the
+  response status and bounded API error detail.
 - IMAP checks now retry empty recent-message searches according to `retries` and `retry_delay` before returning `no_recent_message`.
 
 ## [0.1.7] - 2025-10-05

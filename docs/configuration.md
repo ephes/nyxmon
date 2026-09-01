@@ -20,6 +20,44 @@ Telegram notifications read:
 - `TELEGRAM_BOT_TOKEN`: Bot token from BotFather
 - `TELEGRAM_CHAT_ID`: Chat ID for notifications
 - `NYXMON_NOTIFY_CONSECUTIVE_FAILURES`: Consecutive warning/error samples required before sending Telegram notifications or creating OpsGate tickets (default `2`; set `1` for immediate first-failure alerts)
+- `NYXMON_NOTIFY_REPEAT_FAILURES`: Additional consecutive warning/error samples
+  between persistent-failure reminders (default `12`)
+- `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`: Per-check cooldown for immediate
+  processing-lease expiry alerts (default `3600`)
+- `NYXMON_PROCESSING_LEASE_SECONDS`: Maximum time a claimed check may remain in
+  `processing` before it is reclaimed and emits an immediate
+  `stale_processing_lease` error (default `900`, minimum `30`). Invalid values
+  fall back to the default and emit a warning in the worker log. Legacy claims
+  without a timestamp receive a fresh full lease on first observation.
+  Nyxmon automatically raises the effective lease to its conservative estimate
+  of the largest enabled check's timeout/retry budget and logs when it does so.
+  This is a batch-wide safety bound: one unusually slow enabled check increases
+  recovery latency for every check. A check may set `data.max_runtime_seconds`
+  when its valid runtime cannot be derived from the standard timeout, retry, and
+  retry-delay fields. Derived estimates are capped at `3600` seconds; set the
+  global lease explicitly if a deliberately longer recovery window is required.
+- `NYXMON_CHECK_BATCH_SIZE`: Maximum checks claimed or stale leases reclaimed
+  per collector iteration (default `5`, clamped to `1`–`100`). With the default
+  one-second collector interval, fast checks can drain about five due checks per
+  second. Slow checks and serial notification I/O reduce that throughput.
+  A batch additionally receives one minute per claimed check for serial result
+  persistence and notification handling. Claims and stale recoveries are
+  processed in configurable bounded batches (five by default), so the default
+  allowance is five minutes and scales with `NYXMON_CHECK_BATCH_SIZE`. With the
+  default lease and batch size, a wedged batch therefore stops blocking lease
+  recovery within twenty minutes. New executions
+  stay paused while that single abandoned thread remains alive, and an hourly
+  paused-collector reminder bypasses the ordinary per-check immediate cooldown
+  and maintenance suppression. A failed reminder attempt is retried after one
+  minute.
+
+Failure streak, reminder, and immediate-alert cooldown state is stored in
+Nyxmon's internal `check_notification_state` table. It is intentionally separate
+from editable check `data` and from prunable result history.
+
+When upgrading an existing installation, run `python manage.py migrate` so
+migration `0011_checknotificationstate` owns that table. The Ansible deployment
+role runs Django migrations automatically.
 
 OpsGate producer integration (optional) reads:
 
