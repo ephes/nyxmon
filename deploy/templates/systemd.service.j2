@@ -6,10 +6,11 @@ After=network.target
 [Service]
 Type=simple
 Restart=always
+TimeoutStopSec=30
 WorkingDirectory={{ site_path }}
 User={{ username }}
 Environment="DJANGO_SETTINGS_MODULE={{ django_settings_module }}"
-ExecStart={{ site_path }}/venv/bin/granian --workers 4 --interface wsgi --host 127.0.0.1 --port {{ app_port }} --access-log config.wsgi_proxy:application
+ExecStart={{ site_path }}/venv/bin/granian --workers 4 --interface wsgi --host 127.0.0.1 --port {{ app_port }} --access-log config.wsgi:application
 
 [Install]
 WantedBy=multi-user.target

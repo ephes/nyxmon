@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The monitoring CLI now keeps `httpx` and `httpcore` at `WARNING`, preventing
+  their INFO request lines from writing Telegram bot tokens embedded in API
+  URLs to journald. Legacy Linux deployment units read credentials from the
+  mode-0600 environment file instead of embedding them in the unit and are
+  explicitly enabled so they survive reboot.
+- Legacy Linux deployment now starts Granian with the ordinary Django WSGI
+  target instead of the version-specific `granian.utils.proxies` wrapper,
+  limits stop waits to 30 seconds, and requires an HTTP 200 after restart.
+  Ansible can no longer report a successful deploy while the web unit is dead.
 - The `notification_suppression` freshness guard fails open on hostile numeric
   values instead of raising or suppressing. An arbitrarily large JSON integer
   made `float()` raise `OverflowError` and aborted result handling for the

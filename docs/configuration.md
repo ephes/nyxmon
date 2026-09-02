@@ -387,12 +387,18 @@ After=network.target
 Type=simple
 User=nyxmon
 WorkingDirectory=/home/nyxmon
-ExecStart=/usr/local/bin/start-agent --db /var/lib/nyxmon/db.sqlite3
+EnvironmentFile=/home/nyxmon/site/.env
+ExecStart=/usr/local/bin/start-agent --db /var/lib/nyxmon/db.sqlite3 --enable-telegram --log-level WARNING
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+Keep Telegram credentials in a root- or service-readable environment file,
+not inline in the unit. NyxMon also raises the `httpx` and `httpcore` logger
+thresholds to `WARNING`: their INFO request lines include Telegram's bot token
+in the API URL path and must not be retained by journald.
 
 ### launchd (macOS)
 

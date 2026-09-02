@@ -1,26 +1,32 @@
-import anyio
 import argparse
 import logging
 import sys
-import uvloop
-
 from pathlib import Path
 
-from nyxmon.adapters.collector import running_collector, AsyncCheckCollector
-from nyxmon.adapters.cleaner import running_cleaner, AsyncResultsCleaner
-from ..bootstrap import bootstrap
-from ..adapters.repositories import SqliteStore
+import anyio
+import uvloop
+
+from nyxmon.adapters.cleaner import AsyncResultsCleaner, running_cleaner
+from nyxmon.adapters.collector import AsyncCheckCollector, running_collector
+
 from ..adapters.notification import AsyncTelegramNotifier, LoggingNotifier
+from ..adapters.repositories import SqliteStore
+from ..bootstrap import bootstrap
 from ..startup_validation import validate_check_types
 
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(log_level: str):
+def setup_logging(log_level: str) -> None:
     logging.basicConfig(
         level=getattr(logging, log_level),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+    # httpx logs complete request URLs at INFO. Telegram puts the bot token in
+    # the URL path, so inheriting the worker's ordinary INFO level writes the
+    # credential to journald on every notification request.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def signal_handler(agent, signum, frame):
@@ -58,8 +64,9 @@ async def run_monitoring_services(
 
     # Bootstrap creates the runner internally, but we need access to it for validation
     # Create runner explicitly so we can validate check types
-    from ..adapters.runner import AsyncCheckRunner
     from anyio.from_thread import BlockingPortalProvider
+
+    from ..adapters.runner import AsyncCheckRunner
 
     portal_provider = BlockingPortalProvider()
     runner = AsyncCheckRunner(portal_provider=portal_provider)

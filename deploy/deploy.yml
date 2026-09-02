@@ -143,9 +143,25 @@
     - name: Make sure monitoring agent is running first
       systemd:
         state: restarted
+        enabled: true
         name: "{{ username }}_monitor"
+        daemon_reload: true
         
     - name: Make sure granian service is running
       systemd:
         state: restarted
+        enabled: true
         name: "{{ username }}"
+        daemon_reload: true
+
+    - name: Wait for the Nyxmon web service to become healthy
+      uri:
+        url: "http://127.0.0.1:{{ app_port }}/"
+        headers:
+          Host: "{{ fqdn }}"
+          X-Forwarded-Proto: https
+        status_code: 200
+      register: nyxmon_web_health
+      retries: 10
+      delay: 2
+      until: nyxmon_web_health.status == 200

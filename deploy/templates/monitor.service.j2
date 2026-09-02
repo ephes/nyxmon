@@ -8,9 +8,8 @@ Type=simple
 Restart=always
 WorkingDirectory={{ site_path }}
 User={{ username }}
-ExecStart={{ venv_bin }}/start-agent --db {{ site_path }}/db.sqlite3 --enable-telegram
-Environment="TELEGRAM_BOT_TOKEN={{ telegram_bot_token }}"
-Environment="TELEGRAM_CHAT_ID={{ telegram_chat_id }}"
+EnvironmentFile={{ site_path }}/.env
+ExecStart={{ venv_bin }}/start-agent --db {{ site_path }}/db.sqlite3 --enable-telegram --log-level WARNING
 
 [Install]
 WantedBy=multi-user.target
