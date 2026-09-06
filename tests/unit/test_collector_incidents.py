@@ -33,6 +33,7 @@ from nyxmon.adapters.collector import (
     STALE_BATCH_RESOLVE_AFTER_SECONDS,
     AsyncCheckCollector,
 )
+from nyxmon.adapters.notification import AsyncTelegramNotifier
 from nyxmon.adapters.repositories import InMemoryStore, SqliteStore
 from nyxmon.adapters.repositories.interface import NotificationState
 from nyxmon.bootstrap import bootstrap
@@ -552,3 +553,274 @@ async def test_failed_delivery_survives_a_worker_restart(monkeypatch, tmp_path) 
     reloaded = await collector2._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
     assert reloaded is not None
     assert "delivery_pending" not in reloaded.payload
+
+
+# ------------------------------------------------- delivery outcome plumbing
+
+
+@pytest.mark.anyio
+async def test_a_notifier_returning_false_marks_the_stale_batch_undelivered(
+    monkeypatch,
+) -> None:
+    """A literal ``False`` is a failed send, not a delivered alert.
+
+    Before the notifier reported its outcome, only a raised exception could
+    mark an incident undelivered. The real Telegram notifier swallowed every
+    error, so the persisted ``delivery_pending`` retry never fired with it.
+    """
+    monkeypatch.delenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", raising=False)
+    clock = _freeze_clock(monkeypatch)
+    store = InMemoryStore()
+    notifier = MagicMock()
+    notifier.notify_check_failed.return_value = False
+    collector, _bus, _n = _wire(store, notifier)
+    store.checks.add(_wedged_check(1))
+
+    await collector._collect_once()
+    assert notifier.notify_check_failed.call_count == 1
+    assert COLLECTOR_STALE_BATCH_INCIDENT_KEY in collector._incident_retry_keys
+    persisted = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert persisted is not None
+    assert persisted.payload["delivery_pending"] is True
+    assert persisted.payload["delivery_attempt"] == 1
+
+    # The retry cadence applies, and the delivered send clears the intent.
+    notifier.notify_check_failed.return_value = True
+    clock["now"] += ABANDONED_BATCH_RETRY_SECONDS + 1
+    await collector._collect_once()
+
+    assert notifier.notify_check_failed.call_count == 2
+    cleared = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert cleared is not None
+    assert "delivery_pending" not in cleared.payload
+    assert "delivery_attempt" not in cleared.payload
+
+
+@pytest.mark.anyio
+async def test_a_credential_less_telegram_notifier_starts_no_retry_loop(
+    monkeypatch,
+) -> None:
+    """ "Never configured" is not "the send failed".
+
+    ``AsyncTelegramNotifier`` used to return ``False`` when it had no
+    credentials and when it had no portal provider. Once a literal ``False``
+    became a delivery failure, every collector incident in an installation that
+    never configured Telegram would keep ``delivery_pending`` set and re-alert
+    every minute forever - a behaviour change caused purely by turning nothing
+    on. Those two cases now report ``None``: nothing was attempted.
+    """
+    monkeypatch.delenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", raising=False)
+    for name in (
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_CHAT_ID",
+        "OPSGATE_SUBMIT_BASE_URL",
+        "OPSGATE_SUBMIT_TOKEN",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    clock = _freeze_clock(monkeypatch)
+    store = InMemoryStore()
+    collector, _bus, _notifier = _wire(store, AsyncTelegramNotifier())
+    store.checks.add(_wedged_check(1))
+
+    await collector._collect_once()
+
+    persisted = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert persisted is not None
+    assert persisted.alert_count == 1
+    assert COLLECTOR_STALE_BATCH_INCIDENT_KEY not in collector._incident_retry_keys
+    assert "delivery_pending" not in persisted.payload
+    assert "delivery_attempt" not in persisted.payload
+
+    # The one-minute retry cadence never engages: the incident keeps its
+    # ordinary elapsed-time reminder window.
+    clock["now"] += ABANDONED_BATCH_RETRY_SECONDS + 1
+    await collector._collect_once()
+
+    unchanged = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert unchanged is not None
+    assert unchanged.alert_count == 1
+
+
+@pytest.mark.anyio
+async def test_a_notifier_returning_false_marks_the_paused_batch_undelivered(
+    monkeypatch,
+) -> None:
+    clock = _freeze_clock(monkeypatch)
+    release = threading.Event()
+    (
+        collector,
+        _bus,
+        incident_store,
+        _recovery_handler,
+        process_notifier,
+    ) = _wedged_batch_collector(monkeypatch, release)
+    process_notifier.return_value = False
+
+    try:
+        with anyio.fail_after(3):
+            await collector._collect_once()  # arms the abandoned batch
+            await collector._collect_once()  # first alert, delivery fails
+
+        assert COLLECTOR_PAUSED_INCIDENT_KEY in collector._incident_retry_keys
+        incident = incident_store.get_collector_incident(COLLECTOR_PAUSED_INCIDENT_KEY)
+        assert incident is not None
+        assert incident.payload["delivery_pending"] is True
+
+        # The failed send retries after 60 s instead of after the hour.
+        process_notifier.return_value = True
+        clock["now"] += ABANDONED_BATCH_RETRY_SECONDS + 1
+        with anyio.fail_after(3):
+            await collector._collect_once()
+        assert process_notifier.call_count == 2
+        assert COLLECTOR_PAUSED_INCIDENT_KEY not in collector._incident_retry_keys
+    finally:
+        release.set()
+
+
+@pytest.mark.anyio
+async def test_a_site_message_is_marked_undelivered_when_the_notifier_says_false(
+    monkeypatch,
+) -> None:
+    """The observer's notifier adapter reports the same outcome contract."""
+    import inspect
+
+    from nyxmon.adapters.collector import site_incident_notifier
+
+    process_notifier = MagicMock(return_value=False)
+    send = site_incident_notifier(process_notifier)
+    # The observer calls this through anyio.to_thread.run_sync with six
+    # positional arguments, so it must stay an ordinary synchronous callable.
+    assert not inspect.iscoroutinefunction(send)
+    assert len(inspect.signature(send).parameters) == 6
+
+    assert (
+        send("site:connectivity", "site", "site_summary", "body", "warning", False)
+        is False
+    )
+    check, result = process_notifier.call_args.args
+    assert check.check_id == 0
+    assert result.status == ResultStatus.WARNING
+    assert result.data["opsgate_ticket"] is False
+    assert result.data["incident_key"] == "site:connectivity"
+
+    process_notifier.return_value = None
+    assert send("site:connectivity", "site", "site_outage", "body", "error", True) is (
+        True
+    )
+    _check, error_result = process_notifier.call_args.args
+    assert error_result.status == ResultStatus.ERROR
+    assert "opsgate_ticket" not in error_result.data
+
+    process_notifier.side_effect = RuntimeError("telegram unreachable")
+    assert (
+        send("site:connectivity", "site", "site_outage", "body", "error", True) is False
+    )
+
+
+@pytest.mark.anyio
+async def test_a_crash_between_claim_and_send_retries_after_a_restart(
+    monkeypatch, tmp_path
+) -> None:
+    """The claim writes the intent, so a killed worker still pages later."""
+    clock = _freeze_clock(monkeypatch)
+    db = tmp_path / "nyxmon.sqlite3"
+
+    # --- process 1: the alert is claimed, then the process dies mid-send ---
+    store = SqliteStore(db)
+    notifier = MagicMock()
+    notifier.notify_check_failed.side_effect = RuntimeError("killed mid-send")
+    collector, _bus, _n = _wire(store, notifier)
+    await store.checks._add_async(_wedged_check(1))
+
+    await collector._collect_once()
+    persisted = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert persisted is not None
+    assert persisted.payload["delivery_pending"] is True
+    assert persisted.payload["delivery_attempt"] == persisted.alert_count
+
+    # --- process 2: a fresh bootstrap over the same file retries ---
+    restarted_store = SqliteStore(db)
+    restarted_notifier = MagicMock()
+    restarted_collector, _bus2, _n2 = _wire(restarted_store, restarted_notifier)
+    assert restarted_collector._incident_retry_keys == set()
+
+    clock["now"] += ABANDONED_BATCH_RETRY_SECONDS + 1
+    await restarted_collector._collect_once()
+
+    assert restarted_notifier.notify_check_failed.call_count == 1
+    reloaded = await restarted_collector._incident_get(
+        COLLECTOR_STALE_BATCH_INCIDENT_KEY
+    )
+    assert reloaded is not None
+    assert "delivery_pending" not in reloaded.payload
+
+
+@pytest.mark.anyio
+async def test_a_non_granting_payload_refresh_keeps_the_retry_intent(
+    monkeypatch, tmp_path
+) -> None:
+    """A second reclaim before the retry is due must not erase the intent."""
+    clock = _freeze_clock(monkeypatch)
+    db = tmp_path / "nyxmon.sqlite3"
+
+    store = SqliteStore(db)
+    notifier = MagicMock()
+    notifier.notify_check_failed.return_value = False
+    collector, _bus, _n = _wire(store, notifier)
+    await store.checks._add_async(_wedged_check(1))
+
+    await collector._collect_once()
+    assert notifier.notify_check_failed.call_count == 1
+
+    # A second expired lease refreshes the payload well inside the retry
+    # window, so the claim does not grant an alert.
+    await store.checks._add_async(_wedged_check(2))
+    clock["now"] += 5
+    await collector._collect_once()
+    assert notifier.notify_check_failed.call_count == 1
+    refreshed = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert refreshed is not None
+    assert refreshed.payload["reclaimed_count"] == 2
+    assert refreshed.payload["delivery_pending"] is True, (
+        "a non-granting payload refresh erased the pending retry intent"
+    )
+
+    # After a restart the persisted intent is what makes the retry happen.
+    restarted_store = SqliteStore(db)
+    restarted_notifier = MagicMock()
+    restarted_collector, _bus2, _n2 = _wire(restarted_store, restarted_notifier)
+    clock["now"] += ABANDONED_BATCH_RETRY_SECONDS + 1
+    await restarted_collector._collect_once()
+
+    assert restarted_notifier.notify_check_failed.call_count == 1
+    cleared = await restarted_collector._incident_get(
+        COLLECTOR_STALE_BATCH_INCIDENT_KEY
+    )
+    assert cleared is not None
+    assert "delivery_pending" not in cleared.payload
+
+
+@pytest.mark.anyio
+async def test_a_late_acknowledgement_cannot_clear_a_newer_intent(
+    monkeypatch,
+) -> None:
+    """``_record_incident_send`` is fenced by the attempt it acknowledges."""
+    _freeze_clock(monkeypatch)
+    store = InMemoryStore()
+    collector, _bus, _notifier = _wire(store)
+    store.checks.add(_wedged_check(1))
+    await collector._collect_once()
+
+    incident = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert incident is not None
+    store.set_collector_incident_payload(
+        COLLECTOR_STALE_BATCH_INCIDENT_KEY,
+        {**incident.payload, "delivery_pending": True, "delivery_attempt": 7},
+    )
+
+    await collector._record_incident_send(COLLECTOR_STALE_BATCH_INCIDENT_KEY, True, 3)
+
+    current = await collector._incident_get(COLLECTOR_STALE_BATCH_INCIDENT_KEY)
+    assert current is not None
+    assert current.payload["delivery_pending"] is True
+    assert current.payload["delivery_attempt"] == 7

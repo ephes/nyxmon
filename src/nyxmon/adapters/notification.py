@@ -15,8 +15,16 @@ logger = logging.getLogger(__name__)
 class Notifier(Protocol):
     """Interface for notification services."""
 
-    def notify_check_failed(self, check: Check, result: Result) -> None:
-        """Notify about a failed check."""
+    def notify_check_failed(self, check: Check, result: Result) -> bool | None:
+        """Notify about a failed check.
+
+        Returns:
+            ``True`` when the message was delivered, ``False`` when the send
+            failed, and ``None`` when the notifier cannot tell. Only a literal
+            ``False`` is treated as a delivery failure by the callers, so a
+            custom notifier or a mock that returns nothing keeps behaving as
+            "delivered".
+        """
         ...
 
     def notify_service_status_changed(self, service: Service, status: str) -> None:
@@ -249,11 +257,26 @@ class AsyncTelegramNotifier(Notifier):
         )
         return {"status": "error"}
 
-    async def async_send(self, text: str, high_priority: bool = False) -> None:
-        """Send a message via Telegram asynchronously."""
+    async def async_send(self, text: str, high_priority: bool = False) -> bool | None:
+        """Send a message via Telegram asynchronously.
+
+        Args:
+            text: The MarkdownV2 message body.
+            high_priority: Whether the message notifies with sound.
+
+        Returns:
+            ``True`` when Telegram accepted the request, ``False`` when a
+            request was attempted and failed, and ``None`` when the notifier
+            has no credentials and therefore never attempted one. An accepted
+            request whose response was lost is reported as a failure, which the
+            delivery retry of the plan turns into a bounded repeat rather than
+            a lost alert. ``None`` is deliberately not a failure: an
+            installation that never configured Telegram would otherwise keep
+            every collector incident in a one-minute retry loop forever.
+        """
         if not self.token or not self.chat_id or not self.url:
             logger.warning("Cannot send Telegram notification: missing credentials")
-            return
+            return None
 
         try:
             payload = {
@@ -266,6 +289,7 @@ class AsyncTelegramNotifier(Notifier):
                 resp = await client.post(self.url, data=payload, timeout=10.0)
                 resp.raise_for_status()
             logger.info("Telegram notification delivered")
+            return True
         except httpx.HTTPStatusError as exc:
             response_detail = exc.response.text
             if self.token:
@@ -276,6 +300,7 @@ class AsyncTelegramNotifier(Notifier):
                 exc.response.status_code,
                 response_detail,
             )
+            return False
         except Exception as exc:
             detail = str(exc)
             if self.token:
@@ -285,6 +310,7 @@ class AsyncTelegramNotifier(Notifier):
                 type(exc).__name__,
                 detail[:500],
             )
+            return False
 
     @staticmethod
     def escape_markdown_v2(text: str) -> str:
@@ -315,8 +341,22 @@ class AsyncTelegramNotifier(Notifier):
             escaped_text = escaped_text.replace(char, f"\\{char}")
         return escaped_text
 
-    async def async_notify_check_failed(self, check: Check, result: Result) -> None:
-        """Notify about a failed check asynchronously."""
+    async def async_notify_check_failed(
+        self, check: Check, result: Result
+    ) -> bool | None:
+        """Notify about a failed check asynchronously.
+
+        Args:
+            check: The check the alert is about.
+            result: The failing sample.
+
+        Returns:
+            Whether the Telegram message was delivered, or ``None`` when the
+            notifier has no credentials and never attempted a send. The OpsGate
+            ticket outcome deliberately does not count: a ticket that could not
+            be opened is reported inside the message, and repeating the
+            Telegram message would not create one.
+        """
         error_msg = result.data.get("error_msg", "Unknown error")
         error_type = result.data.get("error_type", "")
         status_code = result.data.get("status_code", "")
@@ -346,8 +386,13 @@ class AsyncTelegramNotifier(Notifier):
             message += f"Error Type: {escaped_error_type}\n"
         message += f"Error: {escaped_error_msg}"
 
+        # An explicit ``opsgate_ticket: false`` means "this event is already
+        # resolved": a recovery summary must never open a remediation ticket,
+        # whatever its severity and whatever OPSGATE_SUBMIT_INCLUDE_WARNINGS
+        # says.
+        ticket_wanted = result.data.get("opsgate_ticket") is not False
         ticket_info: dict[str, str] | None = None
-        if is_critical or self.opsgate_include_warnings:
+        if ticket_wanted and (is_critical or self.opsgate_include_warnings):
             ticket_info = await self._create_opsgate_ticket(check, result)
             if ticket_info and ticket_info.get("status") == "created":
                 ticket_id = ticket_info["ticket_id"]
@@ -367,7 +412,7 @@ class AsyncTelegramNotifier(Notifier):
                 message += "\nTicket creation failed; please create one manually\\."
 
         # Only use high priority (with sound) for critical failures
-        await self.async_send(message, high_priority=is_critical)
+        return await self.async_send(message, high_priority=is_critical)
 
     async def async_notify_service_status_changed(
         self, service: Service, status: str
@@ -391,14 +436,26 @@ class AsyncTelegramNotifier(Notifier):
         await self.async_send(message, high_priority=True)
 
     # Sync methods that call async methods through the portal
-    def notify_check_failed(self, check: Check, result: Result) -> None:
-        """Notify about a failed check."""
+    def notify_check_failed(self, check: Check, result: Result) -> bool | None:
+        """Notify about a failed check.
+
+        Returns:
+            Whether the Telegram message was delivered, or ``None`` when the
+            notifier could not tell because it never attempted a send: no
+            portal provider, or no credentials. ``None`` is not a failure, so a
+            deployment that never configured Telegram keeps the behaviour it
+            had before the delivery retry existed instead of retrying every
+            incident forever.
+        """
         if self.portal_provider is None:
             logger.warning("Cannot send notification: portal provider not set")
-            return
+            return None
 
         with self.portal_provider as portal:
-            portal.call(self.async_notify_check_failed, check, result)
+            delivered: bool | None = portal.call(
+                self.async_notify_check_failed, check, result
+            )
+            return delivered
 
     def notify_service_status_changed(self, service: Service, status: str) -> None:
         """Notify about a service status change."""
@@ -413,12 +470,17 @@ class AsyncTelegramNotifier(Notifier):
 class LoggingNotifier(Notifier):
     """A simple notifier that logs messages to the console."""
 
-    def notify_check_failed(self, check: Check, result: Result) -> None:
-        """Log a failed check notification."""
+    def notify_check_failed(self, check: Check, result: Result) -> bool:
+        """Log a failed check notification.
+
+        Returns:
+            Always ``True``: writing the log line is the delivery.
+        """
         check_name = check.name if check.name else f"Check {check.check_id}"
         logger.error(
             f"Check failed: {check_name} (ID: {check.check_id}), Result: {result}"
         )
+        return True
 
     def notify_service_status_changed(self, service: Service, status: str) -> None:
         """Log a service status change notification."""

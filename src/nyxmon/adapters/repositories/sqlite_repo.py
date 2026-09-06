@@ -14,22 +14,53 @@ from anyio.from_thread import BlockingPortalProvider
 
 from ...domain import Check, Result, Service
 from .interface import (
+    DELIVERY_ATTEMPT_KEY,
     CollectorIncident,
     CollectorIncidentAlert,
+    HeldCheck,
     NOTIFICATION_STATE_COLUMNS,
     NotificationState,
     NotificationTransition,
     RepositoryStore,
     NotificationStateConflict,
+    carry_delivery_markers,
     check_batch_size,
+    with_delivery_intent,
+    without_delivery_markers,
     CheckRepository,
     ResultRepository,
     ServiceRepository,
 )
 
 NOTIFICATION_STATE_SELECT = ", ".join(NOTIFICATION_STATE_COLUMNS)
+NOTIFICATION_STATE_PLACEHOLDERS = ", ".join(
+    ["?"] * (len(NOTIFICATION_STATE_COLUMNS) + 1)
+)
+NOTIFICATION_STATE_ASSIGNMENTS = ",\n               ".join(
+    f"{column} = excluded.{column}" for column in NOTIFICATION_STATE_COLUMNS
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_check_data(data_raw: Any) -> dict[str, Any]:
+    """Decode a ``health_check.data`` column value into a dictionary.
+
+    Args:
+        data_raw: The raw column value (JSON text, bytes, dict, or ``None``).
+
+    Returns:
+        The decoded mapping, empty when the column carries no payload.
+    """
+    if data_raw is None:
+        return {}
+    if isinstance(data_raw, str):
+        return json.loads(data_raw) if data_raw else {}
+    if isinstance(data_raw, bytes):
+        return json.loads(data_raw.decode("utf-8")) if data_raw else {}
+    if isinstance(data_raw, dict):
+        return data_raw
+    return cast(dict[str, Any], data_raw)
 
 
 def row_to_check(row: aiosqlite.Row) -> Check:
@@ -52,16 +83,7 @@ def row_to_check(row: aiosqlite.Row) -> Check:
         # Column doesn't exist yet (migration in progress)
         data: dict[str, Any] = {}
     else:
-        if data_raw is None:
-            data = {}
-        elif isinstance(data_raw, str):
-            data = json.loads(data_raw) if data_raw else {}
-        elif isinstance(data_raw, bytes):
-            data = json.loads(data_raw.decode("utf-8")) if data_raw else {}
-        elif isinstance(data_raw, dict):
-            data = data_raw
-        else:
-            data = cast(dict[str, Any], data_raw)
+        data = _parse_check_data(data_raw)
 
     check = Check(
         check_id=check_id,
@@ -112,22 +134,65 @@ async def _upsert_notification_state(
     db: aiosqlite.Connection, check_id: int, state: NotificationState
 ) -> None:
     await db.execute(
-        """INSERT INTO check_notification_state
-               (check_id, failure_count, last_attempt_count, last_immediate_at,
-                last_notified_at, first_failure_at)
-           VALUES (?, ?, ?, ?, ?, ?)
+        f"""INSERT INTO check_notification_state
+               (check_id, {NOTIFICATION_STATE_SELECT})
+           VALUES ({NOTIFICATION_STATE_PLACEHOLDERS})
            ON CONFLICT(check_id) DO UPDATE SET
-               failure_count = excluded.failure_count,
-               last_attempt_count = excluded.last_attempt_count,
-               last_immediate_at = excluded.last_immediate_at,
-               last_notified_at = excluded.last_notified_at,
-               first_failure_at = excluded.first_failure_at""",
+               {NOTIFICATION_STATE_ASSIGNMENTS}""",
         (check_id, *state.as_row()),
     )
 
 
+async def _mark_held_since(
+    db: aiosqlite.Connection, check_id: int, hold_marker: int
+) -> None:
+    """Stamp ``held_since`` on a check's state row unless it is already held.
+
+    Runs on the caller's open transaction so the hold commits together with the
+    completion that produced it.
+
+    Args:
+        db: The connection whose transaction the write joins.
+        check_id: The check that owes a recheck.
+        hold_marker: Epoch of the first held sample of this hold.
+    """
+    cursor = await db.execute(
+        """UPDATE check_notification_state SET held_since = ?
+           WHERE check_id = ? AND held_since = 0""",
+        (hold_marker, check_id),
+    )
+    if cursor.rowcount:
+        return
+    existing = await db.execute(
+        "SELECT 1 FROM check_notification_state WHERE check_id = ?", (check_id,)
+    )
+    if await existing.fetchone() is not None:
+        # A hold is already running; its start time is the one that bounds it.
+        return
+    await db.execute(
+        f"""INSERT INTO check_notification_state (check_id, {NOTIFICATION_STATE_SELECT})
+            VALUES ({NOTIFICATION_STATE_PLACEHOLDERS})""",
+        (check_id, *NotificationState(held_since=hold_marker).as_row()),
+    )
+
+
+NOTIFICATION_STATE_UPGRADE_COLUMNS = (
+    "last_notified_at",
+    "first_failure_at",
+    "held_since",
+    "attempt_seq",
+    "attempt_at",
+)
+
+# Only these two need a backfill; the site-connectivity columns are meaningful
+# at their zero default, so adding them alone must not claim an adoption.
+NOTIFICATION_STATE_BACKFILLED_COLUMNS = frozenset(
+    {"last_notified_at", "first_failure_at"}
+)
+
+
 async def _upgrade_notification_state_schema(db: aiosqlite.Connection) -> None:
-    """Add the elapsed-time reminder columns to a pre-existing state table.
+    """Add the reminder and site-connectivity columns to an older state table.
 
     ``CREATE TABLE IF NOT EXISTS`` silently leaves an older table untouched, so
     the new columns are added here.
@@ -149,7 +214,7 @@ async def _upgrade_notification_state_schema(db: aiosqlite.Connection) -> None:
     await db.execute("BEGIN IMMEDIATE")
     try:
         added: list[str] = []
-        for column in ("last_notified_at", "first_failure_at"):
+        for column in NOTIFICATION_STATE_UPGRADE_COLUMNS:
             try:
                 await db.execute(
                     f"ALTER TABLE check_notification_state "
@@ -165,6 +230,7 @@ async def _upgrade_notification_state_schema(db: aiosqlite.Connection) -> None:
             await db.rollback()
             return
 
+        backfilled = NOTIFICATION_STATE_BACKFILLED_COLUMNS.intersection(added)
         bootstrap_epoch = int(current_epoch())
         if "first_failure_at" in added:
             await db.execute(
@@ -187,12 +253,18 @@ async def _upgrade_notification_state_schema(db: aiosqlite.Connection) -> None:
     except BaseException:
         await db.rollback()
         raise
-    logger.info(
-        "upgraded check_notification_state with columns %s; "
-        "existing failure streaks adopted at epoch %s without re-alerting",
-        ", ".join(added),
-        bootstrap_epoch,
-    )
+    if backfilled:
+        logger.info(
+            "upgraded check_notification_state with columns %s; "
+            "existing failure streaks adopted at epoch %s without re-alerting",
+            ", ".join(added),
+            bootstrap_epoch,
+        )
+    else:
+        logger.info(
+            "upgraded check_notification_state with columns %s",
+            ", ".join(added),
+        )
 
 
 class SqliteCheckRepository(CheckRepository):
@@ -341,6 +413,104 @@ class SqliteCheckRepository(CheckRepository):
             await _upsert_notification_state(db, check_id, state)
             await db.commit()
 
+    def acknowledge_notification_attempt(self, check_id: int, attempt_seq: int) -> bool:
+        """Clear the pending delivery marker of one notification attempt."""
+        if self._portal_provider is None:
+            raise RuntimeError("portal provider is required for notification state")
+        with self._portal_provider as portal:
+            return portal.call(
+                self._acknowledge_notification_attempt_async, check_id, attempt_seq
+            )
+
+    async def _acknowledge_notification_attempt_async(
+        self, check_id: int, attempt_seq: int
+    ) -> bool:
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            cursor = await db.execute(
+                """UPDATE check_notification_state SET attempt_at = 0
+                   WHERE check_id = ? AND attempt_seq = ? AND attempt_at <> 0""",
+                (check_id, attempt_seq),
+            )
+            await db.commit()
+            return bool(cursor.rowcount)
+
+    async def list_held_checks_async(self) -> List[HeldCheck]:
+        """Return every check whose notification state has ``held_since > 0``."""
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            cursor = await db.execute(
+                """SELECT hc.id, hc.data, hc.status, hc.disabled, hc.next_check_time,
+                          ns.held_since
+                   FROM check_notification_state AS ns
+                   JOIN health_check AS hc ON hc.id = ns.check_id
+                   WHERE ns.held_since > 0
+                   ORDER BY hc.id ASC"""
+            )
+            rows = await cursor.fetchall()
+            return [
+                HeldCheck(
+                    check_id=int(row[0]),
+                    data=_parse_check_data(row[1]),
+                    status=str(row[2] or ""),
+                    disabled=bool(row[3]),
+                    next_check_time=int(row[4] or 0),
+                    held_since=int(row[5] or 0),
+                )
+                for row in rows
+            ]
+
+    def count_held_checks(self) -> int:
+        """Return the number of checks with ``held_since > 0``."""
+        if self._portal_provider is None:
+            raise RuntimeError("portal provider is required for notification state")
+        with self._portal_provider as portal:
+            return portal.call(self.count_held_checks_async)
+
+    async def count_held_checks_async(self) -> int:
+        """Return the number of checks with ``held_since > 0``."""
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM check_notification_state WHERE held_since > 0"
+            )
+            row = await cursor.fetchone()
+            return int(row[0]) if row else 0
+
+    async def count_processing_claims_before_async(self, epoch: int) -> int:
+        """Count executions claimed before ``epoch`` that are still in flight."""
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            cursor = await db.execute(
+                """SELECT COUNT(*) FROM health_check
+                   WHERE status = 'processing'
+                     AND processing_started_at > 0
+                     AND processing_started_at < ?""",
+                (epoch,),
+            )
+            row = await cursor.fetchone()
+            return int(row[0]) if row else 0
+
+    async def reschedule_checks_async(
+        self, check_ids: List[int], *, run_at: int
+    ) -> int:
+        """Pull idle, enabled checks forward to ``run_at``."""
+        if not check_ids:
+            return 0
+        placeholders = ",".join(["?"] * len(check_ids))
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            cursor = await db.execute(
+                f"""UPDATE health_check SET next_check_time = ?
+                    WHERE id IN ({placeholders})
+                      AND status = 'idle'
+                      AND disabled = 0
+                      AND next_check_time > ?""",
+                (run_at, *check_ids, run_at),
+            )
+            await db.commit()
+            return int(cursor.rowcount or 0)
+
     async def _add_async(self, check: Check) -> None:
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
@@ -435,7 +605,10 @@ class SqliteCheckRepository(CheckRepository):
                 last_attempt_count INTEGER NOT NULL DEFAULT 0,
                 last_immediate_at  INTEGER NOT NULL DEFAULT 0,
                 last_notified_at   INTEGER NOT NULL DEFAULT 0,
-                first_failure_at   INTEGER NOT NULL DEFAULT 0
+                first_failure_at   INTEGER NOT NULL DEFAULT 0,
+                held_since         INTEGER NOT NULL DEFAULT 0,
+                attempt_seq        INTEGER NOT NULL DEFAULT 0,
+                attempt_at         INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS collector_incident (
                 incident_key  TEXT    PRIMARY KEY,
@@ -770,6 +943,7 @@ class SqliteStore(RepositoryStore):
         notification_transition: NotificationTransition | None,
         *,
         complete_check: bool = True,
+        hold_marker: int | None = None,
     ) -> bool:
         if self._portal_provider is None:
             raise RuntimeError("portal provider is required to persist check results")
@@ -780,6 +954,7 @@ class SqliteStore(RepositoryStore):
                 result,
                 notification_transition,
                 complete_check,
+                hold_marker,
             )
 
     async def _persist_check_result_async(
@@ -788,6 +963,7 @@ class SqliteStore(RepositoryStore):
         result: Result,
         notification_transition: NotificationTransition | None,
         complete_check: bool = True,
+        hold_marker: int | None = None,
     ) -> bool:
         async with aiosqlite.connect(self.db_path, uri=self._use_uri) as db:
             await self.checks._ensure_schema(db)
@@ -830,6 +1006,11 @@ class SqliteStore(RepositoryStore):
                     await _upsert_notification_state(
                         db, check.check_id, notification_state
                     )
+            elif hold_marker is not None:
+                # Conflict-exhaustion fallback: the hold must land in the same
+                # transaction as the completion, or the observer could see an
+                # idle, unheld row for a claim that owes a recheck.
+                await _mark_held_since(db, check.check_id, hold_marker)
             await db.commit()
             if complete_check:
                 self.checks.seen.add(check)
@@ -896,19 +1077,25 @@ class SqliteStore(RepositoryStore):
                     opened_at=now,
                     last_alert_at=now,
                     alert_count=1,
-                    payload=dict(payload or {}),
+                    payload=with_delivery_intent(dict(payload or {}), 1),
                 )
                 should_notify = True
                 is_new = True
             else:
                 should_notify = now - existing.last_alert_at >= max(1, reminder_seconds)
+                alert_count = existing.alert_count + (1 if should_notify else 0)
+                next_payload = (
+                    dict(payload) if payload is not None else dict(existing.payload)
+                )
                 incident = CollectorIncident(
                     incident_key=incident_key,
                     opened_at=existing.opened_at,
                     last_alert_at=now if should_notify else existing.last_alert_at,
-                    alert_count=existing.alert_count + (1 if should_notify else 0),
+                    alert_count=alert_count,
                     payload=(
-                        dict(payload) if payload is not None else dict(existing.payload)
+                        with_delivery_intent(next_payload, alert_count)
+                        if should_notify
+                        else carry_delivery_markers(next_payload, existing.payload)
                     ),
                 )
                 is_new = False
@@ -932,6 +1119,110 @@ class SqliteStore(RepositoryStore):
             return CollectorIncidentAlert(
                 incident=incident, should_notify=should_notify, is_new=is_new
             )
+
+    def open_collector_incident(
+        self, incident_key: str, *, now: int, payload: dict[str, Any]
+    ) -> CollectorIncident:
+        if self._portal_provider is None:
+            raise RuntimeError("portal provider is required for collector incidents")
+        with self._portal_provider as portal:
+            return portal.call(
+                self._open_collector_incident_async, incident_key, now, payload
+            )
+
+    async def _open_collector_incident_async(
+        self, incident_key: str, now: int, payload: dict[str, Any]
+    ) -> CollectorIncident:
+        """Create an incident without claiming an alert, or replace its payload."""
+        async with aiosqlite.connect(self.db_path, uri=self._use_uri) as db:
+            await self.checks._ensure_schema(db)
+            await db.execute("BEGIN IMMEDIATE")
+            cursor = await db.execute(
+                """SELECT incident_key, opened_at, last_alert_at, alert_count, payload
+                   FROM collector_incident WHERE incident_key = ?""",
+                (incident_key,),
+            )
+            existing = _row_to_collector_incident(await cursor.fetchone())
+            if existing is None:
+                incident = CollectorIncident(
+                    incident_key=incident_key,
+                    opened_at=now,
+                    last_alert_at=0,
+                    alert_count=0,
+                    payload=dict(payload),
+                )
+                await db.execute(
+                    """INSERT INTO collector_incident
+                           (incident_key, opened_at, last_alert_at, alert_count,
+                            payload)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (
+                        incident.incident_key,
+                        incident.opened_at,
+                        incident.last_alert_at,
+                        incident.alert_count,
+                        json.dumps(incident.payload),
+                    ),
+                )
+            else:
+                incident = CollectorIncident(
+                    incident_key=existing.incident_key,
+                    opened_at=existing.opened_at,
+                    last_alert_at=existing.last_alert_at,
+                    alert_count=existing.alert_count,
+                    payload=carry_delivery_markers(dict(payload), existing.payload),
+                )
+                await db.execute(
+                    "UPDATE collector_incident SET payload = ? WHERE incident_key = ?",
+                    (json.dumps(incident.payload), incident_key),
+                )
+            await db.commit()
+            return incident
+
+    def acknowledge_collector_incident_delivery(
+        self, incident_key: str, attempt: int
+    ) -> bool:
+        if self._portal_provider is None:
+            raise RuntimeError("portal provider is required for collector incidents")
+        with self._portal_provider as portal:
+            return portal.call(
+                self._acknowledge_collector_incident_delivery_async,
+                incident_key,
+                attempt,
+            )
+
+    async def _acknowledge_collector_incident_delivery_async(
+        self, incident_key: str, attempt: int
+    ) -> bool:
+        """Clear the delivery markers of ``attempt`` in one write transaction.
+
+        The compare and the write share a single ``BEGIN IMMEDIATE``
+        transaction, so a claim granted concurrently either loses the race for
+        the write lock and rewrites its own intent afterwards, or wins it and
+        leaves a ``delivery_attempt`` this acknowledgement no longer matches.
+        """
+        async with aiosqlite.connect(self.db_path, uri=self._use_uri) as db:
+            await self.checks._ensure_schema(db)
+            await db.execute("BEGIN IMMEDIATE")
+            cursor = await db.execute(
+                """SELECT incident_key, opened_at, last_alert_at, alert_count, payload
+                   FROM collector_incident WHERE incident_key = ?""",
+                (incident_key,),
+            )
+            existing = _row_to_collector_incident(await cursor.fetchone())
+            if (
+                existing is None
+                or existing.payload.get(DELIVERY_ATTEMPT_KEY) != attempt
+            ):
+                await db.commit()
+                return False
+            payload = without_delivery_markers(existing.payload)
+            await db.execute(
+                "UPDATE collector_incident SET payload = ? WHERE incident_key = ?",
+                (json.dumps(payload), incident_key),
+            )
+            await db.commit()
+            return True
 
     def close_collector_incident(self, incident_key: str) -> CollectorIncident | None:
         if self._portal_provider is None:

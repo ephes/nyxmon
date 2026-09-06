@@ -289,6 +289,55 @@ to one per continuously failing check per hour by default, tunable with
 `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`; the collector no longer sets that
 flag, so a stock installation does not use this path.
 
+#### Site Connectivity and Internet Outages
+
+When the machine Nyxmon runs on loses its internet connection, every check that
+needs the internet fails at once even though the monitored services are healthy
+— and Telegram is unreachable at the same time, because it uses the same path.
+Nyxmon can observe its own connection and **hold** the alerts of checks that
+declared they depend on it, instead of paging for each of them.
+
+The feature is off by default. Set `NYXMON_SITE_CONNECTIVITY_MODE` to `observe`
+to watch it judge without acting, then to `enforce` to let it hold. A check opts
+in by declaring `data.site_dependency`, most often `"internet"`:
+
+```json
+{"site_dependency": "internet"}
+```
+
+In short:
+
+- Three paths (`dns`, `ipv4`, `ipv6`) are probed once a minute against three
+  independent targets each. A path goes `down` only after two consecutive rounds
+  in which *every* target failed, so one dead server proves nothing.
+- While a required path is `down` or in its recovery grace, a dependent check's
+  failing samples are still stored, with `site_connectivity` metadata saying
+  they were held. The failure streak keeps counting; the notification does not
+  go out.
+- A recovered path stays in a fifteen-minute grace before it releases, so a
+  flapping reconnect does not page. A failed round during the grace, including
+  one exactly at the release boundary, puts the path back to `down` and starts
+  the grace over. At the release, held checks are rescheduled and decide on a
+  fresh sample according to their own `notification_policy`.
+- The outage itself is reported once: an ongoing alert after fifteen minutes if
+  it is still down and deliverable, and one recovery summary afterwards. A
+  three-minute reconnect produces no message at all.
+- Unclassified checks — disk, LAN services, collector health — keep alerting
+  throughout. Holds are bounded at three hours, and a frozen observer stops
+  holding within about three minutes.
+- The dashboard reports what was observed, not what the worker did with it: the
+  banner names the affected paths and says that dependent alerts are held only
+  while the mode is `enforce`, and it flags an observation older than ten
+  minutes as one whose observer may be stopped.
+
+Because a deployment rewrites a check's whole `data` blob, declare
+`site_dependency` in the playbook that upserts the check.
+
+The full guide, including how to classify each check type, what the stored
+metadata means, the message contents, the rollout and rollback steps, and the
+known limits, is {doc}`site-connectivity`. The environment variables are listed
+in {doc}`configuration`.
+
 #### Maintenance Suppression
 
 Checks may suppress Telegram and OpsGate side effects during known maintenance by
@@ -417,6 +466,52 @@ lease has been reclaimed for fifteen minutes.
 
 If the incident keeps reminding hourly, leases are still expiring: look for a
 check that runs longer than the lease, or a worker that keeps dying.
+
+### "Alerts are held because the site is offline"
+
+Symptom: the dashboard shows a site connectivity banner, a check detail page
+says its latest sample was held, and stored results carry
+`"site_connectivity": {"held": true, ...}` while no Telegram message arrives.
+
+That is the feature working. Nyxmon has confirmed that a connectivity path the
+check declared it needs is `down` or inside its recovery grace, so the failing
+samples are recorded but their notification is deferred. Nothing is lost: the
+streak keeps counting, and after the release the check notifies according to its
+own threshold and reminder policy — held samples count toward
+`consecutive_failures`, so a check that already reached its threshold alerts on
+its first fresh failing sample, while one below the threshold still needs the
+remaining samples.
+
+What to expect:
+
+1. The `reason` in the metadata says why. `dependency_down` and
+   `dependency_recovering` name the blocking paths; `measured_before_release`
+   means the sample's execution was claimed before the path was released, so it
+   is not evidence about the current state and a fresh run was requested.
+2. The hold ends at the release, which is fifteen minutes of clean rounds after
+   the last failure by default. Held checks are then rescheduled in ordinary
+   batches, so with a few dozen checks the recheck completes in minutes.
+3. No hold outlives `NYXMON_SITE_MAX_HOLD_SECONDS` (three hours). After that the
+   check alerts under its ordinary policy, and its results are marked
+   `"held": false` with `"exhausted": true`. The detail page then reports "hold
+   budget started …; alerts follow normal policy" instead of a hold, because the
+   marker deliberately stays set so the outage cannot re-arm the budget.
+4. A frozen observer stops holding on its own: a snapshot older than three probe
+   intervals is not trusted. The dashboard banner says the observer may be
+   stopped once its last observation is more than ten minutes old.
+5. In `observe` mode nothing is ever held: the results carry the judgement with
+   `"held": false` so it can be verified before it may suppress anything. The
+   banner cannot see the mode, so it words holding as conditional on `enforce`.
+
+If holds appear while the internet is demonstrably fine, the probe targets are
+the suspect — a firewall blocking outbound 443 to the configured literals, or a
+resolver that fails only for the configured names. The ongoing site alert at
+fifteen minutes is delivered in that case and reveals the misconfiguration.
+Setting `NYXMON_SITE_CONNECTIVITY_MODE=off` disables holding immediately; see
+{doc}`site-connectivity` for the rollback details.
+
+If a check is held that should never be held, its `site_dependency` is wrong.
+Fix it in the playbook that upserts the check, not in the database.
 
 ### "The worker cannot write to the database"
 

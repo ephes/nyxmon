@@ -202,6 +202,27 @@ class CheckNotificationState(models.Model):
         default=0,
         help_text="Unix timestamp of the first failing sample in the current incident",
     )
+    held_since: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0,
+        help_text=(
+            "Unix timestamp of the first sample held back because a site "
+            "dependency of this check is down; 0 when the check is not held"
+        ),
+    )
+    attempt_seq: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0,
+        help_text=(
+            "Monotonic counter of external notification attempts; never reset, "
+            "it fences the acknowledgement written after a send"
+        ),
+    )
+    attempt_at: models.PositiveBigIntegerField = models.PositiveBigIntegerField(
+        default=0,
+        help_text=(
+            "Unix timestamp of the current unacknowledged notification attempt; "
+            "0 when no delivery is pending"
+        ),
+    )
 
     class Meta:
         db_table = "check_notification_state"

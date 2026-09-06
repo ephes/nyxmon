@@ -1,6 +1,7 @@
 from .interface import (
     CollectorIncident,
     CollectorIncidentAlert,
+    HeldCheck,
     NotificationState,
     NotificationStateConflict,
     NotificationTransition,
@@ -13,6 +14,7 @@ from .sqlite_repo import SqliteStore
 __all__ = [
     "CollectorIncident",
     "CollectorIncidentAlert",
+    "HeldCheck",
     "NotificationState",
     "NotificationStateConflict",
     "NotificationTransition",

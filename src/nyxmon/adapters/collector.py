@@ -7,14 +7,18 @@ import threading
 from functools import lru_cache
 from time import time as current_epoch
 
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Iterable, Protocol
 from contextlib import asynccontextmanager
 
 from anyio import to_thread
 from anyio.from_thread import BlockingPortalProvider
 
 from .repositories.in_memory import InMemoryStore
-from .repositories.interface import CollectorIncident, CollectorIncidentAlert
+from .repositories.interface import (
+    DELIVERY_PENDING_KEY,
+    CollectorIncident,
+    CollectorIncidentAlert,
+)
 from ..domain import Auto
 from ..domain.commands import (
     AddCheckResult,
@@ -22,7 +26,13 @@ from ..domain.commands import (
     StartCollector,
     StopCollector,
 )
-from ..domain.models import Check, CheckResult, Result, ResultStatus
+from ..domain.models import (
+    Check,
+    CheckResult,
+    Result,
+    ResultStatus,
+    ResultStatusType,
+)
 from ..service_layer import MessageBus
 
 logger = logging.getLogger(__name__)
@@ -160,6 +170,129 @@ class CollectorIncidentStore(Protocol):
     ) -> CollectorIncident | None: ...
 
 
+class SiteObserver(Protocol):
+    """The site connectivity observer, as far as the collector needs it.
+
+    Kept structural on purpose: the collector starts and stops the observer
+    and asks it to report misclassified checks, but knows nothing about
+    probing, snapshots or the incident payload.
+    """
+
+    async def run(self) -> None:
+        """Probe until :meth:`stop` is called."""
+        ...
+
+    def stop(self) -> None:
+        """Ask :meth:`run` to return after the current interval."""
+        ...
+
+    def warn_unobserved_requirements(self, checks: Iterable[Any]) -> None:
+        """Warn once per check that requires a path this site does not observe."""
+        ...
+
+
+def _result_status(status: str) -> ResultStatusType:
+    """Narrow a persisted/observer-supplied status to the result literal."""
+    if status == ResultStatus.OK:
+        return ResultStatus.OK
+    if status == ResultStatus.WARNING:
+        return ResultStatus.WARNING
+    return ResultStatus.ERROR
+
+
+def build_incident_notification(
+    *,
+    incident_key: str,
+    name: str,
+    error_type: str,
+    error_msg: str,
+    status: ResultStatusType = ResultStatus.ERROR,
+    opsgate_ticket: bool = True,
+    alert_count: int = 0,
+) -> tuple[Check, Result]:
+    """Build the synthetic check/result pair of a collector-scoped alert.
+
+    The check row exists only to reuse the notifier's message and ticket
+    shape; it is never persisted. ``incident_key`` gives the alert a stable
+    identity so downstream ticketing deduplicates it too.
+
+    Args:
+        incident_key: Persisted identity of the incident.
+        name: Human readable name shown in the message.
+        error_type: Machine readable kind of the incident.
+        error_msg: The message body.
+        status: Severity of the synthetic result.
+        opsgate_ticket: When ``False``, the result asks the notifier to open no
+            remediation ticket, which is what a "the event is over" summary
+            needs.
+        alert_count: How many alerts this incident has produced so far.
+
+    Returns:
+        The check and result to hand to the process notifier.
+    """
+    check = Check(
+        check_id=0,
+        service_id=0,
+        name=name,
+        check_type="internal",
+        url="internal://collector",
+        data={},
+    )
+    data: dict[str, Any] = {
+        "error_type": error_type,
+        "error_msg": error_msg,
+        "incident_key": incident_key,
+        "incident_alert_count": alert_count,
+    }
+    if not opsgate_ticket:
+        data["opsgate_ticket"] = False
+    return check, Result(check_id=0, status=status, data=data)
+
+
+def site_incident_notifier(
+    process_notifier: Callable[[Check, Result], bool | None],
+) -> Callable[[str, str, str, str, str, bool], bool]:
+    """Adapt the process notifier to the observer's ``SiteNotifier`` callable.
+
+    Args:
+        process_notifier: The collector-wide notifier, normally
+            ``Notifier.notify_check_failed``.
+
+    Returns:
+        A callable taking ``(incident_key, name, error_type, error_msg,
+        status, opsgate_ticket)`` and returning whether the message was
+        delivered. Only a literal ``False`` from the notifier counts as a
+        failure, so a notifier that reports nothing stays "delivered".
+    """
+
+    def send(
+        incident_key: str,
+        name: str,
+        error_type: str,
+        error_msg: str,
+        status: str,
+        opsgate_ticket: bool,
+    ) -> bool:
+        check, result = build_incident_notification(
+            incident_key=incident_key,
+            name=name,
+            error_type=error_type,
+            error_msg=error_msg,
+            status=_result_status(status),
+            opsgate_ticket=opsgate_ticket,
+        )
+        try:
+            return process_notifier(check, result) is not False
+        except Exception:
+            logger.exception(
+                "failed to send the site connectivity notification for %s",
+                incident_key,
+            )
+            return False
+
+    return send
+
+
 class CheckCollector(Protocol):
     """A protocol for a check collector."""
 
@@ -183,11 +316,16 @@ class CheckCollector(Protocol):
     def set_recovery_handler(self, handler: Callable[[AddCheckResult], bool]) -> None:
         """Set the isolated handler used for lease-recovery results."""
 
-    def set_process_notifier(self, notifier: Callable[[Check, Result], None]) -> None:
+    def set_process_notifier(
+        self, notifier: Callable[[Check, Result], bool | None]
+    ) -> None:
         """Set the notifier for collector-wide failures without a check row."""
 
     def set_incident_store(self, store: CollectorIncidentStore) -> None:
         """Set the store that persists collector-level incident state."""
+
+    def set_site_observer(self, observer: SiteObserver) -> None:
+        """Attach the site connectivity observer to run beside collection."""
 
 
 @asynccontextmanager
@@ -217,7 +355,7 @@ class AsyncCheckCollector(CheckCollector):
         self._abandoned_batch_done: threading.Event | None = None
         self._abandoned_batch_checks: list[Check] = []
         self._recovery_handler: Callable[[AddCheckResult], bool] | None = None
-        self._process_notifier: Callable[[Check, Result], None] | None = None
+        self._process_notifier: Callable[[Check, Result], bool | None] | None = None
         # Incident dedup/reminder state is persisted, not held in memory, so a
         # deploy or crash mid-incident cannot re-alert. The in-memory default
         # keeps a collector that was never handed a store from degrading to
@@ -225,6 +363,7 @@ class AsyncCheckCollector(CheckCollector):
         self._incident_store: CollectorIncidentStore = InMemoryStore()
         self._incident_retry_keys: set[str] = set()
         self._startup_incidents_reconciled = False
+        self._site_observer: SiteObserver | None = None
 
     def set_portal_provider(self, portal_provider: BlockingPortalProvider) -> None:
         """Set the portal provider for the collector."""
@@ -238,12 +377,28 @@ class AsyncCheckCollector(CheckCollector):
         """Use a handler with its own unit of work outside a wedged batch."""
         self._recovery_handler = handler
 
-    def set_process_notifier(self, notifier: Callable[[Check, Result], None]) -> None:
+    def set_process_notifier(
+        self, notifier: Callable[[Check, Result], bool | None]
+    ) -> None:
         self._process_notifier = notifier
 
     def set_incident_store(self, store: CollectorIncidentStore) -> None:
         """Persist collector-level incidents so a restart does not re-alert."""
         self._incident_store = store
+
+    def set_site_observer(self, observer: SiteObserver) -> None:
+        """Run the site connectivity observer beside check collection.
+
+        The observer becomes a second task on the collector's portal, so it
+        probes on its own cadence without ever blocking a check batch, and it
+        is stopped together with the collector.
+        """
+        self._site_observer = observer
+
+    @property
+    def site_observer(self) -> SiteObserver | None:
+        """The attached site connectivity observer, if any."""
+        return self._site_observer
 
     # ---------- collector-level incidents ----------
     async def _incident_get(self, incident_key: str) -> CollectorIncident | None:
@@ -286,52 +441,63 @@ class AsyncCheckCollector(CheckCollector):
             return ABANDONED_BATCH_RETRY_SECONDS
         return default
 
-    DELIVERY_PENDING_KEY = "delivery_pending"
+    DELIVERY_PENDING_KEY = DELIVERY_PENDING_KEY
 
-    async def _incident_set_payload(
-        self, incident_key: str, payload: dict[str, Any]
-    ) -> None:
+    async def _incident_acknowledge_delivery(
+        self, incident_key: str, attempt: int
+    ) -> bool:
         store = self._incident_store
-        async_impl = getattr(store, "_set_collector_incident_payload_async", None)
+        async_impl = getattr(
+            store, "_acknowledge_collector_incident_delivery_async", None
+        )
         try:
             if async_impl is not None:
-                await async_impl(incident_key, payload)
-            else:
-                setter = getattr(store, "set_collector_incident_payload", None)
-                if setter is not None:
-                    await to_thread.run_sync(
-                        setter, incident_key, payload, abandon_on_cancel=False
-                    )
+                acknowledged: bool = await async_impl(incident_key, attempt)
+                return acknowledged
+            acknowledge = getattr(
+                store, "acknowledge_collector_incident_delivery", None
+            )
+            if acknowledge is None:
+                return False
+            return bool(
+                await to_thread.run_sync(
+                    acknowledge, incident_key, attempt, abandon_on_cancel=False
+                )
+            )
         except Exception:
             logger.exception(
-                "failed to persist delivery state for incident %s", incident_key
+                "failed to acknowledge the delivery of incident %s", incident_key
             )
+            return False
 
-    async def _record_incident_send(self, incident_key: str, sent: bool) -> None:
-        """Record delivery outcome BOTH in memory and in the incident payload.
+    async def _record_incident_send(
+        self, incident_key: str, sent: bool, attempt: int
+    ) -> None:
+        """Record the delivery outcome of one claimed alert.
 
-        The in-memory set alone is not durable. `_incident_claim` stamps
-        `last_alert_at` *before* the notification is attempted, so after a
-        restart following a failed send the incident looks recently alerted:
-        no retry fires, and it resolves after the quiet period having paged
-        nobody. Persisting the flag lets `_rehydrate_incident_retry_state()`
-        restore the retry intent on the next iteration, in this process or a
-        later one.
+        The intent itself is written by ``claim_collector_incident_alert``
+        inside the claim transaction, so a crash between the claim and the send
+        leaves a durable retry obligation rather than a row that looks recently
+        alerted. A failed send therefore writes nothing at all: the claim
+        already recorded exactly the state a retry needs, and rewriting the
+        payload here could only lose whatever has been stored since.
+
+        A successful send is acknowledged through the repository, which
+        compares the stored ``delivery_attempt`` and removes the markers in one
+        transaction. Doing the compare here, then replacing the payload in a
+        second call, let a claim granted in between lose both its intent and
+        its payload.
+
+        Args:
+            incident_key: The incident that was alerted about.
+            sent: Whether the notification was delivered.
+            attempt: The ``alert_count`` the claim granted.
         """
-        if sent:
-            self._incident_retry_keys.discard(incident_key)
-        else:
+        if not sent:
             self._incident_retry_keys.add(incident_key)
-        existing = await self._incident_get(incident_key)
-        if existing is None:
             return
-        payload = dict(existing.payload)
-        if sent:
-            payload.pop(self.DELIVERY_PENDING_KEY, None)
-        else:
-            payload[self.DELIVERY_PENDING_KEY] = True
-        if payload != existing.payload:
-            await self._incident_set_payload(incident_key, payload)
+        self._incident_retry_keys.discard(incident_key)
+        await self._incident_acknowledge_delivery(incident_key, attempt)
 
     def _rehydrate_incident_retry_state(
         self, incident_key: str, existing: CollectorIncident | None
@@ -350,48 +516,52 @@ class AsyncCheckCollector(CheckCollector):
         error_type: str,
         error_msg: str,
         alert_count: int,
+        status: ResultStatusType = ResultStatus.ERROR,
+        opsgate_ticket: bool = True,
     ) -> bool:
         """Send exactly one collector-scoped notification for an incident.
 
-        The synthetic check row exists only to reuse the notifier's message and
-        ticket shape; it is never persisted. ``incident_key`` gives the alert a
-        stable identity so downstream ticketing deduplicates it too.
+        Args:
+            incident_key: Persisted identity of the incident.
+            name: Human readable name shown in the message.
+            error_type: Machine readable kind of the incident.
+            error_msg: The message body.
+            alert_count: How many alerts this incident has produced so far.
+            status: Severity of the synthetic result.
+            opsgate_ticket: When ``False``, no remediation ticket is opened for
+                this message whatever its severity.
+
+        Returns:
+            Whether the notification was delivered. A literal ``False`` from
+            the notifier is a failure; ``None`` (custom notifiers, mocks) is
+            treated as delivered.
         """
         if self._process_notifier is None:
             logger.error("collector-wide notifier is not configured")
             return False
-        check = Check(
-            check_id=0,
-            service_id=0,
+        check, result = build_incident_notification(
+            incident_key=incident_key,
             name=name,
-            check_type="internal",
-            url="internal://collector",
-            data={},
-        )
-        result = Result(
-            check_id=0,
-            status=ResultStatus.ERROR,
-            data={
-                "error_type": error_type,
-                "error_msg": error_msg,
-                "incident_key": incident_key,
-                "incident_alert_count": alert_count,
-            },
+            error_type=error_type,
+            error_msg=error_msg,
+            status=status,
+            opsgate_ticket=opsgate_ticket,
+            alert_count=alert_count,
         )
         try:
-            await to_thread.run_sync(
+            outcome = await to_thread.run_sync(
                 self._process_notifier,
                 check,
                 result,
                 abandon_on_cancel=False,
             )
-            return True
         except Exception:
             logger.exception(
                 "failed to send the collector incident notification for %s",
                 incident_key,
             )
             return False
+        return outcome is not False
 
     async def _reconcile_incidents_after_restart(self) -> None:
         """Close incidents that cannot outlive the process that opened them."""
@@ -493,7 +663,9 @@ class AsyncCheckCollector(CheckCollector):
                         error_msg=self._stale_batch_message(alert.incident),
                         alert_count=alert.incident.alert_count,
                     )
-                    await self._record_incident_send(incident_key, sent)
+                    await self._record_incident_send(
+                        incident_key, sent, alert.incident.alert_count
+                    )
                 return
 
             existing = await self._incident_get(incident_key)
@@ -523,7 +695,9 @@ class AsyncCheckCollector(CheckCollector):
                         error_msg=self._stale_batch_message(alert.incident),
                         alert_count=alert.incident.alert_count,
                     )
-                    await self._record_incident_send(incident_key, sent)
+                    await self._record_incident_send(
+                        incident_key, sent, alert.incident.alert_count
+                    )
                     if not sent:
                         # Keep the incident open while delivery is still failing
                         # rather than resolving an alert nobody ever received.
@@ -601,7 +775,9 @@ class AsyncCheckCollector(CheckCollector):
                 error_msg=self._paused_batch_message(alert.incident),
                 alert_count=alert.incident.alert_count,
             )
-            await self._record_incident_send(incident_key, sent)
+            await self._record_incident_send(
+                incident_key, sent, alert.incident.alert_count
+            )
         except Exception:
             logger.exception("failed to update the collector execution-paused incident")
 
@@ -665,10 +841,28 @@ class AsyncCheckCollector(CheckCollector):
             )
             return False
 
+    async def _warn_unobserved_site_requirements(self) -> None:
+        """Report checks whose single-path requirement nobody observes.
+
+        Such a requirement is always met and can therefore never hold, which is
+        almost certainly a misclassification. Reported once per check, at
+        startup, so the mistake is visible instead of silently disabling the
+        protection the check was classified for.
+        """
+        observer = self._site_observer
+        if observer is None:
+            return
+        try:
+            checks = await self._bus.uow.store.checks.list_async()
+            observer.warn_unobserved_requirements(checks)
+        except Exception:
+            logger.exception("failed to check site dependencies against the probes")
+
     async def _collect_once(self) -> None:
         if not self._startup_incidents_reconciled:
             self._startup_incidents_reconciled = True
             await self._reconcile_incidents_after_restart()
+            await self._warn_unobserved_site_requirements()
         effective_lease = processing_lease_seconds()
         configured_lease = effective_lease
         try:
@@ -815,6 +1009,11 @@ class AsyncCheckCollector(CheckCollector):
         """Run the collector in a thread."""
         with self._portal_provider as portal:
             portal.start_task_soon(self._async_start)
+            if self._site_observer is not None:
+                # A second task on the same portal: the probe loop must never
+                # block check collection, and there is exactly one of it per
+                # process.
+                portal.start_task_soon(self._site_observer.run)
             # This thread will keep running as long as the portal is alive
             # Add some way to join/exit this thread when needed
             while self._running:
@@ -825,6 +1024,8 @@ class AsyncCheckCollector(CheckCollector):
             return
 
         self._running = False
+        if self._site_observer is not None:
+            self._site_observer.stop()
 
         # Wait for the thread to finish if it exists
         if self._thread is not None and self._thread.is_alive():

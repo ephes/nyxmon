@@ -52,7 +52,14 @@ def _exercise(store) -> None:
         assert repeat.should_notify is False
         assert repeat.is_new is False
         assert repeat.incident.opened_at == 1_000
-        assert repeat.incident.payload == {"check_ids": [1, 2, 3]}
+        # The granted first claim recorded a delivery intent that a
+        # non-granting refresh must carry forward; the caller's own payload
+        # keys survive unchanged next to it.
+        assert repeat.incident.payload == {
+            "check_ids": [1, 2, 3],
+            "delivery_pending": True,
+            "delivery_attempt": 1,
+        }
 
     reminder = store.claim_collector_incident_alert(
         "stale_batch", now=4_600, reminder_seconds=3600

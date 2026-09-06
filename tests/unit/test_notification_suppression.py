@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import anyio
+
 from nyxmon.adapters.repositories import InMemoryStore
+from nyxmon.adapters.site_connectivity import SiteConnectivityConfig, SiteMode
 from nyxmon.domain.commands import AddCheckResult
 from nyxmon.domain.models import Check, CheckResult, CheckType, Result, ResultStatus
 from nyxmon.service_layer import handlers
@@ -368,3 +371,191 @@ def test_unguarded_configs_keep_their_existing_behaviour(monkeypatch) -> None:
 
     assert details is not None
     assert details["reason"] == "scheduled_maintenance"
+
+
+# ---------------------------------------------------------------------------
+# Maintenance suppression must not disturb the site-connectivity hold
+# ---------------------------------------------------------------------------
+#
+# ``with_streak_reset()`` used to rebuild the record from scratch, which zeroed
+# ``held_since``. A single maintenance-suppressed sample during an outage then
+# re-armed the whole hold budget and dropped the check from the observer's
+# recheck set, so a check could be held indefinitely and never rechecked.
+
+
+T0 = 1_700_000_000
+MAX_HOLD = 600
+RETRY = 300
+
+
+class _StubSnapshot:
+    """Minimal connectivity snapshot: it holds when told to."""
+
+    mode = SiteMode.ENFORCE
+
+    def __init__(self, *, holding: bool = True) -> None:
+        self.holding = holding
+
+    def hold_reason(
+        self, dependency: Any, claim_started_at: int, now: int, *, stale_after: int
+    ) -> dict[str, Any] | None:
+        del dependency, claim_started_at, now, stale_after
+        if not self.holding:
+            return None
+        return {"reason": "site_down", "paths": ["internet"], "state": "down"}
+
+    def observed_reason(
+        self, dependency: Any, claim_started_at: int, now: int, *, stale_after: int
+    ) -> dict[str, Any] | None:
+        del dependency, claim_started_at, now, stale_after
+        return None
+
+    def dependency_recovered(
+        self, dependency: Any, claim_started_at: int, now: int, *, stale_after: int
+    ) -> bool:
+        del dependency, claim_started_at, now, stale_after
+        return False
+
+
+class _StubSiteState:
+    def __init__(self, snapshot: _StubSnapshot) -> None:
+        self._snapshot = snapshot
+        self.config = SiteConnectivityConfig(
+            mode=SiteMode.ENFORCE, max_hold_seconds=MAX_HOLD
+        )
+
+    def snapshot(self) -> _StubSnapshot:
+        return self._snapshot
+
+
+class _Clock:
+    def __init__(self, start: int = T0) -> None:
+        self.now = start
+
+    def __call__(self) -> float:
+        return float(self.now)
+
+    def advance(self, seconds: int) -> None:
+        self.now += seconds
+
+
+def _dependent_check() -> Check:
+    return Check(
+        check_id=1,
+        service_id=1,
+        name="held check",
+        check_type=CheckType.HTTP,
+        url="https://example.test/health",
+        data={"site_dependency": "internet"},
+    )
+
+
+def _held_fixture(monkeypatch, *, holding: bool = True):
+    """A check that pages on its first failing sample, with a frozen clock."""
+    monkeypatch.setenv("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")
+    monkeypatch.setenv("NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS", "86400")
+    monkeypatch.delenv("NYXMON_NOTIFY_DELIVERY_RETRY_SECONDS", raising=False)
+    clock = _Clock()
+    monkeypatch.setattr(handlers, "current_epoch", clock)
+    store = InMemoryStore()
+    check = _dependent_check()
+    store.checks.add(check)
+    snapshot = _StubSnapshot(holding=holding)
+    return store, UnitOfWork(store=store), StubNotifier(), check, clock, snapshot
+
+
+def _submit(uow, notifier, check, site_state, *, data=None):
+    result = Result(
+        check_id=check.check_id, status=ResultStatus.ERROR, data=dict(data or {})
+    )
+    return handlers.add_check_result(
+        AddCheckResult(check_result=CheckResult(check=check, result=result)),
+        uow,
+        notifier,
+        site_state,
+    )
+
+
+def test_a_suppressed_sample_does_not_re_arm_the_hold_budget(monkeypatch) -> None:
+    """An exhausted hold stays exhausted across a maintenance window."""
+    store, uow, notifier, check, clock, snapshot = _held_fixture(monkeypatch)
+    site_state = _StubSiteState(snapshot)
+    suppressed = iter([None, {"reason": "maintenance"}, None])
+    monkeypatch.setattr(
+        handlers, "notification_suppression_details", lambda check: next(suppressed)
+    )
+
+    _submit(uow, notifier, check, site_state)
+    assert notifier.failed_notifications == []
+    assert store.checks.get_notification_state(1).held_since == T0
+
+    # A maintenance window closes over the still-ongoing outage.
+    clock.advance(MAX_HOLD + 1)
+    _submit(uow, notifier, check, site_state)
+    assert store.checks.get_notification_state(1).held_since == T0, (
+        "the hold budget was re-armed by a sample that says nothing about the site"
+    )
+    assert notifier.failed_notifications == []
+
+    # The budget is spent, so the next failing sample alerts on its own merits.
+    clock.advance(1)
+    _submit(uow, notifier, check, site_state)
+    assert len(notifier.failed_notifications) == 1
+    annotation = notifier.failed_notifications[0][1].data["site_connectivity"]
+    assert annotation["held"] is False
+    assert annotation["exhausted"] is True
+
+
+def test_a_suppressed_sample_keeps_the_check_in_the_held_set(monkeypatch) -> None:
+    """The observer's recheck obligation survives a maintenance window."""
+    store, uow, notifier, check, clock, snapshot = _held_fixture(monkeypatch)
+    site_state = _StubSiteState(snapshot)
+    suppressed = iter([None, {"reason": "maintenance"}])
+    monkeypatch.setattr(
+        handlers, "notification_suppression_details", lambda check: next(suppressed)
+    )
+
+    _submit(uow, notifier, check, site_state)
+    assert store.checks.count_held_checks() == 1
+
+    clock.advance(10)
+    _submit(uow, notifier, check, site_state)
+
+    assert store.checks.count_held_checks() == 1
+    held = anyio.run(store.checks.list_held_checks_async)
+    assert [(entry.check_id, entry.held_since) for entry in held] == [(1, T0)]
+
+
+def test_a_hold_still_wins_over_a_due_delivery_retry(monkeypatch) -> None:
+    """Site holds are decided before the retry, for immediate alerts too."""
+    store, uow, notifier, check, clock, snapshot = _held_fixture(
+        monkeypatch, holding=False
+    )
+    monkeypatch.setenv("NYXMON_NOTIFY_DELIVERY_RETRY_SECONDS", str(RETRY))
+    handlers._delivery_retry_from_value.cache_clear()
+    monkeypatch.setattr(
+        handlers, "notification_suppression_details", lambda check: None
+    )
+    site_state = _StubSiteState(snapshot)
+
+    class _FailingNotifier(StubNotifier):
+        def notify_check_failed(self, check: Check, result: Result) -> bool:
+            super().notify_check_failed(check, result)
+            return False
+
+    notifier = _FailingNotifier()
+    _submit(uow, notifier, check, site_state, data={"notification_immediate": True})
+    assert len(notifier.failed_notifications) == 1
+    assert store.checks.get_notification_state(1).attempt_at == T0
+
+    # The dependency goes down before the retry is due.
+    snapshot.holding = True
+    clock.advance(RETRY)
+    _submit(uow, notifier, check, site_state, data={"notification_immediate": True})
+
+    assert len(notifier.failed_notifications) == 1, "a held sample was retried"
+    state = store.checks.get_notification_state(1)
+    assert state.held_since == T0 + RETRY
+    assert state.attempt_at == T0
+
+    handlers._delivery_retry_from_value.cache_clear()

@@ -1,17 +1,34 @@
-"""Upgrade path for the notification state schema (0011 -> 0012).
+"""Upgrade path for the notification state schema (0011 -> 0012 -> 0013).
 
 Locks in the bootstrap contract: rolling out elapsed-time reminders must not
-turn every already-failing check into a new incident.
+turn every already-failing check into a new incident. The 0013 cases lock in
+the other half of the contract: the worker and ``manage.py migrate`` add the
+site-connectivity columns in either order without duplicating or losing one.
 """
 
 from __future__ import annotations
 
 import pytest
 from django.db import connection
+from django.db.utils import OperationalError
 from django.db.migrations.executor import MigrationExecutor
 
 MIGRATE_FROM = ("nyxboard", "0011_checknotificationstate")
 MIGRATE_TO = ("nyxboard", "0012_notification_reminder_timestamps")
+MIGRATE_SITE_CONNECTIVITY = ("nyxboard", "0013_site_connectivity_state")
+
+STATE_COLUMNS_0013 = [
+    "check_id",
+    "failure_count",
+    "last_attempt_count",
+    "last_immediate_at",
+    "last_notified_at",
+    "first_failure_at",
+    "held_since",
+    "attempt_seq",
+    "attempt_at",
+]
+SITE_CONNECTIVITY_COLUMNS = ("held_since", "attempt_seq", "attempt_at")
 
 
 def _migrate(targets):
@@ -26,7 +43,37 @@ def _migrate(targets):
 def migrator():
     yield
     # Always leave the test database fully migrated for the rest of the session.
-    _migrate([MIGRATE_TO])
+    _migrate([MIGRATE_SITE_CONNECTIVITY])
+
+
+def _state_columns():
+    with connection.cursor() as cursor:
+        cursor.execute("PRAGMA table_info(check_notification_state)")
+        return [row[1] for row in cursor.fetchall()]
+
+
+def _add_columns_like_the_worker() -> list[str]:
+    """Mimic ``SqliteCheckRepository._upgrade_notification_state_schema``.
+
+    Same statements, same swallowing of ``duplicate column name``.
+
+    Returns:
+        The columns this pass actually added.
+    """
+    added: list[str] = []
+    with connection.cursor() as cursor:
+        for column in SITE_CONNECTIVITY_COLUMNS:
+            try:
+                cursor.execute(
+                    "ALTER TABLE check_notification_state "
+                    f"ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0"
+                )
+            except OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
+            else:
+                added.append(column)
+    return added
 
 
 @pytest.mark.django_db(transaction=True)
@@ -120,3 +167,78 @@ def test_migration_is_idempotent_against_a_worker_that_already_upgraded(
         "alert_count",
         "payload",
     }
+
+
+@pytest.mark.django_db(transaction=True)
+def test_site_connectivity_columns_are_added_without_a_backfill(migrator) -> None:
+    """0012 -> 0013 by migration alone, with an already-alerting streak present.
+
+    All three columns default to 0, so an existing incident must come out of
+    the migration exactly as it went in: unheld, with no delivery pending.
+    """
+    _migrate([MIGRATE_TO])
+    with connection.cursor() as cursor:
+        cursor.execute("INSERT INTO service (name) VALUES ('svc')")
+        service_id = cursor.execute("SELECT id FROM service LIMIT 1").fetchone()[0]
+        cursor.execute(
+            """INSERT INTO health_check
+                   (id, service_id, name, check_type, url, check_interval,
+                    status, next_check_time, processing_started_at, disabled, data)
+               VALUES (1, ?, 'alerting', 'http', 'https://example.test/x', 3600,
+                       'idle', 0, 0, 0, '{}')""",
+            [service_id],
+        )
+        cursor.execute(
+            """INSERT INTO check_notification_state
+                   (check_id, failure_count, last_attempt_count, last_immediate_at,
+                    last_notified_at, first_failure_at)
+               VALUES (1, 5, 5, 0, 900, 800)"""
+        )
+    assert "held_since" not in _state_columns()
+
+    _migrate([MIGRATE_SITE_CONNECTIVITY])
+
+    assert _state_columns() == STATE_COLUMNS_0013
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT failure_count, last_notified_at, first_failure_at, "
+            "held_since, attempt_seq, attempt_at FROM check_notification_state"
+        )
+        assert cursor.fetchall() == [(5, 900, 800, 0, 0, 0)]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_migration_0013_after_the_worker_already_upgraded(migrator) -> None:
+    """Worker first, then ``manage.py migrate``: no duplicate columns."""
+    _migrate([MIGRATE_TO])
+    assert _add_columns_like_the_worker() == list(SITE_CONNECTIVITY_COLUMNS)
+
+    _migrate([MIGRATE_SITE_CONNECTIVITY])
+
+    assert _state_columns() == STATE_COLUMNS_0013
+
+
+@pytest.mark.django_db(transaction=True)
+def test_worker_upgrade_after_migration_0013_is_a_no_op(migrator) -> None:
+    """Migration first, then the worker: its ALTER TABLEs are already satisfied.
+
+    The worker swallows ``duplicate column name``; this pins that the migration
+    leaves the table in exactly the shape the worker expects, so a rollout in
+    this order needs no second pass.
+    """
+    _migrate([MIGRATE_SITE_CONNECTIVITY])
+    assert _state_columns() == STATE_COLUMNS_0013
+
+    assert _add_columns_like_the_worker() == []
+
+    assert _state_columns() == STATE_COLUMNS_0013
+
+
+@pytest.mark.django_db(transaction=True)
+def test_migration_0013_reverses_cleanly(migrator) -> None:
+    _migrate([MIGRATE_SITE_CONNECTIVITY])
+    assert _state_columns() == STATE_COLUMNS_0013
+
+    _migrate([MIGRATE_TO])
+
+    assert _state_columns() == STATE_COLUMNS_0013[:6]

@@ -70,10 +70,59 @@ Telegram notifications read:
   attempt is retried after one minute. Stale-lease reclaim uses the same batch
   size but is drained in up to 20 rounds per iteration, so a restart that
   strands dozens of claims is recovered — and reported — in one go.
+- `NYXMON_NOTIFY_DELIVERY_RETRY_SECONDS`: Retry a per-check alert whose send
+  failed or whose outcome was ambiguous (default `0`, meaning off; otherwise
+  `60`–`3600`). With `0` a failed send behaves exactly as before and is lost
+  until the next reminder. When set, a notification attempt is recorded
+  durably before the send and repeated on the next failing sample once the
+  interval has elapsed, irrespective of the reminder window; an OK sample
+  clears it. Immediate alerts (`data.notification_immediate`) participate on the
+  same terms: a due retry sends again even inside the immediate cooldown, which
+  bounds new alerts rather than the redelivery of one that may never have
+  arrived. A notifier that never attempted a send — no Telegram credentials, no
+  portal provider — reports "cannot tell" rather than a failure, so an
+  installation without Telegram accumulates no intent to retry.
+  Acknowledgements are written after every successful send
+  regardless of this knob, so enabling it later cannot resend an alert that was
+  already delivered. See {doc}`site-connectivity` for the full semantics.
 
 Environment values that cannot be parsed, or that fall outside the documented
 range, are ignored in favour of the default and warned about once per distinct
 value, so a typo cannot flood the worker log.
+
+#### Site Connectivity Observer
+
+Nyxmon can observe its own internet connection and hold the alerts of checks
+that declared they depend on it. The feature is **off** by default; nothing
+changes until `NYXMON_SITE_CONNECTIVITY_MODE` is set. {doc}`site-connectivity`
+documents the detection, the hold rule, the messages, and the rollout steps.
+
+| Variable | Default | Range / notes |
+| --- | --- | --- |
+| `NYXMON_SITE_CONNECTIVITY_MODE` | `off` | `off`, `observe`, `enforce`. `observe` probes, persists and sends the site messages but holds nothing. |
+| `NYXMON_SITE_PROBE_INTERVAL_SECONDS` | `60` | `15`–`600`. One probe round per interval, per process. |
+| `NYXMON_SITE_PROBE_TIMEOUT_SECONDS` | `3` | `1`–`10`, per target. The whole round is additionally bounded at timeout plus two seconds. |
+| `NYXMON_SITE_PROBE_IPV4_TARGETS` | `1.1.1.1:443,8.8.8.8:443,9.9.9.9:443` | Comma-separated `ip:port` IPv4 literals. An explicitly empty value marks the path `unobserved`. |
+| `NYXMON_SITE_PROBE_IPV6_TARGETS` | `[2606:4700:4700::1111]:443,[2001:4860:4860::8888]:443,[2620:fe::fe]:443` | Comma-separated `[ip]:port` IPv6 literals; empty means `unobserved`, which is how an IPv4-only site is configured. |
+| `NYXMON_SITE_PROBE_DNS_NAMES` | `cloudflare.com,google.com,quad9.net` | Comma-separated host names resolved through the system resolver; empty means `unobserved`. |
+| `NYXMON_SITE_DOWN_AFTER_FAILURES` | `2` | `1`–`10` consecutive failed rounds before a path is confirmed `down`. Holding starts only at `down`. |
+| `NYXMON_SITE_RECOVERY_GRACE_SECONDS` | `900` | `60`–`3600`. How long a recovered path stays `recovering` before it releases. |
+| `NYXMON_SITE_MAX_HOLD_SECONDS` | `10800` | `600`–`86400`. Hard bound per check and hold; afterwards the check follows ordinary policy again. |
+| `NYXMON_SITE_INCIDENT_NOTIFY_AFTER_SECONDS` | `900` | `60`–`86400`. Age at which an ongoing outage alerts, and the threshold above which a closed outage gets a summary. |
+| `NYXMON_SITE_INCIDENT_REMINDER_SECONDS` | `21600` | `60`–`2592000`. Reminder cadence of a *delivered* ongoing alert. It is also the cadence at which an outage that flapped back to `down` may attempt a new ongoing alert after an earlier, undelivered one was retired on recovery, measured from the later of the last delivery and the last attempt. |
+
+A round fails for a path only when every one of its targets failed, so a single
+dead server can never take a path down. Address literals are used on purpose for
+`ipv4` and `ipv6`, so those paths do not depend on DNS.
+
+Snapshot staleness is derived, not configured: a snapshot older than three probe
+intervals is not trusted, nothing is held, and a frozen observer therefore stops
+holding within about three minutes. The retry cadence of an undelivered site
+message is fixed at 60 seconds.
+
+Invalid values follow the same fail-safe rule as the reliability knobs: they are
+warned about once per distinct value and replaced by the default. An empty
+target list is a valid configuration, not an invalid value.
 
 #### Suppression Freshness Guard
 
@@ -153,6 +202,44 @@ Per-check policy is normally rendered by the playbook that upserts the check,
 not edited by hand — the dashboard has no form field for it, and a deployment
 that rewrites the whole `data` blob would drop an out-of-band edit.
 
+#### Per-Check Site Dependency
+
+A check declares which connectivity paths it needs through a `site_dependency`
+entry in its `data` JSON, alongside `notification_policy`. It is what makes the
+check eligible for having its alerts held during a site outage; without it,
+nothing about the check changes.
+
+```json
+{"site_dependency": "internet"}
+{"site_dependency": {"requires": ["dns", ["ipv4", "ipv6"]]}}
+{"site_dependency": {"requires": ["ipv6"]}}
+{"site_dependency": "none"}
+```
+
+| Form | Meaning |
+| --- | --- |
+| absent or `"none"` | Unclassified. Never held, never rescheduled by the recovery recheck. |
+| `"internet"` | Shorthand for `{"requires": ["dns", ["ipv4", "ipv6"]]}`. The right choice for HTTP/TCP/SMTP/IMAP against a dual-stack host addressed by name, because Happy Eyeballs keeps such a check working while only one address family is broken. |
+| `{"requires": [...]}` | A list of requirements. Each entry is a path name (`dns`, `ipv4`, `ipv6`) or a list of alternatives forming an any-of group. The check is affected when **any** requirement is unmet. |
+
+A single-path requirement is unmet when that path is `down` or `recovering`. An
+any-of group ignores `unobserved` members and is met as soon as one observed
+member is `up` *or* `failing`, so an unconfirmed failure never holds. A group
+whose members are all unobserved is met, which makes `["ipv4", "ipv6"]` behave
+exactly like `ipv4` on an IPv4-only site.
+
+Validation is fail-safe, like `notification_policy`: an unknown shorthand, a
+non-object value, an empty or non-list `requires`, or an entry naming something
+other than a known path is warned about once per check and treated as
+unclassified. Nothing raises into the check path, and a bad edit can therefore
+never suppress an alert. A single-path requirement on an *unobserved* path is
+always met and can never hold; the observer logs one warning per such check at
+startup so the misclassification is visible.
+
+As with `notification_policy`, put the key in the playbook that upserts the
+check. A deployment rewrites the whole `data` blob and would drop an edit made
+directly in the database.
+
 #### Notification State Storage
 
 Failure streak, incident start time, last-notification time, and the
@@ -167,10 +254,28 @@ them is what makes their deduplication and reminder cadence survive a service
 restart.
 
 When upgrading an existing installation, run `python manage.py migrate` so
-migrations `0011_checknotificationstate` and
-`0012_notification_reminder_timestamps` own those tables. The Ansible deployment
-role runs Django migrations automatically. The worker applies the same schema
-upgrade idempotently on start, so either order is safe.
+migrations `0011_checknotificationstate`,
+`0012_notification_reminder_timestamps` and `0013_site_connectivity_state` own
+those tables. The Ansible deployment role runs Django migrations automatically.
+The worker applies the same schema upgrade idempotently on start, so either
+order is safe.
+
+Migration `0013_site_connectivity_state` adds three more columns to
+`check_notification_state`: `held_since` (epoch of the first sample of the
+current hold, `0` when no hold budget is armed), `attempt_seq` (a monotonic
+counter of external notification attempts, never reset, which fences the
+acknowledgement written after a send) and `attempt_at` (epoch of the current
+unacknowledged attempt, `0` when no delivery is pending). All three are
+meaningful at their zero default, so no backfill is needed and the columns are
+inert until the site connectivity mode or the delivery retry is switched on.
+
+`held_since` is the *budget* marker, not a live "this check is held" flag: it
+stays non-zero after the budget is exhausted and after a stale-snapshot bypass,
+and a maintenance-suppressed sample carries it and `attempt_at` through
+unchanged, because clearing them would re-arm the budget, drop the check from
+the observer's recovery recheck and cancel an unacknowledged send. Only an OK
+sample, or a failing sample evaluated while the dependency is observed recovered
+on a fresh snapshot, clears it.
 
 Migration `0012_notification_reminder_timestamps` also decides how existing
 failures behave at rollout. A check that was already failing *and* had already

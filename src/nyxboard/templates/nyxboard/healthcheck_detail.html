@@ -18,6 +18,16 @@
 </div>
 {% endif %}
 
+{% if alert_held %}
+<div class="site-connectivity-held" role="status" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+    <div class="help-text" style="color: #856404;">The latest sample was held by site connectivity{% if held_since %}; the hold budget started {{ held_since }}{% endif %}. Failing samples are still recorded. Once the connectivity path is released, or the maximum hold expires, the check notifies according to its own threshold and reminder policy.</div>
+</div>
+{% elif held_since %}
+<div class="site-connectivity-hold-budget" role="status" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+    <div class="help-text" style="color: #856404;">Hold budget started {{ held_since }}; alerts follow normal policy. The latest sample was not held, so the check notifies according to its own threshold and reminder policy.</div>
+</div>
+{% endif %}
+
 <div class="list-card health-check-info">
     <div class="service-id health-check-id">
         {{ health_check.name }}
@@ -63,6 +73,9 @@
                     <div class="list-name result-id">Result #{{ result.id }}</div>
                     <div class="result-status status-{{ result.status }}">
                         {{ result.status|upper }}
+                        {% if result.site_connectivity_badge %}
+                            <span class="site-connectivity-badge site-connectivity-badge-{{ result.site_connectivity_badge }}" title="This sample was evaluated against the site connectivity state">{{ result.site_connectivity_badge }}</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="list-content result-content">

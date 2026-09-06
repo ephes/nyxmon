@@ -307,7 +307,12 @@ def test_recovered_check_starts_a_new_incident(monkeypatch) -> None:
 
     clock.advance(300)
     _submit(uow, notifier, check, ResultStatus.OK)
-    assert store.checks.get_notification_state(1) == NotificationState()
+    # Everything about the incident resets. ``attempt_seq`` is a monotonic
+    # delivery fence, not incident state, so it survives on purpose: reusing a
+    # sequence number would let a late acknowledgement clear a newer attempt.
+    recovered = store.checks.get_notification_state(1)
+    assert recovered == NotificationState(attempt_seq=recovered.attempt_seq)
+    assert recovered.attempt_at == 0
 
     clock.advance(300)
     _submit(uow, notifier, check, ResultStatus.ERROR)

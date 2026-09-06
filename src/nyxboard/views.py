@@ -2,9 +2,16 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 import json
+from datetime import datetime, timezone
 from time import time
 
-from .models import Service, HealthCheck, StatusChoices
+from .models import (
+    CheckNotificationState,
+    CollectorIncident,
+    Service,
+    HealthCheck,
+    StatusChoices,
+)
 from .forms import (
     ServiceForm,
     HttpHealthCheckForm,
@@ -17,6 +24,20 @@ from .forms import (
 )
 from nyxmon.domain import CheckStatus, CheckType
 
+#: The single ``collector_incident`` row carrying the site connectivity
+#: lifecycle. Mirrors ``nyxmon.adapters.site_connectivity.SITE_INCIDENT_KEY``;
+#: kept as a literal so the dashboard does not import the agent's adapters.
+SITE_INCIDENT_KEY = "site:connectivity"
+
+#: Path states that make a path worth naming in the dashboard banner.
+SITE_BANNER_STATES = ("down", "recovering")
+
+#: How old ``observed_at`` may be before the banner stops presenting the payload
+#: as a current observation. The worker distrusts its own snapshot after three
+#: probe intervals; the dashboard uses a laxer ten minutes, so a single slow or
+#: skipped round does not make the label flap.
+SITE_OBSERVATION_STALE_SECONDS = 600
+
 # Form class registry for per-type forms
 FORM_CLASSES = {
     CheckType.HTTP: HttpHealthCheckForm,
@@ -27,6 +48,132 @@ FORM_CLASSES = {
     CheckType.IMAP: ImapHealthCheckForm,
     CheckType.JSON_METRICS: JsonMetricsHealthCheckForm,
 }
+
+
+def _usable_epoch(value):
+    """Return ``value`` as a positive integer epoch, or ``None``.
+
+    Args:
+        value: Anything a payload might carry in a timestamp field.
+
+    Returns:
+        The epoch as an ``int`` when it is a usable positive timestamp,
+        otherwise ``None``. Booleans, strings, ``None``, ``nan`` and
+        out-of-range numbers all yield ``None`` rather than raising: the
+        payload is written by the worker and must never be able to break the
+        dashboard.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value <= 0:
+        return None
+    try:
+        epoch = int(value)
+        datetime.fromtimestamp(epoch, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        return None
+    return epoch
+
+
+def _format_epoch(value):
+    """Render a Unix timestamp as a readable UTC string, or ``None``.
+
+    Args:
+        value: Anything a payload might carry in a timestamp field.
+
+    Returns:
+        ``"%b %-d, %H:%M UTC"`` for a usable positive epoch, otherwise ``None``.
+    """
+    epoch = _usable_epoch(value)
+    if epoch is None:
+        return None
+    return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%b %-d, %H:%M UTC")
+
+
+def site_connectivity_banner():
+    """Build the dashboard banner for the site connectivity incident.
+
+    Reads the single ``collector_incident`` row the observer maintains. A
+    banner is shown when the row's payload says an outage is active, or when it
+    still carries recovery summaries that have not been delivered yet.
+
+    The banner reports what the observer measured, never what the worker does
+    about it: the dashboard cannot see the worker's mode, so whether dependent
+    alerts are actually held is stated as the condition it is.
+
+    Returns:
+        A context dict with ``paths`` (name, state and formatted ``down_since``
+        of every path that is down or recovering), ``active``,
+        ``summary_pending``, ``incident_id``, the formatted ``observed_at`` of
+        the last probe round and ``stale`` (the round is more than
+        :data:`SITE_OBSERVATION_STALE_SECONDS` old, or its timestamp is
+        unusable, so the observer may be stopped); or ``None`` when there is no
+        row, nothing to report, or the payload is malformed. Nothing in here
+        raises: a payload the dashboard cannot read simply produces no banner.
+    """
+    try:
+        incident = CollectorIncident.objects.filter(
+            incident_key=SITE_INCIDENT_KEY
+        ).first()
+    except Exception:
+        return None
+    if incident is None:
+        return None
+    payload = incident.payload
+    if not isinstance(payload, dict):
+        return None
+
+    active = payload.get("phase") == "active"
+    raw_summaries = payload.get("summaries")
+    summary_pending = bool(raw_summaries) and isinstance(raw_summaries, list)
+    if not active and not summary_pending:
+        return None
+
+    paths = []
+    raw_paths = payload.get("paths")
+    if isinstance(raw_paths, dict):
+        for name, values in sorted(raw_paths.items()):
+            if not isinstance(values, dict):
+                continue
+            state = values.get("state")
+            if state not in SITE_BANNER_STATES:
+                continue
+            paths.append(
+                {
+                    "name": str(name),
+                    "state": state,
+                    "down_since": _format_epoch(values.get("down_since")),
+                }
+            )
+
+    incident_id = payload.get("incident_id")
+    observed_at = _usable_epoch(payload.get("observed_at"))
+    stale = observed_at is None or time() - observed_at > SITE_OBSERVATION_STALE_SECONDS
+    return {
+        "active": active,
+        "summary_pending": summary_pending,
+        "incident_id": incident_id if isinstance(incident_id, int) else None,
+        "paths": paths,
+        "observed_at": _format_epoch(observed_at),
+        "stale": stale,
+    }
+
+
+def _site_connectivity_badge(result):
+    """Return ``"held"``, ``"observed"`` or ``None`` for one stored result.
+
+    A result whose ``data`` carries ``site_connectivity`` was evaluated against
+    the site state. ``held: true`` means its notification was deferred;
+    anything else means the judgement was only recorded, which is what
+    ``observe`` mode and an exhausted hold look like.
+    """
+    data = getattr(result, "data", None)
+    if not isinstance(data, dict):
+        return None
+    metadata = data.get("site_connectivity")
+    if not isinstance(metadata, dict):
+        return None
+    return "held" if metadata.get("held") is True else "observed"
 
 
 def dashboard(request):
@@ -47,7 +194,7 @@ def dashboard(request):
 
     for check in health_checks:
         # Get recent results
-        recent_results = check.results.order_by("-created_at")[:5]
+        recent_results = check.results.order_by("-created_at", "-id")[:5]
         check.recent_results = list(
             recent_results
         )  # Force evaluation and convert to list
@@ -89,6 +236,7 @@ def dashboard(request):
         "theme": request.session.get("theme", "light"),
         "check_results_json": json.dumps(check_results_json),
         "check_results": check_results_json,
+        "site_connectivity": site_connectivity_banner(),
     }
 
     return render(request, "nyxboard/dashboard.html", context)
@@ -183,11 +331,35 @@ def healthcheck_detail(request, check_id):
     Display details of a specific health check.
     """
     health_check = get_object_or_404(HealthCheck, id=check_id)
-    results = health_check.results.order_by("-created_at")[:10]
+    # The worker stamps results with second resolution, so two samples of one
+    # check regularly share a ``created_at``; the descending id breaks that tie
+    # in insertion order and keeps the truly newest sample first.
+    results = list(health_check.results.order_by("-created_at", "-id")[:10])
+    for result in results:
+        result.site_connectivity_badge = _site_connectivity_badge(result)
+
+    # ``held_since`` lives in the internal notification state table, which has
+    # no row at all for a check that has never failed.
+    notification_state = CheckNotificationState.objects.filter(
+        health_check=health_check
+    ).first()
+    held_since = getattr(notification_state, "held_since", 0) or 0
+
+    # ``held_since`` alone does not mean the alert is held: it stays non-zero
+    # after the hold budget is exhausted and after a stale-snapshot bypass, and
+    # it is deliberately carried through a maintenance-suppressed sample. Only
+    # the newest stored sample knows whether its own notification was deferred.
+    alert_held = bool(results) and results[0].site_connectivity_badge == "held"
+
     return render(
         request,
         "nyxboard/healthcheck_detail.html",
-        {"health_check": health_check, "results": results},
+        {
+            "health_check": health_check,
+            "results": results,
+            "held_since": _format_epoch(held_since),
+            "alert_held": alert_held,
+        },
     )
 
 
@@ -334,7 +506,7 @@ def healthcheck_update_status(request, check_id):
     This view is called periodically to check if a health check's status has changed.
     """
     health_check = get_object_or_404(HealthCheck, id=check_id)
-    recent_results = health_check.results.order_by("-created_at")[:5]
+    recent_results = health_check.results.order_by("-created_at", "-id")[:5]
 
     # Attach needed data to the health check for the template
     health_check.recent_results = recent_results
@@ -381,7 +553,7 @@ def healthcheck_trigger(request, check_id):
     health_check = get_object_or_404(HealthCheck, id=check_id)
 
     # Get data needed for the template first
-    recent_results = health_check.results.order_by("-created_at")[:5]
+    recent_results = health_check.results.order_by("-created_at", "-id")[:5]
     last_result = recent_results[0] if recent_results else None
     health_check.recent_results = recent_results
 
@@ -415,7 +587,7 @@ def healthcheck_toggle_disabled(request, check_id):
     health_check = get_object_or_404(HealthCheck, id=check_id)
 
     # Get data needed for the template first
-    recent_results = health_check.results.order_by("-created_at")[:5]
+    recent_results = health_check.results.order_by("-created_at", "-id")[:5]
     last_result = recent_results[0] if recent_results else None
     health_check.recent_results = recent_results
 

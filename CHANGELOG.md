@@ -38,6 +38,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unchanged.
 
 ### Added
+- Site connectivity detection. Nyxmon can observe its own internet connection
+  through three independent paths (`dns`, `ipv4`, `ipv6`) and hold the alerts of
+  checks that declared they depend on it, so a provider reconnect no longer
+  produces one Telegram message per internet-dependent check. Failing samples
+  are still stored with their real status and carry `site_connectivity`
+  metadata naming why their notification was deferred. The outage itself is
+  reported once — an ongoing alert after 15 minutes if it is still down and
+  deliverable, and one recovery summary afterwards — while a three-minute
+  reconnect produces nothing at all. The feature ships **off**; see
+  `docs/site-connectivity.md` for detection, hold semantics, rollout and
+  rollback.
+- The observer never writes a lifecycle it has not read: restoration is retried
+  at the start of every round, and an unrestored round neither probes nor
+  writes, so an empty lifecycle can never overwrite the pending summaries, the
+  undelivered ongoing intent and the release watermarks. A round applies its own
+  probe outcome before evaluating a release, so a round that fails exactly at
+  the release boundary returns the path to `down` instead of letting the grace
+  expire and dropping the holds.
+- An undelivered ongoing outage alert that was retired when the last path
+  started recovering no longer silences the incident for good. The retired
+  attempt itself is never retried, but a path that flaps back to `down` may earn
+  a new attempt once `NYXMON_SITE_INCIDENT_REMINDER_SECONDS` have elapsed since
+  the later of the last delivery and the last attempt.
+- Recovery summaries are delivered in size-bounded batches — at most five
+  records and 3500 characters per message — because Telegram rejects anything
+  above 4096 characters and a concatenated backlog could never be delivered.
+  A batch is built strictly oldest first from records that are individually due,
+  stopping at the first record whose retry window has not elapsed, so a record
+  appended one probe tick after a failed send cannot pull that send forward.
+  Only the records a batch covered are stamped and, on success, removed; a
+  single oversized record is truncated rather than left to block the backlog.
+- Sample freshness is evaluated per requirement rather than per path. A
+  requirement is usable since the *earliest* release among the members that are
+  usable **now**; a member that is still `down` or `recovering` contributes
+  nothing. An IPv6-only outage therefore never makes a sample of an `internet`
+  check stale, because the group kept working over IPv4 throughout, while a
+  staggered release of two downed families holds every sample claimed before the
+  first family came back.
+- Per-check `data.site_dependency`, accepting `"internet"`, `"none"` and
+  `{"requires": [...]}` with path names and any-of groups. `"internet"` is
+  shorthand for `{"requires": ["dns", ["ipv4", "ipv6"]]}`, matching Happy
+  Eyeballs: a dual-stack host addressed by name keeps working while only one
+  address family is broken. Malformed values are warned about once per check and
+  treated as unclassified, which is byte for byte the previous behaviour. A
+  single-path requirement on an unobserved path warns once at startup, because
+  it can never hold.
+- Site connectivity configuration: `NYXMON_SITE_CONNECTIVITY_MODE` (default
+  `off`; `observe` probes, persists and sends the site messages without holding
+  anything, `enforce` holds), `NYXMON_SITE_PROBE_INTERVAL_SECONDS` (`60`),
+  `NYXMON_SITE_PROBE_TIMEOUT_SECONDS` (`3`),
+  `NYXMON_SITE_PROBE_IPV4_TARGETS`, `NYXMON_SITE_PROBE_IPV6_TARGETS`,
+  `NYXMON_SITE_PROBE_DNS_NAMES` (an explicitly empty list marks its path
+  unobserved), `NYXMON_SITE_DOWN_AFTER_FAILURES` (`2`),
+  `NYXMON_SITE_RECOVERY_GRACE_SECONDS` (`900`), `NYXMON_SITE_MAX_HOLD_SECONDS`
+  (`10800`), `NYXMON_SITE_INCIDENT_NOTIFY_AFTER_SECONDS` (`900`) and
+  `NYXMON_SITE_INCIDENT_REMINDER_SECONDS` (`21600`). Invalid values warn once
+  per distinct value and fall back to the default. Snapshot staleness is derived
+  from the probe interval rather than configured.
+- Per-check delivery retry via `NYXMON_NOTIFY_DELIVERY_RETRY_SECONDS` (default
+  `0`, off; otherwise `60`–`3600`). A notification attempt is now recorded
+  durably before the send and acknowledged after it, fenced by a monotonic
+  `attempt_seq`, so an alert whose send failed or crashed is repeated on the
+  next failing sample instead of being lost until the next reminder six hours
+  later. Immediate alerts participate on the same terms: a due retry sends again
+  even inside the immediate cooldown, which bounds new alerts rather than the
+  redelivery of one that may never have arrived. An OK sample clears the pending
+  intent, so a failure that recovered before delivery was possible is not
+  reported after the fact, while a maintenance-suppressed sample carries the
+  intent through unchanged so a maintenance window cannot cancel an alert nobody
+  acknowledged. Delivery is at-least-once: an ambiguous Telegram outcome can
+  produce a duplicate, which is the deliberate trade for not losing incidents.
+- The dashboard shows a banner while the site connectivity incident is active or
+  a recovery summary is still pending, naming the affected paths with their
+  state and `down_since`. The banner reports what was observed rather than what
+  the worker did with it: it cannot see the mode, so it says dependent alerts
+  are held only while the worker runs in `enforce` mode, and it names when the
+  payload was last observed — adding that the observer may be stopped once that
+  is more than ten minutes old, missing or unusable, which is what an `off`
+  mode, a stopped worker or a stale persisted incident looks like from the
+  dashboard. A malformed payload renders no banner rather than raising.
+- The check detail page reports a hold from the newest stored result, not from
+  `held_since`: it says the latest sample was held only when that result's
+  `site_connectivity` metadata says `held: true`, and otherwise — an exhausted
+  budget, a stale-snapshot bypass, an `observe`-mode judgement, a marker carried
+  through a maintenance window — shows "hold budget started …; alerts follow
+  normal policy". It no longer promises that the first fresh sample notifies;
+  the check notifies according to its own threshold and reminder policy.
+  Individual results carrying `site_connectivity` metadata keep their held or
+  observed badge.
 - Persistent warning/error incidents now send reminder notifications on
   elapsed wall-clock time rather than a sample count:
   `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS` (default `21600`, six hours) for
@@ -77,9 +166,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notification dampening via `NYXMON_NOTIFY_CONSECUTIVE_FAILURES`, defaulting to 2 consecutive warning/error samples before Telegram or OpsGate side effects.
 - Check-level `data.notification_suppression` can suppress Telegram and OpsGate
   side effects during active or recently finished maintenance windows while
-  still storing the warning/error result.
+  still storing the warning/error result. A suppressed sample breaks the failure
+  streak and nothing else: the site connectivity hold marker and any pending
+  delivery intent are carried through unchanged, so a maintenance window inside
+  an outage neither re-arms the hold budget (which would also drop the check
+  from the observer's recovery recheck) nor cancels an unacknowledged send.
 
 ### Changed
+- Notifiers now report whether a message was actually delivered.
+  `Notifier.notify_check_failed` returns `bool | None`; the Telegram notifier
+  returns `False` only for an attempted request that failed (the OpsGate ticket
+  outcome deliberately does not count) and `None` when it never attempted a send
+  at all, because it has no portal provider or no credentials, so an
+  installation that never configured Telegram accumulates no delivery intent it
+  would retry forever. `LoggingNotifier` returns `True`, and `None`
+  from a custom notifier or a mock is treated as delivered. Previously every
+  exception was caught and logged, so no caller could tell a delivered message
+  from a failed one. The collector's incident helper treats a literal `False` as
+  a failure, which makes the existing `delivery_pending` retry of collector
+  incidents work with the real notifier for the first time.
+- `claim_collector_incident_alert` now records the delivery intent inside the
+  claim transaction: a granted alert merges `delivery_pending` and
+  `delivery_attempt` into the payload, and both keys are repository-owned, so a
+  non-granting payload refresh cannot erase a pending intent. A crash between
+  claim and send therefore leaves a durable retry obligation, restored after a
+  restart, instead of a recently-alerted row that resolves without ever paging.
+- A delivered collector incident alert is acknowledged by a single repository
+  operation, `acknowledge_collector_incident_delivery`, which compares the
+  stored attempt and clears only `delivery_pending` and `delivery_attempt` in
+  one critical section. Fencing on the `alert_count` the claim granted means a
+  claim committed in between keeps its own, newer intent, and incident details
+  written between the claim and the send are never rolled back. Comparing in the
+  collector and then replacing the payload in a second call let such a claim
+  lose both its intent and its payload.
+- A result carrying `data["opsgate_ticket"] = False` skips OpsGate ticket
+  creation regardless of severity and regardless of
+  `OPSGATE_SUBMIT_INCLUDE_WARNINGS`. The site connectivity recovery summary uses
+  it: a message about an event that is already over must not open a remediation
+  ticket. The ongoing outage alert still does, under the key
+  `nyxmon-collector-site:connectivity`.
 - Reclaimed processing leases no longer produce a per-check notification. The
   result is still stored so a check's history explains its gap, but it is marked
   collector-internal: it never alerts on its own, not even under a per-check
@@ -106,6 +231,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   defaults. Remove it from deployment configuration.
 
 ### Fixed
+- Upgrade note: apply Django migration `0013_site_connectivity_state` (normally
+  run automatically by the deployment role) before starting the updated worker.
+  It adds `held_since`, `attempt_seq` and `attempt_at` to
+  `check_notification_state`. The worker performs the same upgrade idempotently
+  on start, so either order is safe. Unlike `0012` there is no backfill: all
+  three columns are meaningful at their zero default — not held, no attempts
+  recorded, no delivery pending — which is exactly the state of every check
+  before the feature existed. The columns stay inert until
+  `NYXMON_SITE_CONNECTIVITY_MODE` or `NYXMON_NOTIFY_DELIVERY_RETRY_SECONDS` is
+  set, so the rollout itself changes no alerting behaviour and produces no alert
+  storm.
 - Upgrade note: apply Django migration `0012_notification_reminder_timestamps`
   (normally run automatically by the deployment role) before starting the
   updated worker. It adds `last_notified_at` and `first_failure_at` to

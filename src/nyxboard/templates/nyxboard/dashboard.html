@@ -7,6 +7,39 @@
 {% endblock %}
 
 {% block content %}
+{% if site_connectivity %}
+<div class="site-connectivity-banner" role="status" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+    <div class="help-text" style="color: #856404;">
+        {% if site_connectivity.active %}
+            <strong>Site connectivity outage observed.</strong>
+            {% if site_connectivity.paths %}
+                Affected paths:
+                {% for path in site_connectivity.paths %}{{ path.name }} ({{ path.state }}{% if path.down_since %}, down since {{ path.down_since }}{% endif %}){% if not forloop.last %}, {% endif %}{% endfor %}.
+            {% else %}
+                No path is currently reported down.
+            {% endif %}
+            Alerts of checks that declared a matching <code>site_dependency</code> are held only while the worker runs in <code>enforce</code> mode.
+        {% else %}
+            <strong>Site connectivity recovered.</strong>
+            {% if site_connectivity.paths %}
+                Still reported as not up:
+                {% for path in site_connectivity.paths %}{{ path.name }} ({{ path.state }}{% if path.down_since %}, down since {{ path.down_since }}{% endif %}){% if not forloop.last %}, {% endif %}{% endfor %}.
+            {% else %}
+                Every observed path is up again.
+            {% endif %}
+        {% endif %}
+        {% if site_connectivity.summary_pending %}
+            A recovery summary is still pending delivery.
+        {% endif %}
+        {% if site_connectivity.stale %}
+            Last observed {% if site_connectivity.observed_at %}{{ site_connectivity.observed_at }}{% else %}at an unknown time{% endif %}; the observer may be stopped.
+        {% elif site_connectivity.observed_at %}
+            Last observed {{ site_connectivity.observed_at }}.
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <div class="dashboard-header">
     <h2>Services Overview</h2>
     <div class="dashboard-actions">

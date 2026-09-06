@@ -65,6 +65,20 @@ The agent executes checks and has no direct knowledge of the database implementa
 3. **Repository Implementations**
    - Concrete implementation of repository interfaces for SQLite
 
+4. **Site Connectivity Observer**
+   - `SiteConnectivityObserver` (`nyxmon.adapters.site_connectivity`) runs as a
+     second task on the collector's portal, so it never blocks check collection
+   - Probes three connectivity paths (`dns`, `ipv4`, `ipv6`) once per interval,
+     keeps a small state machine per path, and publishes an immutable snapshot
+     that the result handler reads before it alerts
+   - Its whole lifecycle — path states, release watermarks, alert bookkeeping
+     and the recovery recheck work item — lives in one `collector_incident` row
+     under the key `site:connectivity`, written atomically, so it survives a
+     restart
+   - The handler holds a failing sample only when the check declared a matching
+     `data.site_dependency`, the mode is `enforce`, and the snapshot is fresh;
+     the decision never depends on the store. See `docs/site-connectivity.md`
+
 ### Frontend (Django)
 
 The frontend is implemented as a Django application and provides a user interface for monitoring and configuration.

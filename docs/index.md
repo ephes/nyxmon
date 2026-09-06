@@ -31,6 +31,7 @@ For detailed installation instructions and development setup, see {doc}`installa
 installation
 usage
 configuration
+site-connectivity
 dns-check-examples
 smtp-checks
 imap-checks
