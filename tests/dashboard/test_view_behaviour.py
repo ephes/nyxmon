@@ -381,6 +381,43 @@ class TestHealthCheckUpdate:
         assert response.status_code == 302
         assert response["Location"] == referer
 
+    def test_quick_toggle_returns_to_same_host_relative_referer(self, client, check):
+        response = client.post(
+            self.url(check),
+            {"disabled": "1", "csrfmiddlewaretoken": "x"},
+            HTTP_REFERER="/healthchecks/",
+        )
+        assert response["Location"] == "/healthchecks/"
+
+    @pytest.mark.parametrize(
+        "referer",
+        [
+            "https://evil.example/phish",
+            "http://evil.example/",
+            "//evil.example/",
+            "javascript:alert(1)",
+        ],
+    )
+    def test_quick_toggle_ignores_foreign_referer(self, client, check, referer):
+        response = client.post(
+            self.url(check),
+            {"disabled": "1", "csrfmiddlewaretoken": "x"},
+            HTTP_REFERER=referer,
+        )
+        assert response.status_code == 302
+        assert response["Location"] == reverse("nyxboard:dashboard")
+        check.refresh_from_db()
+        assert check.disabled is True
+
+    def test_quick_toggle_https_request_rejects_http_referer(self, client, check):
+        response = client.post(
+            self.url(check),
+            {"disabled": "1", "csrfmiddlewaretoken": "x"},
+            HTTP_REFERER="http://testserver/healthchecks/",
+            secure=True,
+        )
+        assert response["Location"] == reverse("nyxboard:dashboard")
+
 
 @pytest.mark.django_db
 class TestHealthCheckDelete:

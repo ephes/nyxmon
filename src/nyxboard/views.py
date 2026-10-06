@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 import json
 from datetime import datetime, timezone
@@ -448,9 +449,15 @@ def healthcheck_update(request, check_id):
             health_check.disabled = new_disabled_value
             health_check.save()
 
-            # Redirect back to referring page, or dashboard if no referrer
-            if request.META.get("HTTP_REFERER"):
-                return redirect(request.META.get("HTTP_REFERER"))
+            # Redirect back to the referring page when it is on this host;
+            # an external or missing referrer falls back to the dashboard.
+            referer = request.META.get("HTTP_REFERER")
+            if referer and url_has_allowed_host_and_scheme(
+                referer,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(referer)
             return redirect("nyxboard:dashboard")
 
         # Normal form submission

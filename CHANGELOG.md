@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The health-check quick enable/disable toggle no longer redirects to an
+  arbitrary `Referer`. Only a same-host referrer (and, on HTTPS, an HTTPS
+  one) is followed; anything else returns to the dashboard.
 - The monitoring CLI now keeps `httpx` and `httpcore` at `WARNING`, preventing
   their INFO request lines from writing Telegram bot tokens embedded in API
   URLs to journald. Legacy Linux deployment units read credentials from the
