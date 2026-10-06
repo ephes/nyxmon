@@ -20,7 +20,6 @@ LOGIN_URL = "/accounts/login/"
 AUTH_VIEW_NAMES = {"login", "logout"}
 
 
-
 @pytest.fixture
 def service():
     return Service.objects.create(name="Web")
@@ -183,7 +182,9 @@ class TestLoginRequired:
 
     def test_htmx_next_keeps_query_of_current_page(self, client, check):
         response = client.get(
-            reverse("nyxboard:healthcheck_update_status", kwargs={"check_id": check.id}),
+            reverse(
+                "nyxboard:healthcheck_update_status", kwargs={"check_id": check.id}
+            ),
             headers={
                 "HX-Request": "true",
                 "HX-Current-URL": "http://testserver/healthchecks/?x=1",
@@ -201,7 +202,9 @@ class TestLoginRequired:
         if current:
             headers["HX-Current-URL"] = current
         response = client.get(
-            reverse("nyxboard:healthcheck_update_status", kwargs={"check_id": check.id}),
+            reverse(
+                "nyxboard:healthcheck_update_status", kwargs={"check_id": check.id}
+            ),
             headers=headers,
         )
         assert response.status_code == 403
@@ -230,7 +233,9 @@ class TestLoginRequired:
             response = client.get(url)
             assert response.status_code == 200, url
         response = client.post(
-            reverse("nyxboard:healthcheck_toggle_disabled", kwargs={"check_id": check.id}),
+            reverse(
+                "nyxboard:healthcheck_toggle_disabled", kwargs={"check_id": check.id}
+            ),
             headers={"HX-Request": "true"},
         )
         assert response.status_code == 200
@@ -253,7 +258,11 @@ class TestLoginRequired:
     def test_login_redirects_to_next(self, client, user):
         response = client.post(
             LOGIN_URL,
-            {"username": "operator", "password": "pw-for-tests", "next": "/healthchecks/"},
+            {
+                "username": "operator",
+                "password": "pw-for-tests",
+                "next": "/healthchecks/",
+            },
         )
         assert response.status_code == 302
         assert response["Location"] == "/healthchecks/"

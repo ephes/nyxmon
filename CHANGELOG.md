@@ -93,6 +93,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and status 100, error message 2000 characters, with a `...[truncated N
   chars]` marker) so an endpoint's long error text can no longer push a
   message past Telegram's 4096 character limit.
+- The health-check quick enable/disable toggle no longer redirects to an
+  arbitrary `Referer`. Only a same-host referrer (and, on HTTPS, an HTTPS
+  one) is followed; anything else returns to the dashboard.
 - The monitoring CLI now keeps `httpx` and `httpcore` at `WARNING`, preventing
   their INFO request lines from writing Telegram bot tokens embedded in API
   URLs to journald. Legacy Linux deployment units read credentials from the

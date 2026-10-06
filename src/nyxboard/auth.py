@@ -81,9 +81,7 @@ def _htmx_login_redirect(request: HttpRequest) -> HttpResponse:
     return response
 
 
-def nyxboard_login_required(
-    view: ViewFunc | None = None, *, json: bool = False
-) -> Any:
+def nyxboard_login_required(view: ViewFunc | None = None, *, json: bool = False) -> Any:
     """Require an authenticated user when ``NYXBOARD_REQUIRE_LOGIN`` is on.
 
     Args:
