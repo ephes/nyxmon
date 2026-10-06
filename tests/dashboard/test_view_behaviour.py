@@ -259,7 +259,8 @@ class TestHealthCheckCreate:
             ("smtp", "nyxboard/healthcheck_form_smtp.html"),
             ("imap", "nyxboard/healthcheck_form_imap.html"),
             ("json-metrics", "nyxboard/healthcheck_form_json_metrics.html"),
-            ("ping", "nyxboard/healthcheck_form.html"),
+            ("ping", "nyxboard/healthcheck_form_ping.html"),
+            ("legacy-unmapped", "nyxboard/healthcheck_form.html"),
         ],
     )
     def test_type_query_selects_template(self, client, check_type, template):
@@ -316,11 +317,19 @@ class TestHealthCheckUpdate:
         assert response.context["health_check"] == check
         assert "nyxboard/healthcheck_form_http.html" in template_names(response)
 
-    def test_get_unmapped_type_uses_generic_form(self, client, service):
+    def test_get_ping_uses_ping_form(self, client, service):
         ping = HealthCheck.objects.create(
             service=service, name="ping", check_type="ping", url="host"
         )
         response = client.get(self.url(ping))
+        assert response.status_code == 200
+        assert "nyxboard/healthcheck_form_ping.html" in template_names(response)
+
+    def test_get_unmapped_type_uses_generic_form(self, client, service):
+        legacy = HealthCheck.objects.create(
+            service=service, name="legacy", check_type="legacy-unmapped", url="host"
+        )
+        response = client.get(self.url(legacy))
         assert response.status_code == 200
         assert "nyxboard/healthcheck_form.html" in template_names(response)
 
