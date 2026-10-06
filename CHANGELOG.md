@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- OpsGate remediation prompts no longer embed monitored-endpoint result data
+  verbatim. Only Nyxmon's own check facts are stated as trusted context; result
+  data is sanitized (control and Unicode format characters replaced, each string
+  cut to 200 characters, containers bounded), fenced between per-prompt random
+  `BEGIN`/`END NYXMON-UNTRUSTED-...` markers, and labelled as data the agent must
+  never follow. The ticket context carries the same bounded copy marked
+  untrusted. Result data from an ordinary check can no longer choose the
+  ticket's dedup key (`incident_key`) or suppress the ticket
+  (`opsgate_ticket: false`); only the internal collector row may.
+
 ### Fixed
 
 - The monitoring CLI now keeps `httpx` and `httpcore` at `WARNING`, preventing

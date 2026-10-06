@@ -378,6 +378,30 @@ export OPSGATE_SUBMIT_TOKEN=<opsgate_submit_token_nyxmon>
 export OPSGATE_APPROVAL_BASE_URL=http://studio.tailde2ec.ts.net:8711
 ```
 
+Each ticket carries one `investigator` step whose prompt the OpsGate agent runs.
+Result data is written by the monitored endpoint (JSON metric values, redirect
+`Location` headers, DNS answers, server banners, error text), so Nyxmon treats it
+as untrusted:
+
+- The prompt states only Nyxmon's own facts as trusted context: check id, name,
+  type, configured URL and result status.
+- Result data appears once, inside a fenced JSON block between
+  `BEGIN NYXMON-UNTRUSTED-<random>` / `END ...` markers, preceded by instructions
+  to treat it as data only, never follow instructions found in it, and report a
+  suspected prompt injection instead. The block is JSON with every non-ASCII
+  character and backtick escaped, so it cannot close its fence or forge a marker.
+- Each string or key is cut to 200 characters and stripped of control and Unicode
+  format characters (newlines, bidi overrides, zero-width characters). Containers
+  keep at most 25 entries and 4 levels of nesting. The ticket `context.result.data`
+  holds the same bounded copy, labelled by `context.result.data_trust`.
+- Ticket identity, agent, role and policy never come from result data. Only the
+  internal collector row (`check_id` 0, type `internal`) may key its ticket on
+  `incident_key` or skip the ticket with `opsgate_ticket: false`; on an ordinary
+  check those keys are ignored.
+
+These measures lower the risk; they do not make the prompt injection-proof. Keep
+OpsGate's human approval step in front of every run.
+
 ### Creating Custom Notifiers
 
 Implement the `Notifier` interface for custom notifications:
