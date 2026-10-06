@@ -49,6 +49,12 @@
                 </label>
                 <span class="theme-label dark-label">Dark</span>
             </div>
+            {% if nyxboard_require_login and user.is_authenticated %}
+            <form method="post" action="{% url 'nyxboard:logout' %}" class="logout-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-secondary">Log out</button>
+            </form>
+            {% endif %}
         </div>
     </header>
     

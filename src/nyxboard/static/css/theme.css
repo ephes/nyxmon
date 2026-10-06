@@ -142,6 +142,10 @@ header {
     text-decoration: underline;
 }
 
+.logout-form {
+    margin: 0 0 0 20px;
+}
+
 /* Theme Switch Styling - Redesigned for better appearance */
 .theme-switch {
     display: flex;

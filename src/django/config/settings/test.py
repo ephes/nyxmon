@@ -42,6 +42,9 @@ CACHES = {
 
 # TESTING
 # ------------------------------------------------------------------------------
+# Pin the default so an exported NYXBOARD_REQUIRE_LOGIN cannot change the
+# suite; login-mode tests opt in with override_settings.
+NYXBOARD_REQUIRE_LOGIN = False
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 
