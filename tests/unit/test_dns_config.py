@@ -116,6 +116,9 @@ class TestDnsCheckConfig:
         # Valid types should work
         for query_type in ["A", "AAAA", "MX", "TXT", "CNAME", "NS", "SOA", "PTR"]:
             config.query_type = query_type
+            config.expected_ips = (
+                ["2001:db8::1"] if query_type == "AAAA" else ["192.168.1.1"]
+            )
             assert config.validate()
 
         # Invalid type should fail validation

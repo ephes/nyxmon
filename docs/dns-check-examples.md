@@ -277,6 +277,22 @@ The following DNS record types are supported via the `query_type` field:
 - **SOA**: Start of authority
 - **PTR**: Pointer (reverse DNS)
 
+### Expected values and address families
+
+- `expected_ips` must be a JSON list of strings. A bare string such as
+  `"192.0.2.1"` is rejected as a `configuration_error`.
+- For `A` checks every expected value must be a literal IPv4 address, and for
+  `AAAA` checks a literal IPv6 address. An address of the other family can
+  never match the answer, so the dashboard form refuses it and the executor
+  reports a `configuration_error` for such a check created through the CLI or
+  JSON.
+- IP addresses are compared by value, not spelling: `2A01:04F8:0000::0001`
+  matches the answer `2a01:4f8::1`. The dashboard stores the canonical
+  (lower-case, compressed) form; checks saved earlier in another spelling keep
+  matching without any data migration.
+- For the other query types (`MX`, `TXT`, ...) expected values are compared as
+  exact strings, even when they look like IP addresses.
+
 ## Best Practices
 
 1. **Split-Horizon DNS**: Create separate checks for each network context (LAN, VPN, public)
@@ -302,5 +318,7 @@ The following DNS record types are supported via the `query_type` field:
 ### "Resolution mismatch"
 
 - Verify the expected IPs are correct
+- Make sure the expected IPs belong to the queried family (IPv4 for `A`,
+  IPv6 for `AAAA`)
 - Check if DNS records have changed
 - For split-horizon DNS, ensure you're querying the correct DNS server with the correct source IP

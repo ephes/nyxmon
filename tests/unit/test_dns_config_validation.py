@@ -15,7 +15,9 @@ class TestDnsConfigIpValidation:
 
     def test_valid_ipv6_source_ip_passes(self):
         """Valid IPv6 source IP should pass validation."""
-        config = DnsCheckConfig(expected_ips=["2001:db8::1"], source_ip="2001:db8::100")
+        config = DnsCheckConfig(
+            expected_ips=["2001:db8::1"], query_type="AAAA", source_ip="2001:db8::100"
+        )
         assert config.validate() is True
 
     def test_invalid_source_ip_raises_error(self):

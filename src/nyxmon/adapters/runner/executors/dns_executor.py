@@ -10,7 +10,11 @@ import dns.rcode
 import dns.resolver
 
 from ....domain import Check, Result, ResultStatus
-from ....domain.dns_config import DnsCheckConfig
+from ....domain.dns_config import (
+    IP_QUERY_TYPE_VERSIONS,
+    DnsCheckConfig,
+    normalize_dns_value,
+)
 
 
 @dataclass
@@ -103,7 +107,11 @@ class DnsCheckExecutor:
 
             query_time_ms = int((time.time() - start_time) * 1000)
 
-            if self._check_ip_match(resolved_ips, config.expected_ips):
+            if self._check_ip_match(
+                resolved_ips,
+                config.expected_ips,
+                compare_addresses=config.query_type in IP_QUERY_TYPE_VERSIONS,
+            ):
                 return self._create_success_result(
                     check.check_id,
                     resolved_ips,
@@ -150,18 +158,34 @@ class DnsCheckExecutor:
                 str(err),
             )
 
-    def _check_ip_match(self, resolved: List[str], expected: List[str]) -> bool:
+    def _check_ip_match(
+        self,
+        resolved: List[str],
+        expected: List[str],
+        *,
+        compare_addresses: bool = True,
+    ) -> bool:
         """Check if any resolved IP matches any expected IP.
+
+        IP addresses are compared by value, so an expectation stored in upper
+        case or uncompressed form (``2A01:04F8:0000::0001``) still matches the
+        canonical text dnspython returns (``2a01:4f8::1``). Values that are not
+        IP addresses, and every value of a non-address query (TXT, MX, ...),
+        are compared exactly.
 
         Args:
             resolved: List of resolved IPs
             expected: List of expected IPs
+            compare_addresses: Whether this is an A/AAAA query whose values
+                are compared as IP addresses
 
         Returns:
             True if there's at least one match
         """
-        resolved_set = set(resolved)
-        expected_set = set(expected)
+        if not compare_addresses:
+            return bool(set(resolved) & set(expected))
+        resolved_set = {normalize_dns_value(value) for value in resolved}
+        expected_set = {normalize_dns_value(value) for value in expected}
         return bool(resolved_set & expected_set)
 
     def _create_success_result(

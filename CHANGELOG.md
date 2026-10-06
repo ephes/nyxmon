@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- DNS checks compare expected and resolved IP addresses by value, so an `AAAA`
+  expectation entered in upper case or uncompressed form
+  (`2A01:04F8:0000::0001`) matches the answer `2a01:4f8::1` instead of
+  failing with `resolution_mismatch` forever. Existing checks are fixed at
+  comparison time and need no data migration; the dashboard now stores the
+  canonical form for new and edited checks. An expected address of the wrong
+  family (IPv4 on an `AAAA` check or IPv6 on an `A` check) is now a form error
+  and a `configuration_error`, and `expected_ips` must be a list of strings (a
+  bare string used to be split into characters).
 - Telegram alerts whose check name, URL or error text contained a backslash
   were rejected by Telegram (HTTP 400 "can't parse entities") and silently
   dropped. `escape_markdown_v2` now escapes `\` before the other reserved
