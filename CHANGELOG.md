@@ -135,6 +135,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and "Ping Check" entries in the dashboard's add-check menus, and the
   collector's processing-lease estimate accounts for the ping attempt budget.
   See "Ping Checks" in `docs/configuration.md`.
+- Opt-in `NYXBOARD_REQUIRE_LOGIN` setting (default off) that requires a
+  logged-in Django user for every NyxBoard view. Pages redirect to the new
+  `/accounts/login/` page; HTMX requests get `403` with `HX-Redirect` to the
+  login page; the theme endpoint gets a JSON `403`. A header logout button is
+  shown while the setting is on. The Traefik dual router stays the outer
+  access-control layer; see `docs/configuration.md`.
+- View tests for every NyxBoard view: POST-only mutations, CSRF enforcement,
+  404s for unknown objects, the HTMX card/list partial switch, service and
+  health-check create/update/delete, and the trigger and enable/disable side
+  effects.
 - Site connectivity detection. Nyxmon can observe its own internet connection
   through three independent paths (`dns`, `ipv4`, `ipv6`) and hold the alerts of
   checks that declared they depend on it, so a provider reconnect no longer

@@ -1,3 +1,4 @@
+from django.contrib.auth import views as auth_views
 from django.urls import path
 from . import views
 
@@ -55,6 +56,13 @@ urlpatterns = [
         views.healthcheck_toggle_disabled,
         name="healthcheck_toggle_disabled",
     ),
+    # Authentication (used when NYXBOARD_REQUIRE_LOGIN is enabled)
+    path(
+        "accounts/login/",
+        auth_views.LoginView.as_view(template_name="registration/login.html"),
+        name="login",
+    ),
+    path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
     # Theme setting endpoint
     path("set-theme/", views.set_theme, name="set_theme"),
 ]
