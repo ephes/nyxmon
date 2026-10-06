@@ -337,6 +337,14 @@ and `expected_location` to the exact absolute `Location` value. For example:
 }
 ```
 
+The check streams the response and closes it after reading the status line and
+headers; the body is never downloaded, so pointing a check at a large resource
+(an audio file, a feed) costs one request, not one full download per interval.
+Redirects are followed one hop at a time (at most the client's redirect limit,
+20 by default), and their bodies are not read either. Credentials are sent
+again on each hop only while every hop stays on the same origin (an http to
+https upgrade on the same host counts), matching httpx's own redirect handling.
+
 Additional response validation such as JSON assertions and response-body
 matching is planned.
 
@@ -432,6 +440,24 @@ Fetches a JSON endpoint (e.g., `/.well-known/health`) and evaluates threshold ru
 ```
 
 Supports operators `<`, `<=`, `>`, `>=`, `==`, `!=`; severities `warning`/`critical`; simple path resolver `$.field.subfield` or `$.items.0.value`. Failures return `error_type="threshold_failed"` with all failing rules.
+
+A rule whose `path` does not exist in the response always fails, whatever its
+operator; the failure records `"actual": null` and `"reason": "path_missing"`.
+A field that is present with the JSON value `null` is compared normally. An
+`actual` value whose JSON form is longer than 200 characters is stored cut
+down to 200 characters with `"actual_truncated": true`.
+
+`max_body_bytes` (default `1048576`, 1 MiB) caps how much of the response body
+is read. A larger body, or a `Content-Length` above the cap, fails with
+`error_type="body_too_large"` without being parsed. The cap counts decoded
+bytes: the check asks for `gzip` or `deflate` only and inflates them itself
+with a bounded output size, so a compressed response cannot expand past the cap
+in memory. `deflate` is accepted with or without the zlib wrapper; data after
+the end of the compressed stream (such as a second gzip member) fails with
+`error_type="json_error"`. Any other `Content-Encoding` fails with
+`error_type="unsupported_encoding"`. Error responses (status 400 and above) and
+the bodies of followed redirects are not read at all. The dashboard form has no field
+for the cap; a value set in the stored JSON is kept when the check is edited.
 
 ### Ping Checks
 

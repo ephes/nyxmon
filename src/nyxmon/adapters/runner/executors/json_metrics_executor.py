@@ -13,6 +13,15 @@ import httpx
 
 from ....domain import Check, Result, ResultStatus
 from ....domain.json_metrics_config import JsonMetricsCheckConfig
+from .http_stream import (
+    BodyTooLargeError,
+    UnsupportedEncodingError,
+    read_capped,
+    stream_get,
+)
+
+# Only encodings ``read_capped`` can inflate with a bounded output size.
+ACCEPT_ENCODING = "gzip, deflate"
 
 
 OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
@@ -23,6 +32,16 @@ OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
     "==": operator.eq,
     "!=": operator.ne,
 }
+
+
+# Longest JSON rendering of an ``actual`` value stored in a failure. With
+# ``path: "$"`` the value is the whole response document, which would
+# otherwise end up in ``check_result.data`` and on the detail page.
+MAX_ACTUAL_CHARS = 200
+
+# Returned by ``_resolve_path`` when the path does not exist, so a missing
+# field can be told apart from a field that is present with JSON ``null``.
+_MISSING: Any = object()
 
 
 class JsonMetricsError(Exception):
@@ -59,23 +78,23 @@ class JsonMetricsExecutor:
         for attempt in range(attempts):
             start = time.time()
             try:
-                response = await client.get(
-                    config.url,
-                    timeout=config.timeout,
-                    auth=self._build_auth(config),
-                )
-                if response.status_code >= 400:
+                status_code, raw_body = await self._fetch(client, config)
+                if status_code >= 400:
                     last_error = self._error(
-                        check.check_id, "http_error", f"HTTP {response.status_code}"
+                        check.check_id, "http_error", f"HTTP {status_code}"
                     )
                     if (
-                        self._is_retryable_status(response.status_code)
+                        self._is_retryable_status(status_code)
                         and attempt < config.retries
                     ):
                         await anyio.sleep(config.retry_delay)
                         continue
                     return last_error
-                body = response.json()
+                body = json.loads(raw_body)
+            except BodyTooLargeError as err:
+                return self._error(check.check_id, "body_too_large", str(err))
+            except UnsupportedEncodingError as err:
+                return self._error(check.check_id, "unsupported_encoding", str(err))
             except httpx.TimeoutException as err:
                 last_error = self._error(check.check_id, "timeout", str(err))
                 if attempt < config.retries:
@@ -122,6 +141,29 @@ class JsonMetricsExecutor:
             check.check_id, "unexpected_error", "metrics check failed"
         )
 
+    async def _fetch(
+        self, client: httpx.AsyncClient, config: JsonMetricsCheckConfig
+    ) -> tuple[int, bytes]:
+        """GET ``config.url`` and return the status and the capped body.
+
+        The body of an error response is not read, nor is the body of any
+        redirect followed on the way. A body larger than
+        ``config.max_body_bytes`` raises :class:`BodyTooLargeError` without
+        being buffered in full.
+        """
+        async with stream_get(
+            client,
+            config.url,
+            timeout=config.timeout,
+            follow_redirects=True,
+            auth=self._build_auth(config),
+            headers={"Accept-Encoding": ACCEPT_ENCODING},
+        ) as response:
+            status_code = response.status_code
+            if status_code >= 400:
+                return status_code, b""
+            return status_code, await read_capped(response, config.max_body_bytes)
+
     def _build_auth(self, config: JsonMetricsCheckConfig):
         if config.auth:
             return httpx.BasicAuth(config.auth["username"], config.auth["password"])
@@ -131,6 +173,21 @@ class JsonMetricsExecutor:
         failures: list[dict] = []
         for chk in config.checks:
             actual = self._resolve_path(payload, chk.path)
+            if actual is _MISSING:
+                # A field the endpoint stopped sending must not satisfy a
+                # rule: ``None != "error"`` would otherwise pass.
+                failures.append(
+                    {
+                        "path": chk.path,
+                        "op": chk.op,
+                        "expected": chk.value,
+                        "actual": None,
+                        "reason": "path_missing",
+                        "severity": chk.severity,
+                    }
+                )
+                continue
+
             comparator = OPERATORS[chk.op]
             ok = False
             try:
@@ -139,19 +196,33 @@ class JsonMetricsExecutor:
                 ok = False
 
             if not ok:
-                failures.append(
-                    {
-                        "path": chk.path,
-                        "op": chk.op,
-                        "expected": chk.value,
-                        "actual": actual,
-                        "severity": chk.severity,
-                    }
-                )
+                failure = {
+                    "path": chk.path,
+                    "op": chk.op,
+                    "expected": chk.value,
+                    "actual": actual,
+                    "severity": chk.severity,
+                }
+                failure.update(self._bounded_actual(actual))
+                failures.append(failure)
         return failures
 
+    @staticmethod
+    def _bounded_actual(actual: Any) -> dict[str, Any]:
+        """Return ``actual`` for a failure, cut down if its JSON form is long."""
+        rendered = json.dumps(actual, default=str, ensure_ascii=False)
+        if len(rendered) <= MAX_ACTUAL_CHARS:
+            return {"actual": actual}
+        return {
+            "actual": rendered[:MAX_ACTUAL_CHARS] + "…",
+            "actual_truncated": True,
+        }
+
     def _resolve_path(self, payload: Any, path: str) -> Any:
-        """Minimal path resolver for dotted paths like $.a.b.c."""
+        """Minimal path resolver for dotted paths like $.a.b.c.
+
+        Returns ``_MISSING`` when the path does not exist in ``payload``.
+        """
         if path == "$":
             return payload
 
@@ -163,9 +234,11 @@ class JsonMetricsExecutor:
                 current = current[part]
             elif isinstance(current, list) and part.isdigit():
                 idx = int(part)
-                current = current[idx] if 0 <= idx < len(current) else None
+                if not 0 <= idx < len(current):
+                    return _MISSING
+                current = current[idx]
             else:
-                return None
+                return _MISSING
         return current
 
     async def aclose(self) -> None:

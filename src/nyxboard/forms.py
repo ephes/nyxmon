@@ -1179,6 +1179,11 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
                 ):
                     data["auth"]["password"] = existing_auth["password"]
 
+        # The form has no field for the body cap; keep a value set in the
+        # stored JSON instead of silently resetting it to the default.
+        if "max_body_bytes" in existing_data:
+            data["max_body_bytes"] = existing_data["max_body_bytes"]
+
         instance.data = data
 
         if commit:

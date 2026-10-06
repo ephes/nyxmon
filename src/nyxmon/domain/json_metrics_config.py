@@ -8,6 +8,10 @@ from typing import Any, Dict, List, Optional
 
 ALLOWED_OPERATORS = {"<", "<=", ">", ">=", "==", "!="}
 ALLOWED_SEVERITIES = {"warning", "critical"}
+# Largest response body the executor reads before failing with
+# ``body_too_large``. Metrics documents are small; this bounds memory use when
+# a check points at the wrong URL.
+DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 
 
 @dataclass
@@ -27,6 +31,7 @@ class JsonMetricsCheckConfig:
     auth: Optional[Dict[str, str]] = None
     retries: int = 1
     retry_delay: float = 2.0
+    max_body_bytes: int = DEFAULT_MAX_BODY_BYTES
 
     @classmethod
     def from_dict(cls, data: dict) -> "JsonMetricsCheckConfig":
@@ -61,6 +66,12 @@ class JsonMetricsCheckConfig:
             if "username" not in auth or "password" not in auth:
                 raise ValueError("auth must include username and password")
 
+        max_body_bytes = data.get("max_body_bytes", DEFAULT_MAX_BODY_BYTES)
+        if max_body_bytes is None:
+            max_body_bytes = DEFAULT_MAX_BODY_BYTES
+        if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int):
+            raise ValueError("max_body_bytes must be a whole number of bytes")
+
         return cls(
             url=url,
             timeout=data.get("timeout", 10.0),
@@ -68,6 +79,7 @@ class JsonMetricsCheckConfig:
             checks=checks,
             retries=int(data.get("retries", 1)),
             retry_delay=float(data.get("retry_delay", 2.0)),
+            max_body_bytes=max_body_bytes,
         )
 
     def to_dict(self) -> dict:
@@ -77,6 +89,7 @@ class JsonMetricsCheckConfig:
             "auth": self.auth,
             "retries": self.retries,
             "retry_delay": self.retry_delay,
+            "max_body_bytes": self.max_body_bytes,
             "checks": [
                 {"path": c.path, "op": c.op, "value": c.value, "severity": c.severity}
                 for c in self.checks
@@ -90,6 +103,8 @@ class JsonMetricsCheckConfig:
             raise ValueError("retries must be zero or positive")
         if self.retry_delay < 0:
             raise ValueError("retry_delay must be zero or positive")
+        if self.max_body_bytes <= 0:
+            raise ValueError("max_body_bytes must be positive")
 
         for check in self.checks:
             if check.path == "":

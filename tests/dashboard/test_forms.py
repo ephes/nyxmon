@@ -1,5 +1,6 @@
 """Tests for Django forms."""
 
+import json
 import pytest
 
 from nyxboard.forms import (
@@ -1326,6 +1327,40 @@ class TestJsonMetricsHealthCheckForm:
         assert instance.data["checks"][0]["path"] == "$.mail.queue_total"
         assert instance.data["auth"]["username"] == "nyxmon"
         assert instance.data["auth"]["password"] == "secret"
+
+    def test_edit_keeps_a_stored_max_body_bytes(self, service):
+        check = HealthCheck.objects.create(
+            name="Metrics",
+            service=service,
+            check_type=CheckType.JSON_METRICS,
+            url="http://localhost:9100/.well-known/health",
+            data={
+                "url": "http://localhost:9100/.well-known/health",
+                "checks": [
+                    {"path": "$.ok", "op": "==", "value": True, "severity": "warning"}
+                ],
+                "max_body_bytes": 4096,
+            },
+        )
+        form = JsonMetricsHealthCheckForm(
+            instance=check,
+            data={
+                "name": "Metrics",
+                "service": service.id,
+                "check_type": CheckType.JSON_METRICS,
+                "check_interval": 300,
+                "disabled": False,
+                "url": "http://localhost:9100/.well-known/health",
+                "auth_username": "",
+                "auth_password": "",
+                "timeout": 10.0,
+                "retries": 1,
+                "retry_delay": 2.0,
+                "checks_json": json.dumps(check.data["checks"]),
+            },
+        )
+        assert form.is_valid(), form.errors
+        assert form.save().data["max_body_bytes"] == 4096
 
 
 class TestMailTlsVerifyField:
