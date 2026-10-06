@@ -85,6 +85,15 @@
       {% endif %}
     </div>
 
+    <div class="form-field">
+      <label for="{{ form.starttls_protocol.id_for_label }}">{{ form.starttls_protocol.label }}</label>
+      {{ form.starttls_protocol }}
+      {% if form.starttls_protocol.help_text %}<div class="help-text">{{ form.starttls_protocol.help_text }}</div>{% endif %}
+      {% if form.starttls_protocol.errors %}
+        <div class="field-errors">{% for error in form.starttls_protocol.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
     <h3 class="section-title">TLS Options <small class="help-text">(optional)</small></h3>
 
     <div class="form-field checkbox-field">

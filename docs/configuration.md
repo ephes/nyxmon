@@ -356,11 +356,47 @@ The TCP executor validates that a port is reachable and, optionally, that TLS ne
     "check_cert_expiry": true,        # optional certificate age check
     "min_cert_days": 14,              # warning if below this threshold
     "verify": true,                   # set false to skip certificate validation (e.g., self-signed tests)
-    "starttls_command": "STARTTLS\r\n"  # override if a different upgrade command is required
+    "starttls_protocol": "smtp",      # "smtp", "imap", "sieve" or "generic" (default)
+    "starttls_command": "STARTTLS\r\n", # generic only: override the upgrade command
+    "starttls_read_greeting": false   # generic only: read one greeting line first
 }
 ```
 
 If certificate expiry falls below `min_cert_days`, the executor returns an error result with `error_type="cert_expiry"` and `severity="warning"` in the payload.
+
+#### STARTTLS protocols
+
+Mail servers speak first and expect a short dialogue before they accept
+STARTTLS. `starttls_protocol` selects that dialogue; every step shares the
+`tls_handshake_timeout` budget:
+
+| `starttls_protocol` | Typical ports | Dialogue before the TLS handshake |
+|---------------------|---------------|-----------------------------------|
+| `smtp`    | 25, 587 | read the (multi-line) `220` greeting, send `EHLO nyxmon.invalid`, expect `250`, send `STARTTLS`, expect `220` |
+| `imap`    | 143     | read the `* OK` greeting, send `a1 STARTTLS`, expect `a1 OK` (untagged lines are skipped) |
+| `sieve`   | 4190    | read capability lines until `OK`, send `STARTTLS`, expect `OK` |
+| `generic` | custom  | optionally read one greeting line (`starttls_read_greeting`), send `starttls_command`, read one chunk and accept it if it starts with `2` or contains `ok` |
+
+`generic` is the default, so checks created before this option keep their
+behaviour. It cannot pass against SMTP, IMAP or ManageSieve servers: they send
+a greeting first, which the generic probe would take as the STARTTLS reply.
+The dashboard form offers "Auto-detect from port", which stores `smtp` for
+ports 25/587, `imap` for 143, `sieve` for 4190 and `generic` otherwise, and
+warns when a mail port uses `generic`. The form does not show the
+generic-only options; editing a check keeps the stored `starttls_command` and
+`starttls_read_greeting`. Existing generic checks on mail ports
+need the protocol set once (edit the check and pick the protocol).
+
+A negative or unexpected reply returns `error_type="starttls_rejected"` with
+`starttls_stage` (`greeting`, `ehlo` or `starttls`) and the server's reply in
+`starttls_response` (cut to 500 characters). A line over 4096 bytes, more than
+64 KiB of dialogue, or (for `smtp`, `imap` and `sieve`) any data the server
+sends after its STARTTLS reply and before the handshake returns
+`starttls_protocol_error`. `generic` keeps its single read of the reply for
+compatibility, so it cannot detect such pipelined data. A connection closed
+mid-dialogue returns `starttls_connection_closed` and is retried. Successful
+STARTTLS results include `starttls_protocol`, and with `check_cert_expiry`
+the certificate expiry is checked after the upgrade just as for implicit TLS.
 
 ### SMTP Checks
 

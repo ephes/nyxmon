@@ -32,6 +32,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- TCP checks with `tls_mode="starttls"` can now monitor SMTP, IMAP and
+  ManageSieve servers. The probe used to send `STARTTLS` before reading the
+  server greeting, took the greeting (`220 ...`, `* OK ...`) as the reply and
+  then failed the TLS handshake with `tls_error`, so certificate expiry on
+  ports 25, 587, 143 and 4190 could not be monitored. The new per-check
+  `starttls_protocol` option (`smtp`, `imap`, `sieve` or `generic`) runs the
+  protocol's dialogue (SMTP `EHLO` first, IMAP tagged `a1 STARTTLS`, Sieve
+  capability lines) with a size-capped line reader, and no longer treats an
+  `ok` substring as success for these protocols. `generic` stays the default,
+  so existing checks behave as before; it can now read one greeting line first
+  (`starttls_read_greeting`). The TCP form gains a "STARTTLS Protocol" select
+  that infers the protocol from the port (25/587 SMTP, 143 IMAP, 4190 Sieve)
+  and warns when a mail port uses `generic`. New error types:
+  `starttls_protocol_error` (oversized dialogue, or, for the mail protocols,
+  data sent after the STARTTLS reply) and `starttls_connection_closed` (retried); rejections report
+  `starttls_stage`. **Upgrade note:** existing STARTTLS checks on mail ports
+  stay `generic` and keep failing until the protocol is set on the check.
 - DNS checks compare expected and resolved IP addresses by value, so an `AAAA`
   expectation entered in upper case or uncompressed form
   (`2A01:04F8:0000::0001`) matches the answer `2a01:4f8::1` instead of

@@ -5,6 +5,7 @@ from typing import Optional
 
 
 ALLOWED_TLS_MODES = {"none", "implicit", "starttls"}
+ALLOWED_STARTTLS_PROTOCOLS = {"generic", "smtp", "imap", "sieve"}
 
 
 @dataclass
@@ -24,6 +25,8 @@ class TcpCheckConfig:
     min_cert_days: int = 14
     sni: Optional[str] = None
     starttls_command: str = "STARTTLS\r\n"
+    starttls_protocol: str = "generic"
+    starttls_read_greeting: bool = False
     verify: bool = True
 
     @classmethod
@@ -44,6 +47,8 @@ class TcpCheckConfig:
             min_cert_days=int(data.get("min_cert_days", 14)),
             sni=data.get("sni"),
             starttls_command=data.get("starttls_command", "STARTTLS\r\n"),
+            starttls_protocol=data.get("starttls_protocol") or "generic",
+            starttls_read_greeting=bool(data.get("starttls_read_greeting", False)),
             verify=bool(data.get("verify", True)),
         )
 
@@ -59,6 +64,8 @@ class TcpCheckConfig:
             "check_cert_expiry": self.check_cert_expiry,
             "min_cert_days": self.min_cert_days,
             "starttls_command": self.starttls_command,
+            "starttls_protocol": self.starttls_protocol,
+            "starttls_read_greeting": self.starttls_read_greeting,
             "verify": self.verify,
         }
 
@@ -93,7 +100,19 @@ class TcpCheckConfig:
         if self.min_cert_days < 0:
             raise ValueError("min_cert_days must be zero or positive")
 
-        if self.tls_mode == "starttls" and not self.starttls_command:
+        if (
+            not isinstance(self.starttls_protocol, str)
+            or self.starttls_protocol not in ALLOWED_STARTTLS_PROTOCOLS
+        ):
+            raise ValueError(
+                f"starttls_protocol must be one of {sorted(ALLOWED_STARTTLS_PROTOCOLS)}"
+            )
+
+        if (
+            self.tls_mode == "starttls"
+            and self.starttls_protocol == "generic"
+            and not self.starttls_command
+        ):
             raise ValueError("starttls_command is required for starttls mode")
 
         return True
