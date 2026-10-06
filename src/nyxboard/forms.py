@@ -233,6 +233,34 @@ class HttpHealthCheckForm(HealthCheckForm):
         return instance
 
 
+def _parse_verify_choice(value: Any) -> bool:
+    return value != "false"
+
+
+def _mail_tls_verify_field() -> forms.TypedChoiceField:
+    """TLS verification selector for IMAP/SMTP checks.
+
+    A select (rather than a checkbox) so that a submission that omits the
+    field keeps verification on instead of silently turning it off.
+    """
+    return forms.TypedChoiceField(
+        choices=[
+            ("true", "Verify certificate and hostname (recommended)"),
+            ("false", "Do not verify (self-signed certificates only)"),
+        ],
+        coerce=_parse_verify_choice,
+        empty_value=None,  # missing -> None -> saved as verify=True
+        initial="true",
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="TLS Certificate Verification",
+        help_text=(
+            "Applies to implicit TLS and STARTTLS. Without verification the "
+            "login password is exposed to man-in-the-middle attacks."
+        ),
+    )
+
+
 class SmtpHealthCheckForm(HealthCheckForm):
     """Form for SMTP health checks.
 
@@ -270,6 +298,8 @@ class SmtpHealthCheckForm(HealthCheckForm):
         label="TLS Mode",
         help_text="TLS encryption mode for the connection",
     )
+
+    verify = _mail_tls_verify_field()
 
     username = forms.CharField(
         max_length=255,
@@ -364,6 +394,9 @@ class SmtpHealthCheckForm(HealthCheckForm):
             self.fields["host"].initial = smtp_config.get("host", "")
             self.fields["port"].initial = smtp_config.get("port", 587)
             self.fields["tls_mode"].initial = smtp_config.get("tls", "starttls")
+            self.fields["verify"].initial = (
+                "false" if smtp_config.get("verify", True) is False else "true"
+            )
             self.fields["username"].initial = smtp_config.get("username", "")
             # Don't populate password - security best practice
             self.fields["from_addr"].initial = smtp_config.get("from_addr", "")
@@ -417,6 +450,7 @@ class SmtpHealthCheckForm(HealthCheckForm):
             "host": host,
             "port": port,
             "tls": self.cleaned_data["tls_mode"],
+            "verify": self.cleaned_data.get("verify") is not False,
             "from_addr": self.cleaned_data["from_addr"],
             "to_addr": self.cleaned_data["to_addr"],
             "subject_prefix": self.cleaned_data["subject_prefix"],
@@ -479,6 +513,8 @@ class ImapHealthCheckForm(HealthCheckForm):
         label="TLS Mode",
         help_text="TLS encryption mode for the connection",
     )
+
+    verify = _mail_tls_verify_field()
 
     username = forms.CharField(
         max_length=255,
@@ -596,6 +632,9 @@ class ImapHealthCheckForm(HealthCheckForm):
                 self.fields["host"].initial = imap_config.get("host", "")
             self.fields["port"].initial = imap_config.get("port", 993)
             self.fields["tls_mode"].initial = imap_config.get("tls_mode", "implicit")
+            self.fields["verify"].initial = (
+                "false" if imap_config.get("verify", True) is False else "true"
+            )
             self.fields["username"].initial = imap_config.get("username", "")
             # Don't populate password - security best practice
             self.fields["folder"].initial = imap_config.get("folder", "INBOX")
@@ -651,6 +690,7 @@ class ImapHealthCheckForm(HealthCheckForm):
             "host": host,
             "port": port,
             "tls_mode": self.cleaned_data["tls_mode"],
+            "verify": self.cleaned_data.get("verify") is not False,
             "username": self.cleaned_data["username"],
             "folder": self.cleaned_data["folder"],
             "search_subject": self.cleaned_data["search_subject"],

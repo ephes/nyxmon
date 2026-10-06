@@ -372,6 +372,7 @@ Sends an authenticated message (typically for outbound flow checks):
     "url": "smtp.home.wersdoerfer.de",   # host
     "port": 587,
     "tls": "starttls",                   # "none", "starttls", "implicit"
+    "verify": true,                      # default; false skips certificate/hostname checks
     "username": "monitor@xn--wersdrfer-47a.de",
     "password_secret": "nyxmon_local_monitor_password",  # or password
     "from_addr": "monitor@xn--wersdrfer-47a.de",
@@ -383,7 +384,7 @@ Sends an authenticated message (typically for outbound flow checks):
 }
 ```
 
-Returns `error_type` on auth failures, 4xx/5xx responses, or timeouts; includes attempts count for retry visibility.
+Returns `error_type` on auth failures, 4xx/5xx responses, TLS certificate failures (`tls_error`), or timeouts; includes attempts count for retry visibility. Implicit TLS and STARTTLS always verify the certificate and hostname unless `verify` is set to `false`.
 
 ### IMAP Checks
 
@@ -395,6 +396,7 @@ Searches a mailbox for recent messages by subject and optionally deletes them:
     "url": "imap.gmail.com",             # host
     "port": 993,
     "tls_mode": "implicit",             # "implicit", "starttls", "none"
+    "verify": true,                      # default; false skips certificate/hostname checks
     "username": "wersdoerfer.mailmon@gmail.com",
     "password_secret": "nyxmon_gmail_app_password",  # or password
     "folder": "INBOX",
@@ -408,7 +410,7 @@ Searches a mailbox for recent messages by subject and optionally deletes them:
 }
 ```
 
-On success returns `matched_uids` and `latest_internaldate`; empty searches are retried according to `retries`/`retry_delay` before returning `no_recent_message`, and other failures include `error_type` values such as `timeout` or `execution_error`. `no_recent_message_severity` defaults to `critical`; set it to `warning` for third-party forwarded loopback checks that should not page on forwarding gaps.
+On success returns `matched_uids` and `latest_internaldate`; empty searches are retried according to `retries`/`retry_delay` before returning `no_recent_message`, and other failures include `error_type` values such as `tls_error`, `timeout` or `execution_error`. Implicit TLS and STARTTLS always verify the certificate and hostname unless `verify` is set to `false`. `no_recent_message_severity` defaults to `critical`; set it to `warning` for third-party forwarded loopback checks that should not page on forwarding gaps.
 
 ### JSON Metrics Checks
 

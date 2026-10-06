@@ -24,6 +24,7 @@ class ImapCheckConfig:
     retries: int = 2
     retry_delay: float = 10.0
     no_recent_message_severity: str = "critical"
+    verify: bool = True  # verify TLS certificate and hostname
 
     @classmethod
     def from_dict(cls, data: dict) -> "ImapCheckConfig":
@@ -52,6 +53,12 @@ class ImapCheckConfig:
                 f"{ALLOWED_NO_RECENT_MESSAGE_SEVERITIES}"
             )
 
+        verify = data.get("verify", True)
+        if verify is None:
+            verify = True
+        if not isinstance(verify, bool):
+            raise ValueError("verify must be a boolean")
+
         return cls(
             host=host,
             username=username,
@@ -67,6 +74,7 @@ class ImapCheckConfig:
             retries=data.get("retries", 2),
             retry_delay=float(data.get("retry_delay", 10.0)),
             no_recent_message_severity=no_recent_message_severity,
+            verify=verify,
         )
 
     def to_dict(self) -> dict:
@@ -86,6 +94,7 @@ class ImapCheckConfig:
             "retry_delay": self.retry_delay,
             "password_secret": self.password_secret,
             "no_recent_message_severity": self.no_recent_message_severity,
+            "verify": self.verify,
         }
 
     def validate(self) -> bool:

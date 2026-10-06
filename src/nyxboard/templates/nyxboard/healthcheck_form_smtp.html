@@ -113,6 +113,21 @@
       {% endif %}
     </div>
 
+    <div class="form-field">
+      <label for="{{ form.verify.id_for_label }}">{{ form.verify.label }}</label>
+      {{ form.verify }}
+      {% if form.verify.help_text %}
+        <div class="help-text">{{ form.verify.help_text }}</div>
+      {% endif %}
+      {% if form.verify.errors %}
+        <div class="field-errors">
+          {% for error in form.verify.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
     <h3 class="section-title">Authentication <small class="help-text">(optional)</small></h3>
 
     <div class="form-field">

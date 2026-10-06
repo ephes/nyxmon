@@ -14,6 +14,7 @@ import anyio
 
 from ....domain import Check, Result, ResultStatus
 from ....domain.smtp_config import SmtpCheckConfig
+from .tls import build_client_ssl_context
 
 
 @dataclass
@@ -72,9 +73,6 @@ def _is_temporary(code: int | None) -> bool:
 class SmtplibClient:
     """SMTP client backed by Python's smtplib (run in a worker thread)."""
 
-    def __init__(self) -> None:
-        self._ssl_context = ssl.create_default_context()
-
     async def send_mail(
         self, config: SmtpCheckConfig, message: EmailMessage
     ) -> SmtpSendResponse:
@@ -83,18 +81,33 @@ class SmtplibClient:
     def _send_blocking(
         self, config: SmtpCheckConfig, message: EmailMessage
     ) -> SmtpSendResponse:
-        smtp_cls = smtplib.SMTP_SSL if config.tls == "implicit" else smtplib.SMTP
+        # Always pass an explicit context: smtplib's default context does not
+        # verify the certificate or hostname.
+        ssl_context = (
+            build_client_ssl_context(config.verify, check_type="SMTP", host=config.host)
+            if config.tls != "none"
+            else None
+        )
 
         try:
-            with smtp_cls(
-                config.host,
-                config.port,
-                timeout=config.timeout,
-            ) as client:
+            client_cm: smtplib.SMTP
+            if config.tls == "implicit":
+                client_cm = smtplib.SMTP_SSL(
+                    config.host,
+                    config.port,
+                    timeout=config.timeout,
+                    context=ssl_context,
+                )
+            else:
+                client_cm = smtplib.SMTP(
+                    config.host, config.port, timeout=config.timeout
+                )
+
+            with client_cm as client:
                 client.ehlo()
 
                 if config.tls == "starttls":
-                    client.starttls(context=self._ssl_context)
+                    client.starttls(context=ssl_context)
                     client.ehlo()
 
                 if config.username:
@@ -152,6 +165,8 @@ class SmtplibClient:
             ) from exc
         except smtplib.SMTPException as exc:
             raise SmtpSendError(str(exc), error_type="smtp_error") from exc
+        except ssl.SSLError as exc:
+            raise SmtpSendError(str(exc), error_type="tls_error") from exc
         except OSError as exc:
             raise SmtpSendError(str(exc), error_type="connection_error") from exc
 

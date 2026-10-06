@@ -1326,3 +1326,103 @@ class TestJsonMetricsHealthCheckForm:
         assert instance.data["checks"][0]["path"] == "$.mail.queue_total"
         assert instance.data["auth"]["username"] == "nyxmon"
         assert instance.data["auth"]["password"] == "secret"
+
+
+class TestMailTlsVerifyField:
+    """TLS verification option on the SMTP and IMAP forms."""
+
+    def _smtp_data(self, service, **overrides):
+        data = {
+            "name": "SMTP TLS",
+            "service": service.id,
+            "check_type": CheckType.SMTP,
+            "check_interval": 300,
+            "host": "mail.example.com",
+            "port": 465,
+            "tls_mode": "implicit",
+            "from_addr": "monitor@example.com",
+            "to_addr": "test@example.com",
+            "subject_prefix": "[nyxmon]",
+            "timeout": 30.0,
+            "retries": 2,
+            "retry_delay": 5.0,
+        }
+        data.update(overrides)
+        return data
+
+    def _imap_data(self, service, **overrides):
+        data = {
+            "name": "IMAP TLS",
+            "service": service.id,
+            "check_type": CheckType.IMAP,
+            "check_interval": 300,
+            "host": "mail.example.com",
+            "port": 993,
+            "tls_mode": "implicit",
+            "username": "user@example.com",
+            "password": "secret123",
+            "folder": "INBOX",
+            "search_subject": "[nyxmon]",
+            "max_age_minutes": 30,
+            "delete_after_check": True,
+            "timeout": 30.0,
+            "retries": 2,
+            "retry_delay": 10.0,
+        }
+        data.update(overrides)
+        return data
+
+    @pytest.mark.parametrize(
+        "form_class,data_builder",
+        [
+            (SmtpHealthCheckForm, "_smtp_data"),
+            (ImapHealthCheckForm, "_imap_data"),
+        ],
+    )
+    def test_missing_verify_keeps_verification_on(
+        self, service, form_class, data_builder
+    ):
+        form = form_class(data=getattr(self, data_builder)(service))
+        assert form.is_valid(), form.errors
+        assert form.save().data["verify"] is True
+
+    @pytest.mark.parametrize(
+        "form_class,data_builder",
+        [
+            (SmtpHealthCheckForm, "_smtp_data"),
+            (ImapHealthCheckForm, "_imap_data"),
+        ],
+    )
+    def test_verify_false_is_saved_and_shown_on_edit(
+        self, service, form_class, data_builder
+    ):
+        form = form_class(data=getattr(self, data_builder)(service, verify="false"))
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.data["verify"] is False
+
+        edit_form = form_class(instance=instance)
+        assert edit_form.fields["verify"].initial == "false"
+
+        form = form_class(
+            data=getattr(self, data_builder)(service, verify="true"),
+            instance=instance,
+        )
+        assert form.is_valid(), form.errors
+        assert form.save().data["verify"] is True
+
+    def test_invalid_verify_value_is_rejected(self, service):
+        form = SmtpHealthCheckForm(data=self._smtp_data(service, verify="maybe"))
+        assert not form.is_valid()
+        assert "verify" in form.errors
+
+    def test_existing_check_without_verify_defaults_to_verify(self, service):
+        health_check = HealthCheck.objects.create(
+            service=service,
+            name="Legacy IMAP",
+            check_type=CheckType.IMAP,
+            url="mail.example.com",
+            data={"host": "mail.example.com", "password": "x"},
+        )
+        form = ImapHealthCheckForm(instance=health_check)
+        assert form.fields["verify"].initial == "true"

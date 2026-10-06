@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import imaplib
+import ssl
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -13,6 +14,7 @@ import anyio
 
 from ....domain import Check, Result, ResultStatus, ResultStatusType
 from ....domain.imap_config import ImapCheckConfig
+from .tls import build_client_ssl_context
 from urllib.parse import urlparse
 
 
@@ -52,6 +54,13 @@ class ImapSession(Protocol):
     async def delete_messages(self, ids: list[str]) -> None: ...
 
 
+def _close_quietly(conn: imaplib.IMAP4) -> None:
+    try:
+        conn.shutdown()
+    except Exception:
+        pass
+
+
 class ImapLibSession:
     """Concrete IMAP session backed by imaplib, run in worker threads."""
 
@@ -69,17 +78,27 @@ class ImapLibSession:
 
     async def _connect(self) -> None:
         def _make_connection():
+            # Always pass an explicit context: imaplib's default context does
+            # not verify the certificate or hostname.
             if self.config.tls_mode == "implicit":
                 return imaplib.IMAP4_SSL(
-                    self.host, self.config.port, timeout=self.config.timeout
+                    self.host,
+                    self.config.port,
+                    ssl_context=self._ssl_context(),
+                    timeout=self.config.timeout,
                 )
 
             conn = imaplib.IMAP4(
                 self.host, self.config.port, timeout=self.config.timeout
             )
             if self.config.tls_mode == "starttls":
-                typ, _ = conn.starttls()
+                try:
+                    typ, _ = conn.starttls(ssl_context=self._ssl_context())
+                except BaseException:
+                    _close_quietly(conn)
+                    raise
                 if typ != "OK":
+                    _close_quietly(conn)
                     raise ImapTransientError("STARTTLS failed")
             return conn
 
@@ -87,6 +106,11 @@ class ImapLibSession:
 
         await self._run_checked("login", self.config.username, self.config.password)
         await self._run_checked("select", self.config.folder)
+
+    def _ssl_context(self) -> ssl.SSLContext:
+        return build_client_ssl_context(
+            self.config.verify, check_type="IMAP", host=self.host
+        )
 
     async def _logout(self) -> None:
         if not self._conn:
@@ -233,6 +257,10 @@ class ImapCheckExecutor:
             except ImapCheckError as err:
                 return self._error_result(
                     check.check_id, "execution_error", str(err), attempt + 1
+                )
+            except ssl.SSLError as err:
+                return self._error_result(
+                    check.check_id, "tls_error", str(err), attempt + 1
                 )
             except Exception as err:  # noqa: BLE001
                 return self._error_result(

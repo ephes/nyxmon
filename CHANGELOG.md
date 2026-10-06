@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- IMAP checks (implicit TLS and STARTTLS) and SMTP checks with implicit TLS
+  now verify the server certificate and hostname before sending the mailbox
+  password. They previously used Python's default unverified context, so a
+  man-in-the-middle could capture the credentials; only SMTP STARTTLS was
+  verified. **Upgrade note:** IMAP and implicit-TLS SMTP checks against
+  servers with self-signed, expired or mismatched certificates now fail with
+  `error_type="tls_error"`. Fix the certificate, or set the new per-check
+  `verify` option to `false` (the "TLS Certificate Verification" select in the
+  IMAP and SMTP forms). That opt-out also applies to SMTP STARTTLS, and every
+  unverified connection logs a warning. `verify` defaults to `true` and must
+  be a boolean.
 - OpsGate remediation prompts no longer embed monitored-endpoint result data
   verbatim. Only Nyxmon's own check facts are stated as trusted context; result
   data is sanitized (control and Unicode format characters replaced, each string
