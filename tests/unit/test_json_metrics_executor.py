@@ -1,5 +1,6 @@
 """Unit tests for the JSON metrics executor."""
 
+import gzip
 import json
 from contextlib import asynccontextmanager
 
@@ -70,7 +71,7 @@ class StubResponse:
         if self.status_code >= 400:
             raise JsonMetricsError(f"HTTP {self.status_code}")
 
-    async def aiter_raw(self):
+    async def aiter_bytes(self):
         if isinstance(self._json_body, bytes):
             yield self._json_body
         elif isinstance(self._json_body, AssertionError):
@@ -419,3 +420,25 @@ def test_error_response_body_is_not_read() -> None:
     result = anyio.run(executor.execute, _rule_check("$.ok", "==", True))
 
     assert result.data["error_type"] == "http_error"
+
+
+def test_cap_applies_to_decompressed_bytes() -> None:
+    """A small gzip body that inflates past the cap is refused."""
+    body = gzip.compress(json.dumps({"ok": True, "pad": "x" * 10000}).encode())
+    assert len(body) < 1000
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, headers={"content-encoding": "gzip"}, content=_streamed(body)
+        )
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as c:
+            executor = JsonMetricsExecutor(client=c)
+            return await executor.execute(
+                _rule_check("$.ok", "==", True, max_body_bytes=1000)
+            )
+
+    result = anyio.run(run)
+
+    assert result.data["error_type"] == "body_too_large"

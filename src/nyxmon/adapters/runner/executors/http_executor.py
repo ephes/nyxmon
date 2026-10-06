@@ -9,7 +9,6 @@ import httpx
 
 from ....domain import Check, Result, ResultStatus
 from ....domain.http_config import HttpCheckConfig
-from .http_stream import stream_get
 
 
 class HttpCheckExecutor:
@@ -227,12 +226,11 @@ class HttpCheckExecutor:
 
         The check only looks at the status line and headers. Streaming and
         closing the response keeps a check on a large resource (an audio file,
-        a feed) from downloading it on every run; redirects are followed hop
-        by hop without reading their bodies either. Status and headers stay
+        a feed) from downloading it on every run. Status and headers stay
         readable after the stream is closed.
         """
-        async with stream_get(
-            client,
+        async with client.stream(
+            "GET",
             url,
             timeout=config.timeout,
             follow_redirects=config.follow_redirects,

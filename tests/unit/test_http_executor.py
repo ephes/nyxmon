@@ -77,8 +77,7 @@ async def test_success_with_no_config_remains_ok() -> None:
     assert result.data == {}
     assert client.calls == 1
     assert client.timeouts == [10.0]
-    # httpx never follows redirects itself; stream_get does, hop by hop.
-    assert client.follow_redirects == [False]
+    assert client.follow_redirects == [True]
 
 
 @pytest.mark.anyio

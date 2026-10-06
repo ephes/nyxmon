@@ -43,13 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the whole response document in the result.
 - JSON-metrics checks read at most `max_body_bytes` of the response (new
   option, default 1 MiB) and fail with `error_type="body_too_large"` above it.
-  The cap applies to the decoded body: the check requests only `gzip` or
-  `deflate` and inflates them with a bounded output size, and any other
-  `Content-Encoding` fails with `error_type="unsupported_encoding"`. Error
-  responses are not read. HTTP and JSON-HTTP checks no longer download the
-  response body at all; they close the stream after the status line and
-  headers. Both follow redirects hop by hop without reading redirect bodies,
-  which httpx would otherwise buffer in full.
+  The cap counts decompressed bytes. Error responses are not read. HTTP and
+  JSON-HTTP checks no longer download the response body at all; they close
+  the stream after the status line and headers.
 - DNS checks compare expected and resolved IP addresses by value, so an `AAAA`
   expectation entered in upper case or uncompressed form
   (`2A01:04F8:0000::0001`) matches the answer `2a01:4f8::1` instead of

@@ -340,10 +340,8 @@ and `expected_location` to the exact absolute `Location` value. For example:
 The check streams the response and closes it after reading the status line and
 headers; the body is never downloaded, so pointing a check at a large resource
 (an audio file, a feed) costs one request, not one full download per interval.
-Redirects are followed one hop at a time (at most the client's redirect limit,
-20 by default), and their bodies are not read either. Credentials are sent
-again on each hop only while every hop stays on the same origin (an http to
-https upgrade on the same host counts), matching httpx's own redirect handling.
+Redirects are still followed by httpx, which reads the (usually tiny) bodies
+of redirect responses.
 
 Additional response validation such as JSON assertions and response-body
 matching is planned.
@@ -450,13 +448,9 @@ down to 200 characters with `"actual_truncated": true`.
 `max_body_bytes` (default `1048576`, 1 MiB) caps how much of the response body
 is read. A larger body, or a `Content-Length` above the cap, fails with
 `error_type="body_too_large"` without being parsed. The cap counts decoded
-bytes: the check asks for `gzip` or `deflate` only and inflates them itself
-with a bounded output size, so a compressed response cannot expand past the cap
-in memory. `deflate` is accepted with or without the zlib wrapper; data after
-the end of the compressed stream (such as a second gzip member) fails with
-`error_type="json_error"`. Any other `Content-Encoding` fails with
-`error_type="unsupported_encoding"`. Error responses (status 400 and above) and
-the bodies of followed redirects are not read at all. The dashboard form has no field
+bytes, checked chunk by chunk as httpx decompresses the stream, so a compressed
+response is stopped once its inflated size passes the cap. Error responses
+(status 400 and above) are not read. The dashboard form has no field
 for the cap; a value set in the stored JSON is kept when the check is edited.
 
 ### Ping Checks

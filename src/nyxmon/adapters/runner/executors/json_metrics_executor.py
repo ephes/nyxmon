@@ -13,15 +13,6 @@ import httpx
 
 from ....domain import Check, Result, ResultStatus
 from ....domain.json_metrics_config import JsonMetricsCheckConfig
-from .http_stream import (
-    BodyTooLargeError,
-    UnsupportedEncodingError,
-    read_capped,
-    stream_get,
-)
-
-# Only encodings ``read_capped`` can inflate with a bounded output size.
-ACCEPT_ENCODING = "gzip, deflate"
 
 
 OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
@@ -46,6 +37,10 @@ _MISSING: Any = object()
 
 class JsonMetricsError(Exception):
     """Base error for JSON metrics executor."""  # pragma: no cover - base class only
+
+
+class BodyTooLargeError(JsonMetricsError):
+    """The response body exceeded the configured ``max_body_bytes``."""
 
 
 class JsonMetricsExecutor:
@@ -93,8 +88,6 @@ class JsonMetricsExecutor:
                 body = json.loads(raw_body)
             except BodyTooLargeError as err:
                 return self._error(check.check_id, "body_too_large", str(err))
-            except UnsupportedEncodingError as err:
-                return self._error(check.check_id, "unsupported_encoding", str(err))
             except httpx.TimeoutException as err:
                 last_error = self._error(check.check_id, "timeout", str(err))
                 if attempt < config.retries:
@@ -146,23 +139,35 @@ class JsonMetricsExecutor:
     ) -> tuple[int, bytes]:
         """GET ``config.url`` and return the status and the capped body.
 
-        The body of an error response is not read, nor is the body of any
-        redirect followed on the way. A body larger than
-        ``config.max_body_bytes`` raises :class:`BodyTooLargeError` without
-        being buffered in full.
+        The body of an error response is not read. Reading stops with
+        :class:`BodyTooLargeError` once the decoded body passes
+        ``config.max_body_bytes``.
         """
-        async with stream_get(
-            client,
+        limit = config.max_body_bytes
+        async with client.stream(
+            "GET",
             config.url,
             timeout=config.timeout,
-            follow_redirects=True,
             auth=self._build_auth(config),
-            headers={"Accept-Encoding": ACCEPT_ENCODING},
         ) as response:
             status_code = response.status_code
             if status_code >= 400:
                 return status_code, b""
-            return status_code, await read_capped(response, config.max_body_bytes)
+
+            declared = response.headers.get("content-length", "")
+            if declared.isdigit() and int(declared) > limit:
+                raise BodyTooLargeError(
+                    f"response body of {declared} bytes exceeds the {limit} byte limit"
+                )
+
+            body = bytearray()
+            async for chunk in response.aiter_bytes():
+                if len(body) + len(chunk) > limit:
+                    raise BodyTooLargeError(
+                        f"response body exceeds the {limit} byte limit"
+                    )
+                body.extend(chunk)
+            return status_code, bytes(body)
 
     def _build_auth(self, config: JsonMetricsCheckConfig):
         if config.auth:
