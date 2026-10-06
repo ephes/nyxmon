@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Telegram alerts whose check name, URL or error text contained a backslash
+  were rejected by Telegram (HTTP 400 "can't parse entities") and silently
+  dropped. `escape_markdown_v2` now escapes `\` before the other reserved
+  characters, and any MarkdownV2 body Telegram still cannot parse is resent
+  once as plain text (no `parse_mode`) so formatting never costs an alert.
+  Check alert fields are capped before escaping (name 200, URL 500, error type
+  and status 100, error message 2000 characters, with a `...[truncated N
+  chars]` marker) so an endpoint's long error text can no longer push a
+  message past Telegram's 4096 character limit.
 - The monitoring CLI now keeps `httpx` and `httpcore` at `WARNING`, preventing
   their INFO request lines from writing Telegram bot tokens embedded in API
   URLs to journald. Legacy Linux deployment units read credentials from the
