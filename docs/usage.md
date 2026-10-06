@@ -126,7 +126,7 @@ uv run start-agent --db /path/to/database.sqlite
 - `--interval`: Check polling interval in seconds (default: 5)
 - `--cleanup-interval`: Seconds between result-cleanup runs (default: 3600)
 - `--retention-period`: Seconds to retain historical results (default: 86400)
-- `--batch-size`: Maximum results deleted per cleanup run (default: 1000)
+- `--batch-size`: Rows deleted per cleanup batch; each run deletes batches until the expired backlog is gone (default: 1000, see [Result Cleanup](configuration.md#result-cleanup))
 - `--disable-cleaner`: Skip scheduling the results cleaner
 - `--log-level`: Set the logging level (default: INFO)
 - `--enable-telegram`: Enable Telegram notifications

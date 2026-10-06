@@ -1,3 +1,4 @@
+import anyio
 import pytest
 import logging
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
@@ -160,3 +161,113 @@ class TestAsyncResultsCleaner:
 
                 # Verify exception was logged
                 mock_logger.exception.assert_called_once()
+
+
+class _FakeResults:
+    """Result store that reports a fixed sequence of deleted counts."""
+
+    def __init__(self, counts):
+        self.counts = list(counts)
+        self.calls = []
+
+    async def delete_old_results_async(self, *, retention_seconds, batch_size):
+        self.calls.append((retention_seconds, batch_size))
+        return self.counts.pop(0) if self.counts else 0
+
+
+def _cleaner_with(results, **kwargs):
+    cleaner = AsyncResultsCleaner(**kwargs)
+    store = MagicMock()
+    store.results = results
+    cleaner.set_store(store)
+    return cleaner
+
+
+class TestCleanupCycle:
+    @pytest.mark.anyio
+    async def test_cycle_drains_full_batches_until_short_batch(self):
+        results = _FakeResults([100, 100, 100, 37])
+        cleaner = _cleaner_with(results, batch_size=100, retention_period=60)
+
+        deleted = await cleaner.run_cleanup_cycle()
+
+        assert deleted == 337
+        assert results.calls == [(60, 100)] * 4
+
+    @pytest.mark.anyio
+    async def test_cycle_stops_after_one_call_when_nothing_expired(self):
+        results = _FakeResults([0])
+        cleaner = _cleaner_with(results, batch_size=100)
+
+        assert await cleaner.run_cleanup_cycle() == 0
+        assert len(results.calls) == 1
+
+    @pytest.mark.anyio
+    async def test_cycle_cap_stops_runaway_loop(self, caplog):
+        results = _FakeResults([50] * 1000)  # always a full batch
+        cleaner = _cleaner_with(results, batch_size=50, max_batches_per_cycle=3)
+
+        with caplog.at_level(logging.WARNING, logger="nyxmon.adapters.cleaner"):
+            deleted = await cleaner.run_cleanup_cycle()
+
+        assert deleted == 150
+        assert len(results.calls) == 3
+        assert "stopped after 3 batches" in caplog.text
+
+    @pytest.mark.anyio
+    async def test_cycle_logs_total_deleted(self, caplog):
+        cleaner = _cleaner_with(_FakeResults([10, 4]), batch_size=10)
+
+        with caplog.at_level(logging.INFO, logger="nyxmon.adapters.cleaner"):
+            await cleaner.run_cleanup_cycle()
+
+        assert "Cleaned up 14 old check results in 2 batch(es)" in caplog.text
+
+    @pytest.mark.anyio
+    async def test_async_start_runs_full_cycle(self):
+        results = _FakeResults([5, 5, 2])
+        cleaner = _cleaner_with(results, batch_size=5, interval=3600)
+
+        with anyio.move_on_after(0.5):
+            await cleaner._async_start()
+
+        assert len(results.calls) == 3
+
+    @pytest.mark.parametrize(
+        "kwargs", [{"batch_size": 0}, {"max_batches_per_cycle": 0}]
+    )
+    def test_rejects_non_positive_limits(self, kwargs):
+        with pytest.raises(ValueError):
+            AsyncResultsCleaner(**kwargs)
+
+    @pytest.mark.anyio
+    async def test_cycle_drains_sqlite_backlog(self, tmp_path):
+        """2,500 expired rows and 10 fresh ones: one cycle keeps only the fresh."""
+        import sqlite3
+
+        from nyxmon.adapters.repositories.sqlite_repo import SqliteStore
+
+        db_path = tmp_path / "results.sqlite"
+        store = SqliteStore(db_path=db_path)
+        # Create the schema through the repository before inserting rows.
+        await store.results.delete_old_results_async(retention_seconds=1)
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.executemany(
+            "INSERT INTO check_result (id, health_check_id, status, data, created_at) "
+            "VALUES (?, 1, 'ok', '{}', datetime('now', ?))",
+            [(i, "-2 days") for i in range(1, 2501)]
+            + [(i, "-1 minutes") for i in range(2501, 2511)],
+        )
+        conn.commit()
+        conn.close()
+
+        cleaner = AsyncResultsCleaner(retention_period=86400, batch_size=1000)
+        cleaner.set_store(store)
+        deleted = await cleaner.run_cleanup_cycle()
+
+        conn = sqlite3.connect(db_path)
+        remaining = [row[0] for row in conn.execute("SELECT id FROM check_result")]
+        conn.close()
+        assert deleted == 2500
+        assert remaining == list(range(2501, 2511))

@@ -49,6 +49,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   data sent after the STARTTLS reply) and `starttls_connection_closed` (retried); rejections report
   `starttls_stage`. **Upgrade note:** existing STARTTLS checks on mail ports
   stay `generic` and keep failing until the protocol is set on the check.
+- Result cleanup now drains the whole expired backlog each cycle. It used to
+  delete a single batch of `--batch-size` rows (default 1,000) per
+  `--cleanup-interval` (default one hour), so it topped out at 24,000 rows a
+  day and `check_result` grew without bound on any fleet writing more than
+  about 17 results a minute. The cleaner now deletes batch after batch, each
+  in its own short transaction, yields between batches, and stops after 100
+  batches per cycle (the rest continues next cycle, with a warning). It logs
+  the total deleted per cycle. `--batch-size` is now the size of one batch,
+  not a per-cycle limit, and must be at least 1.
+- The result retention cutoff is computed on SQLite's UTC clock. It used
+  Python's naive local time while rows are stamped in UTC, so on a host not
+  set to UTC retention was off by the UTC offset (on a UTC+2 host, results
+  were deleted two hours early). **Upgrade note:** the first cleanup after the
+  upgrade may delete a large backlog. The SQLite file does not shrink by
+  itself; see "Result Cleanup" in `docs/configuration.md` for a one-off
+  `VACUUM`.
 - DNS checks compare expected and resolved IP addresses by value, so an `AAAA`
   expectation entered in upper case or uncompressed form
   (`2A01:04F8:0000::0001`) matches the answer `2a01:4f8::1` instead of
