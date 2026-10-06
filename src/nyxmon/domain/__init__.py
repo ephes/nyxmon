@@ -17,6 +17,7 @@ from .smtp_config import SmtpCheckConfig
 from .http_config import HttpCheckConfig
 from .json_metrics_config import JsonMetricsCheckConfig
 from .tcp_config import TcpCheckConfig
+from .ping_config import PingCheckConfig
 
 
 __all__ = [
@@ -37,4 +38,5 @@ __all__ = [
     "SmtpCheckConfig",
     "JsonMetricsCheckConfig",
     "TcpCheckConfig",
+    "PingCheckConfig",
 ]

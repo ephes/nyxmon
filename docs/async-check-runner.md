@@ -58,6 +58,13 @@ Key details:
   - Performs DNS lookups via `dnspython`
   - Supports optional source-IP binding for split-horizon DNS
   - Implements `aclose()` as no-op (no resources to clean)
+- `PingCheckExecutor` for `ping` checks:
+  - Resolves the host once, then runs the system `ping` binary for one echo
+    request per attempt via `anyio.run_process`, killing it after the
+    per-attempt timeout plus a two second grace
+  - Needs no privileges in the agent; reports `permission_error` when the
+    binary itself lacks ICMP privileges
+  - Implements `aclose()` as no-op (each process is reaped per attempt)
 
 Additional executors can be added without modifying `_run_one`; they only need to be registered against a new check type.
 

@@ -1,8 +1,40 @@
 # Specification: ICMP Ping Check Implementation
 
 **Date:** 2025-10-01
-**Status:** Draft
+**Status:** Implemented (2026-10-06, see section 0 for deviations)
 **Author:** System
+
+## 0. Implementation Notes (2026-10-06)
+
+The executor lives in `src/nyxmon/adapters/runner/executors/ping_executor.py`
+with its configuration in `src/nyxmon/domain/ping_config.py`, and NyxBoard has
+a dedicated `PingHealthCheckForm`. It deviates from the draft below in these
+deliberate ways:
+
+- **System `ping` instead of `icmplib` (option B, not A).** The agent never
+  opens ICMP sockets, so it needs no `CAP_NET_RAW`, setuid or root; it relies
+  on the platform `ping` binary, which already carries that privilege on
+  default installs. FR6 holds: a binary without privilege yields
+  `error_type="permission_error"` with a CAP_NET_RAW / `ping_group_range` /
+  setuid hint. NFR2's "no new socket per check" does not apply; each attempt
+  is one short-lived `ping` process for one echo request.
+- **Per-attempt processes.** Each of the `count` attempts runs `ping` for a
+  single echo request with the platform wait flag and is killed after
+  `timeout` + 2 s, so FR2's per-attempt timeout is enforced even if the binary
+  ignores its wait flag. Attempts are separated by `interval`.
+- **Result field names** follow the other executors: failures carry
+  `error_type`/`error_msg` instead of a bare `error`. Success data matches
+  section 3.2 and adds `host` and an `attempts` list.
+- **Partial loss is `ok`** (FR1/FR3); no warning threshold yet.
+- **IPv6** works when the name resolves to an IPv6 address first or an IPv6
+  literal is configured (macOS/BSD use `ping6`). Windows support (command
+  building and localized reply parsing via the `TTL=` field or, for IPv6, the reply
+  source address) is covered by
+  unit tests only. OpenBSD/NetBSD get no wait flag and rely on the process
+  timeout.
+- **Tests** are unit tests with an injected process runner and resolver
+  (`tests/unit/test_ping_executor.py`, including registration and startup
+  validation); no test sends ICMP.
 
 ## 1. Overview
 

@@ -40,7 +40,8 @@ The core library contains the business logic for monitoring and is published as 
 6. **Check Executors**
    - `HttpCheckExecutor`: Performs HTTP requests and reports status (current implementation)
    - `DnsCheckExecutor`: Resolves DNS records and validates expected IPs
-   - *Planned:* Additional executors (JSON validation, ping, metrics) will extend the same interface in future iterations
+   - `PingCheckExecutor`: Checks ICMP reachability by running the system `ping` binary once per attempt (no raw sockets in the agent)
+   - Further executors (TCP, SMTP, IMAP, JSON metrics) implement the same interface
 
 7. **Repository Interfaces**
    - `CheckRepository`: Interface for storing and retrieving checks

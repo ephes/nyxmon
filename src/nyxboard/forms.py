@@ -6,6 +6,7 @@ import json
 
 from .models import Service, HealthCheck
 from nyxmon.domain import CheckType
+from nyxmon.domain.ping_config import PingCheckConfig, normalize_ping_target
 
 
 class ServiceForm(forms.ModelForm):
@@ -58,7 +59,7 @@ class HealthCheckForm(forms.ModelForm):
 
 
 class GenericHealthCheckForm(HealthCheckForm):
-    """Form for unmapped health check types (TCP, Ping, Custom, etc.).
+    """Form for unmapped health check types (legacy/custom types, etc.).
 
     This form preserves the existing check_type and data field without modification.
     It's used as a fallback for check types that don't have specialized forms yet.
@@ -868,6 +869,98 @@ class TcpHealthCheckForm(HealthCheckForm):
         if self.cleaned_data.get("sni"):
             data["sni"] = self.cleaned_data["sni"]
 
+        instance.data = data
+
+        if commit:
+            instance.save()
+        return instance
+
+
+class PingHealthCheckForm(HealthCheckForm):
+    """Form for ICMP ping health checks.
+
+    The target host is stored in ``HealthCheck.url``; timeout, count and
+    interval are stored in ``HealthCheck.data``.
+    """
+
+    host = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "192.168.1.1 or nas.local"}
+        ),
+        label="Host",
+        help_text="Host name or IP address to ping",
+    )
+
+    timeout = forms.FloatField(
+        initial=5.0,
+        min_value=0.1,
+        max_value=PingCheckConfig.MAX_TIMEOUT,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.1"}),
+        label="Timeout per Attempt (seconds)",
+        help_text="How long to wait for each echo reply",
+    )
+
+    count = forms.IntegerField(
+        initial=3,
+        min_value=1,
+        max_value=PingCheckConfig.MAX_COUNT,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+        label="Attempts",
+        help_text="Echo requests per run; the check passes if any reply arrives",
+    )
+
+    interval = forms.FloatField(
+        initial=1.0,
+        min_value=0.0,
+        max_value=PingCheckConfig.MAX_INTERVAL,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.1"}),
+        label="Interval (seconds)",
+        help_text="Pause between attempts",
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.fields["check_type"].initial = CheckType.PING
+        self.fields["check_type"].widget = forms.HiddenInput()
+
+        # Host is the source of truth for the URL field.
+        self.fields["url"].required = False
+        self.fields["url"].widget = forms.HiddenInput()
+
+        if self.instance.pk:
+            data = self.instance.data if isinstance(self.instance.data, dict) else {}
+            self.fields["host"].initial = data.get("host") or self.instance.url
+            self.fields["timeout"].initial = data.get("timeout", 5.0)
+            self.fields["count"].initial = data.get("count", 3)
+            self.fields["interval"].initial = data.get("interval", 1.0)
+
+    def clean_host(self) -> str:
+        host = normalize_ping_target(self.cleaned_data.get("host"))
+        if host is None:
+            raise forms.ValidationError(
+                "Enter a host name or IP address without spaces or a leading '-'."
+            )
+        return host
+
+    def clean_check_type(self) -> str:
+        return CheckType.PING
+
+    def save(self, commit: bool = True) -> HealthCheck:
+        instance = super().save(commit=False)
+        instance.check_type = CheckType.PING
+        instance.url = self.cleaned_data["host"]
+
+        existing = instance.data if isinstance(instance.data, dict) else {}
+        data = {key: value for key, value in existing.items() if key != "host"}
+        data.update(
+            {
+                "timeout": self.cleaned_data["timeout"],
+                "count": self.cleaned_data["count"],
+                "interval": self.cleaned_data["interval"],
+            }
+        )
         instance.data = data
 
         if commit:

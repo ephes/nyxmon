@@ -15,6 +15,7 @@ from .executors.json_metrics_executor import JsonMetricsExecutor
 from .executors.imap_executor import ImapCheckExecutor
 from .executors.smtp_executor import SmtpCheckExecutor
 from .executors.tcp_executor import TcpCheckExecutor
+from .executors.ping_executor import PingCheckExecutor
 from ...domain import Check, Result, CheckType, ResultStatus
 
 logger = logging.getLogger(__name__)
@@ -26,20 +27,6 @@ class AsyncCheckRunner(CheckRunner):
         self.executor_registry = ExecutorRegistry()
         # Pre-register executors for startup validation
         self._preregister_executors()
-
-    class _NotImplementedExecutor:
-        async def execute(self, check: Check):
-            return Result(
-                check_id=check.check_id,
-                status=ResultStatus.ERROR,
-                data={
-                    "error_type": "not_implemented",
-                    "error_msg": f"Executor for '{check.check_type}' not implemented",
-                },
-            )
-
-        async def aclose(self) -> None:
-            return
 
     def _preregister_executors(self) -> None:
         """Pre-register executors without HTTP client for startup validation.
@@ -72,9 +59,9 @@ class AsyncCheckRunner(CheckRunner):
         smtp_executor = SmtpCheckExecutor()
         self.executor_registry.register(CheckType.SMTP, smtp_executor)
 
-        # Placeholder executors
-        not_impl = self._NotImplementedExecutor()
-        self.executor_registry.register(CheckType.PING, not_impl)
+        # Register ping executor (system ping binary, no raw sockets)
+        ping_executor = PingCheckExecutor()
+        self.executor_registry.register(CheckType.PING, ping_executor)
 
     def run_all(self, checks: Iterable[Check], result_received: Callable) -> None:
         """Run all checks."""
@@ -177,9 +164,9 @@ class AsyncCheckRunner(CheckRunner):
         smtp_executor = SmtpCheckExecutor()
         self.executor_registry.register(CheckType.SMTP, smtp_executor)
 
-        # Placeholder executors
-        not_impl = self._NotImplementedExecutor()
-        self.executor_registry.register(CheckType.PING, not_impl)
+        # Register ping executor (system ping binary, no raw sockets)
+        ping_executor = PingCheckExecutor()
+        self.executor_registry.register(CheckType.PING, ping_executor)
 
     async def _run_one(
         self,

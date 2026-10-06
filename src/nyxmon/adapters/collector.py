@@ -133,6 +133,14 @@ def estimated_check_runtime_seconds(
     if explicit_budget:
         return math.ceil(explicit_budget)
 
+    if check.check_type == "ping":
+        # One single-echo process per attempt, each bounded by timeout plus the
+        # executor's process grace, preceded by a DNS lookup bounded by timeout.
+        count = max(1, math.floor(non_negative_number("count", 3)))
+        ping_timeout = non_negative_number("timeout", 5)
+        interval = non_negative_number("interval", 1)
+        return math.ceil((count + 1) * (ping_timeout + 2) + (count - 1) * interval + 30)
+
     retries = math.floor(non_negative_number("retries", 0))
     retry_delay = non_negative_number("retry_delay", 0)
     timeout = non_negative_number("timeout", 10)

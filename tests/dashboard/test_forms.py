@@ -8,6 +8,7 @@ from nyxboard.forms import (
     SmtpHealthCheckForm,
     ImapHealthCheckForm,
     TcpHealthCheckForm,
+    PingHealthCheckForm,
     JsonMetricsHealthCheckForm,
     GenericHealthCheckForm,
 )
@@ -1195,6 +1196,82 @@ class TestTcpHealthCheckForm:
         assert form.is_valid(), form.errors
         instance = form.save()
         assert instance.data["check_cert_expiry"] is False
+
+
+class TestPingHealthCheckForm:
+    """Tests for PingHealthCheckForm validation and serialization."""
+
+    @staticmethod
+    def _data(service, **overrides):
+        data = {
+            "name": "Router ping",
+            "service": service.id,
+            "check_type": CheckType.PING,
+            "check_interval": 60,
+            "disabled": False,
+            "host": " 192.168.1.1 ",
+            "timeout": 2.0,
+            "count": 4,
+            "interval": 0.5,
+        }
+        data.update(overrides)
+        return data
+
+    def test_saves_host_as_url_and_config_as_data(self, service):
+        form = PingHealthCheckForm(data=self._data(service))
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.check_type == CheckType.PING
+        assert instance.url == "192.168.1.1"
+        assert instance.data == {"timeout": 2.0, "count": 4, "interval": 0.5}
+
+    @pytest.mark.parametrize("host", ["-f", "nas local", "   "])
+    def test_rejects_unsafe_or_empty_host(self, service, host):
+        form = PingHealthCheckForm(data=self._data(service, host=host))
+        assert not form.is_valid()
+        assert "host" in form.errors
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("timeout", 0),
+            ("timeout", 61),
+            ("count", 0),
+            ("count", 21),
+            ("interval", -1),
+        ],
+    )
+    def test_rejects_out_of_range_values(self, service, field, value):
+        form = PingHealthCheckForm(data=self._data(service, **{field: value}))
+        assert not form.is_valid()
+        assert field in form.errors
+
+    def test_edit_prefills_and_preserves_unrelated_data(self, service):
+        health_check = HealthCheck.objects.create(
+            name="NAS",
+            service=service,
+            check_type=CheckType.PING,
+            url="nas.local",
+            check_interval=300,
+            data={"host": "old.local", "count": 5, "max_runtime_seconds": 90},
+        )
+        form = PingHealthCheckForm(instance=health_check)
+        assert form.fields["host"].initial == "old.local"
+        assert form.fields["count"].initial == 5
+        assert form.fields["timeout"].initial == 5.0
+
+        form = PingHealthCheckForm(
+            data=self._data(service, host="nas.local"), instance=health_check
+        )
+        assert form.is_valid(), form.errors
+        instance = form.save()
+        assert instance.url == "nas.local"
+        assert instance.data == {
+            "count": 4,
+            "max_runtime_seconds": 90,
+            "timeout": 2.0,
+            "interval": 0.5,
+        }
 
 
 class TestJsonMetricsHealthCheckForm:

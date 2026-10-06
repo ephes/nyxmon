@@ -147,3 +147,43 @@ class TestHealthCheckViews:
         assert response.context["health_check"] == health_check
         assert "results" in response.context
         assert len(response.context["results"]) == 2
+
+
+@pytest.mark.django_db
+class TestPingCheckViews:
+    def test_create_ping_check_uses_ping_form(self, client):
+        service = Service.objects.create(name="Network")
+        url = reverse("nyxboard:healthcheck_create") + "?type=ping"
+
+        response = client.get(url)
+        assert response.status_code == 200
+        assert "nyxboard/healthcheck_form_ping.html" in [
+            t.name for t in response.templates
+        ]
+
+        response = client.post(
+            url,
+            {
+                "name": "Router",
+                "service": service.id,
+                "check_type": "ping",
+                "check_interval": 60,
+                "host": "192.168.1.1",
+                "timeout": 3,
+                "count": 2,
+                "interval": 1,
+            },
+        )
+        assert response.status_code == 302
+        check = HealthCheck.objects.get(name="Router")
+        assert check.check_type == "ping"
+        assert check.url == "192.168.1.1"
+        assert check.data == {"timeout": 3.0, "count": 2, "interval": 1.0}
+
+    def test_dashboard_offers_ping_check(self, client):
+        service = Service.objects.create(name="Network")
+        HealthCheck.objects.create(
+            service=service, check_type="http", url="https://example.com"
+        )
+        response = client.get(reverse("nyxboard:dashboard"))
+        assert "?type=ping" in response.content.decode()

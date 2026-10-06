@@ -112,6 +112,9 @@
                                 <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=tcp">
                                     🔌 TCP Check
                                 </a>
+                                <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=ping">
+                                    📡 Ping Check
+                                </a>
                                 <a href="{% url 'nyxboard:healthcheck_create_for_service' service_id=service.id %}?type=dns">
                                     🔍 DNS Check
                                 </a>
@@ -144,6 +147,9 @@
                             </a>
                             <a href="{% url 'nyxboard:healthcheck_create' %}?type=tcp">
                                 🔌 TCP Check
+                            </a>
+                            <a href="{% url 'nyxboard:healthcheck_create' %}?type=ping">
+                                📡 Ping Check
                             </a>
                             <a href="{% url 'nyxboard:healthcheck_create' %}?type=dns">
                                 🔍 DNS Check

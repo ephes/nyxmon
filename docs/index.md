@@ -16,7 +16,7 @@ For detailed installation instructions and development setup, see {doc}`installa
 ## Key Features
 
 - **Event-Driven Architecture**: Built on a message bus pattern with commands and events
-- **Multiple Check Types**: HTTP checks and DNS checks today (ping and metric validation are planned)
+- **Multiple Check Types**: HTTP, JSON-HTTP, JSON metrics, TCP, DNS, SMTP, IMAP and ping checks
 - **Django Dashboard**: Web interface for monitoring and configuration
 - **Telegram Notifications**: Optional notifications for check failures
 - **SQLite Backend**: Deliberate choice to avoid database dependencies for monitoring

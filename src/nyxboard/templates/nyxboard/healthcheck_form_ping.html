@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Ping Health Check - Nyxmon Dashboard{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <div class="form-header">
+    <h2>{{ action }} Ping Health Check</h2>
+    <a href="{% url 'nyxboard:healthcheck_list' %}" class="back-link">&larr; Back</a>
+  </div>
+
+  <p class="help-text">Monitor host reachability with ICMP echo requests sent by the system <code>ping</code> binary (routers, NAS, devices without HTTP)</p>
+
+  {% if warnings %}
+    <div class="field-warnings">
+      {% for warning in warnings %}
+        <div class="help-text"><strong>Note:</strong> {{ warning }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" class="form">
+    {% csrf_token %}
+
+    <h3 class="section-title">Basic Information</h3>
+
+    <div class="form-field">
+      <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+      {{ form.name }}
+      {% if form.name.help_text %}<div class="help-text">{{ form.name.help_text }}</div>{% endif %}
+      {% if form.name.errors %}
+        <div class="field-errors">{% for error in form.name.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.service.id_for_label }}">{{ form.service.label }}</label>
+      {{ form.service }}
+      {% if form.service.errors %}
+        <div class="field-errors">{% for error in form.service.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.check_interval.id_for_label }}">{{ form.check_interval.label }}</label>
+      {{ form.check_interval }}
+      {% if form.check_interval.help_text %}<div class="help-text">{{ form.check_interval.help_text }}</div>{% endif %}
+      {% if form.check_interval.errors %}
+        <div class="field-errors">{% for error in form.check_interval.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field checkbox-field">
+      {{ form.disabled }}
+      <label for="{{ form.disabled.id_for_label }}">{{ form.disabled.label }}</label>
+      {% if form.disabled.help_text %}<div class="help-text">{{ form.disabled.help_text }}</div>{% endif %}
+    </div>
+
+    <h3 class="section-title">Target</h3>
+
+    <div class="form-field">
+      <label for="{{ form.host.id_for_label }}">{{ form.host.label }}</label>
+      {{ form.host }}
+      {% if form.host.help_text %}<div class="help-text">{{ form.host.help_text }}</div>{% endif %}
+      {% if form.host.errors %}
+        <div class="field-errors">{% for error in form.host.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <h3 class="section-title">Advanced Options <small class="help-text">(optional)</small></h3>
+
+    <div class="form-field">
+      <label for="{{ form.timeout.id_for_label }}">{{ form.timeout.label }}</label>
+      {{ form.timeout }}
+      {% if form.timeout.help_text %}<div class="help-text">{{ form.timeout.help_text }}</div>{% endif %}
+      {% if form.timeout.errors %}
+        <div class="field-errors">{% for error in form.timeout.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.count.id_for_label }}">{{ form.count.label }}</label>
+      {{ form.count }}
+      {% if form.count.help_text %}<div class="help-text">{{ form.count.help_text }}</div>{% endif %}
+      {% if form.count.errors %}
+        <div class="field-errors">{% for error in form.count.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.interval.id_for_label }}">{{ form.interval.label }}</label>
+      {{ form.interval }}
+      {% if form.interval.help_text %}<div class="help-text">{{ form.interval.help_text }}</div>{% endif %}
+      {% if form.interval.errors %}
+        <div class="field-errors">{% for error in form.interval.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+      {% endif %}
+    </div>
+
+    {{ form.check_type }}
+    {{ form.url }}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">{{ action }}</button>
+      <a href="{% url 'nyxboard:healthcheck_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -19,6 +19,7 @@ from .forms import (
     SmtpHealthCheckForm,
     ImapHealthCheckForm,
     TcpHealthCheckForm,
+    PingHealthCheckForm,
     JsonMetricsHealthCheckForm,
     GenericHealthCheckForm,
 )
@@ -44,6 +45,7 @@ FORM_CLASSES = {
     CheckType.JSON_HTTP: HttpHealthCheckForm,  # Reuse for now
     CheckType.DNS: DnsHealthCheckForm,
     CheckType.TCP: TcpHealthCheckForm,
+    CheckType.PING: PingHealthCheckForm,
     CheckType.SMTP: SmtpHealthCheckForm,
     CheckType.IMAP: ImapHealthCheckForm,
     CheckType.JSON_METRICS: JsonMetricsHealthCheckForm,
@@ -376,7 +378,7 @@ def healthcheck_create(request, service_id=None):
 
     # Get check type from query parameter, default to HTTP
     check_type = request.GET.get("type", CheckType.HTTP)
-    # Use generic form as fallback to preserve check_type and data for unmapped types (TCP, Ping, etc.)
+    # Use generic form as fallback to preserve check_type and data for unmapped types (legacy types)
     FormClass = FORM_CLASSES.get(check_type, GenericHealthCheckForm)
 
     # Pass check_type in initial data to preserve it (important for JSON-HTTP and unmapped types)
@@ -396,6 +398,7 @@ def healthcheck_create(request, service_id=None):
         CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
         CheckType.TCP: "nyxboard/healthcheck_form_tcp.html",
+        CheckType.PING: "nyxboard/healthcheck_form_ping.html",
         CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
         CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
         CheckType.JSON_METRICS: "nyxboard/healthcheck_form_json_metrics.html",
@@ -422,7 +425,7 @@ def healthcheck_update(request, check_id):
     health_check = get_object_or_404(HealthCheck, id=check_id)
 
     # Get the appropriate form class based on the check type
-    # Use generic form as fallback to preserve check_type and data for unmapped types (TCP, Ping, etc.)
+    # Use generic form as fallback to preserve check_type and data for unmapped types (legacy types)
     FormClass = FORM_CLASSES.get(health_check.check_type, GenericHealthCheckForm)
 
     if request.method == "POST":
@@ -460,6 +463,7 @@ def healthcheck_update(request, check_id):
         CheckType.JSON_HTTP: "nyxboard/healthcheck_form_http.html",
         CheckType.DNS: "nyxboard/healthcheck_form_dns.html",
         CheckType.TCP: "nyxboard/healthcheck_form_tcp.html",
+        CheckType.PING: "nyxboard/healthcheck_form_ping.html",
         CheckType.SMTP: "nyxboard/healthcheck_form_smtp.html",
         CheckType.IMAP: "nyxboard/healthcheck_form_imap.html",
         CheckType.JSON_METRICS: "nyxboard/healthcheck_form_json_metrics.html",

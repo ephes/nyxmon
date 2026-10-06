@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unchanged.
 
 ### Added
+- Ping checks now run. The `ping` check type was selectable in NyxBoard but
+  only produced `not_implemented` errors; a new executor resolves the host,
+  sends `count` single-echo attempts (default 3, `timeout` 5 s each,
+  `interval` 1 s) through the system `ping` binary and passes when any reply
+  arrives, reporting RTT statistics, packet loss and per-attempt details.
+  The agent itself needs no ICMP privileges; a `ping` binary without them
+  yields a `permission_error` result explaining `CAP_NET_RAW`,
+  `net.ipv4.ping_group_range` or setuid. NyxBoard gains a dedicated Ping form
+  and "Ping Check" entries in the dashboard's add-check menus, and the
+  collector's processing-lease estimate accounts for the ping attempt budget.
+  See "Ping Checks" in `docs/configuration.md`.
 - Site connectivity detection. Nyxmon can observe its own internet connection
   through three independent paths (`dns`, `ipv4`, `ipv6`) and hold the alerts of
   checks that declared they depend on it, so a provider reconnect no longer

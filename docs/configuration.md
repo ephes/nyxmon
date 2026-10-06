@@ -431,9 +431,62 @@ Fetches a JSON endpoint (e.g., `/.well-known/health`) and evaluates threshold ru
 
 Supports operators `<`, `<=`, `>`, `>=`, `==`, `!=`; severities `warning`/`critical`; simple path resolver `$.field.subfield` or `$.items.0.value`. Failures return `error_type="threshold_failed"` with all failing rules.
 
-### Ping Checks *(planned)*
+### Ping Checks
 
-> **Not yet implemented:** Future work will add ICMP reachability checks.
+Ping checks verify that a host answers ICMP echo requests. They suit devices
+without an HTTP endpoint (router, NAS, Raspberry Pis):
+
+```python
+{
+    "type": "ping",
+    "url": "192.168.1.1",    # IP address or host name (a URL's host is used)
+    "timeout": 5,            # optional, seconds to wait per attempt (max 60)
+    "count": 3,              # optional, echo requests per run (1-20)
+    "interval": 1,           # optional, seconds between attempts (max 60)
+    "host": "nas.local"      # optional, overrides url
+}
+```
+
+Host names are resolved once per run (bounded by `timeout`); the first address
+returned is pinged. Each attempt runs the system `ping` binary for a single
+echo request and waits at most `timeout` seconds for the reply. The check is
+`ok` when at least one attempt gets a reply, so partial loss still passes.
+
+Result data contains `target` (the pinged address), `hostname` (when a name was
+resolved), `packets_sent`, `packets_received`, `packet_loss_percent`,
+`rtt_min_ms`/`rtt_max_ms`/`rtt_avg_ms`/`rtt_list_ms` on success, and an
+`attempts` list with one entry per echo request. Failures use the usual
+`error_type`/`error_msg` fields:
+
+| `error_type` | Meaning |
+|--------------|---------|
+| `timeout` | No attempt got a reply within `timeout` |
+| `unreachable` | `ping` reported an error such as "Destination Host Unreachable" |
+| `dns_error` / `dns_timeout` | The host name could not be resolved |
+| `permission_error` | `ping` lacks the privilege to send ICMP (see below); not retried |
+| `ping_unavailable` | No `ping` binary on `PATH` or in `/sbin`, `/bin`, `/usr/bin`, `/usr/sbin` |
+| `configuration_error` | Invalid `timeout`/`count`/`interval` or an empty/unsafe target |
+
+**Requirements.** NyxMon never opens raw sockets itself, so the agent runs
+unprivileged. It relies on the platform `ping` binary having ICMP privileges,
+which is the default on common systems:
+
+- **macOS / FreeBSD:** `/sbin/ping` is setuid root and gets the reply wait via
+  `-W` (milliseconds). IPv6 targets use `ping6`, whose wait is enforced by
+  NyxMon killing the process after `timeout` plus a two second grace. Other
+  BSDs (OpenBSD, NetBSD) get no wait flag and rely on that process timeout.
+- **Linux:** iputils `ping` needs either file capabilities
+  (`sudo setcap cap_net_raw+ep "$(command -v ping)"`) or unprivileged ICMP via
+  `sysctl net.ipv4.ping_group_range` covering the agent's group (systemd-based
+  distributions usually set `0 2147483647`). Without either, results report
+  `permission_error`.
+- **Windows:** `ping.exe` works without elevation. Its output is localized, so
+  a reply is recognized by its `TTL=` field (IPv4) or by coming from the
+  pinged address (IPv6), together with the RTT on that line. This path
+  is covered by unit tests only.
+
+The NyxBoard form ("📡 Ping Check") stores the host in `url` and `timeout`,
+`count` and `interval` in `data`.
 
 ### DNS Checks
 

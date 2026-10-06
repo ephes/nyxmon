@@ -50,6 +50,7 @@ When creating a new check, click any "Add Check" or "Create Health Check" button
 - **🌐 HTTP Check** - Monitor web endpoint availability
 - **📋 JSON HTTP Check** - Monitor JSON API endpoints
 - **🔍 DNS Check** - Monitor DNS resolution and validate IPs
+- **📡 Ping Check** - Monitor host reachability via ICMP echo (uses the system `ping` binary; see the Ping Checks section in {doc}`configuration`)
 
 Select the check type to open the appropriate form.
 
