@@ -2,7 +2,6 @@ import sqlite3
 import json
 import logging
 from time import time as current_epoch
-import datetime
 import threading
 from typing import Any, List, cast
 import anyio
@@ -815,21 +814,23 @@ class SqliteResultRepository(ResultRepository):
     async def delete_old_results_async(
         self, retention_seconds: int = 86400, batch_size: int = 1000
     ) -> int:
-        """Delete check results older than the specified period."""
+        """Delete one batch of check results older than the retention period.
+
+        Returns the number of rows deleted; fewer than ``batch_size`` means no
+        expired rows are left. The cleaner calls this repeatedly per cycle.
+        """
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
 
-            # Calculate the cutoff timestamp (SQLite timestamp format)
-            cutoff_time = datetime.datetime.now() - datetime.timedelta(
-                seconds=retention_seconds
-            )
-            cutoff_time_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
-
-            # First, get the IDs to delete (with limit)
-            # SQLite doesn't support LIMIT in DELETE directly, so we need to do this in two steps
+            # Rows are stamped with SQLite's datetime('now'), which is UTC, so
+            # the cutoff is computed by SQLite on the same clock. A cutoff from
+            # Python's naive local time would be off by the host's UTC offset.
+            # SQLite doesn't support LIMIT in DELETE directly, so select the
+            # batch of IDs first.
             cursor = await db.execute(
-                "SELECT id FROM check_result WHERE created_at < ? ORDER BY id LIMIT ?",
-                (cutoff_time_str, batch_size),
+                "SELECT id FROM check_result "
+                "WHERE created_at < datetime('now', ?) ORDER BY id LIMIT ?",
+                (f"-{int(retention_seconds)} seconds", batch_size),
             )
             rows = await cursor.fetchall()
 

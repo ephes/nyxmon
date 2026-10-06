@@ -41,6 +41,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   object and is validated with the check type's configuration parser before
   anything is written. The DNS examples in the docs gained the required
   `--db` and `--service-id` flags, and `docs/usage.md` lists every flag.
+- TCP checks with `tls_mode="starttls"` can now monitor SMTP, IMAP and
+  ManageSieve servers. The probe used to send `STARTTLS` before reading the
+  server greeting, took the greeting (`220 ...`, `* OK ...`) as the reply and
+  then failed the TLS handshake with `tls_error`, so certificate expiry on
+  ports 25, 587, 143 and 4190 could not be monitored. The new per-check
+  `starttls_protocol` option (`smtp`, `imap`, `sieve` or `generic`) runs the
+  protocol's dialogue (SMTP `EHLO` first, IMAP tagged `a1 STARTTLS`, Sieve
+  capability lines) with a size-capped line reader, and no longer treats an
+  `ok` substring as success for these protocols. `generic` stays the default,
+  so existing checks behave as before; it can now read one greeting line first
+  (`starttls_read_greeting`). The TCP form gains a "STARTTLS Protocol" select
+  that infers the protocol from the port (25/587 SMTP, 143 IMAP, 4190 Sieve)
+  and warns when a mail port uses `generic`. New error types:
+  `starttls_protocol_error` (oversized dialogue, or, for the mail protocols,
+  data sent after the STARTTLS reply) and `starttls_connection_closed` (retried); rejections report
+  `starttls_stage`. **Upgrade note:** existing STARTTLS checks on mail ports
+  stay `generic` and keep failing until the protocol is set on the check.
+- Result cleanup now drains the whole expired backlog each cycle. It used to
+  delete a single batch of `--batch-size` rows (default 1,000) per
+  `--cleanup-interval` (default one hour), so it topped out at 24,000 rows a
+  day and `check_result` grew without bound on any fleet writing more than
+  about 17 results a minute. The cleaner now deletes batch after batch, each
+  in its own short transaction, yields between batches, and stops after 100
+  batches per cycle (the rest continues next cycle, with a warning). It logs
+  the total deleted per cycle. `--batch-size` is now the size of one batch,
+  not a per-cycle limit, and must be at least 1.
+- The result retention cutoff is computed on SQLite's UTC clock. It used
+  Python's naive local time while rows are stamped in UTC, so on a host not
+  set to UTC retention was off by the UTC offset (on a UTC+2 host, results
+  were deleted two hours early). **Upgrade note:** the first cleanup after the
+  upgrade may delete a large backlog. The SQLite file does not shrink by
+  itself; see "Result Cleanup" in `docs/configuration.md` for a one-off
+  `VACUUM`.
 - DNS checks compare expected and resolved IP addresses by value, so an `AAAA`
   expectation entered in upper case or uncompressed form
   (`2A01:04F8:0000::0001`) matches the answer `2a01:4f8::1` instead of

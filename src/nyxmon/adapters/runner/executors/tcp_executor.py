@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import ssl
 import tempfile
 import time
@@ -33,6 +34,95 @@ class TcpCheckError(Exception):
 
     def __str__(self) -> str:  # pragma: no cover - simple wrapper
         return self.message
+
+
+SMTP_EHLO_NAME = "nyxmon.invalid"
+IMAP_TAG = "a1"
+MAX_STARTTLS_LINE_BYTES = 4096
+MAX_STARTTLS_DIALOGUE_BYTES = 64 * 1024
+MAX_STARTTLS_RESPONSE_CHARS = 500
+
+_IMAP_OK_GREETING = re.compile(r"^\* OK(?:[ \[]|$)", re.IGNORECASE)
+_IMAP_UNTAGGED_BYE = re.compile(r"^\* BYE(?:[ \[]|$)", re.IGNORECASE)
+_IMAP_TAGGED = re.compile(rf"^{IMAP_TAG} (OK|NO|BAD)(?:[ \[]|$)", re.IGNORECASE)
+_SIEVE_RESPONSE = re.compile(r"^(OK|NO|BYE)(?:[ (]|$)", re.IGNORECASE)
+
+
+def _truncate(text: str) -> str:
+    if len(text) <= MAX_STARTTLS_RESPONSE_CHARS:
+        return text
+    return text[:MAX_STARTTLS_RESPONSE_CHARS] + "..."
+
+
+def _starttls_rejected(stage: str, lines: list[str]) -> TcpCheckError:
+    """Build the error for a negative or unexpected STARTTLS dialogue reply."""
+    response = _truncate("\n".join(lines).strip())
+    return TcpCheckError(
+        "starttls_rejected",
+        f"STARTTLS rejected at {stage}: {response or 'no response'}",
+        retryable=False,
+        data={"starttls_response": response, "starttls_stage": stage},
+    )
+
+
+class _LineReader:
+    """Size-capped line reader for the plain-text part of a STARTTLS dialogue."""
+
+    def __init__(self, stream: SocketStream) -> None:
+        self._stream = stream
+        self._buffer = bytearray()
+        self._received = 0
+
+    @property
+    def pending(self) -> bytes:
+        """Bytes received but not yet consumed."""
+        return bytes(self._buffer)
+
+    async def send(self, data: bytes) -> None:
+        await self._stream.send(data)
+
+    async def readline(self) -> str:
+        """Return the next line without its line ending."""
+        while True:
+            newline = self._buffer.find(b"\n")
+            if newline >= 0:
+                if newline + 1 > MAX_STARTTLS_LINE_BYTES:
+                    raise self._too_long()
+                line = bytes(self._buffer[: newline + 1])
+                del self._buffer[: newline + 1]
+                return line.rstrip(b"\r\n").decode("utf-8", errors="replace")
+
+            if len(self._buffer) >= MAX_STARTTLS_LINE_BYTES:
+                raise self._too_long()
+            await self._fill()
+
+    async def receive_some(self) -> bytes:
+        """Return buffered bytes, or the next chunk from the stream."""
+        if not self._buffer:
+            await self._fill()
+        data = bytes(self._buffer)
+        self._buffer.clear()
+        return data
+
+    async def _fill(self) -> None:
+        chunk = await self._stream.receive(MAX_STARTTLS_LINE_BYTES)
+        self._received += len(chunk)
+        if self._received > MAX_STARTTLS_DIALOGUE_BYTES:
+            raise TcpCheckError(
+                "starttls_protocol_error",
+                "STARTTLS dialogue exceeded "
+                f"{MAX_STARTTLS_DIALOGUE_BYTES} bytes before TLS started",
+                retryable=False,
+            )
+        self._buffer.extend(chunk)
+
+    @staticmethod
+    def _too_long() -> TcpCheckError:
+        return TcpCheckError(
+            "starttls_protocol_error",
+            f"STARTTLS dialogue line longer than {MAX_STARTTLS_LINE_BYTES} bytes",
+            retryable=False,
+        )
 
 
 class TcpCheckExecutor:
@@ -81,6 +171,8 @@ class TcpCheckExecutor:
                     "attempt": attempt,
                     "attempts": attempts,
                 }
+                if config.tls_mode == "starttls":
+                    error_data["starttls_protocol"] = config.starttls_protocol
                 if exc.data:
                     error_data.update(exc.data)
 
@@ -161,6 +253,11 @@ class TcpCheckExecutor:
                 "host": host,
                 "port": config.port,
                 "tls_mode": config.tls_mode,
+                **(
+                    {"starttls_protocol": config.starttls_protocol}
+                    if config.tls_mode == "starttls"
+                    else {}
+                ),
                 "connect_time_ms": connect_time_ms,
                 **(
                     {"tls_handshake_ms": tls_handshake_ms}
@@ -242,26 +339,139 @@ class TcpCheckExecutor:
     async def _send_starttls_command(
         self, stream: SocketStream, config: TcpCheckConfig
     ) -> None:
-        """Send the STARTTLS command and ensure a positive response."""
+        """Run the STARTTLS dialogue for the configured protocol.
+
+        On return the server has accepted STARTTLS and the next bytes on the
+        stream belong to the TLS handshake.
+        """
+        reader = _LineReader(stream)
+        dialogue = {
+            "smtp": self._starttls_smtp,
+            "imap": self._starttls_imap,
+            "sieve": self._starttls_sieve,
+        }.get(config.starttls_protocol, self._starttls_generic)
+
         try:
             with anyio.fail_after(config.tls_handshake_timeout):
-                await stream.send(config.starttls_command.encode())
-                response = await stream.receive(1024)
+                await dialogue(reader, config)
         except TimeoutError as exc:
             raise TcpCheckError(
                 "starttls_timeout",
                 "Timed out waiting for STARTTLS response",
                 retryable=True,
             ) from exc
+        except (
+            anyio.EndOfStream,
+            anyio.BrokenResourceError,
+            anyio.ClosedResourceError,
+            OSError,
+        ) as exc:
+            raise TcpCheckError(
+                "starttls_connection_closed",
+                "Connection closed during the STARTTLS dialogue",
+                retryable=True,
+            ) from exc
 
+        if reader.pending:
+            # Bytes that arrived before the TLS handshake were sent in plain
+            # text; never let them leak into the TLS session.
+            raise TcpCheckError(
+                "starttls_protocol_error",
+                "Server sent unexpected data after the STARTTLS reply",
+                retryable=False,
+            )
+
+    async def _starttls_generic(
+        self, reader: "_LineReader", config: TcpCheckConfig
+    ) -> None:
+        """Send the configured command, optionally after the greeting."""
+        if config.starttls_read_greeting:
+            await reader.readline()
+
+        await reader.send(config.starttls_command.encode())
+        response = await reader.receive_some()
         response_text = response.decode(errors="ignore").strip()
         if not self._is_positive_starttls_response(response_text):
             raise TcpCheckError(
                 "starttls_rejected",
                 f"STARTTLS rejected: {response_text or 'no response'}",
                 retryable=False,
-                data={"starttls_response": response_text},
+                data={
+                    "starttls_response": _truncate(response_text),
+                    "starttls_stage": "starttls",
+                },
             )
+
+    async def _starttls_smtp(
+        self, reader: "_LineReader", config: TcpCheckConfig
+    ) -> None:
+        """SMTP (RFC 3207): 220 greeting, EHLO, STARTTLS, expect 220."""
+        await self._expect_smtp_reply(reader, "220", "greeting")
+        await reader.send(f"EHLO {SMTP_EHLO_NAME}\r\n".encode())
+        await self._expect_smtp_reply(reader, "250", "ehlo")
+        await reader.send(b"STARTTLS\r\n")
+        await self._expect_smtp_reply(reader, "220", "starttls")
+
+    async def _expect_smtp_reply(
+        self, reader: "_LineReader", expected_code: str, stage: str
+    ) -> None:
+        """Read a (multi-line) SMTP reply and require ``expected_code``."""
+        lines: list[str] = []
+        while True:
+            line = await reader.readline()
+            lines.append(line)
+            code = line[:3]
+            separator = line[3:4]
+            if not code.isdigit() or separator not in ("", " ", "-"):
+                raise _starttls_rejected(stage, lines)
+            if separator != "-":
+                break
+
+        if code != expected_code:
+            raise _starttls_rejected(stage, lines)
+
+    async def _starttls_imap(
+        self, reader: "_LineReader", config: TcpCheckConfig
+    ) -> None:
+        """IMAP (RFC 9051): ``* OK`` greeting, ``a1 STARTTLS``, expect ``a1 OK``."""
+        greeting = await reader.readline()
+        if not _IMAP_OK_GREETING.match(greeting):
+            raise _starttls_rejected("greeting", [greeting])
+
+        await reader.send(f"{IMAP_TAG} STARTTLS\r\n".encode())
+        lines: list[str] = []
+        while True:
+            line = await reader.readline()
+            lines.append(line)
+            if _IMAP_UNTAGGED_BYE.match(line):
+                raise _starttls_rejected("starttls", lines)
+            if line.startswith("* "):
+                continue
+            tagged = _IMAP_TAGGED.match(line)
+            if tagged and tagged.group(1).upper() == "OK":
+                return
+            raise _starttls_rejected("starttls", lines)
+
+    async def _starttls_sieve(
+        self, reader: "_LineReader", config: TcpCheckConfig
+    ) -> None:
+        """ManageSieve (RFC 5804): capabilities + OK, STARTTLS, expect OK."""
+        await self._expect_sieve_ok(reader, "greeting")
+        await reader.send(b"STARTTLS\r\n")
+        await self._expect_sieve_ok(reader, "starttls")
+
+    async def _expect_sieve_ok(self, reader: "_LineReader", stage: str) -> None:
+        """Skip capability lines until an OK/NO/BYE response; require OK."""
+        lines: list[str] = []
+        while True:
+            line = await reader.readline()
+            lines.append(line)
+            response = _SIEVE_RESPONSE.match(line)
+            if response is None:
+                continue
+            if response.group(1).upper() == "OK":
+                return
+            raise _starttls_rejected(stage, lines)
 
     def _build_ssl_context(self, config: TcpCheckConfig) -> ssl.SSLContext:
         """Create an SSL context based on verification requirements."""

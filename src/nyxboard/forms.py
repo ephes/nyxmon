@@ -720,6 +720,15 @@ class ImapHealthCheckForm(HealthCheckForm):
         return instance
 
 
+STARTTLS_PROTOCOL_BY_PORT: dict[int, str] = {
+    25: "smtp",
+    587: "smtp",
+    143: "imap",
+    4190: "sieve",
+}
+STARTTLS_PROTOCOL_NAMES = {"smtp": "SMTP", "imap": "IMAP", "sieve": "ManageSieve"}
+
+
 class TcpHealthCheckForm(HealthCheckForm):
     """Form for TCP health checks.
 
@@ -754,7 +763,26 @@ class TcpHealthCheckForm(HealthCheckForm):
         initial="none",
         widget=forms.Select(attrs={"class": "form-control"}),
         label="TLS Mode",
-        help_text="TLS negotiation mode; use STARTTLS for ports like 25/587",
+        help_text="TLS negotiation mode; use STARTTLS for ports like 25/587/143/4190",
+    )
+
+    starttls_protocol = forms.ChoiceField(
+        choices=[
+            ("auto", "Auto-detect from port"),
+            ("smtp", "SMTP (greeting, EHLO, STARTTLS)"),
+            ("imap", "IMAP (greeting, a1 STARTTLS)"),
+            ("sieve", "ManageSieve (capabilities, STARTTLS)"),
+            ("generic", "Generic (send STARTTLS immediately)"),
+        ],
+        initial="auto",
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="STARTTLS Protocol",
+        help_text=(
+            "Dialogue to run before the TLS upgrade (STARTTLS only). Auto picks "
+            "SMTP for ports 25/587, IMAP for 143, ManageSieve for 4190 and "
+            "generic otherwise."
+        ),
     )
 
     connect_timeout = forms.FloatField(
@@ -846,6 +874,11 @@ class TcpHealthCheckForm(HealthCheckForm):
             self.fields["host"].initial = tcp_config.get("host") or self.instance.url
             self.fields["port"].initial = tcp_config.get("port", 443)
             self.fields["tls_mode"].initial = tcp_config.get("tls_mode", "none")
+            if tcp_config.get("tls_mode") == "starttls":
+                # Checks saved before the protocol option ran the generic probe.
+                self.fields["starttls_protocol"].initial = (
+                    tcp_config.get("starttls_protocol") or "generic"
+                )
             self.fields["connect_timeout"].initial = tcp_config.get(
                 "connect_timeout", 10.0
             )
@@ -872,16 +905,29 @@ class TcpHealthCheckForm(HealthCheckForm):
             cleaned_data["check_cert_expiry"] = False
 
         if tls_mode == "starttls":
-            self.warnings.append(
-                "TCP STARTTLS is a generic probe that sends STARTTLS immediately. "
-                "SMTP/IMAP servers usually require an EHLO/LOGIN exchange first. "
-                "Use SMTP/IMAP checks for protocol validation, or TLS=None for reachability."
+            port_protocol = (
+                STARTTLS_PROTOCOL_BY_PORT.get(port) if isinstance(port, int) else None
             )
-            if port in {25, 587, 143}:
+            protocol = cleaned_data.get("starttls_protocol") or "auto"
+            if protocol == "auto":
+                protocol = port_protocol or "generic"
+            cleaned_data["starttls_protocol"] = protocol
+
+            if protocol == "generic":
                 self.warnings.append(
-                    f"Port {port} typically expects full SMTP/IMAP STARTTLS negotiation; "
-                    "this TCP check will likely fail even if the service is healthy."
+                    "Generic STARTTLS sends STARTTLS immediately and only suits "
+                    "custom protocols. Choose SMTP, IMAP or ManageSieve for mail "
+                    "servers, which greet first and expect their own dialogue."
                 )
+                if port_protocol:
+                    name = STARTTLS_PROTOCOL_NAMES[port_protocol]
+                    self.warnings.append(
+                        f"Port {port} normally speaks {name}; a generic STARTTLS "
+                        "check will likely fail even if the service is healthy. "
+                        f"Select the {name} protocol."
+                    )
+        else:
+            cleaned_data["starttls_protocol"] = None
 
         return cleaned_data
 
@@ -906,7 +952,17 @@ class TcpHealthCheckForm(HealthCheckForm):
         }
 
         if self.cleaned_data["tls_mode"] == "starttls":
+            protocol = self.cleaned_data["starttls_protocol"]
+            data["starttls_protocol"] = protocol
             data["starttls_command"] = "STARTTLS\r\n"
+            previous = instance.data if isinstance(instance.data, dict) else {}
+            if protocol == "generic":
+                # The form does not expose the generic-only options; keep
+                # values set through the API so an edit cannot drop them.
+                if previous.get("starttls_command"):
+                    data["starttls_command"] = previous["starttls_command"]
+                if previous.get("starttls_read_greeting"):
+                    data["starttls_read_greeting"] = True
 
         if self.cleaned_data.get("sni"):
             data["sni"] = self.cleaned_data["sni"]

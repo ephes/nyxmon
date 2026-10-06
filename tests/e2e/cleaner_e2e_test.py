@@ -2,7 +2,7 @@ import pytest
 import os
 import sqlite3
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import anyio
 import aiosqlite
@@ -44,8 +44,9 @@ def populated_db(test_db_path):
     conn = sqlite3.connect(test_db_path)
     cursor = conn.cursor()
 
-    # Insert the results with appropriate timestamps
-    now = datetime.now()
+    # Insert the results with appropriate timestamps. The repository stamps
+    # rows with SQLite's datetime('now'), which is UTC.
+    now = datetime.now(timezone.utc)
     recent_time = now - timedelta(minutes=10)
     old_time = now - timedelta(hours=25)
     very_old_time = now - timedelta(hours=48)
@@ -141,50 +142,46 @@ async def test_cleaner_integration(populated_db):
     conn.close()
 
 
+def _count_results(db_path) -> int:
+    conn = sqlite3.connect(db_path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM check_result").fetchone()[0]
+    finally:
+        conn.close()
+
+
 @pytest.mark.anyio
-async def test_cleaner_with_batch_size(populated_db):
-    """Test that the cleaner respects batch size"""
-    # Set up the store with the populated database
+async def test_cleaner_drains_all_batches_in_one_cycle(populated_db):
+    """A small batch size no longer limits how much one cycle deletes."""
     store = SqliteStore(db_path=populated_db)
-
-    # Create a cleaner with a very short interval and small batch size
     cleaner = AsyncResultsCleaner(
-        interval=0.5,  # Run every 0.5 seconds
-        retention_period=24 * 60 * 60,  # 24 hours retention
-        batch_size=2,  # Delete only 2 records per run
+        interval=3600,  # only the first cycle runs during the test
+        retention_period=24 * 60 * 60,
+        batch_size=2,
     )
-
-    # Bootstrap the system
     bus = bootstrap(store=store, cleaner=cleaner)
 
-    # Run the cleaner for a short time (enough for 1 run)
     async with running_cleaner(bus):
-        # Wait a bit for the cleaner to run
         await anyio.sleep(0.7)
 
-    # Verify that only a batch of old records was deleted
-    conn = sqlite3.connect(populated_db)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM check_result")
-    count_after_one_run = cursor.fetchone()[0]
+    # All 10 expired rows are gone after one cycle of five 2-row batches.
+    assert _count_results(populated_db) == 5
 
-    # Should have deleted 4 records (2 each from two runs) from the 10 old records
-    assert count_after_one_run == 11
 
-    conn.close()
+@pytest.mark.anyio
+async def test_cleaner_cycle_stops_at_batch_cap(populated_db):
+    """The per-cycle cap bounds one cycle; the rest waits for the next."""
+    store = SqliteStore(db_path=populated_db)
+    cleaner = AsyncResultsCleaner(
+        interval=3600,
+        retention_period=24 * 60 * 60,
+        batch_size=2,
+        max_batches_per_cycle=2,
+    )
+    bus = bootstrap(store=store, cleaner=cleaner)
 
-    # Run again to delete more
     async with running_cleaner(bus):
-        # Wait a bit for the cleaner to run
         await anyio.sleep(0.7)
 
-    # Verify that another batch was deleted
-    conn = sqlite3.connect(populated_db)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM check_result")
-    count_after_two_runs = cursor.fetchone()[0]
-
-    # Should have deleted more records, bringing total to 8 deleted
-    assert count_after_two_runs == 7
-
-    conn.close()
+    # Two batches of two rows: 4 of the 10 expired rows deleted.
+    assert _count_results(populated_db) == 11
