@@ -11,6 +11,7 @@ Store the executor settings in `check.data`:
     "host": "smtp.home.wersdoerfer.de",
     "port": 587,
     "tls": "starttls",                  # "none" | "starttls" | "implicit"
+    "verify": true,                     # default; false skips certificate/hostname checks
     "username": "monitor@xn--wersdrfer-47a.de",
     "password_secret": "nyxmon_local_monitor_password",  # or use "password"
     "from_addr": "monitor@xn--wersdrfer-47a.de",
@@ -26,12 +27,13 @@ Validation rules:
 
 - `host`, `from_addr`, `to_addr`, and `subject_prefix` are required.
 - `tls` must be one of `none`, `starttls`, or `implicit`.
+- `verify` must be a boolean when present; it defaults to `true`.
 - If `username` is set, either `password` or `password_secret` must be provided.
 - `retries` and `retry_delay` must be zero or positive.
 
 ## Behaviour
 
-- Performs STARTTLS or implicit TLS when requested.
+- Performs STARTTLS or implicit TLS when requested. Both verify the server certificate chain and hostname against the system trust store before credentials are sent. Set `verify` to `false` only for a server with a self-signed certificate: that disables both checks, logs a warning on every connection, and exposes the password to a man-in-the-middle. A certificate failure is reported as `error_type="tls_error"`.
 - Authenticates before sending when credentials are provided.
 - Builds subjects as `<prefix> <UTC timestamp> <6-char token>` and returns the token for IMAP correlation.
 - Retries on 4xx responses (greylisting/temporary failures) with configurable backoff.

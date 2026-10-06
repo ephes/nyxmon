@@ -24,12 +24,19 @@ class SmtpCheckConfig:
     timeout: float = 30.0
     retries: int = 2
     retry_delay: float = 5.0
+    verify: bool = True  # verify TLS certificate and hostname
 
     @classmethod
     def from_dict(cls, data: dict) -> "SmtpCheckConfig":
         """Deserialize from check.data dictionary."""
         if "host" not in data or not data["host"]:
             raise ValueError("host is required")
+
+        verify = data.get("verify", True)
+        if verify is None:
+            verify = True
+        if not isinstance(verify, bool):
+            raise ValueError("verify must be a boolean")
 
         return cls(
             host=data["host"],
@@ -44,6 +51,7 @@ class SmtpCheckConfig:
             timeout=data.get("timeout", 30.0),
             retries=data.get("retries", 2),
             retry_delay=data.get("retry_delay", 5.0),
+            verify=verify,
         )
 
     def validate(self) -> bool:

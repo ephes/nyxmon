@@ -15,6 +15,7 @@ check = Check(
     data={
         "port": 993,
         "tls_mode": "implicit",  # "implicit", "starttls", "none"
+        "verify": True,  # default; False skips certificate/hostname checks
         "username": "monitor@xn--wersdrfer-47a.de",
         "password_secret": "nyxmon_local_monitor_password",  # or password
         "folder": "INBOX",
@@ -31,9 +32,10 @@ check = Check(
 
 Behavior:
 - Connects with the chosen TLS mode (implicit/starttls/none), logs in, and selects `folder`.
+- Implicit TLS and STARTTLS verify the server certificate chain and hostname against the system trust store before the password is sent. `verify` defaults to `true`; set it to `false` only for a server with a self-signed certificate. That disables both checks and logs a warning on every connection, and the login password is then exposed to a man-in-the-middle. A certificate failure is reported as `error_type="tls_error"` and is not retried.
 - Searches undeleted messages matching `search_subject`, filters to those newer than `max_age_minutes`.
 - On success returns `matched_uids` and `latest_internaldate`; when `delete_after_check` is true, messages are deleted/expunged.
-- Failures surface as `error_type` values such as `no_recent_message`, `timeout`, `request_error`, or `execution_error`; retries/backoff apply to transient failures and to empty recent-message searches before `no_recent_message` is returned.
+- Failures surface as `error_type` values such as `no_recent_message`, `tls_error`, `timeout`, `request_error`, or `execution_error`; retries/backoff apply to transient failures and to empty recent-message searches before `no_recent_message` is returned.
 - `no_recent_message_severity` defaults to `critical`; set it to `warning` for third-party forwarded loopbacks where missing fresh mail means the forwarding path is stale but local IMAP/auth/connectivity should not page.
 
 Tips:
