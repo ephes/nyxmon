@@ -1,3 +1,4 @@
+import ipaddress
 from typing import Any
 
 from django import forms
@@ -6,6 +7,7 @@ import json
 
 from .models import Service, HealthCheck
 from nyxmon.domain import CheckType
+from nyxmon.domain.dns_config import expected_ip_error
 from nyxmon.domain.ping_config import PingCheckConfig, normalize_ping_target
 
 
@@ -1299,14 +1301,15 @@ class DnsHealthCheckForm(HealthCheckForm):
         # Split by newlines and filter empty lines
         ips = [line.strip() for line in value.split("\n") if line.strip()]
 
-        # Validate each IP address (literal only, no CIDR/wildcards)
+        # Validate each IP address (literal only, no CIDR/wildcards) and store
+        # its canonical text, so the stored value reads like the DNS answer.
         validated_ips = []
         for ip in ips:
             try:
                 # This will raise ValidationError if invalid
                 forms.GenericIPAddressField().clean(ip)
-                validated_ips.append(ip)
-            except forms.ValidationError:
+                validated_ips.append(ipaddress.ip_address(ip).compressed)
+            except (forms.ValidationError, ValueError):
                 raise forms.ValidationError(
                     f"Invalid IP address: {ip}. "
                     "Only literal IP addresses supported (no CIDR ranges or wildcards)."
@@ -1323,6 +1326,19 @@ class DnsHealthCheckForm(HealthCheckForm):
                 "Only A and AAAA records supported."
             )
         return query_type
+
+    def clean(self):
+        """Reject expected IPs of the wrong family for the query type."""
+        cleaned_data = super().clean()
+        expected_ips = cleaned_data.get("expected_ips")
+        query_type = cleaned_data.get("query_type")
+        if expected_ips and query_type:
+            for ip in expected_ips:
+                error = expected_ip_error(ip, query_type)
+                if error is not None:
+                    self.add_error("expected_ips", error)
+                    break
+        return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)

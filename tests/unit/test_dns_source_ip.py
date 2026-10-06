@@ -19,7 +19,8 @@ class RecordingAnswer:
         self.response = SimpleNamespace(rcode=lambda: 0)
         self.qname = SimpleNamespace(to_text=lambda: f"{domain}.")
         self.rdtype = getattr(dns.rdatatype, rdtype)
-        self._records = [SimpleNamespace(to_text=lambda: "resolved")]
+        address = "2001:db8::1" if rdtype == "AAAA" else "192.0.2.1"
+        self._records = [SimpleNamespace(to_text=lambda: address)]
 
     def __iter__(self):
         return iter(self._records)
@@ -49,7 +50,7 @@ def _make_check(**data):
         name=data.get("name", "DNS Check"),
         check_type=CheckType.DNS,
         url=data.get("url", "example.com"),
-        data=data.get("config", {"expected_ips": ["resolved"]}),
+        data=data.get("config", {"expected_ips": ["192.0.2.1"]}),
     )
 
 
@@ -62,7 +63,7 @@ class TestDnsSourceIpBinding:
         monkeypatch.setattr("dns.asyncresolver.Resolver", lambda: recording_resolver)
 
         executor = DnsCheckExecutor(resolver=DnspythonResolver())
-        check = _make_check(config={"expected_ips": ["resolved"]})
+        check = _make_check(config={"expected_ips": ["192.0.2.1"]})
 
         result = await executor.execute(check)
 
@@ -78,7 +79,7 @@ class TestDnsSourceIpBinding:
         executor = DnsCheckExecutor(resolver=DnspythonResolver())
         check = _make_check(
             config={
-                "expected_ips": ["resolved"],
+                "expected_ips": ["192.0.2.1"],
                 "dns_server": "192.168.178.94",
                 "source_ip": "192.168.178.50",
             }
@@ -98,7 +99,7 @@ class TestDnsSourceIpBinding:
         executor = DnsCheckExecutor(resolver=DnspythonResolver())
         check = _make_check(
             config={
-                "expected_ips": ["resolved"],
+                "expected_ips": ["2001:db8::1"],
                 "source_ip": "192.168.1.100",
                 "query_type": "AAAA",
             }

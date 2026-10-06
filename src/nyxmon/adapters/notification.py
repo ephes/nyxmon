@@ -25,6 +25,66 @@ UNTRUSTED_MAX_DEPTH = 4
 INTERNAL_CHECK_TYPE = "internal"
 
 
+#: Caps applied to the fields of a check alert before MarkdownV2 escaping.
+#: Together they keep the message far below Telegram's 4096 character limit,
+#: so an unusually long endpoint error can never make the alert undeliverable.
+ALERT_MAX_NAME_CHARS = 200
+ALERT_MAX_URL_CHARS = 500
+ALERT_MAX_ERROR_TYPE_CHARS = 100
+ALERT_MAX_ERROR_MSG_CHARS = 2000
+
+#: Lower-cased fragment of Telegram's HTTP 400 description for a body it could
+#: not parse as MarkdownV2 ("Bad Request: can't parse entities: ...").
+_TELEGRAM_PARSE_ERROR_MARKER = "can't parse entities"
+#: Sentinel returned by ``_post_message`` for that parse error.
+_PARSE_ERROR = object()
+
+#: Unescaped MarkdownV2 characters that only switch formatting on or off.
+_MARKDOWN_V2_FORMATTING_CHARS = frozenset("*_~`|")
+
+
+def _truncate(value: str, max_chars: int) -> str:
+    """Cut ``value`` to ``max_chars`` characters, marking the cut."""
+    if len(value) <= max_chars:
+        return value
+    omitted = len(value) - max_chars
+    return f"{value[:max_chars]}...[truncated {omitted} chars]"
+
+
+def markdown_v2_to_plain_text(text: str) -> str:
+    """Turn a MarkdownV2 body into the plain text it was built from.
+
+    Used as the fallback when Telegram rejects a MarkdownV2 body: escapes are
+    removed (``\\x`` becomes ``x``), unescaped formatting markers are dropped,
+    and a link ``[label](url)`` keeps both label and URL as ``label (url)``.
+    The result is sent without ``parse_mode``, so no character needs escaping.
+    """
+    out: list[str] = []
+    in_link_url = False
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if char == "\\" and i + 1 < len(text):
+            out.append(text[i + 1])
+            i += 2
+            continue
+        if in_link_url:
+            if char == ")":
+                in_link_url = False
+            out.append(char)
+        elif char == "]" and text.startswith("](", i):
+            out.append(" (")
+            in_link_url = True
+            i += 2
+            continue
+        elif char == "[":
+            pass
+        elif char not in _MARKDOWN_V2_FORMATTING_CHARS:
+            out.append(char)
+        i += 1
+    return "".join(out)
+
+
 def _is_internal_alert(check: Check) -> bool:
     return check.check_id == 0 and check.check_type == INTERNAL_CHECK_TYPE
 
@@ -401,19 +461,51 @@ class AsyncTelegramNotifier(Notifier):
             logger.warning("Cannot send Telegram notification: missing credentials")
             return None
 
+        delivered = await self._post_message(
+            text, high_priority=high_priority, markdown=True
+        )
+        if delivered is not _PARSE_ERROR:
+            return delivered is True
+        # Telegram could not parse the MarkdownV2 body. Formatting must never
+        # cost an alert, so the same content goes out once more as plain text.
+        logger.warning("Telegram rejected the MarkdownV2 body; resending as plain text")
+        return (
+            await self._post_message(
+                markdown_v2_to_plain_text(text),
+                high_priority=high_priority,
+                markdown=False,
+            )
+            is True
+        )
+
+    async def _post_message(
+        self, text: str, *, high_priority: bool, markdown: bool
+    ) -> bool | object:
+        """POST one message; return ``True``, ``False`` or ``_PARSE_ERROR``.
+
+        ``_PARSE_ERROR`` is only returned for a MarkdownV2 body that Telegram
+        rejected with HTTP 400 because it could not parse the entities.
+        """
         try:
             payload = {
                 "chat_id": self.chat_id,
                 "text": text,
-                "parse_mode": "MarkdownV2",
                 "disable_notification": not high_priority,
             }
+            if markdown:
+                payload["parse_mode"] = "MarkdownV2"
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.url, data=payload, timeout=10.0)
                 resp.raise_for_status()
             logger.info("Telegram notification delivered")
             return True
         except httpx.HTTPStatusError as exc:
+            if (
+                markdown
+                and exc.response.status_code == 400
+                and _TELEGRAM_PARSE_ERROR_MARKER in exc.response.text.lower()
+            ):
+                return _PARSE_ERROR
             response_detail = exc.response.text
             if self.token:
                 response_detail = response_detail.replace(self.token, "<redacted>")
@@ -438,7 +530,7 @@ class AsyncTelegramNotifier(Notifier):
     @staticmethod
     def escape_markdown_v2(text: str) -> str:
         """Escape special characters for Telegram's MarkdownV2 format."""
-        # Characters that need escaping in MarkdownV2: _ * [ ] ( ) ~ ` > # + - = | { } . !
+        # Characters that need escaping in MarkdownV2: \\ _ * [ ] ( ) ~ ` > # + - = | { } . !
         special_chars = [
             "_",
             "*",
@@ -459,7 +551,10 @@ class AsyncTelegramNotifier(Notifier):
             ".",
             "!",
         ]
-        escaped_text = text
+        # The backslash is the escape character itself and must be escaped
+        # first; otherwise ``\.`` would become ``\\.``, a literal backslash
+        # followed by a bare ``.``, and Telegram rejects the whole message.
+        escaped_text = text.replace("\\", "\\\\")
         for char in special_chars:
             escaped_text = escaped_text.replace(char, f"\\{char}")
         return escaped_text
@@ -488,12 +583,20 @@ class AsyncTelegramNotifier(Notifier):
         is_critical = result.status == "error"
 
         # Escape all text for MarkdownV2
+        # Every field is capped before escaping so the body stays well below
+        # Telegram's 4096 character limit whatever an endpoint sends back.
         escaped_name = (
-            self.escape_markdown_v2(check.name) if check.name else "Unnamed Check"
+            self.escape_markdown_v2(_truncate(check.name, ALERT_MAX_NAME_CHARS))
+            if check.name
+            else "Unnamed Check"
         )
-        escaped_url = self.escape_markdown_v2(check.url)
-        escaped_error_msg = self.escape_markdown_v2(str(error_msg))
-        escaped_error_type = self.escape_markdown_v2(str(error_type))
+        escaped_url = self.escape_markdown_v2(_truncate(check.url, ALERT_MAX_URL_CHARS))
+        escaped_error_msg = self.escape_markdown_v2(
+            _truncate(str(error_msg), ALERT_MAX_ERROR_MSG_CHARS)
+        )
+        escaped_error_type = self.escape_markdown_v2(
+            _truncate(str(error_type), ALERT_MAX_ERROR_TYPE_CHARS)
+        )
 
         # Use different emoji and title based on severity
         if is_critical:
@@ -504,7 +607,10 @@ class AsyncTelegramNotifier(Notifier):
         message += f"Name: {escaped_name}\n"
         message += f"URL: {escaped_url}\n"
         if status_code:
-            message += f"Status: {status_code}\n"
+            escaped_status = self.escape_markdown_v2(
+                _truncate(str(status_code), ALERT_MAX_ERROR_TYPE_CHARS)
+            )
+            message += f"Status: {escaped_status}\n"
         if error_type:
             message += f"Error Type: {escaped_error_type}\n"
         message += f"Error: {escaped_error_msg}"
