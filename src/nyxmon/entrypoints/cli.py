@@ -139,7 +139,10 @@ def start_agent():
         "--batch-size",
         type=int,
         default=1000,
-        help="Maximum number of old results to delete in a single batch (default: 1000)",
+        help=(
+            "Number of old results deleted per batch; each cleanup run deletes "
+            "batches until the expired backlog is gone (default: 1000)"
+        ),
     )
     parser.add_argument(
         "--disable-cleaner",

@@ -2,7 +2,7 @@ import pytest
 import sqlite3
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import anyio
 import aiosqlite
@@ -48,8 +48,9 @@ def populated_db(test_db_path):
     conn = sqlite3.connect(test_db_path)
     cursor = conn.cursor()
 
-    # Insert the results with appropriate timestamps
-    now = datetime.now()
+    # Insert the results with appropriate timestamps. The repository stamps
+    # rows with SQLite's datetime('now'), which is UTC.
+    now = datetime.now(timezone.utc)
     recent_time = now - timedelta(minutes=10)
     old_time = now - timedelta(hours=25)
     very_old_time = now - timedelta(hours=48)
@@ -198,3 +199,65 @@ class TestSqliteResultRepository:
         assert count == 1  # Only the recent result should remain
 
         conn.close()
+
+
+def _insert_rows_aged(db_path, ages_hours: list[float], start_id: int = 1) -> None:
+    """Insert results stamped like the repository does (SQLite UTC clock)."""
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.executemany(
+            "INSERT INTO check_result (id, health_check_id, status, data, created_at) "
+            "VALUES (?, 1, 'ok', '{}', datetime('now', ?))",
+            [
+                (start_id + offset, f"-{age * 3600:.0f} seconds")
+                for offset, age in enumerate(ages_hours)
+            ],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@pytest.fixture
+def empty_result_db(test_db_path):
+    repo = SqliteResultRepository(db_path=test_db_path)
+
+    async def init_schema():
+        async with aiosqlite.connect(test_db_path) as db:
+            await repo._ensure_schema(db)
+
+    anyio.run(init_schema)
+    return test_db_path
+
+
+@pytest.fixture
+def non_utc_local_time(monkeypatch):
+    """Run with a local zone far from UTC (UTC+14, no DST)."""
+    import time
+
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset is not available on this platform")
+    monkeypatch.setenv("TZ", "Pacific/Kiritimati")
+    time.tzset()
+    assert time.localtime().tm_gmtoff == 14 * 3600
+    yield
+    monkeypatch.undo()
+    time.tzset()
+
+
+class TestResultRetentionCutoff:
+    @pytest.mark.anyio
+    async def test_cutoff_is_utc_on_non_utc_host(
+        self, empty_result_db, non_utc_local_time
+    ):
+        """A row 23 h old (UTC) is kept and a 25 h old row is deleted."""
+        _insert_rows_aged(empty_result_db, [23, 25])
+        repo = SqliteResultRepository(db_path=empty_result_db)
+
+        deleted = await repo.delete_old_results_async(retention_seconds=24 * 3600)
+
+        conn = sqlite3.connect(empty_result_db)
+        remaining = [row[0] for row in conn.execute("SELECT id FROM check_result")]
+        conn.close()
+        assert deleted == 1
+        assert remaining == [1]

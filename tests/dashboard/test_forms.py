@@ -1147,31 +1147,121 @@ class TestGenericHealthCheckFormLegacyTypes:
 class TestTcpHealthCheckForm:
     """Tests for TcpHealthCheckForm warnings and serialization."""
 
-    def test_starttls_is_valid_but_warns(self, service):
+    @staticmethod
+    def _data(service, **overrides):
+        data = {
+            "name": "SMTP STARTTLS probe",
+            "service": service.id,
+            "check_type": CheckType.TCP,
+            "check_interval": 300,
+            "disabled": False,
+            "host": "mail.example.com",
+            "port": 587,
+            "tls_mode": "starttls",
+            "connect_timeout": 10.0,
+            "tls_handshake_timeout": 10.0,
+            "retries": 1,
+            "retry_delay": 0.0,
+            "check_cert_expiry": True,
+            "min_cert_days": 14,
+            "sni": "",
+            "verify": True,
+        }
+        data.update(overrides)
+        return data
+
+    def test_generic_starttls_is_valid_but_warns(self, service):
+        form = TcpHealthCheckForm(data=self._data(service, starttls_protocol="generic"))
+        assert form.is_valid(), form.errors
+        assert any("Generic STARTTLS sends STARTTLS" in w for w in form.warnings)
+        assert any("Port 587 normally speaks SMTP" in w for w in form.warnings)
+        instance = form.save()
+        assert instance.data["starttls_protocol"] == "generic"
+        assert instance.data["starttls_command"] == "STARTTLS\r\n"
+
+    @pytest.mark.parametrize(
+        ("port", "expected"),
+        [
+            (25, "smtp"),
+            (587, "smtp"),
+            (143, "imap"),
+            (4190, "sieve"),
+            (2525, "generic"),
+        ],
+    )
+    @pytest.mark.parametrize("submitted", ["auto", ""])
+    def test_starttls_protocol_inferred_from_port(
+        self, service, port, expected, submitted
+    ):
         form = TcpHealthCheckForm(
-            data={
-                "name": "SMTP STARTTLS probe",
-                "service": service.id,
-                "check_type": CheckType.TCP,
-                "check_interval": 300,
-                "disabled": False,
-                "host": "mail.example.com",
-                "port": 587,
-                "tls_mode": "starttls",
-                "connect_timeout": 10.0,
-                "tls_handshake_timeout": 10.0,
-                "retries": 1,
-                "retry_delay": 0.0,
-                "check_cert_expiry": True,
-                "min_cert_days": 14,
-                "sni": "",
-                "verify": True,
-            }
+            data=self._data(service, port=port, starttls_protocol=submitted)
         )
         assert form.is_valid(), form.errors
-        assert hasattr(form, "warnings")
-        assert any("STARTTLS is a generic probe" in w for w in form.warnings)
-        assert any("Port 587 typically expects" in w for w in form.warnings)
+        instance = form.save()
+        assert instance.data["starttls_protocol"] == expected
+        if expected == "generic":
+            assert any("Generic STARTTLS" in w for w in form.warnings)
+        else:
+            assert form.warnings == []
+
+    def test_explicit_starttls_protocol_overrides_port(self, service):
+        form = TcpHealthCheckForm(
+            data=self._data(service, port=2525, starttls_protocol="smtp")
+        )
+        assert form.is_valid(), form.errors
+        assert form.save().data["starttls_protocol"] == "smtp"
+        assert form.warnings == []
+
+    def test_starttls_protocol_not_stored_without_starttls(self, service):
+        form = TcpHealthCheckForm(
+            data=self._data(
+                service, port=465, tls_mode="implicit", starttls_protocol="smtp"
+            )
+        )
+        assert form.is_valid(), form.errors
+        assert "starttls_protocol" not in form.save().data
+
+    def test_legacy_starttls_check_shows_generic(self, service):
+        check = HealthCheck.objects.create(
+            name="Legacy STARTTLS",
+            service=service,
+            check_type=CheckType.TCP,
+            url="mail.example.com",
+            data={"host": "mail.example.com", "port": 25, "tls_mode": "starttls"},
+        )
+        form = TcpHealthCheckForm(instance=check)
+        assert form.fields["starttls_protocol"].initial == "generic"
+
+    def test_edit_preserves_generic_only_options(self, service):
+        check = HealthCheck.objects.create(
+            name="Custom STARTTLS",
+            service=service,
+            check_type=CheckType.TCP,
+            url="svc.example.com",
+            data={
+                "host": "svc.example.com",
+                "port": 7000,
+                "tls_mode": "starttls",
+                "starttls_protocol": "generic",
+                "starttls_command": "UPGRADE\r\n",
+                "starttls_read_greeting": True,
+            },
+        )
+        form = TcpHealthCheckForm(
+            instance=check,
+            data=self._data(
+                service, name="Renamed", port=7000, starttls_protocol="generic"
+            ),
+        )
+        assert form.is_valid(), form.errors
+        data = form.save().data
+        assert data["starttls_command"] == "UPGRADE\r\n"
+        assert data["starttls_read_greeting"] is True
+
+    def test_rejects_unknown_starttls_protocol(self, service):
+        form = TcpHealthCheckForm(data=self._data(service, starttls_protocol="pop3"))
+        assert not form.is_valid()
+        assert "starttls_protocol" in form.errors
 
     def test_none_tls_disables_cert_expiry(self, service):
         form = TcpHealthCheckForm(

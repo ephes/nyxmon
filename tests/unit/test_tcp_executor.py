@@ -289,3 +289,418 @@ async def test_retries_transient_connection_failure() -> None:
 
     assert result.status == ResultStatus.OK
     assert result.data["attempt"] == 2
+
+
+# --- Protocol-aware STARTTLS -------------------------------------------------
+#
+# Real SMTP, IMAP and ManageSieve servers speak first and expect a protocol
+# dialogue before STARTTLS. These fake servers model that so the executor has
+# to read the greeting instead of mistaking it for the STARTTLS reply.
+
+Responder = Callable[[bytes, dict[str, Any]], tuple[bytes, bool]]
+
+
+async def _start_dialogue_server(
+    cert: str, key: str, greeting: bytes, respond: Responder
+) -> tuple[asyncio.AbstractServer, int, dict[str, Any]]:
+    """Start a greet-first server that upgrades when ``respond`` says so."""
+    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_ctx.load_cert_chain(certfile=cert, keyfile=key)
+    state: dict[str, Any] = {"lines": [], "upgraded": False}
+
+    async def handler(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        try:
+            writer.write(greeting)
+            await writer.drain()
+            while True:
+                line = await reader.readline()
+                if not line:
+                    return
+                state["lines"].append(line)
+                reply, upgrade = respond(line, state)
+                writer.write(reply)
+                await writer.drain()
+                if upgrade:
+                    break
+            loop = asyncio.get_running_loop()
+            tls_reader = asyncio.StreamReader()
+            protocol = asyncio.StreamReaderProtocol(tls_reader)
+            tls_transport = await loop.start_tls(
+                writer.transport, protocol, ssl_ctx, server_side=True
+            )
+            state["upgraded"] = True
+            tls_writer = asyncio.StreamWriter(tls_transport, protocol, tls_reader, loop)
+            await tls_reader.read(1)
+            tls_writer.close()
+        except (ConnectionError, ssl.SSLError):
+            pass
+        finally:
+            writer.close()
+
+    server, port = await _start_server(handler)
+    return server, port, state
+
+
+SMTP_GREETING = b"220-mail.test ESMTP\r\n220 mail.test ready\r\n"
+
+
+def _smtp_responder(accept: bool = True) -> Responder:
+    def respond(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+        command = line.strip().upper()
+        if command.startswith(b"EHLO"):
+            state["ehlo"] = True
+            return b"250-mail.test\r\n250-PIPELINING\r\n250 STARTTLS\r\n", False
+        if command == b"STARTTLS":
+            if not state.get("ehlo"):
+                return b"503 5.5.1 EHLO first\r\n", False
+            if not accept:
+                return b"454 4.7.0 TLS not available\r\n", False
+            return b"220 2.0.0 Ready to start TLS\r\n", True
+        return b"500 5.5.2 unknown command\r\n", False
+
+    return respond
+
+
+IMAP_GREETING = b"* OK [CAPABILITY IMAP4rev1 STARTTLS] mail.test ready\r\n"
+
+
+def _imap_responder(accept: bool = True) -> Responder:
+    def respond(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+        parts = line.strip().split(b" ", 1)
+        if len(parts) == 2 and parts[1].upper() == b"STARTTLS":
+            tag = parts[0]
+            if not accept:
+                return tag + b" NO STARTTLS unavailable\r\n", False
+            return (
+                b"* CAPABILITY IMAP4rev1\r\n" + tag + b" OK Begin TLS now\r\n",
+                True,
+            )
+        return b"* BAD Error in IMAP command\r\n", False
+
+    return respond
+
+
+SIEVE_GREETING = (
+    b'"IMPLEMENTATION" "Pigeonhole Sieve"\r\n'
+    b'"SIEVE" "fileinto reject"\r\n'
+    b'"STARTTLS"\r\n'
+    b'OK "mail.test ready."\r\n'
+)
+
+
+def _sieve_responder(accept: bool = True) -> Responder:
+    def respond(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+        if line.strip().upper() == b"STARTTLS":
+            if not accept:
+                return b'NO "TLS unavailable"\r\n', False
+            return b'OK "Begin TLS negotiation now."\r\n', True
+        return b'NO "Unknown command"\r\n', False
+
+    return respond
+
+
+PROTOCOL_SERVERS: dict[str, tuple[bytes, Callable[..., Responder]]] = {
+    "smtp": (SMTP_GREETING, _smtp_responder),
+    "imap": (IMAP_GREETING, _imap_responder),
+    "sieve": (SIEVE_GREETING, _sieve_responder),
+}
+
+
+async def _run_protocol_check(
+    tls_files: tuple[Any, Any],
+    protocol: str,
+    *,
+    accept: bool = True,
+    **data: Any,
+) -> tuple[Any, dict[str, Any]]:
+    cert_path, key_path = tls_files
+    greeting, responder = PROTOCOL_SERVERS[protocol]
+    server, port, state = await _start_dialogue_server(
+        str(cert_path), str(key_path), greeting, responder(accept)
+    )
+    check_data: dict[str, Any] = {
+        "tls_mode": "starttls",
+        "verify": False,
+        "tls_handshake_timeout": 2.0,
+        "retries": 0,
+    }
+    check_data.update(data)
+    try:
+        result = await TcpCheckExecutor().execute(_tcp_check(port, **check_data))
+    finally:
+        server.close()
+        await server.wait_closed()
+    return result, state
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("protocol", ["smtp", "imap", "sieve"])
+async def test_starttls_protocol_dialogue_succeeds(tls_files, protocol) -> None:
+    result, state = await _run_protocol_check(
+        tls_files, protocol, starttls_protocol=protocol
+    )
+
+    assert result.status == ResultStatus.OK, result.data
+    assert result.data["tls_handshake_ms"] >= 0
+    assert result.data["starttls_protocol"] == protocol
+    assert state["upgraded"] is True
+
+
+@pytest.mark.anyio
+async def test_starttls_smtp_sends_ehlo_before_starttls(tls_files) -> None:
+    result, state = await _run_protocol_check(
+        tls_files, "smtp", starttls_protocol="smtp"
+    )
+
+    assert result.status == ResultStatus.OK, result.data
+    assert state["lines"] == [b"EHLO nyxmon.invalid\r\n", b"STARTTLS\r\n"]
+
+
+@pytest.mark.anyio
+async def test_starttls_imap_uses_tagged_command(tls_files) -> None:
+    result, state = await _run_protocol_check(
+        tls_files, "imap", starttls_protocol="imap"
+    )
+
+    assert result.status == ResultStatus.OK, result.data
+    assert state["lines"] == [b"a1 STARTTLS\r\n"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("protocol", ["smtp", "imap", "sieve"])
+async def test_starttls_protocol_rejection_is_clean(tls_files, protocol) -> None:
+    result, state = await _run_protocol_check(
+        tls_files, protocol, accept=False, starttls_protocol=protocol
+    )
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "starttls_rejected"
+    assert result.data["starttls_stage"] == "starttls"
+    assert result.data["starttls_response"]
+    assert state["upgraded"] is False
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("protocol", ["smtp", "imap", "sieve"])
+async def test_starttls_protocol_reports_cert_expiry(tls_files, protocol) -> None:
+    result, _ = await _run_protocol_check(
+        tls_files,
+        protocol,
+        starttls_protocol=protocol,
+        check_cert_expiry=True,
+        min_cert_days=999,  # force the warning so the cert data is reported
+    )
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "cert_expiry"
+    assert isinstance(result.data["cert_days_remaining"], int)
+    assert result.data["tls_handshake_ms"] >= 0
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("protocol", ["smtp", "imap", "sieve"])
+async def test_generic_starttls_against_greeting_server_fails(
+    tls_files, protocol
+) -> None:
+    """Regression: the generic probe cannot talk to greet-first servers.
+
+    Without a protocol it sends STARTTLS before reading the greeting. It used to
+    take the greeting (``220 ...``, ``* OK ...``) as the STARTTLS reply and then
+    fail the TLS handshake with ``tls_error`` against a healthy server.
+    """
+    result, state = await _run_protocol_check(tls_files, protocol)
+
+    assert result.status == ResultStatus.ERROR
+    assert state["upgraded"] is False
+
+
+async def _run_custom_dialogue(
+    tls_files: tuple[Any, Any], greeting: bytes, respond: Responder, **data: Any
+) -> tuple[Any, dict[str, Any]]:
+    cert_path, key_path = tls_files
+    server, port, state = await _start_dialogue_server(
+        str(cert_path), str(key_path), greeting, respond
+    )
+    check_data: dict[str, Any] = {
+        "tls_mode": "starttls",
+        "verify": False,
+        "tls_handshake_timeout": 2.0,
+        "retries": 0,
+    }
+    check_data.update(data)
+    try:
+        result = await TcpCheckExecutor().execute(_tcp_check(port, **check_data))
+    finally:
+        server.close()
+        await server.wait_closed()
+    return result, state
+
+
+def _generic_responder(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+    if line.strip().upper() == b"STARTTLS":
+        return b"220 go ahead\r\n", True
+    return b"500 unknown\r\n", False
+
+
+@pytest.mark.anyio
+async def test_generic_starttls_can_read_greeting_first(tls_files) -> None:
+    result, state = await _run_custom_dialogue(
+        tls_files,
+        b"220 custom service ready\r\n",
+        _generic_responder,
+        starttls_read_greeting=True,
+    )
+
+    assert result.status == ResultStatus.OK, result.data
+    assert result.data["starttls_protocol"] == "generic"
+    assert state["lines"] == [b"STARTTLS\r\n"]
+
+
+@pytest.mark.anyio
+async def test_imap_greeting_is_not_taken_as_starttls_reply(tls_files) -> None:
+    """Regression: ``* OK`` must not count as the reply to ``a1 STARTTLS``."""
+
+    def respond(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+        return b"a1 BAD ok, but no STARTTLS here\r\n", False
+
+    result, state = await _run_custom_dialogue(
+        tls_files, IMAP_GREETING, respond, starttls_protocol="imap"
+    )
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "starttls_rejected"
+    assert result.data["starttls_stage"] == "starttls"
+    assert "a1 BAD" in result.data["starttls_response"]
+    assert state["upgraded"] is False
+
+
+@pytest.mark.anyio
+async def test_imap_untagged_bye_is_rejected(tls_files) -> None:
+    def respond(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+        return b"* BYE shutting down\r\n", False
+
+    result, _ = await _run_custom_dialogue(
+        tls_files, IMAP_GREETING, respond, starttls_protocol="imap"
+    )
+
+    assert result.data["error_type"] == "starttls_rejected"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("protocol", "greeting"),
+    [
+        ("smtp", b"554 5.3.2 service unavailable\r\n"),
+        ("imap", b"* BYE too many connections\r\n"),
+        ("sieve", b'BYE "too many connections"\r\n'),
+    ],
+)
+async def test_negative_greeting_is_rejected(tls_files, protocol, greeting) -> None:
+    _, responder = PROTOCOL_SERVERS[protocol]
+    result, state = await _run_custom_dialogue(
+        tls_files, greeting, responder(), starttls_protocol=protocol
+    )
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "starttls_rejected"
+    assert result.data["starttls_stage"] == "greeting"
+    assert state["lines"] == []
+
+
+@pytest.mark.anyio
+async def test_smtp_ehlo_rejection_reports_stage(tls_files) -> None:
+    def respond(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+        return b"550 5.7.1 go away\r\n", False
+
+    result, _ = await _run_custom_dialogue(
+        tls_files, SMTP_GREETING, respond, starttls_protocol="smtp"
+    )
+
+    assert result.data["error_type"] == "starttls_rejected"
+    assert result.data["starttls_stage"] == "ehlo"
+
+
+@pytest.mark.anyio
+async def test_data_pipelined_after_starttls_reply_is_refused(tls_files) -> None:
+    """Plain-text bytes sent before the handshake must not enter the TLS session."""
+
+    def respond(line: bytes, state: dict[str, Any]) -> tuple[bytes, bool]:
+        reply, upgrade = _smtp_responder()(line, state)
+        if upgrade:
+            reply += b"250 injected\r\n"
+        return reply, upgrade
+
+    result, _ = await _run_custom_dialogue(
+        tls_files, SMTP_GREETING, respond, starttls_protocol="smtp"
+    )
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "starttls_protocol_error"
+
+
+@pytest.mark.anyio
+async def test_overlong_greeting_line_is_refused(tls_files) -> None:
+    result, _ = await _run_custom_dialogue(
+        tls_files,
+        b"220 " + b"x" * 8192 + b"\r\n",
+        _smtp_responder(),
+        starttls_protocol="smtp",
+    )
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "starttls_protocol_error"
+
+
+@pytest.mark.anyio
+async def test_connection_closed_during_dialogue(tls_files) -> None:
+    async def handler(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        writer.write(b"220-mail.test partial greeting\r\n")
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+
+    server, port = await _start_server(handler)
+    try:
+        result = await TcpCheckExecutor().execute(
+            _tcp_check(
+                port,
+                tls_mode="starttls",
+                starttls_protocol="smtp",
+                retries=0,
+                tls_handshake_timeout=2.0,
+            )
+        )
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert result.status == ResultStatus.ERROR
+    assert result.data["error_type"] == "starttls_connection_closed"
+
+
+def test_config_rejects_unknown_starttls_protocol() -> None:
+    from nyxmon.domain.tcp_config import TcpCheckConfig
+
+    config = TcpCheckConfig.from_dict(
+        {"port": 25, "tls_mode": "starttls", "starttls_protocol": "pop3"}
+    )
+    with pytest.raises(ValueError, match="starttls_protocol"):
+        config.validate()
+
+
+def test_config_defaults_to_generic_and_round_trips() -> None:
+    from nyxmon.domain.tcp_config import TcpCheckConfig
+
+    legacy = TcpCheckConfig.from_dict({"port": 25, "tls_mode": "starttls"})
+    assert legacy.starttls_protocol == "generic"
+    assert legacy.starttls_read_greeting is False
+
+    config = TcpCheckConfig.from_dict(
+        {"port": 4190, "tls_mode": "starttls", "starttls_protocol": "sieve"}
+    )
+    assert config.validate()
+    assert TcpCheckConfig.from_dict(config.to_dict()) == config
