@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unchanged.
 
 ### Added
+- GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
+  hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but
   only produced `not_implemented` errors; a new executor resolves the host,
   sends `count` single-echo attempts (default 3, `timeout` 5 s each,
