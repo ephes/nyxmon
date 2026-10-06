@@ -188,7 +188,15 @@ class TestSuccessAndLoss:
         assert sleep.calls == [1.0, 1.0]
         # Per-attempt timeout plus process grace.
         assert {timeout for _, timeout in runner.calls} == {5.0 + PROCESS_GRACE_SECONDS}
-        assert runner.calls[0][0] == ["/bin/ping", "-n", "-c", "1", "-W", "5", "192.0.2.1"]
+        assert runner.calls[0][0] == [
+            "/bin/ping",
+            "-n",
+            "-c",
+            "1",
+            "-W",
+            "5",
+            "192.0.2.1",
+        ]
 
     async def test_partial_loss_still_ok(self) -> None:
         runner = StubRunner(NO_REPLY, _reply(2.0), TimeoutError())
@@ -299,7 +307,6 @@ class TestFailures:
         assert result.status == ResultStatus.ERROR
         assert result.data["error_type"] == "unreachable"
 
-
     async def test_localized_windows_reply_is_success(self) -> None:
         runner = StubRunner(
             ProcessOutput(0, WINDOWS_REPLY_DE, ""),
@@ -312,7 +319,6 @@ class TestFailures:
         assert result.data["packets_received"] == 1
         assert result.data["rtt_list_ms"] == [1.0]
         assert result.data["attempts"][1]["status"] != "ok"
-
 
     async def test_localized_windows_ipv6_reply_is_success(self) -> None:
         runner = StubRunner(

@@ -45,7 +45,9 @@ _RTT_RE = re.compile(r"time\s*[=<]\s*([0-9]+(?:[.,][0-9]+)?)\s*ms", re.IGNORECAS
 _LOCALIZED_RTT_RE = re.compile(r"[=<]\s*([0-9]+(?:[.,][0-9]+)?)\s*ms\b", re.IGNORECASE)
 # An address followed by a colon ("Reply from 2001:db8::1: ...",
 # "Réponse de 192.0.2.1 : ..."); the greedy match backtracks to the last colon.
-_SOURCE_RE = re.compile(r"(?<![0-9A-Za-z:.%])([0-9A-Fa-f:.]+(?:%[0-9A-Za-z]+)?)\s*:(?:\s|$)")
+_SOURCE_RE = re.compile(
+    r"(?<![0-9A-Za-z:.%])([0-9A-Fa-f:.]+(?:%[0-9A-Za-z]+)?)\s*:(?:\s|$)"
+)
 _TTL_RE = re.compile(r"\bttl\s*=\s*[0-9]+", re.IGNORECASE)
 _PERMISSION_MARKERS = (
     "operation not permitted",
@@ -202,9 +204,7 @@ def parse_rtt_ms(output: str, address: Optional[str] = None) -> Optional[float]:
         return float(match.group(1).replace(",", "."))
     target = _parse_ip(address) if address else None
     for line in output.splitlines():
-        if _TTL_RE.search(line) or (
-            target is not None and _names_source(line, target)
-        ):
+        if _TTL_RE.search(line) or (target is not None and _names_source(line, target)):
             localized = _LOCALIZED_RTT_RE.search(line)
             if localized:
                 return float(localized.group(1).replace(",", "."))
