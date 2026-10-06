@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import operator
 import time
@@ -20,7 +21,28 @@ OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
 }
 
 
-def _resolve_path(payload: Any, path: str) -> Any:
+# Upper bound on the suppression payload. The fetch runs on every failing
+# result of a check with suppression configured, so an oversized or endless
+# body must not be buffered; anything larger suppresses nothing.
+MAX_SUPPRESSION_BODY_BYTES = 256 * 1024
+
+
+class _Missing:
+    """Sentinel for a JSON path that does not exist (distinct from ``null``)."""
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return "<missing>"
+
+
+MISSING: Any = _Missing()
+
+
+class _BodyTooLarge(Exception):
+    pass
+
+
+def _lookup(payload: Any, path: str) -> Any:
+    """Resolve ``path`` in ``payload``; return ``MISSING`` if it does not exist."""
     if path == "$":
         return payload
 
@@ -31,22 +53,106 @@ def _resolve_path(payload: Any, path: str) -> Any:
             current = current[part]
         elif isinstance(current, list) and part.isdigit():
             index = int(part)
-            current = current[index] if 0 <= index < len(current) else None
+            if not 0 <= index < len(current):
+                return MISSING
+            current = current[index]
         else:
-            return None
+            return MISSING
     return current
 
 
+def _resolve_path(payload: Any, path: str) -> Any:
+    value = _lookup(payload, path)
+    return None if value is MISSING else value
+
+
+def _json_kind(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    return type(value).__name__
+
+
 def _rule_matches(payload: Any, rule: dict[str, Any]) -> bool:
+    """Return True only when the rule positively matches a present value.
+
+    A rule silences alerts, so every doubt resolves to "no match": a path
+    that does not exist in the payload never matches (whatever the
+    operator, so ``!=`` and ``== null`` cannot match an absent field), and
+    neither does a value whose JSON type differs from the rule's value
+    (so ``true <= 24`` or ``0 != "inactive"`` cannot match).
+    """
     op = str(rule.get("op") or "")
     if op not in OPERATORS:
         return False
-    actual = _resolve_path(payload, str(rule.get("path") or ""))
+    actual = _lookup(payload, str(rule.get("path") or ""))
+    if actual is MISSING:
+        return False
     expected = rule.get("value")
+    if _json_kind(actual) != _json_kind(expected):
+        return False
     try:
         return bool(OPERATORS[op](actual, expected))
     except Exception:
         return False
+
+
+def _read_capped_body(response: httpx.Response) -> bytes:
+    """Read the raw body, failing on anything over MAX_SUPPRESSION_BODY_BYTES.
+
+    A compressed response is refused rather than decompressed, so a small
+    gzip body cannot expand past the cap in memory. With only the identity
+    encoding left, ``iter_bytes`` yields the network chunks as received.
+    """
+    encoding = response.headers.get("content-encoding", "identity").strip().lower()
+    if encoding not in ("", "identity"):
+        raise _BodyTooLarge(f"compressed body ({encoding}) refused")
+    declared = _int_or_none(response.headers.get("content-length"))
+    if declared is not None and declared > MAX_SUPPRESSION_BODY_BYTES:
+        raise _BodyTooLarge(declared)
+    body = bytearray()
+    for chunk in response.iter_bytes():
+        if len(body) + len(chunk) > MAX_SUPPRESSION_BODY_BYTES:
+            raise _BodyTooLarge(len(body) + len(chunk))
+        body.extend(chunk)
+    return bytes(body)
+
+
+MAX_SUPPRESSION_REDIRECTS = 5
+
+
+def _fetch_payload(url: str, *, timeout: float, auth: httpx.BasicAuth | None) -> Any:
+    """GET ``url`` and decode JSON, reading at most MAX_SUPPRESSION_BODY_BYTES.
+
+    Redirects are followed by hand so that no redirect body is ever read:
+    httpx's own ``follow_redirects`` buffers each redirect body in full.
+    Credentials are sent with the first request only; ``next_request`` keeps
+    the ``Authorization`` header on same-origin redirects and drops it
+    otherwise, as httpx does.
+    """
+    with httpx.Client(
+        follow_redirects=False, headers={"Accept-Encoding": "identity"}
+    ) as client:
+        request = client.build_request("GET", url, timeout=timeout)
+        request_auth: httpx.BasicAuth | None = auth
+        for _ in range(MAX_SUPPRESSION_REDIRECTS + 1):
+            response = client.send(request, auth=request_auth, stream=True)
+            try:
+                if response.is_redirect and response.next_request is not None:
+                    request = response.next_request
+                    request_auth = None
+                    continue
+                response.raise_for_status()
+                body = _read_capped_body(response)
+            finally:
+                response.close()
+            return json.loads(body)
+    raise httpx.TooManyRedirects("too many redirects", request=request)
 
 
 def _build_auth(config: dict[str, Any]) -> httpx.BasicAuth | None:
@@ -115,11 +221,9 @@ def notification_suppression_details(
     timeout = _timeout_seconds(config.get("timeout", 3.0))
     now = now_epoch if now_epoch is not None else int(time.time())
 
+    # Fail open on any fetch problem, including a body over the size cap.
     try:
-        with httpx.Client(follow_redirects=True) as client:
-            response = client.get(url, timeout=timeout, auth=_build_auth(config))
-        response.raise_for_status()
-        payload = response.json()
+        payload = _fetch_payload(url, timeout=timeout, auth=_build_auth(config))
     except Exception:
         return None
 

@@ -179,6 +179,14 @@ non-positive `freshness_max_seconds`, or an age past the limit all mean
 *suppress nothing*. A stale source can therefore never silence an alert, which
 is the safe direction — an unnecessary page beats a permanently hidden outage.
 
+`active_if` rules fail open the same way: a rule matches only when its `path`
+exists in the payload and holds a value of the same JSON type as the rule's
+`value`. A missing path never matches, whatever the operator (so `!=` and
+`== null` cannot silence an alert when the source drops or renames a field),
+and neither does a type mismatch such as `true <= 24`. A suppression payload
+larger than 256 KiB, a compressed response, more than five redirects, or a
+payload that fails to load or parse suppresses nothing.
+
 #### Per-Check Notification Policy
 
 A single check can override the global thresholds through a
