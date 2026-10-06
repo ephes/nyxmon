@@ -8,10 +8,31 @@ NyxMon's agent is configured primarily through CLI flags. When running `uv run s
 - `--interval`: Polling interval in seconds (default: 5)
 - `--cleanup-interval`: Seconds between result-cleanup runs (default: 3600)
 - `--retention-period`: Seconds to keep historical results (default: 86400)
-- `--batch-size`: Maximum results deleted per cleanup batch (default: 1000)
+- `--batch-size`: Rows deleted per cleanup batch (default: 1000)
 - `--disable-cleaner`: Skip starting the results cleaner
 - `--log-level`: Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
 - `--enable-telegram`: Turn on Telegram notifications (requires credentials below)
+
+### Result Cleanup
+
+Every `--cleanup-interval` seconds the cleaner deletes results older than
+`--retention-period`. It works in batches of `--batch-size` rows, each in its
+own short transaction, and keeps going until a batch comes back short, so the
+whole expired backlog is removed in one cycle. It yields between batches so the
+collector can keep writing. One cycle runs at most 100 batches (100,000 rows
+with the default batch size); a larger backlog continues on the next cycle and
+the cleaner logs a warning. Each cycle logs the total it deleted.
+
+The retention cutoff is computed on SQLite's UTC clock, the same clock that
+stamps the results, so retention is exact whatever the host's time zone.
+
+Deleting rows does not shrink the SQLite file; SQLite reuses the freed pages
+for new results. After the first cleanup of a large backlog you can reclaim
+the space once with the agent stopped (back up the file first):
+
+```bash
+sqlite3 /path/to/database.sqlite 'VACUUM;'
+```
 
 ### Environment Variables
 
