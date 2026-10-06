@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `add-check` without `--check-id` creates a new check under the next free
+  ID. It previously always wrote check 1 and, because the store upserts,
+  replaced that check's type, URL and whole `data` (including stored mail
+  passwords) with `{}` on every call. An explicit `--check-id` that already
+  exists is now refused unless the new `--replace` flag is given. The
+  documented `--name` and `--data` flags now exist: `--data` must be a JSON
+  object and is validated with the check type's configuration parser before
+  anything is written. The DNS examples in the docs gained the required
+  `--db` and `--service-id` flags, and `docs/usage.md` lists every flag.
 - DNS checks compare expected and resolved IP addresses by value, so an `AAAA`
   expectation entered in upper case or uncompressed form
   (`2A01:04F8:0000::0001`) matches the answer `2a01:4f8::1` instead of

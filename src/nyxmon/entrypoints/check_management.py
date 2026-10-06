@@ -3,6 +3,7 @@ CLI entrypoints for check management operations.
 """
 
 import argparse
+import json
 import sys
 import anyio
 import asyncio
@@ -10,108 +11,175 @@ import time
 import aiosqlite
 from pathlib import Path
 from datetime import datetime
+from typing import Any, Callable, Sequence
 
 from nyxmon.adapters.repositories import SqliteStore
-from nyxmon.bootstrap import bootstrap
-from nyxmon.domain import Check, CheckStatus
-from nyxmon.domain.commands import AddCheck
+from nyxmon.adapters.repositories.sqlite_repo import CheckIdExistsError
+from nyxmon.domain import Check, CheckStatus, CheckType
+from nyxmon.domain.dns_config import DnsCheckConfig
+from nyxmon.domain.http_config import HttpCheckConfig
+from nyxmon.domain.imap_config import ImapCheckConfig
+from nyxmon.domain.json_metrics_config import JsonMetricsCheckConfig
+from nyxmon.domain.ping_config import PingCheckConfig
+from nyxmon.domain.smtp_config import SmtpCheckConfig
+from nyxmon.domain.tcp_config import TcpCheckConfig
 
 
 # --- Add Check Functions ---
 
+# The config class each executor parses ``check.data`` with. ``add-check``
+# validates ``--data`` through the same class, so a check it stores is one the
+# agent can run.
+CHECK_CONFIG_PARSERS: dict[str, Callable[[dict[str, Any]], Any]] = {
+    CheckType.HTTP: HttpCheckConfig.from_dict,
+    CheckType.JSON_HTTP: HttpCheckConfig.from_dict,
+    CheckType.TCP: TcpCheckConfig.from_dict,
+    CheckType.PING: PingCheckConfig.from_dict,
+    CheckType.DNS: DnsCheckConfig.from_dict,
+    CheckType.SMTP: SmtpCheckConfig.from_dict,
+    CheckType.IMAP: ImapCheckConfig.from_dict,
+    CheckType.JSON_METRICS: JsonMetricsCheckConfig.from_dict,
+}
 
-async def add_check_async(args):
-    """Async function to add a check to the database."""
-    # Validate database path
+
+def parse_check_data(raw: str | None, check_type: str) -> dict[str, Any]:
+    """Parse and validate the ``--data`` argument for ``check_type``.
+
+    Args:
+        raw: The ``--data`` string, or ``None`` when it was not given.
+        check_type: The check type the data configures.
+
+    Returns:
+        The decoded configuration object.
+
+    Raises:
+        ValueError: If ``raw`` is not a JSON object, or the check type's
+            configuration rejects it.
+    """
+    if raw is None:
+        data: Any = {}
+    else:
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"--data is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError("--data must be a JSON object")
+
+    parse_config = CHECK_CONFIG_PARSERS[check_type]
+    try:
+        config = parse_config(data)
+        config.validate()
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        raise ValueError(f"invalid --data for a {check_type} check: {exc}") from exc
+    return data
+
+
+async def add_check_async(args) -> int:
+    """Store a new check and return its id."""
     db_path = Path(args.db)
     if not db_path.exists():
-        print(f"Error: Database file not found: {db_path}")
+        print(f"Error: Database file not found: {db_path}", file=sys.stderr)
         sys.exit(1)
 
+    store = SqliteStore(db_path=db_path)
+    check = Check(
+        check_id=0,
+        service_id=args.service_id,
+        name=args.name,
+        check_type=args.check_type,
+        status=CheckStatus.IDLE,
+        url=args.url,
+        check_interval=args.interval,
+        data=args.check_data,
+    )
     try:
-        # Initialize store and message bus
-        store = SqliteStore(db_path=db_path)
-        bus = bootstrap(store=store)
-
-        # Get next check ID if not provided
-        if args.check_id is None:
-            # Get all checks and find the highest ID - use async method
-            existing_checks = await bus.uow.store.checks.list_async()
-            existing_checks = False
-            if existing_checks:
-                max_id = max(check.check_id for check in existing_checks)
-                check_id = max_id + 1
-            else:
-                check_id = 1
-        else:
-            check_id = args.check_id
-
-        # Create the check
-        check = Check(
-            check_id=check_id,
-            service_id=args.service_id,
-            check_type=args.check_type,
-            status=CheckStatus.IDLE,
-            url=args.url,
-            check_interval=args.interval,
-            data={},
+        check_id = await store.checks.create_async(
+            check, check_id=args.check_id, replace=args.replace
         )
+    except CheckIdExistsError as exc:
+        print(
+            f"Error: check ID {exc.check_id} already exists; "
+            "pass --replace to overwrite it",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
-        # Add the check using the message bus
-        cmd = AddCheck(check=check)
-        bus.handle(cmd)
-
-        print(f"✓ Successfully added check ID {check_id}")
-        print(f"  Service ID: {args.service_id}")
-        print(f"  Type: {args.check_type}")
-        print(f"  URL: {args.url}")
-        print(f"  Interval: {args.interval} seconds")
-
-    except Exception as e:
-        print(f"Error adding check: {e}")
-        raise e
+    verb = "saved" if args.replace else "added"
+    print(f"✓ Successfully {verb} check ID {check_id}")
+    if args.name:
+        print(f"  Name: {args.name}")
+    print(f"  Service ID: {args.service_id}")
+    print(f"  Type: {args.check_type}")
+    print(f"  URL: {args.url}")
+    print(f"  Interval: {args.interval} seconds")
+    return check_id
 
 
-def add_check_to_db():
-    """CLI script to add a health check to the database."""
+def _positive_int(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"must be a positive integer, got {value}")
+    return number
+
+
+def build_add_check_parser() -> argparse.ArgumentParser:
+    """Return the argument parser for ``add-check``."""
     parser = argparse.ArgumentParser(
-        description="Add a health check to NyxMon database"
+        prog="add-check", description="Add a health check to NyxMon database"
     )
     parser.add_argument("--db", required=True, help="Path to SQLite database file")
     parser.add_argument(
         "--service-id", type=int, required=True, help="Service ID for the check"
     )
+    parser.add_argument("--name", default="", help="Display name of the check")
     parser.add_argument(
         "--check-type",
         default="http",
-        choices=[
-            "http",
-            "tcp",
-            "ping",
-            "dns",
-            "smtp",
-            "imap",
-            "json-http",
-            "json-metrics",
-        ],
+        choices=list(CHECK_CONFIG_PARSERS),
         help="Type of health check (default: http)",
     )
     parser.add_argument("--url", required=True, help="URL or endpoint to check")
     parser.add_argument(
         "--interval",
-        type=int,
+        type=_positive_int,
         default=300,
         help="Check interval in seconds (default: 300)",
     )
     parser.add_argument(
-        "--check-id",
-        type=int,
-        help="Specific check ID (will auto-increment if not provided)",
+        "--data",
+        help=(
+            "Check configuration as a JSON object (default: {}). It is "
+            "validated against the check type's configuration."
+        ),
     )
+    parser.add_argument(
+        "--check-id",
+        type=_positive_int,
+        help=(
+            "Store the check under this ID (default: the next free ID). "
+            "An existing ID is refused unless --replace is given."
+        ),
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Overwrite the check given by --check-id if it already exists",
+    )
+    return parser
 
-    args = parser.parse_args()
 
-    # Run the async function
+def add_check_to_db(argv: Sequence[str] | None = None) -> None:
+    """CLI script to add a health check to the database."""
+    parser = build_add_check_parser()
+    args = parser.parse_args(argv)
+    if args.replace and args.check_id is None:
+        parser.error("--replace requires --check-id")
+    try:
+        args.check_data = parse_check_data(args.data, args.check_type)
+    except ValueError as exc:
+        parser.error(str(exc))
+
     anyio.run(add_check_async, args)
 
 

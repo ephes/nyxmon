@@ -43,6 +43,14 @@ NOTIFICATION_STATE_ASSIGNMENTS = ",\n               ".join(
 logger = logging.getLogger(__name__)
 
 
+class CheckIdExistsError(Exception):
+    """Raised when creating a check under an id that is already taken."""
+
+    def __init__(self, check_id: int) -> None:
+        super().__init__(f"check {check_id} already exists")
+        self.check_id = check_id
+
+
 def _parse_check_data(data_raw: Any) -> dict[str, Any]:
     """Decode a ``health_check.data`` column value into a dictionary.
 
@@ -516,6 +524,69 @@ class SqliteCheckRepository(CheckRepository):
             await self._ensure_schema(db)
             await self._upsert_on_connection(db, check)
             await db.commit()
+
+    async def create_async(
+        self, check: Check, *, check_id: int | None = None, replace: bool = False
+    ) -> int:
+        """Store ``check`` as a new row and return the id it was stored under.
+
+        Unlike :meth:`add`, which upserts by ``check.check_id``, this never
+        overwrites an existing check by accident.
+
+        Args:
+            check: The check to store. Its ``check_id`` is ignored and set to
+                the id that was actually used.
+            check_id: Store under this id. ``None`` lets SQLite assign the next
+                free id.
+            replace: When ``check_id`` names an existing check, overwrite it.
+                Without it an existing id raises :class:`CheckIdExistsError`.
+
+        Returns:
+            The id of the stored check.
+        """
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            # Take the write lock before reading, so the existence check and
+            # the insert cannot interleave with another writer.
+            await db.execute("BEGIN IMMEDIATE")
+            try:
+                if check_id is None:
+                    cursor = await db.execute(
+                        """INSERT INTO health_check
+                           (service_id, name, check_type, url, check_interval,
+                            status, next_check_time, processing_started_at,
+                            disabled, data)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            check.service_id,
+                            check.name,
+                            check.check_type,
+                            check.url,
+                            check.check_interval,
+                            check.status,
+                            check.next_check_time,
+                            check.processing_started_at,
+                            int(check.disabled),
+                            json.dumps(check.data),
+                        ),
+                    )
+                    if cursor.lastrowid is None:  # pragma: no cover - defensive
+                        raise RuntimeError("SQLite did not report the new check id")
+                    check.check_id = int(cursor.lastrowid)
+                else:
+                    cursor = await db.execute(
+                        "SELECT 1 FROM health_check WHERE id = ?", (check_id,)
+                    )
+                    exists = await cursor.fetchone() is not None
+                    if exists and not replace:
+                        raise CheckIdExistsError(check_id)
+                    check.check_id = check_id
+                    await self._upsert_on_connection(db, check)
+                await db.commit()
+            except BaseException:
+                await db.rollback()
+                raise
+        return check.check_id
 
     @staticmethod
     async def _upsert_on_connection(db: aiosqlite.Connection, check: Check) -> None:
