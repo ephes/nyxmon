@@ -65,6 +65,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upgrade may delete a large backlog. The SQLite file does not shrink by
   itself; see "Result Cleanup" in `docs/configuration.md` for a one-off
   `VACUUM`.
+- Notification suppression `active_if` rules no longer silence alerts when the
+  rule's path is missing from the suppression payload. A missing field used to
+  resolve to `null`, so a `!=` rule (or `== null`) matched and suppressed every
+  failure as soon as the source stopped sending that field. A rule now matches
+  only a present value of the same JSON type as the rule's `value`; a missing
+  path or a type mismatch (for example `true <= 24`) suppresses nothing. The
+  suppression payload is also read with a 256 KiB cap: a larger body, a
+  compressed (`Content-Encoding`) body or more than five redirects suppress
+  nothing instead of being buffered in full. Redirect bodies are no longer read,
+  and credentials still go only to the original origin.
 - DNS checks compare expected and resolved IP addresses by value, so an `AAAA`
   expectation entered in upper case or uncompressed form
   (`2A01:04F8:0000::0001`) matches the answer `2a01:4f8::1` instead of

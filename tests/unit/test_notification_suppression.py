@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import gzip
+import json
 from typing import Any
 
 import anyio
+import httpx
+import pytest
 
 from nyxmon.adapters.repositories import InMemoryStore
 from nyxmon.adapters.site_connectivity import SiteConnectivityConfig, SiteMode
@@ -12,6 +16,8 @@ from nyxmon.domain.commands import AddCheckResult
 from nyxmon.domain.models import Check, CheckResult, CheckType, Result, ResultStatus
 from nyxmon.service_layer import handlers
 from nyxmon.service_layer.notification_suppression import (
+    MAX_SUPPRESSION_BODY_BYTES,
+    MAX_SUPPRESSION_REDIRECTS,
     notification_suppression_details,
 )
 from nyxmon.service_layer.unit_of_work import UnitOfWork
@@ -28,18 +34,13 @@ class StubNotifier:
         del service, status
 
 
-class FakeResponse:
-    def __init__(self, payload: dict[str, Any]) -> None:
-        self.payload = payload
-
-    def raise_for_status(self) -> None:
-        pass
-
-    def json(self) -> dict[str, Any]:
-        return self.payload
-
-
 class FakeHttpClient:
+    """Serves ``payload`` (or raises ``exc``) through a real httpx client.
+
+    The suppression fetch drives httpx's streaming and redirect API, so the
+    fake is an ``httpx.MockTransport`` handler that records each request.
+    """
+
     def __init__(
         self, payload: dict[str, Any] | None = None, exc: Exception | None = None
     ) -> None:
@@ -47,17 +48,18 @@ class FakeHttpClient:
         self.exc = exc
         self.requests: list[dict[str, Any]] = []
 
-    def __enter__(self) -> "FakeHttpClient":
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        del exc_type, exc_val, exc_tb
-
-    def get(self, url: str, *, timeout: float, auth: Any) -> FakeResponse:
-        self.requests.append({"url": url, "timeout": timeout, "auth": auth})
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(
+            {
+                "method": request.method,
+                "url": str(request.url),
+                "timeout": request.extensions["timeout"]["read"],
+                "auth": request.headers.get("authorization"),
+            }
+        )
         if self.exc:
             raise self.exc
-        return FakeResponse(self.payload)
+        return httpx.Response(200, json=self.payload)
 
 
 def _build_check(data: dict[str, Any]) -> Check:
@@ -86,11 +88,20 @@ def _suppression_config() -> dict[str, Any]:
     }
 
 
-def _patch_client(monkeypatch, fake_client: FakeHttpClient) -> FakeHttpClient:
+_REAL_HTTPX_CLIENT = httpx.Client
+
+
+def _patch_handler(monkeypatch, handler) -> None:
+    def factory(**kwargs: Any) -> httpx.Client:
+        return _REAL_HTTPX_CLIENT(transport=httpx.MockTransport(handler), **kwargs)
+
     monkeypatch.setattr(
-        "nyxmon.service_layer.notification_suppression.httpx.Client",
-        lambda **kwargs: fake_client,
+        "nyxmon.service_layer.notification_suppression.httpx.Client", factory
     )
+
+
+def _patch_client(monkeypatch, fake_client: FakeHttpClient) -> FakeHttpClient:
+    _patch_handler(monkeypatch, fake_client.handler)
     return fake_client
 
 
@@ -559,3 +570,217 @@ def test_a_hold_still_wins_over_a_due_delivery_retry(monkeypatch) -> None:
     assert state.attempt_at == T0
 
     handlers._delivery_retry_from_value.cache_clear()
+
+
+# --- active_if rules fail open on a missing path or a type mismatch ---------
+
+
+def _active_if_config(rule: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "notification_suppression": {
+            "url": "https://example.test/maintenance",
+            "reason": "scheduled_maintenance",
+            "active_if": [rule],
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    ("payload", "rule"),
+    [
+        # The field disappeared from the payload: `!=` must not match.
+        (
+            {"units": {}},
+            {"path": "$.units.backup.state", "op": "!=", "value": "inactive"},
+        ),
+        # The whole branch is gone.
+        ({}, {"path": "$.units.backup.state", "op": "!=", "value": "inactive"}),
+        # `== null` must not match an absent field.
+        ({}, {"path": "$.x", "op": "==", "value": None}),
+        # A list index past the end is missing too.
+        ({"items": []}, {"path": "$.items.0", "op": "!=", "value": "ok"}),
+        # A path through a scalar is missing.
+        ({"units": "down"}, {"path": "$.units.backup", "op": "!=", "value": "x"}),
+    ],
+)
+def test_active_if_rule_never_matches_a_missing_path(
+    monkeypatch, payload: dict[str, Any], rule: dict[str, Any]
+) -> None:
+    _patch_client(monkeypatch, FakeHttpClient(payload))
+    check = _build_check(_active_if_config(rule))
+
+    assert notification_suppression_details(check, now_epoch=1_000) is None
+
+
+@pytest.mark.parametrize(
+    ("payload", "rule"),
+    [
+        ({"age": True}, {"path": "$.age", "op": "<=", "value": 24}),
+        ({"state": 0}, {"path": "$.state", "op": "!=", "value": "inactive"}),
+        ({"state": "1"}, {"path": "$.state", "op": "!=", "value": 1}),
+        ({"ok": 1}, {"path": "$.ok", "op": "!=", "value": False}),
+        ({"state": None}, {"path": "$.state", "op": "!=", "value": "inactive"}),
+    ],
+)
+def test_active_if_rule_never_matches_across_json_types(
+    monkeypatch, payload: dict[str, Any], rule: dict[str, Any]
+) -> None:
+    _patch_client(monkeypatch, FakeHttpClient(payload))
+    check = _build_check(_active_if_config(rule))
+
+    assert notification_suppression_details(check, now_epoch=1_000) is None
+
+
+@pytest.mark.parametrize(
+    ("payload", "rule"),
+    [
+        (
+            {"units": {"backup": {"state": "activating"}}},
+            {"path": "$.units.backup.state", "op": "!=", "value": "inactive"},
+        ),
+        ({"x": None}, {"path": "$.x", "op": "==", "value": None}),
+        ({"overdue": 3.5}, {"path": "$.overdue", "op": "<=", "value": 24}),
+        ({"known": True}, {"path": "$.known", "op": "==", "value": True}),
+        ({"items": ["busy"]}, {"path": "$.items.0", "op": "==", "value": "busy"}),
+    ],
+)
+def test_active_if_rule_still_matches_a_present_value(
+    monkeypatch, payload: dict[str, Any], rule: dict[str, Any]
+) -> None:
+    _patch_client(monkeypatch, FakeHttpClient(payload))
+    check = _build_check(_active_if_config(rule))
+
+    details = notification_suppression_details(check, now_epoch=1_000)
+
+    assert details is not None
+    assert details["matched_rule"]["op"] == rule["op"]
+
+
+# --- the suppression body is read with a byte cap ----------------------------
+
+
+def test_suppression_reads_a_small_body_through_httpx(monkeypatch) -> None:
+    _patch_handler(
+        monkeypatch,
+        lambda request: httpx.Response(200, json={"last_status": "running"}),
+    )
+    check = _build_check(_suppression_config())
+
+    details = notification_suppression_details(check, now_epoch=1_000)
+
+    assert details is not None
+    assert details["source_status"] == "running"
+
+
+def test_oversized_suppression_body_fails_open(monkeypatch) -> None:
+    padding = "x" * (MAX_SUPPRESSION_BODY_BYTES + 1)
+    body = json.dumps({"last_status": "running", "padding": padding}).encode()
+
+    def chunks():
+        for start in range(0, len(body), 16_384):
+            yield body[start : start + 16_384]
+
+    # No Content-Length: the cap must hold while streaming.
+    _patch_handler(monkeypatch, lambda request: httpx.Response(200, content=chunks()))
+    check = _build_check(_suppression_config())
+
+    assert notification_suppression_details(check, now_epoch=1_000) is None
+
+
+def test_declared_oversized_suppression_body_fails_open(monkeypatch) -> None:
+    body = json.dumps(
+        {"last_status": "running", "padding": "x" * MAX_SUPPRESSION_BODY_BYTES}
+    ).encode()
+    _patch_handler(monkeypatch, lambda request: httpx.Response(200, content=body))
+    check = _build_check(_suppression_config())
+
+    assert notification_suppression_details(check, now_epoch=1_000) is None
+
+
+def test_redirect_bodies_are_never_read(monkeypatch) -> None:
+    consumed: list[int] = []
+
+    def endless_body():
+        for _ in range(1_000):
+            consumed.append(1)
+            yield b"x" * 16_384
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/maintenance":
+            return httpx.Response(
+                302, headers={"Location": "/final"}, content=endless_body()
+            )
+        return httpx.Response(200, json={"last_status": "running"})
+
+    _patch_handler(monkeypatch, handler)
+    check = _build_check(_suppression_config())
+
+    details = notification_suppression_details(check, now_epoch=1_000)
+
+    assert details is not None
+    assert details["source_status"] == "running"
+    assert consumed == []
+
+
+def test_cross_origin_redirect_drops_credentials(monkeypatch) -> None:
+    seen: list[tuple[str, str | None]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.host, request.headers.get("authorization")))
+        if request.url.host == "example.test":
+            return httpx.Response(
+                302, headers={"Location": "https://elsewhere.test/status"}
+            )
+        return httpx.Response(200, json={"last_status": "running"})
+
+    _patch_handler(monkeypatch, handler)
+    check = _build_check(_suppression_config())
+
+    assert notification_suppression_details(check, now_epoch=1_000) is not None
+    assert seen[0][0] == "example.test" and seen[0][1] is not None
+    assert seen[1] == ("elsewhere.test", None)
+
+
+def test_same_origin_redirect_keeps_credentials(monkeypatch) -> None:
+    seen: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("authorization"))
+        if request.url.path == "/maintenance":
+            return httpx.Response(302, headers={"Location": "/final"})
+        return httpx.Response(200, json={"last_status": "running"})
+
+    _patch_handler(monkeypatch, handler)
+    check = _build_check(_suppression_config())
+
+    assert notification_suppression_details(check, now_epoch=1_000) is not None
+    assert len(seen) == 2 and seen[0] is not None and seen[1] == seen[0]
+
+
+def test_redirect_loop_fails_open(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(302, headers={"Location": "/maintenance"})
+
+    _patch_handler(monkeypatch, handler)
+    check = _build_check(_suppression_config())
+
+    assert notification_suppression_details(check, now_epoch=1_000) is None
+    assert len(calls) == MAX_SUPPRESSION_REDIRECTS + 1
+
+
+def test_compressed_suppression_body_is_refused(monkeypatch) -> None:
+    seen: list[str | None] = []
+    body = gzip.compress(json.dumps({"last_status": "running"}).encode())
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("accept-encoding"))
+        return httpx.Response(200, headers={"Content-Encoding": "gzip"}, content=body)
+
+    _patch_handler(monkeypatch, handler)
+    check = _build_check(_suppression_config())
+
+    assert notification_suppression_details(check, now_epoch=1_000) is None
+    assert seen == ["identity"]
