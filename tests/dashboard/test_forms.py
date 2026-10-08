@@ -436,6 +436,7 @@ class TestSmtpHealthCheckForm:
                 "from_addr": "monitor@example.com",
                 "to_addr": "test@example.com",
                 "subject_prefix": "[nyxmon]",
+                "local_hostname": "monitor.example.com",
                 "timeout": 30.0,
                 "retries": 2,
                 "retry_delay": 5.0,
@@ -444,6 +445,11 @@ class TestSmtpHealthCheckForm:
         assert form.is_valid(), form.errors
         instance = form.save()
         assert instance.check_type == CheckType.SMTP
+        assert instance.data["local_hostname"] == "monitor.example.com"
+        assert (
+            SmtpHealthCheckForm(instance=instance).fields["local_hostname"].initial
+            == "monitor.example.com"
+        )
 
     def test_check_type_hidden_in_form(self, service):
         """Test that check_type field is hidden."""
@@ -1420,6 +1426,19 @@ class TestJsonMetricsHealthCheckForm:
 
 class TestMailTlsVerifyField:
     """TLS verification option on the SMTP and IMAP forms."""
+
+    def test_blank_smtp_greeting_saves_machine_default(self, service):
+        form = SmtpHealthCheckForm(data=self._smtp_data(service, local_hostname=""))
+        assert form.is_valid(), form.errors
+        assert form.save().data["local_hostname"] is None
+
+    @pytest.mark.parametrize("hostname", ["bad hostname", "bad\r\nHELO evil"])
+    def test_smtp_greeting_rejects_whitespace(self, service, hostname):
+        form = SmtpHealthCheckForm(
+            data=self._smtp_data(service, local_hostname=hostname)
+        )
+        assert not form.is_valid()
+        assert "local_hostname" in form.errors
 
     def _smtp_data(self, service, **overrides):
         data = {

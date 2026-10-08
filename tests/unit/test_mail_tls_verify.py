@@ -364,3 +364,28 @@ def test_mail_configs_reject_non_boolean_verify(value: Any) -> None:
         _imap_config(verify=value)
     with pytest.raises(ValueError, match="verify must be a boolean"):
         _smtp_config(verify=value)
+
+
+@pytest.mark.parametrize("tls", ["none", "starttls", "implicit"])
+def test_smtp_explicit_greeting_hostname_reaches_client(fake_smtplib, tls):
+    config = _smtp_config(tls=tls, local_hostname="monitor.example.com")
+    config.validate()
+    _send(config)
+    assert fake_smtplib.instances[0].kwargs["local_hostname"] == "monitor.example.com"
+
+
+@pytest.mark.parametrize("hostname", ["bad\r\nHELO evil", 123, "x" * 254])
+def test_smtp_greeting_rejects_invalid_configuration(hostname):
+    with pytest.raises(ValueError, match="local_hostname"):
+        _smtp_config(local_hostname=hostname).validate()
+
+
+@pytest.mark.parametrize("tls", ["none", "starttls", "implicit"])
+@pytest.mark.parametrize("overrides", [{}, {"local_hostname": ""}])
+def test_smtp_blank_or_missing_greeting_preserves_machine_default(
+    fake_smtplib, tls, overrides
+):
+    config = _smtp_config(tls=tls, **overrides)
+    config.validate()
+    _send(config)
+    assert fake_smtplib.instances[0].kwargs["local_hostname"] is None

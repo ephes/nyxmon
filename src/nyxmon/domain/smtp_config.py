@@ -25,6 +25,7 @@ class SmtpCheckConfig:
     retries: int = 2
     retry_delay: float = 5.0
     verify: bool = True  # verify TLS certificate and hostname
+    local_hostname: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict) -> "SmtpCheckConfig":
@@ -52,6 +53,7 @@ class SmtpCheckConfig:
             retries=data.get("retries", 2),
             retry_delay=data.get("retry_delay", 5.0),
             verify=verify,
+            local_hostname=data.get("local_hostname") or None,
         )
 
     def validate(self) -> bool:
@@ -63,6 +65,17 @@ class SmtpCheckConfig:
 
         if self.port <= 0:
             raise ValueError("port must be positive")
+
+        if self.local_hostname is not None and (
+            not isinstance(self.local_hostname, str)
+            or len(self.local_hostname) > 253
+            or any(
+                c.isspace() or ord(c) < 33 or ord(c) > 126 for c in self.local_hostname
+            )
+        ):
+            raise ValueError(
+                "local_hostname must be an ASCII hostname without whitespace"
+            )
 
         if not self.from_addr:
             raise ValueError("from_addr is required")

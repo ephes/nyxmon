@@ -90,3 +90,14 @@ Validation rules:
    - Stop Postfix to confirm a single `connection_error`.
 
 Record findings in `bd` comments when running these steps against staging/live mail.
+
+## SMTP greeting and spam filters
+
+Probes include a standard Date header. Optional `local_hostname` sets the EHLO
+hostname for plain SMTP, STARTTLS and implicit TLS. In NyxBoard this is **SMTP
+Greeting Hostname** under Advanced Options. Use the monitoring host's real,
+resolvable FQDN; blank retains smtplib's machine default. This is distinct from
+`host`, the destination server, and does not change TLS certificate verification.
+A machine default such as `127.0.1.1` can trigger spam penalties. Correct headers
+reduce false positives, but a delivery-only probe may still need a narrowly
+scoped exemption in the receiving spam filter.

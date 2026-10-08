@@ -270,6 +270,15 @@ class SmtpHealthCheckForm(HealthCheckForm):
     Handles serialization to/from HealthCheck.data JSONField.
     """
 
+    local_hostname = forms.RegexField(
+        regex=r"^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$",
+        max_length=253,
+        required=False,
+        label="SMTP Greeting Hostname",
+        help_text="Hostname sent in EHLO; blank uses the machine's default hostname.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+
     # SMTP-specific fields (not in model, stored in data JSONField)
     host = forms.CharField(
         max_length=255,
@@ -394,6 +403,9 @@ class SmtpHealthCheckForm(HealthCheckForm):
         if self.instance.pk and self.instance.data:
             smtp_config = self.instance.data
             self.fields["host"].initial = smtp_config.get("host", "")
+            self.fields["local_hostname"].initial = smtp_config.get(
+                "local_hostname", ""
+            )
             self.fields["port"].initial = smtp_config.get("port", 587)
             self.fields["tls_mode"].initial = smtp_config.get("tls", "starttls")
             self.fields["verify"].initial = (
@@ -456,6 +468,7 @@ class SmtpHealthCheckForm(HealthCheckForm):
             "from_addr": self.cleaned_data["from_addr"],
             "to_addr": self.cleaned_data["to_addr"],
             "subject_prefix": self.cleaned_data["subject_prefix"],
+            "local_hostname": self.cleaned_data.get("local_hostname") or None,
             "timeout": self.cleaned_data["timeout"],
             "retries": self.cleaned_data["retries"],
             "retry_delay": self.cleaned_data["retry_delay"],

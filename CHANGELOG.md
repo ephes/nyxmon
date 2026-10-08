@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- SMTP probes now include a Date header and support an optional `local_hostname`
+  (SMTP Greeting Hostname in NyxBoard) to avoid machine-default EHLO values
+  such as `127.0.1.1` triggering spam filters. Blank retains smtplib defaults.
+
 - TCP checks with `tls_mode="starttls"` can now monitor SMTP, IMAP and
   ManageSieve servers. The probe used to send `STARTTLS` before reading the
   server greeting, took the greeting (`220 ...`, `* OK ...`) as the reply and

@@ -208,6 +208,12 @@
     </div>
 
     <h3 class="section-title">Advanced Options <small class="help-text">(optional)</small></h3>
+    <div class="form-field">
+      <label for="{{ form.local_hostname.id_for_label }}">{{ form.local_hostname.label }}</label>
+      {{ form.local_hostname }}
+      <div class="help-text">{{ form.local_hostname.help_text }}</div>
+      {{ form.local_hostname.errors }}
+    </div>
 
     <div class="form-field">
       <label for="{{ form.timeout.id_for_label }}">{{ form.timeout.label }}</label>

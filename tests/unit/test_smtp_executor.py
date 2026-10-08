@@ -67,6 +67,10 @@ class TestSmtpCheckExecutor:
         assert result.data["attempts"] == 1
         assert result.data["subject"].startswith("[nyxmon]")
         assert len(client.calls) == 1
+        from email.utils import parsedate_to_datetime
+
+        date = parsedate_to_datetime(client.calls[0][1]["Date"])
+        assert date.tzinfo is not None
 
     @pytest.mark.anyio
     async def test_retries_on_temporary_failure(self):

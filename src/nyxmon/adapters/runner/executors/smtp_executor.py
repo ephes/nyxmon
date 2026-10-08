@@ -7,7 +7,7 @@ import socket
 import ssl
 from dataclasses import dataclass
 from email.message import EmailMessage
-from email.utils import make_msgid
+from email.utils import format_datetime, make_msgid
 from typing import Protocol
 
 import anyio
@@ -97,10 +97,14 @@ class SmtplibClient:
                     config.port,
                     timeout=config.timeout,
                     context=ssl_context,
+                    local_hostname=config.local_hostname,
                 )
             else:
                 client_cm = smtplib.SMTP(
-                    config.host, config.port, timeout=config.timeout
+                    config.host,
+                    config.port,
+                    timeout=config.timeout,
+                    local_hostname=config.local_hostname,
                 )
 
             with client_cm as client:
@@ -275,6 +279,7 @@ class SmtpCheckExecutor:
         message["From"] = config.from_addr
         message["To"] = config.to_addr
         message["Subject"] = subject
+        message["Date"] = format_datetime(dt.datetime.now(dt.timezone.utc))
         message["Message-ID"] = make_msgid(
             domain=self._message_id_domain(config.from_addr)
         )
