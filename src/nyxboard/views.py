@@ -1,10 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 import json
 from datetime import datetime, timezone
 from time import time
 
+from .auth import nyxboard_login_required
 from .models import (
     CheckNotificationState,
     CollectorIncident,
@@ -178,6 +180,7 @@ def _site_connectivity_badge(result):
     return "held" if metadata.get("held") is True else "observed"
 
 
+@nyxboard_login_required
 def dashboard(request):
     """
     Function-based view to display the dashboard of services and their health checks.
@@ -245,6 +248,7 @@ def dashboard(request):
 
 
 # Service CRUD views
+@nyxboard_login_required
 def service_list(request):
     """
     Display a list of all services.
@@ -253,6 +257,7 @@ def service_list(request):
     return render(request, "nyxboard/service_list.html", {"services": services})
 
 
+@nyxboard_login_required
 def service_detail(request, service_id):
     """
     Display details of a specific service.
@@ -266,6 +271,7 @@ def service_detail(request, service_id):
     )
 
 
+@nyxboard_login_required
 def service_create(request):
     """
     Create a new service.
@@ -283,6 +289,7 @@ def service_create(request):
     )
 
 
+@nyxboard_login_required
 def service_update(request, service_id):
     """
     Update an existing service.
@@ -304,6 +311,7 @@ def service_update(request, service_id):
     )
 
 
+@nyxboard_login_required
 def service_delete(request, service_id):
     """
     Delete a service.
@@ -318,6 +326,7 @@ def service_delete(request, service_id):
 
 
 # HealthCheck CRUD views
+@nyxboard_login_required
 def healthcheck_list(request):
     """
     Display a list of all health checks.
@@ -328,6 +337,7 @@ def healthcheck_list(request):
     )
 
 
+@nyxboard_login_required
 def healthcheck_detail(request, check_id):
     """
     Display details of a specific health check.
@@ -365,6 +375,7 @@ def healthcheck_detail(request, check_id):
     )
 
 
+@nyxboard_login_required
 def healthcheck_create(request, service_id=None):
     """
     Create a new health check, optionally linked to a specific service.
@@ -418,6 +429,7 @@ def healthcheck_create(request, service_id=None):
     )
 
 
+@nyxboard_login_required
 def healthcheck_update(request, check_id):
     """
     Update an existing health check.
@@ -437,9 +449,15 @@ def healthcheck_update(request, check_id):
             health_check.disabled = new_disabled_value
             health_check.save()
 
-            # Redirect back to referring page, or dashboard if no referrer
-            if request.META.get("HTTP_REFERER"):
-                return redirect(request.META.get("HTTP_REFERER"))
+            # Redirect back to the referring page when it is on this host;
+            # an external or missing referrer falls back to the dashboard.
+            referer = request.META.get("HTTP_REFERER")
+            if referer and url_has_allowed_host_and_scheme(
+                referer,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(referer)
             return redirect("nyxboard:dashboard")
 
         # Normal form submission
@@ -485,6 +503,7 @@ def healthcheck_update(request, check_id):
     )
 
 
+@nyxboard_login_required
 def healthcheck_delete(request, check_id):
     """
     Delete a health check.
@@ -504,6 +523,7 @@ def healthcheck_delete(request, check_id):
 
 
 # HTMX-enabled views for health check updates
+@nyxboard_login_required
 def healthcheck_update_status(request, check_id):
     """
     Update the status of a health check for HTMX updates.
@@ -546,6 +566,7 @@ def healthcheck_update_status(request, check_id):
     return render(request, template_name, context)
 
 
+@nyxboard_login_required
 def healthcheck_trigger(request, check_id):
     """
     Manually trigger a health check to be run now.
@@ -580,6 +601,7 @@ def healthcheck_trigger(request, check_id):
     return render(request, template_name, context)
 
 
+@nyxboard_login_required
 def healthcheck_toggle_disabled(request, check_id):
     """
     Toggle the disabled status of a health check.
@@ -629,6 +651,7 @@ def healthcheck_toggle_disabled(request, check_id):
     return render(request, template_name, context)
 
 
+@nyxboard_login_required(json=True)
 @require_POST
 def set_theme(request):
     """

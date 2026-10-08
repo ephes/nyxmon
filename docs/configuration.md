@@ -332,6 +332,49 @@ Django configuration is managed through environment variables in the `src/django
 - `DJANGO_SECRET_KEY`: Secret key for Django (required in production)
 - `DJANGO_DEBUG`: Enable debug mode (default: False in production)
 - `DJANGO_ALLOWED_HOSTS`: Comma-separated list of allowed hosts
+- `NYXBOARD_REQUIRE_LOGIN`: Require a logged-in Django user for every
+  NyxBoard view (default `false`). See below.
+
+#### Optional NyxBoard Login
+
+NyxBoard has no login of its own by default; access control is left to the
+reverse proxy. The ops-library deployment puts NyxBoard behind a Traefik dual
+router: LAN and Tailscale clients reach it directly, public clients must pass
+HTTP basic auth. Setting `NYXBOARD_REQUIRE_LOGIN=true` adds an application
+login *inside* that layer. It does not replace the Traefik router, and the
+deploy templates do not set it; the default leaves behaviour unchanged.
+
+When enabled:
+
+- Every NyxBoard page (dashboard, service and health-check list, detail,
+  create, update and delete pages) redirects an anonymous visitor to
+  `/accounts/login/?next=<page>`.
+- HTMX requests from the dashboard (status polling, trigger, enable/disable)
+  answer `403` with an `HX-Redirect` header pointing at the login page, so an
+  expired session sends the whole window to the login form instead of
+  swapping it into a card. The `next` parameter is the page the browser was
+  showing, taken from `HX-Current-URL` when it is on the same host.
+- The theme endpoint (`/set-theme/`) answers `403` with a JSON error.
+- No mutation runs for an anonymous request.
+- A **Log out** button appears in the header for a logged-in user.
+
+`403` is used instead of `401` on purpose: a `401` must carry a
+`WWW-Authenticate` challenge, which on the public router could be confused
+with Traefik's own basic-auth prompt.
+
+To enable it:
+
+1. Create an account (any active user may log in; staff status is not
+   needed) by running `manage.py createsuperuser` with the web service's
+   settings module and environment, or `just manage createsuperuser` in
+   development.
+2. Add `NYXBOARD_REQUIRE_LOGIN=true` to the web service's environment, for
+   example the `nyxmon.env` file the ops-library role renders, or the `.env`
+   file next to `src/django` for a local run.
+3. Restart the web service.
+
+To turn it off again, remove the variable (or set it to `false`) and restart.
+The Django admin keeps its own staff login regardless of this setting.
 
 ## Check Types
 

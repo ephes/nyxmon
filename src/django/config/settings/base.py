@@ -83,6 +83,7 @@ TEMPLATES: list[dict[str, Any]] = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "nyxboard.context_processors.nyxboard_auth",
             ],
         },
     },
@@ -155,6 +156,16 @@ STORAGES = {
 }
 
 ADMIN_URL = "admin/"
+
+# NYXBOARD AUTHENTICATION
+# ------------------------------------------------------------------------------
+# Opt-in application-level login for every NyxBoard view. Off by default: the
+# reverse proxy (the ops-library Traefik dual router) stays the outer layer and
+# existing deployments behave exactly as before until this is enabled.
+NYXBOARD_REQUIRE_LOGIN = env.bool("NYXBOARD_REQUIRE_LOGIN", default=False)
+LOGIN_URL = "nyxboard:login"
+LOGIN_REDIRECT_URL = "nyxboard:dashboard"
+LOGOUT_REDIRECT_URL = "nyxboard:login"
 
 filterwarnings(
     "ignore", "The FORMS_URLFIELD_ASSUME_HTTPS transitional setting is deprecated."
