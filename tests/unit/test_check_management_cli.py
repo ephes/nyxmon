@@ -124,9 +124,7 @@ def test_invalid_data_is_rejected_before_writing(
     db_path, capsys, check_type, data, message
 ):
     with pytest.raises(SystemExit) as exc_info:
-        run_cli(
-            db_path, "--check-type", check_type, "--url", "x", "--data", data
-        )
+        run_cli(db_path, "--check-type", check_type, "--url", "x", "--data", data)
 
     assert exc_info.value.code == 2
     assert message in capsys.readouterr().err
