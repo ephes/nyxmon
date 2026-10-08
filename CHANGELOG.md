@@ -32,6 +32,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- JSON-metrics rules now fail when their `path` is missing from the response,
+  for every operator. Previously the missing value was compared as `None`, so
+  `!=` rules (`$.status != "error"`) and `==` rules against `null` passed when
+  the endpoint stopped sending the field. The failure records
+  `"reason": "path_missing"`. **Upgrade note:** a check that only passed
+  because its path was missing (a typo, or a field the endpoint renamed) now
+  alerts; fix the path. A failure's `actual` value is cut to 200 characters of
+  its JSON form (`"actual_truncated": true`), so `path: "$"` no longer stores
+  the whole response document in the result.
+- JSON-metrics checks read at most `max_body_bytes` of the response (new
+  option, default 1 MiB) and fail with `error_type="body_too_large"` above it.
+  The cap counts decompressed bytes. Error responses are not read. HTTP and
+  JSON-HTTP checks no longer download the response body at all; they close
+  the stream after the status line and headers.
 - TCP checks with `tls_mode="starttls"` can now monitor SMTP, IMAP and
   ManageSieve servers. The probe used to send `STARTTLS` before reading the
   server greeting, took the greeting (`220 ...`, `* OK ...`) as the reply and

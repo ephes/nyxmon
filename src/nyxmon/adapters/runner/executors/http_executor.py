@@ -73,11 +73,7 @@ class HttpCheckExecutor:
         for attempt in range(1, attempts + 1):
             start = time.time()
             try:
-                response = await client.get(
-                    check.url,
-                    timeout=config.timeout,
-                    follow_redirects=config.follow_redirects,
-                )
+                response = await self._fetch_headers(client, check.url, config)
                 status_code = self._response_status_code(response)
                 if (
                     config.expected_status is not None
@@ -222,6 +218,24 @@ class HttpCheckExecutor:
             "HTTP check failed",
             {"attempt": attempts, "attempts": attempts},
         )
+
+    async def _fetch_headers(
+        self, client: httpx.AsyncClient, url: str, config: HttpCheckConfig
+    ) -> httpx.Response:
+        """GET ``url`` and return the response without reading its body.
+
+        The check only looks at the status line and headers. Streaming and
+        closing the response keeps a check on a large resource (an audio file,
+        a feed) from downloading it on every run. Status and headers stay
+        readable after the stream is closed.
+        """
+        async with client.stream(
+            "GET",
+            url,
+            timeout=config.timeout,
+            follow_redirects=config.follow_redirects,
+        ) as response:
+            return response
 
     def _response_status_code(self, response: httpx.Response) -> int | None:
         status_code = getattr(response, "status_code", None)

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator
 
 import httpx
 import pytest
@@ -20,20 +21,25 @@ class StubClient:
         self.timeouts: list[float | None] = []
         self.follow_redirects: list[bool] = []
 
-    async def get(
+    @asynccontextmanager
+    async def stream(
         self,
+        method: str,
         url: str,
         timeout: float | None = None,
         follow_redirects: bool = True,
-    ) -> Any:
-        del url
+        auth: Any = None,
+        headers: Any = None,
+    ) -> AsyncIterator[Any]:
+        assert method == "GET"
+        del url, auth, headers
         self.calls += 1
         self.timeouts.append(timeout)
         self.follow_redirects.append(follow_redirects)
         response = self.responses.pop(0)
         if isinstance(response, Exception):
             raise response
-        return response
+        yield response
 
     async def aclose(self) -> None:
         return None
@@ -310,3 +316,33 @@ async def test_malformed_config_returns_configuration_error(config: Any) -> None
     assert result.status == ResultStatus.ERROR
     assert result.data["error_type"] == "configuration_error"
     assert client.calls == 0
+
+
+class _UnreadableBody(httpx.AsyncByteStream):
+    """A response body that fails the test if anything reads it."""
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        raise AssertionError("the HTTP check must not read the response body")
+        yield b""  # pragma: no cover - makes this an async generator
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+@pytest.mark.anyio
+async def test_body_is_never_read_and_the_stream_is_closed() -> None:
+    body = _UnreadableBody()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"content-length": "999999999"}, stream=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        executor = HttpCheckExecutor(client=client)
+        result = await executor.execute(_build_check(config={"expected_status": 200}))
+
+    assert result.status == ResultStatus.OK
+    assert result.data == {"status_code": 200}
+    assert body.closed

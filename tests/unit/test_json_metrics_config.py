@@ -2,7 +2,10 @@
 
 import pytest
 
-from nyxmon.domain.json_metrics_config import JsonMetricsCheckConfig
+from nyxmon.domain.json_metrics_config import (
+    DEFAULT_MAX_BODY_BYTES,
+    JsonMetricsCheckConfig,
+)
 
 
 class TestJsonMetricsCheckConfig:
@@ -132,4 +135,33 @@ class TestJsonMetricsCheckConfig:
         )
 
         with pytest.raises(ValueError):
+            config.validate()
+
+
+class TestMaxBodyBytes:
+    BASE = {
+        "url": "http://h",
+        "checks": [{"path": "$.a", "op": "==", "value": 1, "severity": "warning"}],
+    }
+
+    def test_defaults_to_one_mebibyte(self) -> None:
+        config = JsonMetricsCheckConfig.from_dict(dict(self.BASE))
+        assert config.max_body_bytes == DEFAULT_MAX_BODY_BYTES == 1024 * 1024
+
+    def test_round_trips(self) -> None:
+        config = JsonMetricsCheckConfig.from_dict({**self.BASE, "max_body_bytes": 512})
+        restored = JsonMetricsCheckConfig.from_dict(config.to_dict())
+        assert restored.max_body_bytes == 512
+
+    @pytest.mark.parametrize("value", ["1024", 1.5, True])
+    def test_rejects_non_integers(self, value) -> None:
+        with pytest.raises(ValueError, match="max_body_bytes"):
+            JsonMetricsCheckConfig.from_dict({**self.BASE, "max_body_bytes": value})
+
+    @pytest.mark.parametrize("value", [0, -1])
+    def test_rejects_non_positive(self, value) -> None:
+        config = JsonMetricsCheckConfig.from_dict(
+            {**self.BASE, "max_body_bytes": value}
+        )
+        with pytest.raises(ValueError, match="max_body_bytes"):
             config.validate()
