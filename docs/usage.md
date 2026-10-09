@@ -39,6 +39,41 @@ To force adding data even if checks already exist:
 uv run src/django/manage.py create_devdata --force
 ```
 
+### Creating Checks with the `add-check` CLI
+
+`add-check` stores a check directly in the SQLite database:
+
+```bash
+uv run add-check \
+    --db nyxmon.db \
+    --service-id 1 \
+    --name "Homepage" \
+    --check-type http \
+    --url "https://example.com/" \
+    --interval 60 \
+    --data '{"timeout": 5, "expected_status": 200}'
+```
+
+| Flag | Required | Meaning |
+| --- | --- | --- |
+| `--db` | yes | Path to the SQLite database file (it must exist) |
+| `--service-id` | yes | Service the check belongs to |
+| `--url` | yes | URL, domain or host the check targets |
+| `--name` | no | Display name (default: empty) |
+| `--check-type` | no | `http` (default), `json-http`, `tcp`, `ping`, `dns`, `smtp`, `imap` or `json-metrics` |
+| `--interval` | no | Seconds between runs (default: 300) |
+| `--data` | no | Check configuration as a JSON object (default: `{}`) |
+| `--check-id` | no | Store under this ID instead of the next free one |
+| `--replace` | no | With `--check-id`, overwrite an existing check |
+
+Without `--check-id` the check always gets a new ID; existing checks are never
+touched. An explicit `--check-id` that is already taken is refused unless
+`--replace` is given, and `--replace` overwrites the whole row, including its
+`data`. `--data` must be a JSON object and is validated with the same
+configuration parser the agent uses for that check type, so a DNS check needs
+at least `expected_ips` and a JSON-metrics check needs `url` and `checks`.
+Invalid `--data` exits with status 2 before anything is written.
+
 ### Creating Checks via the Dashboard
 
 The NyxBoard web UI provides an intuitive way to create and manage health checks without writing JSON or using the CLI.

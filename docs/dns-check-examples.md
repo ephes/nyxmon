@@ -176,11 +176,15 @@ check = Check(
 
 ## Using the CLI
 
-You can add DNS checks using the `add-check` CLI tool:
+You can add DNS checks using the `add-check` CLI tool. `--db` and
+`--service-id` are required; each call creates a new check (see the
+`add-check` section in {doc}`usage` for all flags):
 
 ```bash
 # Add a basic DNS check
 uv run add-check \
+    --db nyxmon.db \
+    --service-id 1 \
     --name "DNS - example.com" \
     --check-type dns \
     --url "example.com" \
@@ -189,6 +193,8 @@ uv run add-check \
 
 # Add a split-horizon DNS check for LAN
 uv run add-check \
+    --db nyxmon.db \
+    --service-id 1 \
     --name "DNS - home from LAN" \
     --check-type dns \
     --url "home.xn--wersdrfer-47a.de" \
