@@ -619,5 +619,36 @@ NyxMon includes deployment commands for different environments:
 - `deploy-production`: Deploy to production environment
 - `deploy-macos`: Deploy to macOS (uses launchd instead of systemd)
 - `remove-macos`: Remove macOS deployment
+- `db-from-production`: Fetch a PostgreSQL backup from the legacy production
+  host and restore it into a local database (see below)
+
+### Restoring a Production Backup Locally
+
+`db-from-production` (also reachable as `python commands.py
+production-db-to-local`) only applies to the legacy PostgreSQL deployment. It
+runs `deploy/backup_database.yml`, then replaces one local database with the
+fetched dump.
+
+- **Target.** The local database is `nyxmon`. Set `NYXMON_LOCAL_RESTORE_DB` to
+  use another one; the name must be `nyxmon` or `nyxmon_<suffix>` (lowercase
+  letters, digits and underscores). Any other name, for example `homepage` or
+  `postgres`, is refused before a backup is fetched or a database is touched.
+- **Staging first.** The archive is decompressed once to verify it, then loaded
+  into `<target>_restore_staging` in a single transaction that stops at the
+  first SQL error. The existing target is not touched during this phase.
+- **Replacement.** Only after a complete load is the old target renamed to
+  `<target>_restore_previous`, the staging database renamed to the target, and
+  the previous one dropped. If the swap fails, the previous database is renamed
+  back.
+- **Failures.** A corrupt or truncated archive, an SQL error, a failed
+  `createdb` or a failed swap exits with a non-zero status and leaves the
+  existing target database as it was. A leftover `<target>_restore_previous`
+  from an interrupted run is never overwritten; inspect it and remove it with
+  `dropdb` before trying again.
+
+The helper creates the local `nyxmon` role when it is missing, because dumps
+reference it as owner. Stop other sessions on the target first: PostgreSQL
+refuses to rename a database that still has connections, which fails the
+restore without changing anything.
 
 See {doc}`configuration` for deployment configuration details.
