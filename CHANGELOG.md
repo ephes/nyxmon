@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Refresh advisory-affected Python dependencies in `uv.lock`, retaining Django
+  5.2, and upgrade Vitest to 4.1.11 with a regenerated npm lockfile.
+  Python and JavaScript dependency audits pass after the refresh.
+
 - IMAP checks (implicit TLS and STARTTLS) and SMTP checks with implicit TLS
   now verify the server certificate and hostname before sending the mailbox
   password. They previously used Python's default unverified context, so a

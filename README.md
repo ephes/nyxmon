@@ -316,3 +316,22 @@ bus = bootstrap(notifier=my_notifier)
 
 The choice of sqlite as a database backend was deliberate. How to monitor a database going down, when you depend
 on the database to monitor?
+
+## Dependency security checks
+
+The October 2026 refresh updates advisory-affected locked dependencies to patched
+versions. Install the reviewed lock with `uv sync --frozen`; use targeted
+`uv lock --upgrade-package PACKAGE==VERSION` updates rather than upgrading all packages.
+Audit runtime, development and optional dependencies before and after an update:
+
+```shell
+uv export --frozen --all-extras --all-groups --no-emit-project --no-hashes -o /tmp/requirements-audit.txt
+uvx pip-audit -r /tmp/requirements-audit.txt --no-deps --disable-pip
+```
+
+The audit must fail against the vulnerable lock and pass against the refreshed
+lock; rerun the CI checks to verify compatibility.
+
+JavaScript tests now use Vitest 4.1.11 to remove vulnerable test-runner
+dependencies. Use Node.js 22 (at least 22.12) as in CI, run `npm ci`, then
+`npm audit` and `npm test`.
