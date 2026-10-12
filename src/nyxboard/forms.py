@@ -571,7 +571,10 @@ class ImapHealthCheckForm(HealthCheckForm):
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
         label="Delete After Check",
-        help_text="Delete matched messages after successful check",
+        help_text=(
+            "Mark matched messages deleted after success; permanently remove only "
+            "with UIDPLUS. Other servers retain them until mailbox-side cleanup."
+        ),
     )
 
     no_recent_message_severity = forms.ChoiceField(

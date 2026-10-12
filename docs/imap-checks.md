@@ -34,7 +34,8 @@ Behavior:
 - Connects with the chosen TLS mode (implicit/starttls/none), logs in, and selects `folder`.
 - Implicit TLS and STARTTLS verify the server certificate chain and hostname against the system trust store before the password is sent. `verify` defaults to `true`; set it to `false` only for a server with a self-signed certificate. That disables both checks and logs a warning on every connection, and the login password is then exposed to a man-in-the-middle. A certificate failure is reported as `error_type="tls_error"` and is not retried.
 - Searches undeleted messages matching `search_subject`, filters to those newer than `max_age_minutes`.
-- On success returns `matched_uids` and `latest_internaldate`; when `delete_after_check` is true, messages are deleted/expunged.
+- Uses UID SEARCH/FETCH/STORE so another client expunging mail cannot shift the selected identity. A UID that disappears before FETCH is treated as missing.
+- On success returns stable mailbox UIDs in `matched_uids` and `latest_internaldate`. `delete_after_check` defaults to true: matched messages are marked `\Deleted` and permanently removed only by UID EXPUNGE when the server advertises UIDPLUS. Without UIDPLUS they remain marked deleted (excluded from subsequent searches) until mailbox-side cleanup. Nyxmon never issues mailbox-wide EXPUNGE, preserving unrelated deleted mail. Set `delete_after_check` to false to retain matches without marking them.
 - Failures surface as `error_type` values such as `no_recent_message`, `tls_error`, `timeout`, `request_error`, or `execution_error`; retries/backoff apply to transient failures and to empty recent-message searches before `no_recent_message` is returned.
 - `no_recent_message_severity` defaults to `critical`; set it to `warning` for third-party forwarded loopbacks where missing fresh mail means the forwarding path is stale but local IMAP/auth/connectivity should not page.
 
