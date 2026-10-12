@@ -263,6 +263,9 @@ def test_json_metrics_new_password_allows_other_origin(service):
             "https://collector.example.net:+443/health",
         ),
         ("not a url", "https://collector.example.net/health"),
+        # httpx builds these URLs but raises when the host is decoded.
+        ("https://xn--a.com/health", "https://xn--a.com/health"),
+        ("https://metrics.example.com/health", "https://xn--a.com/health"),
         ("", "https://collector.example.net/health"),
     ],
 )

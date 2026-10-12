@@ -54,13 +54,15 @@ def _url_password_target(url: object) -> tuple[str, str, int] | None:
     """
     try:
         parsed = httpx.URL(str(url or "").strip())
-    except (httpx.InvalidURL, ValueError, TypeError):
+        scheme = parsed.scheme.lower()
+        # Decoding the host can fail late (invalid IDNA labels raise here).
+        host = parsed.host.lower()
+        port = parsed.port or {"http": 80, "https": 443}.get(scheme)
+    except Exception:  # noqa: BLE001 - any parse failure means "unknown origin"
         return None
-    scheme = parsed.scheme.lower()
-    port = parsed.port or {"http": 80, "https": 443}.get(scheme)
-    if not parsed.host or port is None:
+    if not host or port is None:
         return None
-    return (scheme, parsed.host.lower(), port)
+    return (scheme, host, port)
 
 
 class ServiceForm(forms.ModelForm):
