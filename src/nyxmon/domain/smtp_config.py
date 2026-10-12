@@ -1,5 +1,6 @@
 """SMTP check configuration domain model."""
 
+import math
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -61,26 +62,42 @@ class SmtpCheckConfig:
                 f"Invalid tls mode: {self.tls}. Must be one of {sorted(VALID_TLS_MODES)}"
             )
 
-        if self.port <= 0:
-            raise ValueError("port must be positive")
+        if type(self.port) is not int or not 1 <= self.port <= 65535:
+            raise ValueError("port must be an integer between 1 and 65535")
 
-        if not self.from_addr:
-            raise ValueError("from_addr is required")
+        if type(self.retries) is not int or self.retries < 0:
+            raise ValueError("retries must be a nonnegative integer")
 
-        if not self.to_addr:
-            raise ValueError("to_addr is required")
+        for name, value in (
+            ("timeout", self.timeout),
+            ("retry_delay", self.retry_delay),
+        ):
+            # Check the bound before isfinite so huge integers cannot overflow
+            # its conversion to float. Booleans are not numeric configuration.
+            if (
+                type(value) not in (int, float)
+                or not 0 <= value <= 300
+                or not math.isfinite(value)
+                or (name == "timeout" and value == 0)
+            ):
+                raise ValueError(
+                    f"{name} must be a finite number "
+                    f"{'greater than zero and ' if name == 'timeout' else ''}"
+                    "between 0 and 300 seconds"
+                )
 
-        if not self.subject_prefix:
-            raise ValueError("subject_prefix is required")
-
-        if self.timeout <= 0:
-            raise ValueError("timeout must be positive")
-
-        if self.retries < 0:
-            raise ValueError("retries must be zero or positive")
-
-        if self.retry_delay < 0:
-            raise ValueError("retry_delay must be zero or positive")
+        for name, header in (
+            ("from_addr", self.from_addr),
+            ("to_addr", self.to_addr),
+            ("subject_prefix", self.subject_prefix),
+        ):
+            if (
+                not isinstance(header, str)
+                or not header.strip()
+                or "\r" in header
+                or "\n" in header
+            ):
+                raise ValueError(f"{name} must be a nonempty string without CR/LF")
 
         if self.username and not (self.password or self.password_secret):
             raise ValueError(
