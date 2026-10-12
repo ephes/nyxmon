@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- IMAP cleanup now uses UID-scoped EXPUNGE with UIDPLUS and leaves matches
+  marked deleted on other servers; it never expunges unrelated deleted mail.
+- IMAP SEARCH, FETCH and STORE now use stable mailbox UIDs. Concurrent
+  expunges cannot redirect a check to another message; vanished UIDs are missing.
+
 - JSON-metrics rules now fail when their `path` is missing from the response,
   for every operator. Previously the missing value was compared as `None`, so
   `!=` rules (`$.status != "error"`) and `==` rules against `null` passed when

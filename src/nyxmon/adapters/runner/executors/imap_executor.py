@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import re
 import imaplib
 import ssl
 from dataclasses import dataclass
@@ -20,7 +21,7 @@ from urllib.parse import urlparse
 
 @dataclass
 class ImapMessage:
-    """Representation of a matched IMAP message."""
+    """Matched message identified by its stable UID in the selected mailbox."""
 
     uid: str
     subject: str
@@ -144,7 +145,7 @@ class ImapLibSession:
             raise ImapCheckError("IMAP connection not initialized")
 
         search_data = await self._run_checked(
-            "search", None, "NOT", "DELETED", "HEADER", "SUBJECT", f'"{subject}"'
+            "uid", "SEARCH", None, "NOT", "DELETED", "HEADER", "SUBJECT", f'"{subject}"'
         )
         ids = search_data[0].decode().split() if search_data and search_data[0] else []
         if not ids:
@@ -165,14 +166,19 @@ class ImapLibSession:
         return messages
 
     async def _fetch_internaldate(self, msg_id: str) -> datetime | None:
-        data = await self._run_checked("fetch", msg_id, "(INTERNALDATE)")
-        # imaplib returns list where first element contains INTERNALDATE string
-        if not data or not data[0]:
+        data = await self._run_checked("uid", "FETCH", msg_id, "(INTERNALDATE)")
+        # Pending unsolicited FETCH responses may belong to other messages.
+        raw = None
+        for entry in data or []:
+            candidate = entry[0] if isinstance(entry, tuple) else entry
+            if not isinstance(candidate, bytes):
+                continue
+            uid_match = re.search(rb"\bUID ([0-9]+)\b", candidate, re.IGNORECASE)
+            if uid_match and uid_match.group(1).decode() == msg_id:
+                raw = candidate
+                break
+        if raw is None:
             return None
-
-        raw = data[0]
-        if isinstance(raw, tuple):
-            raw = raw[0]
 
         parsed_tuple: time.struct_time | None = None
         parsed_dt: datetime | None = None
@@ -200,8 +206,10 @@ class ImapLibSession:
         if not ids or self._conn is None:
             return
 
-        await self._run_checked("store", ",".join(ids), "+FLAGS", "\\Deleted")
-        await self._run_checked("expunge")
+        await self._run_checked("uid", "STORE", ",".join(ids), "+FLAGS", "\\Deleted")
+        capabilities = await self._run_checked("capability")
+        if any(b"UIDPLUS" in line.upper().split() for line in capabilities if line):
+            await self._run_checked("uid", "EXPUNGE", ",".join(ids))
 
 
 class ImapCheckExecutor:

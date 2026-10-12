@@ -19,7 +19,7 @@ class ImapCheckConfig:
     port: int = 993
     tls_mode: str = "implicit"  # implicit TLS by default
     max_age_minutes: int = 30
-    delete_after_check: bool = True
+    delete_after_check: bool = True  # mark deleted; expunge only with UIDPLUS
     timeout: float = 30.0
     retries: int = 2
     retry_delay: float = 10.0
