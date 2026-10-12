@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import uuid
 from pathlib import Path
 
@@ -40,15 +41,25 @@ class FakePostgres:
             self.roles.add(argv[-1])
         elif argv[0] == "psql":
             sql = argv[-1]
+            renames = [
+                re.fullmatch(r'ALTER DATABASE "(\w+)" RENAME TO "(\w+)"', arg)
+                for arg in argv
+                if arg.startswith("ALTER DATABASE")
+            ]
             if match := re.search(r"datname = '(\w+)'", sql):
                 stdout = "1\n" if match.group(1) in self.databases else ""
             elif match := re.search(r"rolname = '(\w+)'", sql):
                 stdout = "1\n" if match.group(1) in self.roles else ""
-            elif match := re.search(r'ALTER DATABASE "(\w+)" RENAME TO "(\w+)"', sql):
-                old, new = match.groups()
-                assert old in self.databases and new not in self.databases
-                self.databases.remove(old)
-                self.databases.add(new)
+            elif renames:
+                # every rename statement of a swap shares one transaction
+                assert "--single-transaction" in argv
+                assert sum(arg == "-c" for arg in argv) == len(renames)
+                for match in renames:
+                    assert match is not None
+                    old, new = match.groups()
+                    assert old in self.databases and new not in self.databases
+                    self.databases.remove(old)
+                    self.databases.add(new)
             else:  # pragma: no cover - guards the fake itself
                 raise AssertionError(f"unexpected sql: {sql}")
         else:  # pragma: no cover - guards the fake itself
@@ -79,7 +90,6 @@ class FakePostgres:
             c
             for c in self.commands
             if c[0] in {"dropdb", "createdb", "createuser"}
-            or "ALTER DATABASE" in c[-1]
             or "--single-transaction" in c
         ]
 
@@ -219,7 +229,7 @@ def test_sql_error_preserves_target_and_drops_staging(fake_pg, backup, monkeypat
 
     assert excinfo.value.code not in (0, None)
     assert fake_pg.databases == {"nyxmon", "homepage"}
-    assert not any("ALTER DATABASE" in c[-1] for c in fake_pg.commands)
+    assert not any("ALTER DATABASE" in a for c in fake_pg.commands for a in c)
     assert not any(c[0] == "dropdb" and c[-1] == "nyxmon" for c in fake_pg.commands)
 
 
@@ -233,27 +243,42 @@ def test_staging_creation_failure_preserves_target(fake_pg, backup, monkeypatch)
     assert excinfo.value.code not in (0, None)
     assert fake_pg.databases == {"nyxmon", "homepage"}
     assert fake_pg.loaded == {}
-    assert not any("ALTER DATABASE" in c[-1] for c in fake_pg.commands)
+    assert not any("ALTER DATABASE" in a for c in fake_pg.commands for a in c)
 
 
-def test_failed_swap_puts_the_previous_database_back(fake_pg, backup, monkeypatch):
-    fake_pg.fail = 'RENAME TO "nyxmon"'  # staging -> target fails once
-    original_run = fake_pg.run
-
-    def run(argv, **kwargs):
-        result = original_run(argv, **kwargs)
-        if result.returncode:
-            fake_pg.fail = None
-        return result
-
-    monkeypatch.setattr(deployment.subprocess, "run", run)
+def test_swap_is_one_transaction_and_its_failure_keeps_the_target(
+    fake_pg, backup, monkeypatch
+):
+    fake_pg.fail = "ALTER DATABASE"
     _use_backup(monkeypatch, backup)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as excinfo:
         deployment.production_db_to_local()
 
-    assert "nyxmon" in fake_pg.databases
-    assert "nyxmon_restore_previous" not in fake_pg.databases
+    assert excinfo.value.code not in (0, None)
+    swaps = [c for c in fake_pg.commands if any("ALTER DATABASE" in a for a in c)]
+    # a single psql invocation renames target -> previous and staging -> target
+    assert len(swaps) == 1
+    assert "--single-transaction" in swaps[0]
+    assert [a for a in swaps[0] if a.startswith("ALTER DATABASE")] == [
+        'ALTER DATABASE "nyxmon" RENAME TO "nyxmon_restore_previous"',
+        'ALTER DATABASE "nyxmon_restore_staging" RENAME TO "nyxmon"',
+    ]
+    assert fake_pg.databases == {"nyxmon", "homepage"}
+
+
+def test_failed_removal_of_replaced_database_exits_nonzero(
+    fake_pg, backup, monkeypatch
+):
+    fake_pg.fail = "dropdb nyxmon_restore_previous"
+    _use_backup(monkeypatch, backup)
+
+    with pytest.raises(SystemExit) as excinfo:
+        deployment.production_db_to_local()
+
+    assert "nyxmon_restore_previous" in str(excinfo.value.code)
+    assert "was restored into nyxmon" in str(excinfo.value.code)
+    assert fake_pg.databases == {"nyxmon", "homepage", "nyxmon_restore_previous"}
 
 
 def test_leftover_previous_database_is_never_overwritten(fake_pg, backup, monkeypatch):
@@ -406,3 +431,40 @@ def test_postgres_restore_creates_missing_target(pg_target, tmp_path):
     deployment.restore_local_database(dump, pg_target)
 
     assert _psql(pg_target, "SELECT to_regclass('restored') IS NOT NULL") == "t"
+
+
+@requires_postgres
+def test_postgres_failed_swap_keeps_existing_target(pg_target, tmp_path):
+    """PostgreSQL refuses to rename a database with open sessions."""
+    subprocess.run(["createdb", pg_target], check=True)
+    _psql(pg_target, "CREATE TABLE old_data (id integer)")
+    dump = _dump(tmp_path / "ok.sql.gz", "CREATE TABLE restored (id integer);\n")
+    session = subprocess.Popen(
+        ["psql", "-X", "-q", "-d", pg_target],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+    )
+    try:
+        for _ in range(100):
+            connected = _psql(
+                "postgres",
+                f"SELECT count(*) FROM pg_stat_activity WHERE datname = '{pg_target}'",
+            )
+            if connected != "0":
+                break
+            time.sleep(0.05)
+        assert connected != "0"
+
+        with pytest.raises(deployment.LocalRestoreError):
+            deployment.restore_local_database(dump, pg_target)
+    finally:
+        session.stdin.close()
+        session.wait(timeout=10)
+
+    assert _psql(pg_target, "SELECT to_regclass('old_data') IS NOT NULL") == "t"
+    assert _psql(pg_target, "SELECT to_regclass('restored') IS NULL") == "t"
+    leftovers = _psql(
+        "postgres",
+        f"SELECT count(*) FROM pg_database WHERE datname LIKE '{pg_target}\\_restore%'",
+    )
+    assert leftovers == "0"

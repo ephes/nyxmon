@@ -636,15 +636,19 @@ fetched dump.
 - **Staging first.** The archive is decompressed once to verify it, then loaded
   into `<target>_restore_staging` in a single transaction that stops at the
   first SQL error. The existing target is not touched during this phase.
-- **Replacement.** Only after a complete load is the old target renamed to
-  `<target>_restore_previous`, the staging database renamed to the target, and
-  the previous one dropped. If the swap fails, the previous database is renamed
-  back.
+- **Replacement.** Only after a complete load are the old target renamed to
+  `<target>_restore_previous` and the staging database renamed to the target.
+  Both renames run in one transaction, so either both happen or neither does.
+  The previous database is dropped afterwards.
 - **Failures.** A corrupt or truncated archive, an SQL error, a failed
   `createdb` or a failed swap exits with a non-zero status and leaves the
-  existing target database as it was. A leftover `<target>_restore_previous`
-  from an interrupted run is never overwritten; inspect it and remove it with
-  `dropdb` before trying again.
+  existing target database as it was.
+- **Cleanup failure.** One failure happens after the replacement: if the
+  previous database cannot be dropped, the command also exits non-zero, but the
+  target already holds the restored data and `<target>_restore_previous` holds
+  what the target contained before. The next restore refuses to start while
+  that database exists and never overwrites it; run `dropdb
+  <target>_restore_previous` once you no longer need the old data.
 
 The helper creates the local `nyxmon` role when it is missing, because dumps
 reference it as owner. Stop other sessions on the target first: PostgreSQL

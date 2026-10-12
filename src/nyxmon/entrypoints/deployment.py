@@ -10,7 +10,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import zlib
 from collections.abc import Mapping
 from pathlib import Path
@@ -263,9 +262,11 @@ def restore_local_database(backup_path: Path, target: str) -> None:
     """Replace the local ``target`` database with the dump in ``backup_path``.
 
     The dump is loaded into a staging database first (one transaction, stop on
-    the first SQL error). ``target`` is only replaced, by renaming, once that
-    load succeeded; every earlier failure raises ``LocalRestoreError`` and
-    leaves ``target`` exactly as it was.
+    the first SQL error). ``target`` is only replaced once that load succeeded,
+    by two renames in a single transaction; every failure up to and including
+    that swap raises ``LocalRestoreError`` and leaves ``target`` exactly as it
+    was. Only removing the replaced database afterwards can still fail: that
+    also raises, but ``target`` already holds the restored data then.
     """
     target = resolve_local_restore_target({LOCAL_RESTORE_DB_ENV: target})
     staging = f"{target}{_STAGING_SUFFIX}"
@@ -274,8 +275,9 @@ def restore_local_database(backup_path: Path, target: str) -> None:
     _validate_backup(backup_path)
     if _database_exists(previous):
         raise LocalRestoreError(
-            f"Database {previous} is left over from an earlier restore. Check it "
-            f"and remove it with 'dropdb {previous}' before restoring again."
+            f"Database {previous} is left over from an earlier restore whose "
+            f"cleanup failed. It holds the data {target} had before that restore; "
+            f"remove it with 'dropdb {previous}' once you no longer need it."
         )
     _ensure_role(LOCAL_RESTORE_ROLE)
     _run_checked(["dropdb", "--if-exists", staging])
@@ -287,24 +289,37 @@ def restore_local_database(backup_path: Path, target: str) -> None:
             _run_checked(["dropdb", "--if-exists", staging])
         raise
 
+    # Both renames run in one transaction: either the target is the restored
+    # database afterwards, or nothing was renamed and the old target is intact.
     had_target = _database_exists(target)
+    swap = [
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "--single-transaction",
+        "-d",
+        "postgres",
+    ]
     if had_target:
-        _maintenance_sql(f'ALTER DATABASE "{target}" RENAME TO "{previous}"')
+        swap += ["-c", f'ALTER DATABASE "{target}" RENAME TO "{previous}"']
+    swap += ["-c", f'ALTER DATABASE "{staging}" RENAME TO "{target}"']
     try:
-        _maintenance_sql(f'ALTER DATABASE "{staging}" RENAME TO "{target}"')
+        _run_checked(swap)
     except LocalRestoreError:
-        if had_target:
-            _maintenance_sql(f'ALTER DATABASE "{previous}" RENAME TO "{target}"')
+        with contextlib.suppress(LocalRestoreError):
+            _run_checked(["dropdb", "--if-exists", staging])
         raise
     if had_target:
         try:
             _run_checked(["dropdb", previous])
         except LocalRestoreError as exc:
-            print(
-                f"Restore succeeded, but the old database is still present as "
-                f"{previous}: {exc}",
-                file=sys.stderr,
-            )
+            raise LocalRestoreError(
+                f"The backup was restored into {target}, but the replaced database "
+                f"could not be removed and is still present as {previous}: {exc}. "
+                f"Remove it with 'dropdb {previous}' before the next restore."
+            ) from exc
 
 
 def _honcho_is_running() -> bool:
@@ -371,7 +386,7 @@ def production_db_to_local() -> None:
     another ``nyxmon_<suffix>`` database; any other name is refused before
     anything is fetched or changed. The dump is loaded into a staging database
     and only replaces the target after it loaded completely, so a failed
-    restore exits non-zero and leaves the existing database untouched.
+    load or swap exits non-zero and leaves the existing database untouched.
 
     Make sure only the database is running using:
       postgres -D databases/postgres
