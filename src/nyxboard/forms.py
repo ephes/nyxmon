@@ -1,6 +1,6 @@
 import ipaddress
 from typing import Any
-
+import httpx
 from django import forms
 from django.core.validators import URLValidator
 import json
@@ -9,6 +9,60 @@ from .models import Service, HealthCheck
 from nyxmon.domain import CheckType
 from nyxmon.domain.dns_config import expected_ip_error
 from nyxmon.domain.ping_config import PingCheckConfig, normalize_ping_target
+
+
+STORED_PASSWORD_TARGET_ERROR = (
+    "Re-enter the password. The stored password is only reused while the "
+    "server it is sent to stays the same and TLS is not weakened."
+)
+
+
+def _stored_mail_password_reusable(
+    stored: dict[str, Any],
+    submitted: dict[str, Any],
+    *,
+    tls_key: str,
+    default_port: int,
+    default_tls: str,
+) -> bool:
+    """Whether a stored mail password would still go to the same server.
+
+    The host, port and TLS mode must be unchanged, and certificate
+    verification must not be switched off in the same edit.
+    """
+
+    def target(config: dict[str, Any], tls_value: object) -> tuple[str, str, str]:
+        return (
+            str(config.get("host") or "").strip().lower(),
+            str(config.get("port") or default_port),
+            str(tls_value or default_tls),
+        )
+
+    if target(stored, stored.get(tls_key)) != target(
+        submitted, submitted.get("tls_mode")
+    ):
+        return False
+    return stored.get("verify") is False or submitted.get("verify") is not False
+
+
+def _url_password_target(url: object) -> tuple[str, str, int] | None:
+    """The origin (scheme, host, port) a stored Basic Auth password is sent to.
+
+    Parsed with httpx, the client that sends the request, so the comparison
+    sees the same host and port. ``None`` means the origin is unknown; callers
+    must not reuse a stored password then.
+    """
+    try:
+        parsed = httpx.URL(str(url or "").strip())
+        scheme = parsed.scheme.lower()
+        # Decoding the host can fail late (invalid IDNA labels raise here).
+        host = parsed.host.lower()
+        port = parsed.port or {"http": 80, "https": 443}.get(scheme)
+    except Exception:  # noqa: BLE001 - any parse failure means "unknown origin"
+        return None
+    if not host or port is None:
+        return None
+    return (scheme, host, port)
 
 
 class ServiceForm(forms.ModelForm):
@@ -424,6 +478,14 @@ class SmtpHealthCheckForm(HealthCheckForm):
                     self.add_error(
                         "password", "Password is required when username is provided"
                     )
+                elif not _stored_mail_password_reusable(
+                    self.instance.data,
+                    cleaned_data,
+                    tls_key="tls",
+                    default_port=587,
+                    default_tls="starttls",
+                ):
+                    self.add_error("password", STORED_PASSWORD_TARGET_ERROR)
             else:
                 self.add_error(
                     "password", "Password is required when username is provided"
@@ -465,11 +527,13 @@ class SmtpHealthCheckForm(HealthCheckForm):
         if self.cleaned_data.get("username"):
             instance.data["username"] = self.cleaned_data["username"]
 
-        # Handle password - keep existing if not provided
+        # Handle password - keep existing if not provided. Without a username
+        # nothing authenticates, so a stored password is dropped instead of
+        # staying behind for a later edit to pick up.
         if self.cleaned_data.get("password"):
             instance.data["password"] = self.cleaned_data["password"]
-        elif existing_data.get("password"):
-            # Preserve existing password when editing
+        elif self.cleaned_data.get("username") and existing_data.get("password"):
+            # Preserve existing password when editing (clean() checked the target)
             instance.data["password"] = existing_data["password"]
 
         if commit:
@@ -669,6 +733,14 @@ class ImapHealthCheckForm(HealthCheckForm):
                 existing_password = self.instance.data.get("password")
                 if not existing_password:
                     self.add_error("password", "Password is required")
+                elif not _stored_mail_password_reusable(
+                    self.instance.data,
+                    cleaned_data,
+                    tls_key="tls_mode",
+                    default_port=993,
+                    default_tls="implicit",
+                ):
+                    self.add_error("password", STORED_PASSWORD_TARGET_ERROR)
             else:
                 self.add_error("password", "Password is required")
 
@@ -1195,8 +1267,20 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
         password = cleaned_data.get("auth_password") or ""
         if bool(username) != bool(password):
             if self.instance.pk and self.instance.data and username and not password:
-                # allow "username set, keep existing password" on edit
-                pass
+                # allow "username set, keep existing password" on edit, but
+                # only towards the origin the password was stored for
+                existing_auth = self.instance.data.get("auth") or {}
+                stored_url = self.instance.data.get("url") or self.instance.url
+                if (
+                    existing_auth.get("username") == username
+                    and existing_auth.get("password")
+                    and "url" in cleaned_data
+                ):
+                    stored_target = _url_password_target(stored_url)
+                    if stored_target is None or stored_target != _url_password_target(
+                        cleaned_data["url"]
+                    ):
+                        self.add_error("auth_password", STORED_PASSWORD_TARGET_ERROR)
             else:
                 self.add_error(
                     "auth_password",
