@@ -161,7 +161,12 @@ def test_smtp_blank_password_is_rejected_when_target_changes(service, changes):
 
 @pytest.mark.parametrize(
     "changes",
-    [{"host": "collector.example.net"}, {"port": 1143}, {"tls_mode": "starttls"}, {"verify": "false"}],
+    [
+        {"host": "collector.example.net"},
+        {"port": 1143},
+        {"tls_mode": "starttls"},
+        {"verify": "false"},
+    ],
 )
 def test_imap_blank_password_is_rejected_when_target_changes(service, changes):
     form = imap_form(service, **changes)
@@ -227,12 +232,18 @@ def test_json_metrics_blank_password_is_rejected_for_other_origin(service, url):
 
 @pytest.mark.parametrize(
     "url",
-    ["https://metrics.example.com/other/path?x=1", "https://METRICS.example.com:443/health"],
+    [
+        "https://metrics.example.com/other/path?x=1",
+        "https://METRICS.example.com:443/health",
+    ],
 )
 def test_json_metrics_stored_password_is_kept_for_same_origin(service, url):
     form = json_form(service, url=url)
     assert form.is_valid(), form.errors
-    assert form.save().data["auth"] == {"username": "nyxmon", "password": "original_secret"}
+    assert form.save().data["auth"] == {
+        "username": "nyxmon",
+        "password": "original_secret",
+    }
 
 
 def test_json_metrics_new_password_allows_other_origin(service):
@@ -241,3 +252,34 @@ def test_json_metrics_new_password_allows_other_origin(service):
     )
     assert form.is_valid(), form.errors
     assert form.save().data["auth"]["password"] == "new_secret"
+
+
+@pytest.mark.parametrize(
+    "stored_url, new_url",
+    [
+        # urllib rejects the "+443" port, httpx accepts it: both must not compare equal.
+        (
+            "https://metrics.example.com:+443/health",
+            "https://collector.example.net:+443/health",
+        ),
+        ("not a url", "https://collector.example.net/health"),
+        ("", "https://collector.example.net/health"),
+    ],
+)
+def test_json_metrics_unparseable_origin_never_reuses_the_password(
+    service, stored_url, new_url
+):
+    check = HealthCheck.objects.create(
+        name="Odd",
+        service=service,
+        check_type=CheckType.JSON_METRICS,
+        url=stored_url,
+        check_interval=300,
+        data={**JSON_DATA, "url": stored_url, "auth": dict(JSON_DATA["auth"])},
+    )
+    post = json_form(service, url=new_url).data.copy()
+    form = JsonMetricsHealthCheckForm(data=post, instance=check)
+    if form.is_valid():
+        assert "password" not in form.save().data.get("auth", {})
+    else:
+        assert "auth_password" in form.errors or "url" in form.errors

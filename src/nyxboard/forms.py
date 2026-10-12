@@ -1,7 +1,6 @@
 import ipaddress
 from typing import Any
-from urllib.parse import urlsplit
-
+import httpx
 from django import forms
 from django.core.validators import URLValidator
 import json
@@ -46,17 +45,22 @@ def _stored_mail_password_reusable(
     return stored.get("verify") is False or submitted.get("verify") is not False
 
 
-def _url_password_target(url: object) -> tuple[str, str, int | None]:
-    """The origin (scheme, host, port) a stored Basic Auth password is sent to."""
+def _url_password_target(url: object) -> tuple[str, str, int] | None:
+    """The origin (scheme, host, port) a stored Basic Auth password is sent to.
+
+    Parsed with httpx, the client that sends the request, so the comparison
+    sees the same host and port. ``None`` means the origin is unknown; callers
+    must not reuse a stored password then.
+    """
     try:
-        parts = urlsplit(str(url or "").strip())
-        port = parts.port
-    except ValueError:
-        return ("", "", None)
-    scheme = parts.scheme.lower()
-    if port is None:
-        port = {"http": 80, "https": 443}.get(scheme)
-    return (scheme, (parts.hostname or "").lower(), port)
+        parsed = httpx.URL(str(url or "").strip())
+    except (httpx.InvalidURL, ValueError, TypeError):
+        return None
+    scheme = parsed.scheme.lower()
+    port = parsed.port or {"http": 80, "https": 443}.get(scheme)
+    if not parsed.host or port is None:
+        return None
+    return (scheme, parsed.host.lower(), port)
 
 
 class ServiceForm(forms.ModelForm):
@@ -1269,10 +1273,12 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
                     existing_auth.get("username") == username
                     and existing_auth.get("password")
                     and "url" in cleaned_data
-                    and _url_password_target(stored_url)
-                    != _url_password_target(cleaned_data["url"])
                 ):
-                    self.add_error("auth_password", STORED_PASSWORD_TARGET_ERROR)
+                    stored_target = _url_password_target(stored_url)
+                    if stored_target is None or stored_target != _url_password_target(
+                        cleaned_data["url"]
+                    ):
+                        self.add_error("auth_password", STORED_PASSWORD_TARGET_ERROR)
             else:
                 self.add_error(
                     "auth_password",
