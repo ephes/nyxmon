@@ -36,6 +36,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `db-from-production` and `commands.py production-db-to-local` no longer drop
+  an unrelated database or leave a half-restored one. The legacy `commands.py`
+  helper dropped and recreated a local `homepage` database, and both helpers
+  ignored failing `dropdb`/`createdb`/`gunzip`/`psql` steps. The restore now
+  targets `nyxmon` (or `NYXMON_LOCAL_RESTORE_DB`, which must be `nyxmon` or
+  `nyxmon_<suffix>`), verifies the archive, loads it into a staging database
+  in one fail-fast transaction and only then swaps it in with two renames in
+  a single transaction. A failed check, load or swap exits non-zero and leaves
+  the existing database untouched. If only the removal of the replaced
+  database fails afterwards, the command exits non-zero with the restored data
+  in place and the old data kept as `<target>_restore_previous`, which blocks
+  further restores until it is dropped.
 - IMAP cleanup now uses UID-scoped EXPUNGE with UIDPLUS and leaves matches
   marked deleted on other servers; it never expunges unrelated deleted mail.
 - IMAP SEARCH, FETCH and STORE now use stable mailbox UIDs. Concurrent

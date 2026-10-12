@@ -164,44 +164,16 @@ def working_directory(path):
 @cli.command()
 def production_db_to_local():
     """
-    Use ansible to create and fetch a backup.
+    Use ansible to create and fetch a backup, then restore it locally.
 
-    Make sure only the database is running using:
-      postgres -D databases/postgres
+    Delegates to the guarded ``db-from-production`` helper: only a local
+    ``nyxmon`` / ``nyxmon_<suffix>`` database can be replaced, and only after
+    the dump loaded completely into a staging database.
     """
-    import psutil
+    from nyxmon.entrypoints.deployment import production_db_to_local as restore
 
-    for proc in psutil.process_iter(["pid", "name", "username"]):
-        if proc.info["name"] is None or "python" not in proc.info["name"]:
-            continue
-        try:
-            cmdline = " ".join(proc.cmdline())
-            if "honcho" in cmdline:
-                print(
-                    "please stop honcho first and start a single postgres db with postgres -D databases/postgres"
-                )
-                sys.exit(1)
-        except psutil.AccessDenied:
-            # ignore processes that we cannot observe
-            pass
-
-    deploy_root = Path(__file__).parent / "deploy"
-    with working_directory(deploy_root):
-        output = subprocess.check_output(
-            ["ansible-playbook", "backup_database.yml", "--limit", "production"],
-            text=True,
-        )
-    [line] = [line for line in output.split("\n") if "sql.gz" in line]
-    backup_file_name = line.split('"')[-2]
-    backup_path = get_project_root() / "backups" / backup_file_name
-    db_name = "homepage"
-    subprocess.call(["dropdb", db_name])
-    subprocess.call(["createdb", db_name])
-    subprocess.call(["createuser", db_name])
-    command = f"gunzip -c {backup_path} | psql {db_name}"
-    print(command)
-    subprocess.call(command, shell=True)
-    print(backup_path)
+    with working_directory(get_project_root()):
+        restore()
 
 
 def deploy(environment):
