@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Editing an SMTP, IMAP or JSON-metrics check no longer reuses the stored
+  password when the same edit changes where it is sent. A blank password
+  field keeps the stored password only while the host, port and TLS mode
+  (mail checks) or the URL origin (JSON metrics) are unchanged and certificate
+  verification is not switched off; otherwise the form asks for the password
+  again. An SMTP check saved without a username drops its stored password.
+
 - Refresh advisory-affected Python dependencies in `uv.lock`, retaining Django
   5.2, and upgrade Vitest to 4.1.11 with a regenerated npm lockfile.
   Python and JavaScript dependency audits pass after the refresh.
