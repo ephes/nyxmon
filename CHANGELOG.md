@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Require an actual boolean for IMAP `delete_after_check`, preventing strings
+  such as `"false"` from enabling mailbox cleanup. The default remains true.
+- Validate IMAP port, freshness window, retries and finite timeout/delay ranges
+  at configuration admission, returning `configuration_error` before connecting
+  for unsupported values instead of raising or attempting unbounded work.
+  **Upgrade note:** Stored checks using numeric strings, integer-valued floats
+  for port/retries/age, nonboolean cleanup switches, or values above the new
+  limits now fail configuration validation. Replace those values with explicit
+  booleans and supported numeric types/ranges before restarting the collector.
 - SMTP checks reject invalid numeric types, nonfinite or excessive timeout/delay values,
   and malformed header fields as configuration errors before connecting. Valid
   display-name addresses remain supported, with correctly parsed Message-ID domains;

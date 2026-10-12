@@ -1,5 +1,6 @@
 """IMAP check configuration domain model."""
 
+import math
 from dataclasses import dataclass
 
 ALLOWED_TLS_MODES = {"implicit", "starttls", "none"}
@@ -59,7 +60,7 @@ class ImapCheckConfig:
         if not isinstance(verify, bool):
             raise ValueError("verify must be a boolean")
 
-        return cls(
+        config = cls(
             host=host,
             username=username,
             password=password,
@@ -72,10 +73,13 @@ class ImapCheckConfig:
             delete_after_check=data.get("delete_after_check", True),
             timeout=data.get("timeout", 30.0),
             retries=data.get("retries", 2),
-            retry_delay=float(data.get("retry_delay", 10.0)),
+            retry_delay=data.get("retry_delay", 10.0),
             no_recent_message_severity=no_recent_message_severity,
             verify=verify,
         )
+
+        config.validate()
+        return config
 
     def to_dict(self) -> dict:
         """Serialize to check.data dictionary."""
@@ -99,14 +103,35 @@ class ImapCheckConfig:
 
     def validate(self) -> bool:
         """Validate configuration values."""
-        if self.max_age_minutes <= 0:
-            raise ValueError("max_age_minutes must be positive")
-        if self.timeout <= 0:
-            raise ValueError("timeout must be positive")
-        if self.retries < 0:
-            raise ValueError("retries must be zero or positive")
-        if self.retry_delay < 0:
-            raise ValueError("retry_delay must be zero or positive")
+        if type(self.delete_after_check) is not bool:
+            raise ValueError("delete_after_check must be a boolean")
+
+        for name, value, minimum, maximum in (
+            ("port", self.port, 1, 65535),
+            ("retries", self.retries, 0, 100),
+            ("max_age_minutes", self.max_age_minutes, 1, 525600),
+        ):
+            if type(value) is not int or not minimum <= value <= maximum:
+                raise ValueError(
+                    f"{name} must be an integer between {minimum} and {maximum}"
+                )
+
+        for name, duration in (
+            ("timeout", self.timeout),
+            ("retry_delay", self.retry_delay),
+        ):
+            # Bound before isfinite to avoid float conversion overflow for huge ints.
+            if (
+                type(duration) not in (int, float)
+                or not 0 <= duration <= 300
+                or not math.isfinite(duration)
+                or (name == "timeout" and duration == 0)
+            ):
+                raise ValueError(
+                    f"{name} must be a finite number "
+                    f"{'greater than zero and ' if name == 'timeout' else ''}"
+                    "between 0 and 300 seconds"
+                )
         if not self.host:
             raise ValueError("host is required")
 

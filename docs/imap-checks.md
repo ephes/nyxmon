@@ -51,3 +51,15 @@ Pairing guidance:
 - If you forward via Gmail, deliveries may be delayed or skipped; retries and a freshness window well above the poll interval, such as 120 minutes for a 15-minute poll, cover multi-probe forwarding gaps.
 - For Gmail-forwarded loopbacks, consider `no_recent_message_severity: "warning"` and keep a separate Gmail-independent inbound check critical.
 - IMAP deletes matched messages when `delete_after_check` is true, so SMTP should continue sending at least once per interval to keep IMAP green.
+
+Configuration validation:
+- `delete_after_check` accepts only a boolean (`true`/`false` in JSON), defaulting
+  to `true` when omitted. Strings such as `"false"`, numbers, null and containers
+  are rejected; use explicit `false` to preserve mail.
+- `port` must be an integer from 1 to 65535; `retries` an integer from 0 to 100;
+  `max_age_minutes` an integer from 1 to 525600 (one year).
+- `timeout` must be a finite number greater than zero and at most 300 seconds;
+  `retry_delay` must be a finite number from 0 to 300 seconds.
+- Numeric strings, booleans, null, containers, NaN and infinity are unsupported.
+  These limits bound retry work and datetime/socket calculations. Invalid values
+  produce `configuration_error` before creating a session or changing mail.
