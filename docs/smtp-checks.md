@@ -29,13 +29,17 @@ Validation rules:
 - `tls` must be one of `none`, `starttls`, or `implicit`.
 - `verify` must be a boolean when present; it defaults to `true`.
 - If `username` is set, either `password` or `password_secret` must be provided.
-- `retries` and `retry_delay` must be zero or positive.
+- `port` must be an integer from 1 through 65535; `retries` must be a nonnegative integer. Booleans are rejected.
+- `timeout` must be a finite number greater than zero and at most 300 seconds; `retry_delay` must be a finite number from 0 through 300 seconds. Strings and booleans are rejected.
+- `from_addr`, `to_addr`, and `subject_prefix` must be nonempty strings without CR/LF. Display-name addresses such as `Monitor <monitor@example.com>` are supported.
+- Invalid numeric/header configuration or message-header construction produces `error_type="configuration_error"` before any SMTP connection.
 
 ## Behaviour
 
 - Performs STARTTLS or implicit TLS when requested. Both verify the server certificate chain and hostname against the system trust store before credentials are sent. Set `verify` to `false` only for a server with a self-signed certificate: that disables both checks, logs a warning on every connection, and exposes the password to a man-in-the-middle. A certificate failure is reported as `error_type="tls_error"`.
 - Authenticates before sending when credentials are provided.
 - Builds subjects as `<prefix> <UTC timestamp> <6-char token>` and returns the token for IMAP correlation.
+- QUIT and socket close are best-effort: shutdown failures preserve DATA acceptance or recipient refusal and do not trigger another send.
 - Retries on 4xx responses (greylisting/temporary failures) with configurable backoff.
 - Fails fast on 5xx errors, auth failures, connection errors, and timeouts.
 - Drives the IMAP inbound check: keep `subject_prefix` in sync with the IMAP `search_subject`, and send at least once per IMAP interval so the IMAP check can find a fresh message.

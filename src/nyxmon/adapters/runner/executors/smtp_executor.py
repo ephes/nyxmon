@@ -7,7 +7,7 @@ import socket
 import ssl
 from dataclasses import dataclass
 from email.message import EmailMessage
-from email.utils import make_msgid
+from email.utils import make_msgid, parseaddr
 from typing import Protocol
 
 import anyio
@@ -103,7 +103,8 @@ class SmtplibClient:
                     config.host, config.port, timeout=config.timeout
                 )
 
-            with client_cm as client:
+            client = client_cm
+            try:
                 client.ehlo()
 
                 if config.tls == "starttls":
@@ -132,6 +133,18 @@ class SmtplibClient:
                     )
 
                 return SmtpSendResponse(code=250, message="accepted")
+            finally:
+                # DATA determines the delivery outcome. QUIT is best-effort:
+                # a shutdown error must neither replace it nor cause a resend.
+                try:
+                    client.quit()
+                except (smtplib.SMTPException, OSError):
+                    pass
+                finally:
+                    try:
+                        client.close()
+                    except (smtplib.SMTPException, OSError):
+                        pass
 
         except smtplib.SMTPAuthenticationError as exc:  # noqa: PERF203 - narrow mapping
             raise SmtpSendError(
@@ -185,7 +198,9 @@ class SmtpCheckExecutor:
         try:
             config = SmtpCheckConfig.from_dict(check.data)
             config.validate()
-        except ValueError as exc:
+            subject, token = self._build_subject(config.subject_prefix)
+            message = self._build_message(config, subject, token)
+        except (ValueError, TypeError) as exc:
             return Result(
                 check_id=check.check_id,
                 status=ResultStatus.ERROR,
@@ -194,9 +209,6 @@ class SmtpCheckExecutor:
                     "error_msg": str(exc),
                 },
             )
-
-        subject, token = self._build_subject(config.subject_prefix)
-        message = self._build_message(config, subject, token)
 
         for attempt in range(config.retries + 1):
             attempt_number = attempt + 1
@@ -285,8 +297,9 @@ class SmtpCheckExecutor:
 
     def _message_id_domain(self, from_addr: str) -> str:
         """Derive a Message-ID domain from the sender address with a safe fallback."""
-        if "@" in from_addr:
-            return from_addr.split("@", 1)[1]
+        address = parseaddr(from_addr)[1]
+        if "@" in address:
+            return address.rsplit("@", 1)[1]
         return "nyxmon.local"
 
     async def aclose(self) -> None:

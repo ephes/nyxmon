@@ -222,6 +222,12 @@ class FakeSmtp:
     def __exit__(self, *exc: Any) -> None:
         return None
 
+    def quit(self) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
     def ehlo(self) -> None:
         return None
 

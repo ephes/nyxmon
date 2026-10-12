@@ -43,6 +43,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- SMTP checks reject invalid numeric types, nonfinite or excessive timeout/delay values,
+  and malformed header fields as configuration errors before connecting. Valid
+  display-name addresses remain supported, with correctly parsed Message-ID domains;
+  message-build failures return check results. **Upgrade note:** stored checks with
+  timeout or retry delay above 300 seconds now return `configuration_error`; lower
+  those values to 300 or less before upgrading.
+- SMTP shutdown failures no longer replace DATA acceptance or recipient refusals,
+  preventing false failures and duplicate probes after a failed QUIT. Temporary
+  delivery and pre-DATA failures retain their retry policy.
+
 - `db-from-production` and `commands.py production-db-to-local` no longer drop
   an unrelated database or leave a half-restored one. The legacy `commands.py`
   helper dropped and recreated a local `homepage` database, and both helpers
