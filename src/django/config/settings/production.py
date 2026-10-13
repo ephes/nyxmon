@@ -1,8 +1,17 @@
 """
-Production Configurations
+Production settings: Granian on loopback behind a TLS-terminating reverse proxy
 
 - Uses SQLite for database
 - Uses file-based cache
+- Redirects plain HTTP to HTTPS, sends HSTS and marks cookies Secure
+- ALLOWED_HOSTS comes from DJANGO_ALLOWED_HOSTS
+
+Start the app through ``config.wsgi_proxy``. That entrypoint is the only place
+that trusts ``X-Forwarded-Proto`` and ``X-Forwarded-For``, and only from a
+loopback peer, so these settings define neither ``SECURE_PROXY_SSL_HEADER`` nor
+``USE_X_FORWARDED_HOST``: the proxy must pass the original ``Host`` header. A
+plain-HTTP request to the application port is answered with a redirect; a
+loopback health probe sends ``X-Forwarded-Proto: https`` like the proxy does.
 """
 
 # Import the base settings
@@ -15,12 +24,6 @@ DEBUG = False
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 # Raises ImproperlyConfigured exception if DJANGO_SECRET_KEY not in os.environ
 SECRET_KEY = env("DJANGO_SECRET_KEY")  # noqa
-
-
-# This ensures that Django will be able to detect a secure connection
-# properly on Heroku.
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-USE_X_FORWARDED_HOST = True  # Trust the X-Forwarded-Host header from Traefik
 
 # Use Whitenoise to serve static files
 # See: https://whitenoise.readthedocs.io/

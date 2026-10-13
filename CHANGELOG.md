@@ -9,13 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Mark the session and CSRF cookies `Secure` in `config.settings.macos`, the
-  settings module the ops-control deployment selects, so a NyxBoard or admin
-  login is never sent over plain HTTP. SSL redirect, HSTS and `ALLOWED_HOSTS`
-  in that module are unchanged. **Upgrade note:** with this module, log in
-  through the HTTPS reverse proxy; a browser session over plain HTTP to the
-  application port (for example through an SSH tunnel) can no longer log in
-  or submit forms. Plain-HTTP `GET` probes are unaffected.
+- Remove `config.settings.macos`; `config.settings.production` is the only
+  deployed settings module. Compared with the removed module it redirects
+  plain HTTP to HTTPS, sends HSTS, and accepts only the hosts in
+  `DJANGO_ALLOWED_HOSTS` instead of any host.
+  `config.settings.production` no longer sets `SECURE_PROXY_SSL_HEADER` or
+  `USE_X_FORWARDED_HOST`: forwarded headers are trusted in one place,
+  `config.wsgi_proxy`, and only from a loopback peer. **Upgrade note:** set
+  `DJANGO_SETTINGS_MODULE=config.settings.production`, list the public host
+  name and `127.0.0.1` in `DJANGO_ALLOWED_HOSTS`, start Granian with
+  `config.wsgi_proxy:application`, and make sure the reverse proxy passes the
+  original `Host` header and sets `X-Forwarded-Proto`. Plain-HTTP requests to
+  the application port now get a 301 and cannot log in (cookies are
+  `Secure`): loopback health probes must send `X-Forwarded-Proto: https` (see
+  "Production settings" in `docs/configuration.md`).
 
 - Remove the in-repo legacy deployment: the `deploy/` directory (Ansible
   playbooks, launchd plists that bound Granian to `0.0.0.0` and wrote the
@@ -23,9 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   published NyxBoard without authentication) and the `deploy-staging`,
   `deploy-production`, `deploy-macos`, `remove-macos` and `db-from-production`
   commands, including `commands.py production-db-to-local`. **Upgrade note:**
-  deploy through the ops-library `nyxmon_deploy` role. The
-  `config.settings.macos` module is kept because that deployment still
-  selects it.
+  deploy through the ops-library `nyxmon_deploy` role.
 
 - Add `add-check --data-file PATH` (or `-` for stdin) to accept check
   configuration without putting passwords in argv or shell history.

@@ -392,16 +392,13 @@ To enable it:
 To turn it off again, remove the variable (or set it to `false`) and restart.
 The Django admin keeps its own staff login regardless of this setting.
 
-The login needs HTTPS in the deployed configuration. Both
-`config.settings.production` and `config.settings.macos` (the module the
-ops-control deployment selects) mark the session and CSRF cookies `Secure`, so
-a browser sends them only over HTTPS: log in through the reverse proxy, not
-through a plain-HTTP connection to the application port. A plain-HTTP `GET`,
-such as a loopback health probe of `/admin/login/`, needs no cookie and still
-answers. `config.settings.macos` adds no SSL redirect, no HSTS and keeps its
-permissive `ALLOWED_HOSTS`; the development settings leave the cookies
-unmarked so the login works on `http://localhost`. A session lasts two weeks
-(Django's default `SESSION_COOKIE_AGE`) unless the user logs out.
+The login needs HTTPS in the deployed configuration.
+`config.settings.production` marks the session and CSRF cookies `Secure`, so a
+browser sends them only over HTTPS: log in through the reverse proxy, not
+through a plain-HTTP connection to the application port. The development
+settings leave the cookies unmarked so the login works on `http://localhost`.
+A session lasts two weeks (Django's default `SESSION_COOKIE_AGE`) unless the
+user logs out.
 
 #### Failed login limits
 
@@ -798,6 +795,38 @@ granian --interface wsgi config.wsgi_proxy:application --host 127.0.0.1 --port 8
 Bind Granian to loopback and publish it through a reverse proxy that
 terminates TLS and enforces access control. `config.wsgi_proxy` trusts
 forwarded headers from loopback peers only.
+
+### Production settings
+
+`config.settings.production` is the only deployed settings module. It expects
+this environment:
+
+| Variable | Purpose |
+| --- | --- |
+| `DJANGO_SECRET_KEY` | required |
+| `DJANGO_CACHE_LOCATION` | required; directory of the file cache (also holds the failed-login counters) |
+| `DJANGO_ADMIN_URL` | required, for example `admin/` |
+| `DJANGO_ALLOWED_HOSTS` | comma-separated host names; include the public host name and `127.0.0.1` for loopback probes |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | optional; not needed when the browser's origin equals the requested host |
+| `DJANGO_SECURE_HSTS_SECONDS` | optional, default 180 days |
+| `DJANGO_SECURE_SSL_REDIRECT` | optional, default `true` |
+
+It redirects plain HTTP to HTTPS, sends HSTS, marks cookies `Secure` and
+rejects a `Host` header that is not in `DJANGO_ALLOWED_HOSTS` with status 400.
+It sets neither `SECURE_PROXY_SSL_HEADER` nor `USE_X_FORWARDED_HOST`:
+
+- HTTPS is recognised only through `config.wsgi_proxy`, that is from
+  `X-Forwarded-Proto: https` sent by a loopback peer. Started through plain
+  `config.wsgi` behind a proxy, every request would be redirected forever.
+- The reverse proxy must pass the original `Host` header (Traefik does by
+  default); `X-Forwarded-Host` is ignored.
+
+A plain-HTTP request to the application port gets a 301 to HTTPS. A health
+probe on the host therefore sends the header the proxy sends:
+
+```bash
+curl -H 'X-Forwarded-Proto: https' http://127.0.0.1:8000/admin/login/
+```
 
 ## Repository Configuration
 
