@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Remove the in-repo legacy deployment: the `deploy/` directory (Ansible
+  playbooks, launchd plists that bound Granian to `0.0.0.0` and wrote the
+  Telegram token into a world-readable plist, and a Traefik template that
+  published NyxBoard without authentication) and the `deploy-staging`,
+  `deploy-production`, `deploy-macos`, `remove-macos` and `db-from-production`
+  commands, including `commands.py production-db-to-local`. **Upgrade note:**
+  deploy through the ops-library `nyxmon_deploy` role. The
+  `config.settings.macos` module is kept because that deployment still
+  selects it.
+
 - Add `add-check --data-file PATH` (or `-` for stdin) to accept check
   configuration without putting passwords in argv or shell history.
 
@@ -95,18 +105,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   preventing false failures and duplicate probes after a failed QUIT. Temporary
   delivery and pre-DATA failures retain their retry policy.
 
-- `db-from-production` and `commands.py production-db-to-local` no longer drop
-  an unrelated database or leave a half-restored one. The legacy `commands.py`
-  helper dropped and recreated a local `homepage` database, and both helpers
-  ignored failing `dropdb`/`createdb`/`gunzip`/`psql` steps. The restore now
-  targets `nyxmon` (or `NYXMON_LOCAL_RESTORE_DB`, which must be `nyxmon` or
-  `nyxmon_<suffix>`), verifies the archive, loads it into a staging database
-  in one fail-fast transaction and only then swaps it in with two renames in
-  a single transaction. A failed check, load or swap exits non-zero and leaves
-  the existing database untouched. If only the removal of the replaced
-  database fails afterwards, the command exits non-zero with the restored data
-  in place and the old data kept as `<target>_restore_previous`, which blocks
-  further restores until it is dropped.
 - IMAP cleanup now uses UID-scoped EXPUNGE with UIDPLUS and leaves matches
   marked deleted on other servers; it never expunges unrelated deleted mail.
 - IMAP SEARCH, FETCH and STORE now use stable mailbox UIDs. Concurrent
@@ -201,13 +199,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one) is followed; anything else returns to the dashboard.
 - The monitoring CLI now keeps `httpx` and `httpcore` at `WARNING`, preventing
   their INFO request lines from writing Telegram bot tokens embedded in API
-  URLs to journald. Legacy Linux deployment units read credentials from the
-  mode-0600 environment file instead of embedding them in the unit and are
-  explicitly enabled so they survive reboot.
-- Legacy Linux deployment now starts Granian with the ordinary Django WSGI
-  target instead of the version-specific `granian.utils.proxies` wrapper,
-  limits stop waits to 30 seconds, and requires an HTTP 200 after restart.
-  Ansible can no longer report a successful deploy while the web unit is dead.
+  URLs to journald.
 - The `notification_suppression` freshness guard fails open on hostile numeric
   values instead of raising or suppressing. An arbitrarily large JSON integer
   made `float()` raise `OverflowError` and aborted result handling for the

@@ -1,10 +1,15 @@
 """
-macOS Configurations
+Settings without Django's own HTTPS enforcement
 
 - Uses SQLite for database
 - Uses file-based cache
-- Configured for direct access without SSL/TLS
+- No SSL redirect, HSTS or secure-cookie settings, and ALLOWED_HOSTS accepts
+  any host: the reverse proxy in front must do TLS and host routing
 - Includes whitenoise for static file serving
+
+The name is historical (it came with the removed in-repo launchd deploy). The
+module stays because the ops-control deployment still selects it through
+DJANGO_SETTINGS_MODULE.
 """
 
 # Import the base settings
