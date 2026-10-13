@@ -3,8 +3,11 @@ Settings without Django's own HTTPS enforcement
 
 - Uses SQLite for database
 - Uses file-based cache
-- No SSL redirect, HSTS or secure-cookie settings, and ALLOWED_HOSTS accepts
-  any host: the reverse proxy in front must do TLS and host routing
+- No SSL redirect or HSTS, and ALLOWED_HOSTS accepts any host: the reverse
+  proxy in front must do TLS and host routing
+- Session and CSRF cookies are marked Secure, so a browser only logs in
+  through the proxy's HTTPS side; plain HTTP GETs on the loopback port (health
+  probes) still answer
 - Includes whitenoise for static file serving
 
 The name is historical (it came with the removed in-repo launchd deploy). The
@@ -39,6 +42,10 @@ ALLOWED_HOSTS = [
 ]
 
 # END SITE CONFIGURATION
+
+# Browsers must not send the login session or the CSRF token over plain HTTP.
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 INSTALLED_APPS += [  # noqa
     "granian",
