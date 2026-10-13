@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Mark the session and CSRF cookies `Secure` in `config.settings.macos`, the
+  settings module the ops-control deployment selects, so a NyxBoard or admin
+  login is never sent over plain HTTP. SSL redirect, HSTS and `ALLOWED_HOSTS`
+  in that module are unchanged. **Upgrade note:** with this module, log in
+  through the HTTPS reverse proxy; a browser session over plain HTTP to the
+  application port (for example through an SSH tunnel) can no longer log in
+  or submit forms. Plain-HTTP `GET` probes are unaffected.
+
 - Remove the in-repo legacy deployment: the `deploy/` directory (Ansible
   playbooks, launchd plists that bound Granian to `0.0.0.0` and wrote the
   Telegram token into a world-readable plist, and a Traefik template that

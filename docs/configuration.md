@@ -392,6 +392,17 @@ To enable it:
 To turn it off again, remove the variable (or set it to `false`) and restart.
 The Django admin keeps its own staff login regardless of this setting.
 
+The login needs HTTPS in the deployed configuration. Both
+`config.settings.production` and `config.settings.macos` (the module the
+ops-control deployment selects) mark the session and CSRF cookies `Secure`, so
+a browser sends them only over HTTPS: log in through the reverse proxy, not
+through a plain-HTTP connection to the application port. A plain-HTTP `GET`,
+such as a loopback health probe of `/admin/login/`, needs no cookie and still
+answers. `config.settings.macos` adds no SSL redirect, no HSTS and keeps its
+permissive `ALLOWED_HOSTS`; the development settings leave the cookies
+unmarked so the login works on `http://localhost`. A session lasts two weeks
+(Django's default `SESSION_COOKIE_AGE`) unless the user logs out.
+
 #### Failed login limits
 
 Both `/accounts/login/` and the Django admin refuse further authentication after
