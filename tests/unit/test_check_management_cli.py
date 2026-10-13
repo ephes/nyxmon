@@ -198,3 +198,123 @@ async def test_create_async_assigns_ids_and_refuses_existing(db_path):
     assert stored.url == "https://one.example/"
     assert stored.data == {"timeout": 3}
     assert json.loads(rows(db_path)[1][5]) == {"timeout": 3}
+
+
+@pytest.mark.parametrize("source", ["file", "stdin"])
+def test_data_file_and_stdin_store_validated_data(
+    db_path, tmp_path, monkeypatch, source
+):
+    import io
+    import sys
+
+    raw = '{"expected_ips": ["192.0.2.1"]}'
+    path = tmp_path / "data.json"
+    path.write_text(raw)
+    stdin_raw = raw if source == "stdin" else '{"expected_ips":["198.51.100.9"]}'
+    monkeypatch.setattr(
+        sys, "stdin", io.TextIOWrapper(io.BytesIO(stdin_raw.encode("utf-8")))
+    )
+    run_cli(
+        db_path,
+        "--check-type",
+        "dns",
+        "--url",
+        "example.com",
+        "--data-file",
+        str(path) if source == "file" else "-",
+    )
+    assert json.loads(rows(db_path)[0][5]) == json.loads(raw)
+
+
+@pytest.mark.parametrize("source", ["file", "stdin"])
+@pytest.mark.parametrize(
+    "raw, message",
+    [
+        ("[]", "must be a JSON object"),
+        ("{bad", "not valid JSON"),
+        ("{}", "expected_ips is required"),
+    ],
+)
+def test_data_file_validation_runs_before_writes(
+    db_path, tmp_path, monkeypatch, capsys, source, raw, message
+):
+    import io
+    import sys
+
+    path = tmp_path / "data.json"
+    path.write_text(raw)
+    stdin_raw = raw if source == "stdin" else '{"expected_ips":["198.51.100.9"]}'
+    monkeypatch.setattr(
+        sys, "stdin", io.TextIOWrapper(io.BytesIO(stdin_raw.encode("utf-8")))
+    )
+    with pytest.raises(SystemExit) as exc:
+        run_cli(
+            db_path,
+            "--check-type",
+            "dns",
+            "--url",
+            "example.com",
+            "--data-file",
+            str(path) if source == "file" else "-",
+        )
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert message in error
+    assert "--data-file" in error.split("add-check: error:", 1)[1]
+    assert rows_or_empty(db_path) == []
+
+
+def test_data_sources_are_mutually_exclusive(db_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        run_cli(
+            db_path, "--url", "https://example.com", "--data", "{}", "--data-file", "-"
+        )
+    assert exc.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
+    assert rows_or_empty(db_path) == []
+
+
+@pytest.mark.parametrize("kind", ["missing", "invalid-encoding"])
+def test_unreadable_data_file_returns_cli_error(db_path, tmp_path, capsys, kind):
+    path = tmp_path / "data.json"
+    if kind == "invalid-encoding":
+        path.write_bytes(b"\xff")
+    with pytest.raises(SystemExit) as exc:
+        run_cli(db_path, "--url", "https://example.com", "--data-file", str(path))
+    assert exc.value.code == 2
+    assert "Cannot read --data-file" in capsys.readouterr().err
+    assert rows_or_empty(db_path) == []
+
+
+def test_stdin_decodes_utf8_independently_of_locale(db_path, monkeypatch):
+    import io
+    import sys
+
+    raw = '{"password":"pässwort"}'
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.TextIOWrapper(io.BytesIO(raw.encode("utf-8")), encoding="latin-1"),
+    )
+    run_cli(db_path, "--url", "https://example.com", "--data-file", "-")
+    assert json.loads(rows(db_path)[0][5]) == {"password": "pässwort"}
+
+
+def test_invalid_utf8_stdin_is_refused_before_write(db_path, monkeypatch, capsys):
+    import io
+    import sys
+
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.TextIOWrapper(
+            io.BytesIO(b'{"password":"\xff"}'),
+            encoding="ascii",
+            errors="surrogateescape",
+        ),
+    )
+    with pytest.raises(SystemExit) as exc:
+        run_cli(db_path, "--url", "https://example.com", "--data-file", "-")
+    assert exc.value.code == 2
+    assert "Cannot read --data-file" in capsys.readouterr().err
+    assert rows_or_empty(db_path) == []
