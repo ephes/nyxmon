@@ -816,11 +816,26 @@ class SqliteResultRepository(ResultRepository):
     ) -> int:
         """Delete one batch of check results older than the retention period.
 
-        Returns the number of rows deleted; fewer than ``batch_size`` means no
-        expired rows are left. The cleaner calls this repeatedly per cycle.
+        Also remove at most ``batch_size`` expired Django sessions, if present.
+        Returns only the number of results deleted; fewer than ``batch_size``
+        means no expired results are left. The cleaner repeats this per cycle.
         """
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
+
+            # The agent shares SQLite with Django, but also supports agent-only
+            # databases where migrations have not created the sessions table.
+            sessions = await db.execute_fetchall(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'django_session'"
+            )
+            if sessions:
+                await db.execute(
+                    "DELETE FROM django_session WHERE session_key IN "
+                    "(SELECT session_key FROM django_session "
+                    "WHERE expire_date < datetime('now') ORDER BY expire_date LIMIT ?)",
+                    (batch_size,),
+                )
+                await db.commit()
 
             # Rows are stamped with SQLite's datetime('now'), which is UTC, so
             # the cutoff is computed by SQLite on the same clock. A cutoff from

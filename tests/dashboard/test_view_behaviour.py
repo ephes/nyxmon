@@ -123,10 +123,10 @@ class TestDashboard:
         assert f'id="check-{due.id}"' in body
         assert f'id="check-{normal.id}"' in body
 
-    def test_sets_default_theme_in_session(self, client):
+    def test_default_theme_does_not_create_session(self, client):
         response = client.get(reverse("nyxboard:dashboard"))
         assert response.context["theme"] == "light"
-        assert client.session["theme"] == "light"
+        assert "sessionid" not in response.cookies
 
     def test_keeps_existing_session_theme(self, client):
         client.post(
@@ -614,11 +614,11 @@ class TestSetTheme:
         assert response.json() == {"status": "success", "theme": "dark"}
         assert client.session["theme"] == "dark"
 
-    def test_missing_theme_defaults_to_light(self, client):
+    def test_missing_theme_is_rejected(self, client):
         response = client.post(
             reverse("nyxboard:set_theme"), data="{}", content_type="application/json"
         )
-        assert response.json()["theme"] == "light"
+        assert response.status_code == 400
 
     def test_invalid_json_is_400(self, client):
         response = client.post(

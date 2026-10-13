@@ -271,3 +271,34 @@ class TestCleanupCycle:
         conn.close()
         assert deleted == 2500
         assert remaining == list(range(2501, 2511))
+
+
+@pytest.mark.anyio
+async def test_cleanup_cycle_removes_expired_dashboard_sessions(tmp_path):
+    import sqlite3
+    from nyxmon.adapters.repositories import SqliteStore
+
+    path = tmp_path / "sessions.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "CREATE TABLE django_session (session_key TEXT PRIMARY KEY, session_data TEXT, expire_date DATETIME)"
+        )
+        db.execute(
+            "INSERT INTO django_session VALUES ('expired', '', datetime('now', '-1 day'))"
+        )
+        db.execute(
+            "INSERT INTO django_session VALUES ('active', '', datetime('now', '+1 day'))"
+        )
+        db.execute(
+            "INSERT INTO django_session VALUES ('expired-second', '', datetime('now', '-1 day'))"
+        )
+    cleaner = AsyncResultsCleaner(batch_size=1)
+    cleaner.set_store(SqliteStore(path))
+    assert await cleaner.run_cleanup_cycle() == 0
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT COUNT(*) FROM django_session").fetchone()[0] == 2
+    assert await cleaner.run_cleanup_cycle() == 0
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT session_key FROM django_session").fetchall() == [
+            ("active",)
+        ]

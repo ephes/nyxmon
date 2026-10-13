@@ -15,6 +15,7 @@ from typing import Any
 from warnings import filterwarnings
 
 import environ  # type: ignore
+from django.core.exceptions import ImproperlyConfigured
 
 from pathlib import Path
 
@@ -171,3 +172,26 @@ filterwarnings(
     "ignore", "The FORMS_URLFIELD_ASSUME_HTTPS transitional setting is deprecated."
 )
 FORMS_URLFIELD_ASSUME_HTTPS = True
+
+# Failed login windows cover both NyxBoard and Django admin authentication.
+AUTHENTICATION_BACKENDS = [
+    "nyxboard.login_throttle.LoginThrottleBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+NYXBOARD_LOGIN_FAILURE_LIMIT = env.int("NYXBOARD_LOGIN_FAILURE_LIMIT", default=5)
+NYXBOARD_LOGIN_ADDRESS_FAILURE_LIMIT = env.int(
+    "NYXBOARD_LOGIN_ADDRESS_FAILURE_LIMIT", default=50
+)
+NYXBOARD_LOGIN_FAILURE_WINDOW_SECONDS = env.int(
+    "NYXBOARD_LOGIN_FAILURE_WINDOW_SECONDS", default=900
+)
+NYXBOARD_LOGIN_PROXY_HOPS = env.int("NYXBOARD_LOGIN_PROXY_HOPS", default=0)
+
+for _name, _minimum in (
+    ("NYXBOARD_LOGIN_FAILURE_LIMIT", 0),
+    ("NYXBOARD_LOGIN_ADDRESS_FAILURE_LIMIT", 1),
+    ("NYXBOARD_LOGIN_FAILURE_WINDOW_SECONDS", 1),
+    ("NYXBOARD_LOGIN_PROXY_HOPS", 0),
+):
+    if globals()[_name] < _minimum:
+        raise ImproperlyConfigured(f"{_name} must be at least {_minimum}")
