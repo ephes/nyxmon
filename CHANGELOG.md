@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Add `add-check --data-file PATH` (or `-` for stdin) to accept check
+  configuration without putting passwords in argv or shell history.
+
 - Set production HSTS max-age to 180 days by default, configurable through
   `DJANGO_SECURE_HSTS_SECONDS` for staged HTTPS rollouts. **Upgrade note:** set
   a short max-age before upgrading if HTTPS on the host/subdomains is unproven;

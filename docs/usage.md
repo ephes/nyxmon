@@ -62,7 +62,8 @@ uv run add-check \
 | `--name` | no | Display name (default: empty) |
 | `--check-type` | no | `http` (default), `json-http`, `tcp`, `ping`, `dns`, `smtp`, `imap` or `json-metrics` |
 | `--interval` | no | Seconds between runs (default: 300) |
-| `--data` | no | Check configuration as a JSON object (default: `{}`) |
+| `--data` | no | Check configuration as a JSON object (default: `{}`); avoid secrets in argv/history |
+| `--data-file` | no | Read UTF-8 JSON from a file, or `-` for UTF-8 stdin; mutually exclusive with `--data` |
 | `--check-id` | no | Store under this ID instead of the next free one |
 | `--replace` | no | With `--check-id`, overwrite an existing check |
 
@@ -73,6 +74,14 @@ touched. An explicit `--check-id` that is already taken is refused unless
 configuration parser the agent uses for that check type, so a DNS check needs
 at least `expected_ips` and a JSON-metrics check needs `url` and `checks`.
 Invalid `--data` exits with status 2 before anything is written.
+
+For checks containing passwords, prefer `--data-file /path/to/check.json` or
+`--data-file -` to read UTF-8 JSON from stdin. `--data` puts its value in process
+arguments and may leave it in shell history. Keep configuration files containing
+secrets readable only by their owner (for example, `chmod 600 check.json`), or pipe
+from a secret manager without placing the secret itself in the shell command.
+Both input paths use the same JSON-object and check-type validation as `--data`;
+unreadable files and invalid input exit with status 2 before database writes.
 
 ### Creating Checks via the Dashboard
 

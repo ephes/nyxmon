@@ -42,12 +42,15 @@ CHECK_CONFIG_PARSERS: dict[str, Callable[[dict[str, Any]], Any]] = {
 }
 
 
-def parse_check_data(raw: str | None, check_type: str) -> dict[str, Any]:
-    """Parse and validate the ``--data`` argument for ``check_type``.
+def parse_check_data(
+    raw: str | None, check_type: str, *, source: str = "--data"
+) -> dict[str, Any]:
+    """Parse and validate JSON check configuration for ``check_type``.
 
     Args:
-        raw: The ``--data`` string, or ``None`` when it was not given.
+        raw: The JSON string from any input source, or ``None`` when absent.
         check_type: The check type the data configures.
+        source: Input flag named in validation errors.
 
     Returns:
         The decoded configuration object.
@@ -62,16 +65,16 @@ def parse_check_data(raw: str | None, check_type: str) -> dict[str, Any]:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ValueError(f"--data is not valid JSON: {exc}") from exc
+            raise ValueError(f"{source} is not valid JSON: {exc}") from exc
     if not isinstance(data, dict):
-        raise ValueError("--data must be a JSON object")
+        raise ValueError(f"{source} must be a JSON object")
 
     parse_config = CHECK_CONFIG_PARSERS[check_type]
     try:
         config = parse_config(data)
         config.validate()
     except (ValueError, TypeError, KeyError, AttributeError) as exc:
-        raise ValueError(f"invalid --data for a {check_type} check: {exc}") from exc
+        raise ValueError(f"invalid {source} for a {check_type} check: {exc}") from exc
     return data
 
 
@@ -146,12 +149,19 @@ def build_add_check_parser() -> argparse.ArgumentParser:
         default=300,
         help="Check interval in seconds (default: 300)",
     )
-    parser.add_argument(
+    data_group = parser.add_mutually_exclusive_group()
+    data_group.add_argument(
         "--data",
         help=(
             "Check configuration as a JSON object (default: {}). It is "
-            "validated against the check type's configuration."
+            "validated against the check type's configuration. Avoid secrets "
+            "here: argv and shell history may expose them; use --data-file instead."
         ),
+    )
+    data_group.add_argument(
+        "--data-file",
+        metavar="PATH",
+        help="Read UTF-8 check configuration JSON from a file, or - for stdin",
     )
     parser.add_argument(
         "--check-id",
@@ -175,8 +185,22 @@ def add_check_to_db(argv: Sequence[str] | None = None) -> None:
     args = parser.parse_args(argv)
     if args.replace and args.check_id is None:
         parser.error("--replace requires --check-id")
+    raw_data = args.data
+    if args.data_file is not None:
+        try:
+            raw_data = (
+                sys.stdin.buffer.read().decode("utf-8")
+                if args.data_file == "-"
+                else Path(args.data_file).read_text(encoding="utf-8")
+            )
+        except (OSError, UnicodeError) as exc:
+            parser.error(f"Cannot read --data-file: {exc}")
     try:
-        args.check_data = parse_check_data(args.data, args.check_type)
+        args.check_data = parse_check_data(
+            raw_data,
+            args.check_type,
+            source="--data-file" if args.data_file is not None else "--data",
+        )
     except ValueError as exc:
         parser.error(str(exc))
 
