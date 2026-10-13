@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -43,23 +44,17 @@ class HttpCheckConfig:
         if expected_location is not None and not isinstance(expected_location, str):
             raise ValueError("expected_location must be a string")
 
-        try:
-            raw_expected_status = data.get("expected_status")
-            return cls(
-                timeout=float(data.get("timeout", 10.0)),
-                retries=int(data.get("retries", 0)),
-                retry_delay=float(data.get("retry_delay", 2.0)),
-                retry_status_codes=[int(status) for status in raw_retry_status_codes],
-                follow_redirects=follow_redirects,
-                expected_status=(
-                    int(raw_expected_status)
-                    if raw_expected_status is not None
-                    else None
-                ),
-                expected_location=expected_location,
-            )
-        except (TypeError, ValueError) as exc:
-            raise ValueError("invalid HTTP check configuration") from exc
+        config = cls(
+            timeout=data.get("timeout", 10.0),
+            retries=data.get("retries", 0),
+            retry_delay=data.get("retry_delay", 2.0),
+            retry_status_codes=list(raw_retry_status_codes),
+            follow_redirects=follow_redirects,
+            expected_status=data.get("expected_status"),
+            expected_location=expected_location,
+        )
+        config.validate()
+        return config
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to check.data dictionary."""
@@ -75,17 +70,36 @@ class HttpCheckConfig:
 
     def validate(self) -> bool:
         """Validate configuration values."""
-        if self.timeout <= 0:
-            raise ValueError("timeout must be positive")
-        if self.retries < 0:
-            raise ValueError("retries must be zero or positive")
-        if self.retry_delay < 0:
-            raise ValueError("retry_delay must be zero or positive")
+        for name, duration in (
+            ("timeout", self.timeout),
+            ("retry_delay", self.retry_delay),
+        ):
+            # Check the bound first to avoid converting huge integers to float.
+            if (
+                type(duration) not in (int, float)
+                or not 0 <= duration <= 300
+                or not math.isfinite(duration)
+                or (name == "timeout" and duration == 0)
+            ):
+                raise ValueError(
+                    f"{name} must be a finite number "
+                    f"{'greater than zero and ' if name == 'timeout' else ''}"
+                    "between 0 and 300 seconds"
+                )
+        if type(self.retries) is not int or not 0 <= self.retries <= 100:
+            raise ValueError("retries must be an integer between 0 and 100")
+        if not isinstance(self.retry_status_codes, list | tuple | set):
+            raise ValueError("retry_status_codes must be a list of HTTP status codes")
         for status in self.retry_status_codes:
-            if status < 100 or status > 599:
-                raise ValueError("retry_status_codes must contain HTTP status codes")
-        if self.expected_status is not None and not 100 <= self.expected_status <= 599:
-            raise ValueError("expected_status must be an HTTP status code")
+            if type(status) is not int or not 100 <= status <= 599:
+                raise ValueError(
+                    "retry_status_codes must contain integer HTTP status codes"
+                )
+        if self.expected_status is not None and (
+            type(self.expected_status) is not int
+            or not 100 <= self.expected_status <= 599
+        ):
+            raise ValueError("expected_status must be an integer HTTP status code")
         if self.expected_location is not None:
             if not self.expected_location:
                 raise ValueError("expected_location must not be empty")

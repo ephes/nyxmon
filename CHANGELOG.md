@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Validate TCP booleans, integer port/retry/certificate-day bounds and finite
+  timeout/delay budgets before connecting; stop truncating or coercing values.
+- Validate HTTP integer retries/status codes and finite timeout/delay budgets
+  before requesting. Numeric strings and booleans are no longer accepted.
+- Validate DNS timeout type, finiteness and the 300-second maximum before
+  resolution. All three configurations validate on deserialization and on
+  direct `validate()` calls; invalid values return `configuration_error`.
+  See `docs/configuration.md` for accepted types, bounds and upgrade guidance.
+
 - Require an actual boolean for IMAP `delete_after_check`, preventing strings
   such as `"false"` from enabling mailbox cleanup. The default remains true.
 - Validate IMAP port, freshness window, retries and finite timeout/delay ranges
