@@ -121,7 +121,7 @@ class HealthCheck(models.Model):
 
     def get_status(self):
         """
-        Calculate the health check status based on recent results.
+        Calculate status from five recent results, newest timestamp then id first.
         """
         # Use recent_results if it's available (set by the dashboard view)
         # Otherwise, query the database
@@ -129,7 +129,7 @@ class HealthCheck(models.Model):
             recent_results = self.recent_results
         else:
             # Get the 5 most recent results
-            recent_results = self.results.order_by("-created_at")[:5]
+            recent_results = self.results.order_by("-created_at", "-id")[:5]
 
         if not recent_results:
             return StatusChoices.UNKNOWN
