@@ -13,7 +13,7 @@ def _number(data: dict, name: str, default: float) -> float:
         raise ValueError(f"{name} must be a number")
     try:
         parsed = float(value)
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError(f"{name} must be a number") from exc
     if not math.isfinite(parsed):
         raise ValueError(f"{name} must be a finite number")
