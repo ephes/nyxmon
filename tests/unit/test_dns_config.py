@@ -131,9 +131,13 @@ class TestDnsCheckConfig:
         config = DnsCheckConfig(expected_ips=["192.168.1.1"])
 
         config.timeout = 0
-        with pytest.raises(ValueError, match="Timeout must be positive"):
+        with pytest.raises(
+            ValueError, match="timeout must be a finite positive number"
+        ):
             config.validate()
 
         config.timeout = -1
-        with pytest.raises(ValueError, match="Timeout must be positive"):
+        with pytest.raises(
+            ValueError, match="timeout must be a finite positive number"
+        ):
             config.validate()

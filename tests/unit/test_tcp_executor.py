@@ -685,11 +685,14 @@ async def test_connection_closed_during_dialogue(tls_files) -> None:
 def test_config_rejects_unknown_starttls_protocol() -> None:
     from nyxmon.domain.tcp_config import TcpCheckConfig
 
-    config = TcpCheckConfig.from_dict(
-        {"port": 25, "tls_mode": "starttls", "starttls_protocol": "pop3"}
-    )
     with pytest.raises(ValueError, match="starttls_protocol"):
-        config.validate()
+        TcpCheckConfig.from_dict(
+            {"port": 25, "tls_mode": "starttls", "starttls_protocol": "pop3"}
+        )
+    with pytest.raises(ValueError, match="starttls_protocol"):
+        TcpCheckConfig(
+            port=25, tls_mode="starttls", starttls_protocol="pop3"
+        ).validate()
 
 
 def test_config_defaults_to_generic_and_round_trips() -> None:

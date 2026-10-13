@@ -397,6 +397,13 @@ The built-in HTTP executor issues a `GET` request and treats only 2xx responses 
 
 `timeout` defaults to `10.0`, `retries` defaults to `0`, `retry_delay` defaults to `2.0`, and `retry_status_codes` defaults to `[502, 503, 504]`. Timeouts and request/connection errors also retry when `retries` is greater than zero. Non-transient HTTP statuses such as `404` do not retry unless explicitly listed in `retry_status_codes`.
 
+HTTP numeric fields accept JSON numbers, never booleans or numeric strings.
+`timeout` must be finite and greater than zero, up to 300 seconds;
+`retry_delay` must be finite between 0 and 300 seconds. `retries` must be a
+JSON integer between 0 and 100. `expected_status` (when present and non-null)
+and each `retry_status_codes` entry must be JSON integers between 100 and 599;
+fractional and integer-valued floats such as `200.0` are rejected.
+
 Canonical redirects can be checked without following them by setting
 `follow_redirects` to `false`, `expected_status` to the required 3xx response,
 and `expected_location` to the exact absolute `Location` value. For example:
@@ -419,6 +426,14 @@ Additional response validation such as JSON assertions and response-body
 matching is planned.
 
 ### TCP Checks
+
+TCP `port` must be a JSON integer between 1 and 65535; `retries` between 0
+and 100; `min_cert_days` between 0 and 36500. `connect_timeout` and
+`tls_handshake_timeout` accept finite JSON numbers greater than zero, up to
+300 seconds; `retry_delay` accepts finite JSON numbers between 0 and 300
+seconds. `verify`, `check_cert_expiry` and `starttls_read_greeting` require
+JSON booleans (`true`/`false`). Strings such as `"false"` or `"443"`, booleans
+in numeric fields, and floats in integer fields are rejected.
 
 The TCP executor validates that a port is reachable and, optionally, that TLS negotiation works and certificates are not close to expiry:
 
@@ -633,6 +648,16 @@ DNS checks verify that resolved records include at least one expected IP and sup
     "timeout": 5.0                 # optional, seconds
 }
 ```
+
+DNS `timeout` accepts a finite JSON number greater than zero, up to 300
+seconds (default 5.0). Integers and floats are supported; strings, booleans,
+null, NaN and infinity are rejected.
+
+For HTTP, TCP and DNS, these constraints also apply to direct configuration
+`validate()` calls. `from_dict()` validates before returning. Invalid values
+raise `ValueError` and the executor returns `configuration_error` before any
+connection or DNS resolution. Existing configurations using numeric strings,
+coerced booleans, or values beyond these bounds must be updated.
 
 See {doc}`dns-check-examples` for more configuration scenarios.
 

@@ -1,6 +1,7 @@
 """DNS check configuration domain model."""
 
 import ipaddress
+import math
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -91,13 +92,16 @@ class DnsCheckConfig:
         if not expected_ips:
             raise ValueError("expected_ips cannot be empty")
 
-        return cls(
+        config = cls(
             expected_ips=expected_ips,
             dns_server=data.get("dns_server"),
             source_ip=data.get("source_ip"),
             query_type=data.get("query_type", "A"),
             timeout=data.get("timeout", 5.0),
         )
+
+        config.validate()
+        return config
 
     def to_dict(self) -> dict:
         """Serialize to check.data dictionary.
@@ -133,8 +137,15 @@ class DnsCheckConfig:
                 f"Invalid query_type: {self.query_type}. Must be one of {VALID_QUERY_TYPES}"
             )
 
-        if self.timeout <= 0:
-            raise ValueError("Timeout must be positive")
+        # Check the bound first to avoid converting huge integers to float.
+        if (
+            type(self.timeout) not in (int, float)
+            or not 0 < self.timeout <= 300
+            or not math.isfinite(self.timeout)
+        ):
+            raise ValueError(
+                "timeout must be a finite positive number up to 300 seconds"
+            )
 
         # An expectation of the wrong address family can never match.
         for ip in self.expected_ips:
