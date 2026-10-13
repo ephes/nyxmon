@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Unrepresentable numeric ping settings now return `configuration_error` before
+  DNS resolution or process execution, instead of raising `OverflowError`.
+
 - Validate theme input as a light/dark JSON object, avoid creating sessions for
   the default light theme, and remove expired sessions during periodic cleanup.
 

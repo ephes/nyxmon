@@ -417,6 +417,32 @@ class TestResolution:
 
 
 class TestConfiguration:
+    @pytest.mark.parametrize("field", ["count", "timeout", "interval"])
+    @pytest.mark.parametrize(
+        "value", [10**400, -(10**400)], ids=["positive", "negative"]
+    )
+    def test_numeric_overflow_is_value_error(self, field, value) -> None:
+        with pytest.raises(ValueError, match=f"{field} must be a number"):
+            PingCheckConfig.from_dict({field: value})
+
+    @pytest.mark.parametrize("field", ["count", "timeout", "interval"])
+    @pytest.mark.parametrize(
+        "value", [10**400, -(10**400)], ids=["positive", "negative"]
+    )
+    async def test_numeric_overflow_is_configuration_error(self, field, value) -> None:
+        runner = StubRunner()
+        resolver = StubResolver()
+
+        result = await _executor(runner, resolver).execute(
+            _check("gateway.example.test", **{field: value})
+        )
+
+        assert result.status == ResultStatus.ERROR
+        assert result.data["error_type"] == "configuration_error"
+        assert result.data["error_msg"] == f"{field} must be a number"
+        assert resolver.calls == []
+        assert runner.calls == []
+
     @pytest.mark.parametrize(
         "data",
         [

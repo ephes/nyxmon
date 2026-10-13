@@ -642,6 +642,10 @@ without an HTTP endpoint (router, NAS, Raspberry Pis):
 }
 ```
 
+Invalid numeric settings, including integers too large to represent as a float,
+return `configuration_error` before DNS resolution or process execution. Values
+must be finite and within the documented ranges; `count` must be a whole number.
+
 Host names are resolved once per run (bounded by `timeout`); the first address
 returned is pinged. Each attempt runs the system `ping` binary for a single
 echo request and waits at most `timeout` seconds for the reply. The check is
