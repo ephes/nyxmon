@@ -412,12 +412,21 @@ Limits use exact IP addresses; clients able to rotate addresses (including withi
 an IPv6 subnet) receive separate budgets.
 
 `NYXBOARD_LOGIN_PROXY_HOPS` defaults to 0 (use `REMOTE_ADDR`, ignore forwarded
-headers). **Upgrade note:** behind a proxy, leaving this at 0 shares one address
-budget across all visitors and can lock everyone out. Proxied deployments must
-configure the trusted hop count before upgrading. Set it to 1 only when a trusted proxy is the only route to the backend
-and appends the actual client address to `X-Forwarded-For`. With N trusted hops,
-the N-th address from the right is used; client-supplied entries on the left
-are ignored. Missing, short or invalid headers fall back to `REMOTE_ADDR`.
+headers in the throttle). For the single loopback proxy setup, keep it at 0
+when starting Granian through `config.wsgi_proxy`: that wrapper already rewrites
+`REMOTE_ADDR` from
+`X-Forwarded-For` for trusted loopback peers (`127.0.0.1` and `::1`), and ignores
+forwarded headers from untrusted peers. The reverse proxy must supply the actual
+client address; only trusted proxies should be able to connect from loopback.
+
+**Upgrade note:** in this setup, only deployments running plain `config.wsgi`
+behind a proxy must configure the trusted hop count before upgrading; leaving 0
+there shares
+one address budget across visitors and can lock everyone out. Set it to 1 only
+when a trusted proxy is the only route to the backend and appends the actual
+client address to `X-Forwarded-For`. With N trusted hops, the N-th address from
+the right is used; client-supplied entries on the left are ignored. Missing,
+short or invalid headers fall back to `REMOTE_ADDR`.
 
 #### Theme preferences
 

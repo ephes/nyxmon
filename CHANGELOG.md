@@ -19,8 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Limit failed NyxBoard and admin logins by username/client address and client
   address, with configurable fixed windows and trusted proxy hop handling.
-  **Upgrade note:** proxied deployments must set `NYXBOARD_LOGIN_PROXY_HOPS`
-  to their trusted hop count; leaving 0 shares the address budget across visitors.
+  **Upgrade note:** for the single loopback proxy setup, keep
+  `NYXBOARD_LOGIN_PROXY_HOPS=0` with the Granian
+  `config.wsgi_proxy` entrypoint, which rewrites `REMOTE_ADDR` for trusted peers.
+  In this setup, only deployments running plain `config.wsgi` behind a proxy
+  must set their trusted hop count; leaving 0 there shares the
+  address budget across visitors.
   Negative limits/hops and nonpositive address limits/windows fail settings load.
 
 - Editing an SMTP, IMAP or JSON-metrics check no longer reuses the stored
