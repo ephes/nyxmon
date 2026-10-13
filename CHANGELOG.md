@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Set production HSTS max-age to 180 days by default, configurable through
+  `DJANGO_SECURE_HSTS_SECONDS` for staged HTTPS rollouts. **Upgrade note:** set
+  a short max-age before upgrading if HTTPS on the host/subdomains is unproven;
+  browsers retain a received policy until its max-age expires.
+
 - Limit failed NyxBoard and admin logins by username/client address and client
   address, with configurable fixed windows and trusted proxy hop handling.
   **Upgrade note:** proxied deployments must set `NYXBOARD_LOGIN_PROXY_HOPS`

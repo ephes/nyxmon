@@ -334,6 +334,7 @@ Django configuration is managed through environment variables in the `src/django
 
 - `DJANGO_SECRET_KEY`: Secret key for Django (required in production)
 - `DJANGO_DEBUG`: Enable debug mode (default: False in production)
+- `DJANGO_SECURE_HSTS_SECONDS`: Production HSTS max-age (default 15552000); see below.
 - `DJANGO_ALLOWED_HOSTS`: Comma-separated list of allowed hosts
 - `NYXBOARD_LOGIN_FAILURE_LIMIT`: Pair limit (default 5; 0 disables throttling)
 - `NYXBOARD_LOGIN_ADDRESS_FAILURE_LIMIT`: Positive address limit (default 50)
@@ -341,6 +342,14 @@ Django configuration is managed through environment variables in the `src/django
 - `NYXBOARD_LOGIN_PROXY_HOPS`: Trusted proxy count (default 0)
 - `NYXBOARD_REQUIRE_LOGIN`: Require a logged-in Django user for every
   NyxBoard view (default `false`). See below.
+
+#### Production HSTS
+
+Production sends a 180-day HSTS max-age (`15552000` seconds). Override it with
+`DJANGO_SECURE_HSTS_SECONDS` for a staged rollout; `0` disables the header.
+Browsers retain HTTPS enforcement until the previously received max-age expires,
+so choose a short override before testing a new HTTPS deployment. Existing
+include-subdomains and preload settings are unchanged.
 
 #### Optional NyxBoard Login
 
