@@ -45,6 +45,8 @@ CACHES = {
 # Pin the default so an exported NYXBOARD_REQUIRE_LOGIN cannot change the
 # suite; login-mode tests opt in with override_settings.
 NYXBOARD_REQUIRE_LOGIN = False
+# Throttle regression tests opt in with explicit limits and isolated caches.
+NYXBOARD_LOGIN_FAILURE_LIMIT = 0
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 

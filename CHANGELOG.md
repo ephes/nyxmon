@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Limit failed NyxBoard and admin logins by username/client address and client
+  address, with configurable fixed windows and trusted proxy hop handling.
+  **Upgrade note:** proxied deployments must set `NYXBOARD_LOGIN_PROXY_HOPS`
+  to their trusted hop count; leaving 0 shares the address budget across visitors.
+  Negative limits/hops and nonpositive address limits/windows fail settings load.
+
 - Editing an SMTP, IMAP or JSON-metrics check no longer reuses the stored
   password when the same edit changes where it is sent. A blank password
   field keeps the stored password only while the host, port and TLS mode
@@ -42,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`opsgate_ticket: false`); only the internal collector row may.
 
 ### Fixed
+
+- Validate theme input as a light/dark JSON object, avoid creating sessions for
+  the default light theme, and remove expired sessions during periodic cleanup.
 
 - Validate TCP booleans, integer port/retry/certificate-day bounds and finite
   timeout/delay budgets before connecting; stop truncating or coercing values.

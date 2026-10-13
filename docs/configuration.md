@@ -21,7 +21,10 @@ own short transaction, and keeps going until a batch comes back short, so the
 whole expired backlog is removed in one cycle. It yields between batches so the
 collector can keep writing. One cycle runs at most 100 batches (100,000 rows
 with the default batch size); a larger backlog continues on the next cycle and
-the cleaner logs a warning. Each cycle logs the total it deleted.
+the cleaner logs a warning. Each cycle logs the total results it deleted. Each result batch also removes up
+to `--batch-size` expired Django sessions from the shared SQLite database, when
+its `django_session` table exists. Any remaining session backlog continues on the
+next cycle. With `--disable-cleaner`, schedule Django's `clearsessions` separately.
 
 The retention cutoff is computed on SQLite's UTC clock, the same clock that
 stamps the results, so retention is exact whatever the host's time zone.
@@ -332,6 +335,10 @@ Django configuration is managed through environment variables in the `src/django
 - `DJANGO_SECRET_KEY`: Secret key for Django (required in production)
 - `DJANGO_DEBUG`: Enable debug mode (default: False in production)
 - `DJANGO_ALLOWED_HOSTS`: Comma-separated list of allowed hosts
+- `NYXBOARD_LOGIN_FAILURE_LIMIT`: Pair limit (default 5; 0 disables throttling)
+- `NYXBOARD_LOGIN_ADDRESS_FAILURE_LIMIT`: Positive address limit (default 50)
+- `NYXBOARD_LOGIN_FAILURE_WINDOW_SECONDS`: Positive fixed window (default 900)
+- `NYXBOARD_LOGIN_PROXY_HOPS`: Trusted proxy count (default 0)
 - `NYXBOARD_REQUIRE_LOGIN`: Require a logged-in Django user for every
   NyxBoard view (default `false`). See below.
 
@@ -375,6 +382,40 @@ To enable it:
 
 To turn it off again, remove the variable (or set it to `false`) and restart.
 The Django admin keeps its own staff login regardless of this setting.
+
+#### Failed login limits
+
+Both `/accounts/login/` and the Django admin refuse further authentication after
+5 failures for a username/client-address pair or 50 failures for a client address
+within a fixed 900-second window. The ordinary invalid-login form is shown, and
+password checking resumes when the window expires. Successful login resets the
+pair counter; the address budget remains until expiry. This applies regardless
+of `NYXBOARD_REQUIRE_LOGIN`; its access-control behavior is unchanged.
+
+Configure `NYXBOARD_LOGIN_FAILURE_LIMIT`, `NYXBOARD_LOGIN_ADDRESS_FAILURE_LIMIT`
+and `NYXBOARD_LOGIN_FAILURE_WINDOW_SECONDS` with positive integers. Setting the
+pair limit to 0 disables throttling; the address limit and window must remain
+positive. Negative limits or proxy hops are rejected at settings load. Counters use the default Django cache:
+development uses per-process memory; production uses the configured file cache.
+Cache eviction or restart can reset counters, and file-cache increments are not
+atomic across workers, so these limits are best-effort under concurrent traffic.
+Limits use exact IP addresses; clients able to rotate addresses (including within
+an IPv6 subnet) receive separate budgets.
+
+`NYXBOARD_LOGIN_PROXY_HOPS` defaults to 0 (use `REMOTE_ADDR`, ignore forwarded
+headers). **Upgrade note:** behind a proxy, leaving this at 0 shares one address
+budget across all visitors and can lock everyone out. Proxied deployments must
+configure the trusted hop count before upgrading. Set it to 1 only when a trusted proxy is the only route to the backend
+and appends the actual client address to `X-Forwarded-For`. With N trusted hops,
+the N-th address from the right is used; client-supplied entries on the left
+are ignored. Missing, short or invalid headers fall back to `REMOTE_ADDR`.
+
+#### Theme preferences
+
+`POST /set-theme/` accepts a JSON object with `theme` set to `light` or `dark`.
+Malformed JSON, other shapes, missing themes and unsupported values return 400.
+Dark mode is stored in the session; light mode removes the preference and does
+not create a session for a new visitor. Other session values are preserved.
 
 ## Check Types
 
@@ -767,3 +808,4 @@ from nyxmon.adapters.repositories.sqlite_repo import SqliteStore
 
 store = SqliteStore(db_path="/path/to/database.sqlite")
 ```
+

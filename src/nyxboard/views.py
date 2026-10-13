@@ -224,10 +224,6 @@ def dashboard(request):
         else:
             check.last_result = None
 
-    # Set the default theme if not in session
-    if "theme" not in request.session:
-        request.session["theme"] = "light"
-
     # Create a JSON object with only the essential check result data
     check_results_json = {}
     for check_id, result_data in check_results.items():
@@ -659,8 +655,17 @@ def set_theme(request):
     """
     try:
         data = json.loads(request.body)
-        theme = data.get("theme", "light")
-        request.session["theme"] = theme
+        if not isinstance(data, dict) or data.get("theme") not in ("light", "dark"):
+            return JsonResponse(
+                {"status": "error", "message": "Theme must be light or dark"},
+                status=400,
+            )
+        theme = data["theme"]
+        if theme == "light":
+            if "theme" in request.session:
+                del request.session["theme"]
+        else:
+            request.session["theme"] = theme
         return JsonResponse({"status": "success", "theme": theme})
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
