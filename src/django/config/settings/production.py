@@ -34,8 +34,8 @@ MIDDLEWARE = WHITENOISE_MIDDLEWARE + MIDDLEWARE  # noqa
 # See https://docs.djangoproject.com/en/dev/ref/middleware/#module-django.middleware.security
 # and https://docs.djangoproject.com/en/dev/howto/deployment/checklist/#run-manage-py-check-deploy
 
-# set this to 60 seconds and then to 518400 when you can prove it works
-SECURE_HSTS_SECONDS = 60
+# HSTS: 180 days, matching homepage and python-podcast; override for a staged rollout.
+SECURE_HSTS_SECONDS = env.int("DJANGO_SECURE_HSTS_SECONDS", default=15552000)  # noqa
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool(  # noqa
     "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True
 )
