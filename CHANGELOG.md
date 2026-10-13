@@ -79,6 +79,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Order the five recent health-check samples by descending timestamp and id
+  in the model fallback, matching the dashboard when timestamps tie.
+
 - Unrepresentable numeric ping settings now return `configuration_error` before
   DNS resolution or process execution, instead of raising `OverflowError`.
 

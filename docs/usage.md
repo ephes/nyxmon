@@ -181,6 +181,15 @@ uv run start-agent --db /path/to/database.sqlite
 PYTHONUNBUFFERED=true uv run src/django/manage.py runserver 0.0.0.0:8000
 ```
 
+### Health-check status ordering
+
+Health-check status uses the five newest stored samples, ordered by descending
+creation timestamp and then descending primary key. When timestamps tie, the
+later inserted sample is treated as latest in both model queries and the
+dashboard. A latest error means failed; a latest OK with an error or warning
+among those five samples means recovering. An older failure outside that
+five-sample window does not keep the check recovering.
+
 ## Notifications
 
 ### Telegram Notifications
