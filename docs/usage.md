@@ -620,48 +620,11 @@ uv build --sdist --wheel
 uv publish --token pypi-your-token
 ```
 
-### Deployment Commands
+### Deployment
 
-NyxMon includes deployment commands for different environments:
-
-- `deploy-staging`: Deploy to staging environment
-- `deploy-production`: Deploy to production environment
-- `deploy-macos`: Deploy to macOS (uses launchd instead of systemd)
-- `remove-macos`: Remove macOS deployment
-- `db-from-production`: Fetch a PostgreSQL backup from the legacy production
-  host and restore it into a local database (see below)
-
-### Restoring a Production Backup Locally
-
-`db-from-production` (also reachable as `python commands.py
-production-db-to-local`) only applies to the legacy PostgreSQL deployment. It
-runs `deploy/backup_database.yml`, then replaces one local database with the
-fetched dump.
-
-- **Target.** The local database is `nyxmon`. Set `NYXMON_LOCAL_RESTORE_DB` to
-  use another one; the name must be `nyxmon` or `nyxmon_<suffix>` (lowercase
-  letters, digits and underscores). Any other name, for example `homepage` or
-  `postgres`, is refused before a backup is fetched or a database is touched.
-- **Staging first.** The archive is decompressed once to verify it, then loaded
-  into `<target>_restore_staging` in a single transaction that stops at the
-  first SQL error. The existing target is not touched during this phase.
-- **Replacement.** Only after a complete load are the old target renamed to
-  `<target>_restore_previous` and the staging database renamed to the target.
-  Both renames run in one transaction, so either both happen or neither does.
-  The previous database is dropped afterwards.
-- **Failures.** A corrupt or truncated archive, an SQL error, a failed
-  `createdb` or a failed swap exits with a non-zero status and leaves the
-  existing target database as it was.
-- **Cleanup failure.** One failure happens after the replacement: if the
-  previous database cannot be dropped, the command also exits non-zero, but the
-  target already holds the restored data and `<target>_restore_previous` holds
-  what the target contained before. The next restore refuses to start while
-  that database exists and never overwrites it; run `dropdb
-  <target>_restore_previous` once you no longer need the old data.
-
-The helper creates the local `nyxmon` role when it is missing, because dumps
-reference it as owner. Stop other sessions on the target first: PostgreSQL
-refuses to rename a database that still has connections, which fails the
-restore without changing anything.
+This repository does not contain deployment playbooks. The supported
+deployment is the `nyxmon_deploy` role in ops-library, driven from ops-control
+(`just deploy` here is a shortcut for that playbook). It runs Granian with
+`config.wsgi_proxy:application` on loopback behind Traefik.
 
 See {doc}`configuration` for deployment configuration details.

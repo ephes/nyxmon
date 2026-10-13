@@ -776,38 +776,17 @@ not inline in the unit. NyxMon also raises the `httpx` and `httpcore` logger
 thresholds to `WARNING`: their INFO request lines include Telegram's bot token
 in the API URL path and must not be retained by journald.
 
-### launchd (macOS)
-
-For macOS deployment, NyxMon uses launchd:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.nyxmon.agent</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/local/bin/start-agent</string>
-        <string>--db</string>
-        <string>/var/lib/nyxmon/db.sqlite3</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-</dict>
-</plist>
-```
-
 ### WSGI Server
 
 NyxMon uses granian as its WSGI server (instead of gunicorn):
 
 ```bash
-granian --interface wsgi config.wsgi:application --host 0.0.0.0 --port 8000
+granian --interface wsgi config.wsgi_proxy:application --host 127.0.0.1 --port 8000
 ```
+
+Bind Granian to loopback and publish it through a reverse proxy that
+terminates TLS and enforces access control. `config.wsgi_proxy` trusts
+forwarded headers from loopback peers only.
 
 ## Repository Configuration
 

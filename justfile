@@ -189,5 +189,3 @@ deploy-help:
     @echo "  Edit .envrc to change deployment settings"
     @echo "  Current target: {{HOST}} ({{USER}}@{{HOST}})"
     @echo "  ops-control path: {{OPS_CONTROL}}"
-    @echo ""
-    @echo "For macmini: Access via http://macmini.local:8000 or Tailscale IP"
