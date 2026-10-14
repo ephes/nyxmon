@@ -10,6 +10,16 @@ publish.workspace = true
 
 [dependencies]
 nyxmon-core.workspace = true
+idna.workspace = true
+unicode-normalization.workspace = true
+rustls.workspace = true
+rustls-native-certs.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+rcgen.workspace = true
+tokio = { workspace = true, features = ["rt", "macros", "net", "io-util"] }
+tokio-rustls.workspace = true
 
 [lints]
 workspace = true

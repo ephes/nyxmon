@@ -15,9 +15,18 @@ fails when a committed fixture no longer matches the Python code.
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
 | `json.loads` (str and bytes incl. `detect_encoding`), `json.dumps` (storage, `_bounded_actual`, OpsGate block, httpx `json=`), `repr(float)`, `format(x, "g")`, `round`, `int()`, `float()`, rich comparison, truthiness, `_json_kind`, `repr(str)`, `repr(bytes)`, `str.strip`, `len` | `nyxmon-core/src/pyjson/tests.rs` against `fixtures/pyjson.json` | done |
-| Environment readers of PLAN.md 1.4 (`test_collector_recovery.py::test_check_batch_size_configuration_is_bounded`, `test_shutdown_claims.py::test_shutdown_grace_configuration`, `test_notification_delivery_retry.py` env tests, `test_site_connectivity_observer.py::test_from_env_*`, notifier env) | `env.json` | pending (S1 step 2) |
-| `domain/models.py` types, `NotificationState` helpers | `nyxmon-core/src/model.rs` | pending (S1 step 2) |
-| `executors/tls.py` (`test_mail_tls_verify.py` warning/context parts) | `nyxmon-checks/src/tls.rs` | pending (S1 step 2) |
+| `test_collector_recovery.py::test_check_batch_size_configuration_is_bounded` | `env.json` scenarios `check_batch_size` (`nyxmon-core/src/env/tests.rs`) | done |
+| `test_shutdown_claims.py::test_shutdown_grace_configuration` | `env.json` scenarios `shutdown_grace_seconds` | done |
+| `processing_lease_seconds` (default, invalid, clamp to 30, warn once) | `env.json` scenarios `processing_lease_seconds` | done |
+| `test_notification_delivery_retry.py::test_delivery_retry_is_off_by_default`, `::test_invalid_retry_values_warn_once_and_use_the_default` | `env.json` scenarios `delivery_retry_seconds` | done |
+| `global_consecutive_failures`, `global_reminder_seconds` incl. the deprecated `NYXMON_NOTIFY_REPEAT_FAILURES` warning | `env.json` scenarios `global_*` | done |
+| `_notify_immediate_cooldown_seconds` | `env.json` scenarios `notify_immediate_cooldown_seconds` | done |
+| `test_site_connectivity_observer.py::test_from_env_defaults`, `::test_from_env_reads_every_knob`, `::test_from_env_empty_target_list_marks_a_path_unobserved`, `::test_from_env_invalid_values_warn_once_and_use_the_default` | `env.json` scenarios `site_config`; `env/tests.rs::default_site_config_matches_documented_defaults` | done |
+| `AsyncTelegramNotifier.__init__` environment (`TELEGRAM_*`, `OPSGATE_*`, `_parse_positive_int`, `_parse_bool`) | `env.json` scenarios `notifier_config` | done |
+| `domain/models.py` `Check.schedule_next_check`, `NotificationState.cleared/with_streak_reset/from_row` | `nyxmon-core/src/model.rs` tests | done |
+| `test_mail_tls_verify.py::test_imap_verify_false_uses_unverified_context_and_warns`, `::test_smtp_verify_false_uses_unverified_context_and_warns` (warning text, unverified context) | `nyxmon-checks/src/tls/tests.rs::mail_config_warns_only_without_verification`, `::unverified_config_accepts_any_chain_and_name` | done (executor wiring: S7) |
+| `ssl` `server_hostname` IDNA encoding (`str.encode("idna")`) | `tls/tests.rs::idna_encoding_matches_python` against `fixtures/idna.json` | done |
+| `test_mail_tls_verify.py::*_verifies_certificate_by_default` | `tls/tests.rs::verifying_config_*` (verification itself); executor wiring in S7 | done / pending S7 |
 
 ## Later slices
 

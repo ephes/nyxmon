@@ -6,9 +6,9 @@ implementation and the rollback target. **Nothing deploys this code yet**:
 rsync and git deploys ship `src/` only, and the ops-library role ignores
 `agent-rs/` until slice S14.
 
-Status: slice S1 (foundations), step 1 of 2: workspace, CI, recipes, the
-`pyjson` module and the fixture pipeline. Step 2 adds the environment
-readers, domain types and TLS helpers. The binary only answers `--version`.
+Status: slice S1 (foundations): workspace, CI, recipes, the `pyjson`
+module, the fixture pipeline, the environment readers, the domain types and
+the TLS helpers. The binary only answers `--version`.
 
 ## Layout
 
@@ -20,9 +20,9 @@ agent-rs/
   PLAN.md               the implementation plan and parity contract
   TESTMAP.md            Python test -> Rust test coverage, per slice
   crates/
-    nyxmon-core/        pure logic (no I/O): pyjson; env readers, domain types (S1 step 2)
+    nyxmon-core/        pure logic (no I/O): pyjson, env readers, domain types
     nyxmon-store/       SQLite store (S2)
-    nyxmon-checks/      executors (S5-S7); TLS helpers (S1 step 2)
+    nyxmon-checks/      executors (S5-S7); TLS helpers (S1)
     nyxmon-notify/      Telegram, OpsGate, logging notifier (S8)
     nyxmon-agent/       the binary (S9+)
   fixtures/
@@ -79,6 +79,13 @@ Current fixtures:
 - `pyjson.json`: `json.loads`/`json.dumps` (every option set the agent uses),
   float `repr`, `format(x, "g")`, `round`, `int()`/`float()` parsing, rich
   comparison over JSON values, truthiness, `repr(str)`/`repr(bytes)`.
+- `env.json`: every environment reader of PLAN.md section 1.4 with its
+  warnings, including warn-once sequences.
+- `idna.json`: `host.encode("idna")`, the server name Python's `ssl` sends
+  for a Unicode host (`nyxmon_checks::tls::idna_encode`).
+- `idna_tables.json`: the Unicode 3.2 stringprep tables of Python's
+  `nameprep`, embedded by `nyxmon_checks::pyidna` so the IDNA 2003 encoding
+  is Python's.
 - `unicode_nonprintable.json`: the code points `str.isprintable()` rejects.
   `nyxmon-core` embeds it, so `repr(str)` escapes exactly what the oracle's
   Unicode database (15.1 for CPython 3.13) escapes.
@@ -93,3 +100,14 @@ Current fixtures:
   iterative, so hostile nesting (up to CPython's limit of 9998 levels) cannot
   overflow a thread stack. `PyJson` implements `Drop`: move contents out with
   `into_dict`/`into_list`/`into_string` instead of destructuring by value.
+- Pure code reports operator-facing warnings through
+  `nyxmon_core::log::LogSink` with the Python logger name; `TracingSink`
+  forwards to `tracing` with that name as the target, `RecordingSink`
+  captures them in tests.
+- Environment readers take an `&Env` (`Env::process()` in the binary,
+  `Env::from_map` in tests); its warn-once state lives as long as the `Env`.
+  Unbounded integers are returned exactly as `BigInt` (see the `env`
+  module documentation).
+- TLS goes through `nyxmon_checks::tls` (rustls with the `ring` provider,
+  system roots, TLS 1.2+); `tls::server_name` IDNA-encodes Unicode hosts
+  like Python.
