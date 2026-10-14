@@ -270,6 +270,20 @@ section 3.6); no other new variable is introduced by the port.
   `nyxmon-local-probe@xn--wersdrfer-47a.de`). Pinned by
   `config/smtp/tests.rs::unsupported_address_forms_are_configuration_errors`
   and the `config_smtp.json` corpus.
+- **D-15 Check and suppression proxies.** The HTTP family (http,
+  json-http, json-metrics) and the maintenance-suppression fetch ignore
+  `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`/`NO_PROXY`; httpx honours them
+  through `trust_env` (the shared client of 5.5 has no proxy support). The
+  production unit sets no proxy variable (checked in `/proc/<pid>/environ`
+  on macmini, 2026-10-14). No code path of the Rust clients reads proxy
+  variables.
+- **D-16 DNS corners outside production** (owner parity policy
+  2026-10-14; all four production DNS checks are A queries for ASCII
+  names with an explicit `dns_server`):
+  - a check URL with non-ASCII characters: dnspython IDNA-2008-encodes it
+    ("practical" codec); Rust reports `configuration_error` "non-ASCII DNS
+    names are not supported; use the IDNA (xn--) form"
+    (`dns/wire/tests.rs::non_ascii_names_fail_closed`).
 
 ### 1.6 Result `data` shapes per check type (P1)
 
@@ -951,17 +965,31 @@ raised). Any error in this function is logged as
   same-origin (scheme, host, port) **or** an httpx "https upgrade"
   (`_is_https_redirect`: same host, `http` → `https`, ports default/80 →
   default/443), otherwise dropped, mirroring httpx `_redirect_headers`
-  (which also replaces `Host` and drops `Cookie`); redirect bodies are not
-  read (the hand-written loop closes each redirect response); any non-2xx
-  after redirects →
-  fail open; `Content-Encoding` other than identity/empty → fail open;
-  declared or streamed body > 256 KiB → fail open; invalid JSON → fail open.
-  The fetch uses its own client per call (Python creates one `httpx.Client`
-  per fetch: no shared cookies) with **automatic decompression disabled**
-  (`reqwest` `.no_gzip().no_deflate()`): reqwest's decoders would otherwise
-  remove `Content-Encoding` and `Content-Length` and decompress a body the
-  server compressed despite `identity`, bypassing the refusal and the
-  declared-length cap. Each request uses the httpx timeout semantics of 5.5.
+  (which also replaces `Host` and rebuilds `Cookie` from the fetch's own
+  jar, so a cookie set by a redirect hop is sent on the next hop); a hop
+  without `auth=` uses credentials in its URL (`_build_request_auth`);
+  redirect bodies are not read (the hand-written loop closes each redirect
+  response); more than 5 redirects (`TooManyRedirects`), an invalid
+  `Location`, any transport error, any non-2xx after redirects,
+  `Content-Encoding` other than identity/empty (after `strip().lower()`),
+  a declared (`int(Content-Length)`) or streamed body > 256 KiB and invalid
+  JSON (`json.loads` on bytes, `pyjson`) → fail open (no payload).
+- Implementation (S5b, `nyxmon-checks/src/suppression_fetch.rs`): one fresh
+  `HttpSession` (the S5a client of 5.5) per fetch, so the cookie jar is the
+  fetch's own and nothing is shared with the batch; every hop is one
+  `HttpSession::send_once` with the extra header `Accept-Encoding: identity`
+  and no automatic decompression (the client only decodes when asked to read
+  a body, and the fetch refuses every encoding but identity before reading);
+  redirects via `redirect_target`/`keeps_authorization`; the body is read
+  with `read_body` under the 256 KiB cap. Each request uses the httpx
+  timeout semantics of 5.5 (a NaN timeout fails before connecting, like
+  `socket.settimeout(nan)`). The sync `httpx.Client` connects to the
+  resolved addresses one after the other, while the session uses anyio's
+  Happy Eyeballs: only the time to the same outcome differs (P2). Proxy
+  variables are not read (D-15). Pinned by `suppression_fetch.json` (the
+  Python `_fetch_payload` on an httpx `MockTransport`, replayed against a
+  fake server: payload, request paths, `Authorization`, `Accept-Encoding`,
+  `Cookie`); S9 joins it with S3's `suppression_request`/`evaluate`.
 - Freshness guard, `active_statuses` (default `["running"]`, non-list →
   default), `status_path` (default `$.last_status`), `active_if` rules
   (`_rule_matches`: path must exist, `json_kind` equal, Python comparison,
@@ -1593,7 +1621,8 @@ level, stable inputs, injected clocks/nonces/env via monkeypatching):
 | `opsgate.json` | `_build_opsgate_ticket_payload`, `_build_opsgate_prompt`, `sanitize_untrusted_data`, `_opsgate_task_ref` (nonce and time injected; incl. `tests/unit/fixtures/opsgate_prompt_injection.json`) | |
 | `ping_text.json` | `build_ping_command`, `parse_rtt_ms`, `is_permission_failure`, `_error_detail`, `normalize_ping_target`, `_packet_stats` | |
 | `starttls_text.json` | `_is_positive_starttls_response`, regexes, `_truncate` | |
-| `dns_text.json` | `normalize_dns_value`, `expected_ip_error`, `_check_ip_match` | |
+| `dns_text.json` | `normalize_dns_value`, `expected_ip_error`, `_check_ip_match`, `dns.name.from_text`/`to_text`, `dns.ipv6.inet_ntoa`, UTF-8 decode errors | |
+| `suppression_fetch.json` (S5b) | `_fetch_payload` on an httpx `MockTransport` | payload or failure, requests |
 | `smtp_text.json` | `_build_subject` (token/time injected), `_message_id_domain`, header validation | |
 | `schema/` | Django migrate | section 2.4 |
 

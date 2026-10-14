@@ -6,6 +6,7 @@
 
 pub mod ctx;
 pub mod decode;
+pub mod dns;
 #[cfg(test)]
 mod fake_server;
 pub mod happy_eyeballs;
@@ -20,6 +21,7 @@ pub mod pyidna;
 pub mod pyos;
 pub mod smtp;
 pub mod starttls;
+pub mod suppression_fetch;
 pub mod tcp;
 #[cfg(test)]
 mod testutil;

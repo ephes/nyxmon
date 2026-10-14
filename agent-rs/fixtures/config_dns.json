@@ -1,0 +1,1661 @@
+{
+ "cases": [
+  {
+   "data": {},
+   "outcome": {
+    "error": "expected_ips is required"
+   }
+  },
+  {
+   "data": [],
+   "outcome": {
+    "error": "expected_ips is required"
+   }
+  },
+  {
+   "data": [
+    "expected_ips"
+   ],
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "list indices must be integers or slices, not str"
+    }
+   }
+  },
+  {
+   "data": "x",
+   "outcome": {
+    "error": "expected_ips is required"
+   }
+  },
+  {
+   "data": "expected_ips",
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "string indices must be integers, not 'str'"
+    }
+   }
+  },
+  {
+   "data": 5,
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "argument of type 'int' is not iterable"
+    }
+   }
+  },
+  {
+   "data": 1.5,
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "argument of type 'float' is not iterable"
+    }
+   }
+  },
+  {
+   "data": true,
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "argument of type 'bool' is not iterable"
+    }
+   }
+  },
+  {
+   "data": false,
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "argument of type 'bool' is not iterable"
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": []
+   },
+   "outcome": {
+    "error": "expected_ips cannot be empty"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": "192.0.2.1"
+   },
+   "outcome": {
+    "error": "expected_ips must be a list of strings"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": null
+   },
+   "outcome": {
+    "error": "expected_ips must be a list of strings"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "expected_ips must be a list of strings"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1",
+     null
+    ]
+   },
+   "outcome": {
+    "error": "expected_ips must be a list of strings"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": {
+     "192.0.2.1": 1
+    }
+   },
+   "outcome": {
+    "error": "expected_ips must be a list of strings"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "2001:db8::1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid expected_ips entry: 2001:db8::1 is an IPv6 address, but a A query only returns IPv4 addresses"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "2001:db8::1"
+    ],
+    "query_type": "AAAA"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "2001:db8::1"
+     ],
+     "query_type": "AAAA",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "query_type": "AAAA"
+   },
+   "outcome": {
+    "error": "Invalid expected_ips entry: 192.0.2.1 is an IPv4 address, but a AAAA query only returns IPv6 addresses"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "::ffff:192.0.2.1"
+    ],
+    "query_type": "A"
+   },
+   "outcome": {
+    "error": "Invalid expected_ips entry: ::ffff:192.0.2.1 is an IPv6 address, but a A query only returns IPv4 addresses"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "::ffff:192.0.2.1"
+    ],
+    "query_type": "AAAA"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "::ffff:192.0.2.1"
+     ],
+     "query_type": "AAAA",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "2A01:04F8:0000::0001"
+    ],
+    "query_type": "AAAA"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "2A01:04F8:0000::0001"
+     ],
+     "query_type": "AAAA",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     " 192.0.2.1 "
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      " 192.0.2.1 "
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1\n"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1\n"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "mail.example.com."
+    ],
+    "query_type": "MX"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "mail.example.com."
+     ],
+     "query_type": "MX",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "mail.example.com."
+    ],
+    "query_type": "A"
+   },
+   "outcome": {
+    "error": "Invalid expected_ips entry: Invalid IP address: mail.example.com."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "fe80::1%eth0"
+    ],
+    "query_type": "AAAA"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "fe80::1%eth0"
+     ],
+     "query_type": "AAAA",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "v=spf1 -all"
+    ],
+    "query_type": "TXT"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "v=spf1 -all"
+     ],
+     "query_type": "TXT",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "CNAME"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "x"
+     ],
+     "query_type": "CNAME",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "NS"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "x"
+     ],
+     "query_type": "NS",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "SOA"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "x"
+     ],
+     "query_type": "SOA",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "PTR"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "x"
+     ],
+     "query_type": "PTR",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "ANY"
+   },
+   "outcome": {
+    "error": "Invalid query_type: ANY. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "a"
+   },
+   "outcome": {
+    "error": "Invalid query_type: a. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": ""
+   },
+   "outcome": {
+    "error": "Invalid query_type: . Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": null
+   },
+   "outcome": {
+    "error": "Invalid query_type: None. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": 5
+   },
+   "outcome": {
+    "error": "Invalid query_type: 5. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": true
+   },
+   "outcome": {
+    "error": "Invalid query_type: True. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": 1.5
+   },
+   "outcome": {
+    "error": "Invalid query_type: 1.5. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": [
+     "A"
+    ]
+   },
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "unhashable type: 'list'"
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": {
+     "A": 1
+    }
+   },
+   "outcome": {
+    "exception": {
+     "class": "TypeError",
+     "message": "unhashable type: 'dict'"
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "BAD",
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "Invalid query_type: BAD. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "x"
+    ],
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "dns_server": "bad",
+    "expected_ips": [
+     "x"
+    ],
+    "source_ip": "bad"
+   },
+   "outcome": {
+    "error": "Invalid expected_ips entry: Invalid IP address: x"
+   }
+  },
+  {
+   "data": {
+    "dns_server": "bad",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "bad",
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "dns_server": "bad",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "bad"
+   },
+   "outcome": {
+    "error": "Invalid source_ip: bad. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": "bad",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: bad. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "extra": 1
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 0.0
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": -1
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 0.001
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 0.001
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 1
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 1
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 5.0
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 300
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 300
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 300.0
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 300.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 300.5
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 301
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": true
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": false
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": "5"
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": null
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": []
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": {}
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 9223372036854775808
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": Infinity
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": NaN
+   },
+   "outcome": {
+    "error": "timeout must be a finite positive number up to 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "dns_server": "192.0.2.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": "192.0.2.1",
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": "2001:db8::1",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": "2001:db8::1",
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": "fe80::1%lo0",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": "fe80::1%lo0",
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": "::ffff:192.0.2.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": "::ffff:192.0.2.1",
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": " 192.0.2.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server:  192.0.2.1. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": "192.0.2.1 ",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: 192.0.2.1 . Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": "01.2.3.4",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: 01.2.3.4. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": "1.2.3",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: 1.2.3. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": "eth0",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: eth0. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": "dns.example",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: dns.example. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": "",
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": "",
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": null,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": 0,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": 0,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": 5,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": 5,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": -1,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: -1. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": 4294967296,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": 4294967296,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": 340282366920938463463374607431768211456,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: 340282366920938463463374607431768211456. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": true,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": true,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": false,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": false,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": 1.5,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: 1.5. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": 0.0,
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": 0.0,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": [],
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": [],
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": [
+     "192.0.2.1"
+    ],
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: ['192.0.2.1']. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "dns_server": {},
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": {},
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "dns_server": {
+     "a": 1
+    },
+    "expected_ips": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid dns_server: {'a': 1}. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "192.0.2.1"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": "192.0.2.1",
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "2001:db8::1"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": "2001:db8::1",
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "fe80::1%lo0"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": "fe80::1%lo0",
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "::ffff:192.0.2.1"
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": "::ffff:192.0.2.1",
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": " 192.0.2.1"
+   },
+   "outcome": {
+    "error": "Invalid source_ip:  192.0.2.1. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "192.0.2.1 "
+   },
+   "outcome": {
+    "error": "Invalid source_ip: 192.0.2.1 . Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "01.2.3.4"
+   },
+   "outcome": {
+    "error": "Invalid source_ip: 01.2.3.4. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "1.2.3"
+   },
+   "outcome": {
+    "error": "Invalid source_ip: 1.2.3. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "eth0"
+   },
+   "outcome": {
+    "error": "Invalid source_ip: eth0. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "dns.example"
+   },
+   "outcome": {
+    "error": "Invalid source_ip: dns.example. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": ""
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": "",
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": null
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": null,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": 0
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": 0,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": 5
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": 5,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": -1
+   },
+   "outcome": {
+    "error": "Invalid source_ip: -1. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": 4294967296
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": 4294967296,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": 340282366920938463463374607431768211456
+   },
+   "outcome": {
+    "error": "Invalid source_ip: 340282366920938463463374607431768211456. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": true
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": true,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": false
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": false,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": 1.5
+   },
+   "outcome": {
+    "error": "Invalid source_ip: 1.5. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": 0.0
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": 0.0,
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": []
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": [],
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": [
+     "192.0.2.1"
+    ]
+   },
+   "outcome": {
+    "error": "Invalid source_ip: ['192.0.2.1']. Must be a valid IP address."
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": {}
+   },
+   "outcome": {
+    "ok": {
+     "dns_server": null,
+     "expected_ips": [
+      "192.0.2.1"
+     ],
+     "query_type": "A",
+     "source_ip": {},
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": {
+     "a": 1
+    }
+   },
+   "outcome": {
+    "error": "Invalid source_ip: {'a': 1}. Must be a valid IP address."
+   }
+  }
+ ]
+}
