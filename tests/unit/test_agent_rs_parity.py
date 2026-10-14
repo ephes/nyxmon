@@ -126,3 +126,31 @@ def test_http_fake_serves_its_script():
                 raise AssertionError("expected 503")
     finally:
         http.close()
+
+
+def test_incident_payload_counters_are_compared_and_timestamps_masked():
+    view = run_parity.incident_view
+    payload = '{"incident_type": "stale_processing_lease", "reclaimed_count": %d, "last_seen_at": %d}'
+    assert view("k", 1, payload % (1, 100)) == view("k", 1, payload % (1, 200))
+    assert view("k", 1, payload % (1, 100)) != view("k", 1, payload % (99, 100))
+    assert view("k", 1, "{}") != view("k", 2, "{}")
+
+
+def _check(check_id, disabled=False):
+    return run_parity.Check(check_id, "c", "http", "", {}, disabled=disabled)
+
+
+def test_alerts_are_compared_per_check_and_disabled_checks_never_alert():
+    checks = [_check(1), _check(18, disabled=True)]
+    alert = [("error", "http_error")]
+    assert run_parity.alert_differences(checks, {1: alert}, {1: alert}) == []
+    assert run_parity.alert_differences(checks, {1: alert}, {}) == [
+        "check 1: notifications python=[('error', 'http_error')] rust=[]"
+    ]
+    # A disabled check alerting, on one side or both, is a difference.
+    assert run_parity.alert_differences(checks, {}, {18: alert})
+    assert run_parity.alert_differences(checks, {18: alert}, {18: alert}) == [
+        "check 18 (disabled): notifications [('error', 'http_error')]"
+    ]
+    # Collector-scoped alerts (check_id 0) are compared too.
+    assert run_parity.alert_differences(checks, {0: alert}, {})

@@ -664,7 +664,21 @@ def rust_alerts(log: str) -> dict[int, list[tuple[str, str]]]:
     return alerts
 
 
-def incidents(db: Path) -> list[tuple[str, int, list[str]]]:
+def incident_view(key: str, alert_count: int, payload: str | None) -> dict[str, Any]:
+    """A ``collector_incident`` row as compared: key, ``alert_count`` and the
+    payload with its timestamps masked (counters, keys and order compared)."""
+    try:
+        decoded: Any = json.loads(payload or "{}")
+    except ValueError:
+        decoded = payload
+    return {
+        "key": key,
+        "alert_count": alert_count,
+        "payload": mask(decoded, "internal"),
+    }
+
+
+def incidents(db: Path) -> list[dict[str, Any]]:
     connection = read_only(db)
     try:
         rows = connection.execute(
@@ -672,9 +686,28 @@ def incidents(db: Path) -> list[tuple[str, int, list[str]]]:
         ).fetchall()
     finally:
         connection.close()
-    return [
-        (key, count, list(json.loads(payload or "{}"))) for key, count, payload in rows
-    ]
+    return [incident_view(key, count, payload) for key, count, payload in rows]
+
+
+def alert_differences(
+    checks: list[Check],
+    alerts_a: dict[int, list[tuple[str, str]]],
+    alerts_b: dict[int, list[tuple[str, str]]],
+) -> list[str]:
+    """Per-check notification lists must match; disabled checks (which
+    never run) must have none in either log."""
+    differences = []
+    disabled = {check.check_id for check in checks if check.disabled}
+    ids = {check.check_id for check in checks} | set(alerts_a) | set(alerts_b)
+    for cid in sorted(ids):
+        listed_a, listed_b = alerts_a.get(cid, []), alerts_b.get(cid, [])
+        if listed_a != listed_b:
+            differences.append(
+                f"check {cid}: notifications python={listed_a} rust={listed_b}"
+            )
+        elif cid in disabled and listed_a:
+            differences.append(f"check {cid} (disabled): notifications {listed_a}")
+    return differences
 
 
 def compare(
@@ -751,16 +784,7 @@ def compare(
                     differences.append(
                         f"check {cid}: attempt_at not cleared after the final OK ({name})"
                     )
-        if alerts_a.get(cid, []) != alerts_b.get(cid, []):
-            differences.append(
-                f"check {cid}: notifications python={alerts_a.get(cid, [])} rust={alerts_b.get(cid, [])}"
-            )
-    known = {check.check_id for check in python.checks}
-    for cid in sorted((set(alerts_a) | set(alerts_b)) - known):
-        if alerts_a.get(cid, []) != alerts_b.get(cid, []):
-            differences.append(
-                f"check_id {cid}: notifications python={alerts_a.get(cid, [])} rust={alerts_b.get(cid, [])}"
-            )
+    differences += alert_differences(python.checks, alerts_a, alerts_b)
     if incidents(db_a) != incidents(db_b):
         differences.append(
             f"collector_incident python={incidents(db_a)} rust={incidents(db_b)}"
