@@ -1,7 +1,11 @@
 """Fixture builders of slice S5b (DNS check), loaded by ``generate.py``.
 
 * ``config_dns.json``: ``DnsCheckConfig.from_dict`` + ``validate`` outcomes
-  for a data corpus (``cases``).
+  for a data corpus (``cases``) and ``executor_cases``: the real
+  ``DnsCheckExecutor`` (dnspython) run against a scripted local DNS server
+  on ``127.0.0.1`` (UDP and TCP on one port). Each case records the wire
+  responses (templates whose ID the server replaces by the query's ID), the
+  queries the server received, and the result with its key order.
 * ``dns_text.json``: ``normalize_dns_value``, ``expected_ip_error``,
   ``_check_ip_match``, ``dns.name.from_text`` + ``to_text`` (the query
   name), dnspython's IPv6 text form and ``bytes.decode()`` errors of TXT
@@ -10,6 +14,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import io
+import struct
 from collections.abc import Callable, Mapping
 from typing import Any
 from unittest import mock
@@ -371,11 +378,529 @@ def build_dns_text() -> dict[str, Any]:
     }
 
 
+# ----------------------------------------------------------- executor cases
+
+
+def _response(
+    qname: str,
+    qtype: str,
+    *,
+    rcode: str = "NOERROR",
+    answer: list[tuple[str, str, str]] | None = None,
+    authority: list[tuple[str, str, str]] | None = None,
+    tc: bool = False,
+    question: tuple[str, str] | None = None,
+    no_question: bool = False,
+    qr: bool = True,
+    edns: bool = False,
+) -> str:
+    """A response template (ID 0) built with dnspython."""
+    import dns.flags
+    import dns.message
+    import dns.rcode
+    import dns.rrset
+
+    qn, qt = question or (qname, qtype)
+    query = dns.message.make_query(qn, qt)
+    query.id = 0
+    response = dns.message.make_response(query)
+    response.set_rcode(dns.rcode.from_text(rcode))
+    if tc:
+        response.flags |= dns.flags.TC
+    if not qr:
+        response.flags &= ~dns.flags.QR
+    if no_question:
+        response.question = []
+    # One RRset per record, so duplicates reach the wire as sent.
+    for section, records in (
+        (response.answer, answer),
+        (response.authority, authority),
+    ):
+        for owner, rtype, text in records or []:
+            section.append(dns.rrset.from_text(owner, 300, "IN", rtype, text))
+    if edns:
+        response.use_edns(0, 0, 1232)
+    return response.to_wire().hex()
+
+
+def _reply(*templates: str, id_mode: str = "match") -> dict[str, Any]:
+    return {"reply": list(templates), "id": id_mode}
+
+
+_DROP: dict[str, Any] = {"drop": True}
+_CLOSE: dict[str, Any] = {"close": True}
+
+_SERVER = "127.0.0.1"
+_DEFAULT_RESOLV = "nameserver 127.0.0.1\n"
+
+
+class _ScriptedDns:
+    """UDP and TCP DNS server on one loopback port playing scripted steps."""
+
+    def __init__(self, steps: list[dict[str, Any]]) -> None:
+        self.steps = list(steps)
+        self.requests: list[dict[str, Any]] = []
+        self.port = 0
+
+    def _record(self, wire: bytes, transport: str) -> int:
+        import dns.message
+        import dns.rdatatype
+
+        query = dns.message.from_wire(wire)
+        question = query.question[0]
+        self.requests.append(
+            {
+                "transport": transport,
+                "qname": question.name.to_text(),
+                "qtype": dns.rdatatype.to_text(question.rdtype),
+                "flags": int(query.flags),
+                "edns": query.edns,
+                "payload": query.payload if query.edns >= 0 else 0,
+            }
+        )
+        return query.id
+
+    def _answers(self, query_id: int) -> list[bytes] | None:
+        step = self.steps.pop(0) if self.steps else _DROP
+        if "reply" not in step:
+            return None if "drop" in step else []
+        answers = []
+        for template in step["reply"]:
+            wire = bytearray(bytes.fromhex(template))
+            if len(wire) >= 2:
+                reply_id = query_id if step["id"] == "match" else query_id ^ 0xFFFF
+                wire[0:2] = struct.pack("!H", reply_id)
+            answers.append(bytes(wire))
+        return answers
+
+    async def start(self) -> None:
+        loop = asyncio.get_running_loop()
+        server = self
+
+        class Udp(asyncio.DatagramProtocol):
+            def connection_made(self, transport: Any) -> None:
+                self.transport = transport
+
+            def datagram_received(self, data: bytes, addr: Any) -> None:
+                answers = server._answers(server._record(data, "udp"))
+                for answer in answers or []:
+                    self.transport.sendto(answer, addr)
+
+        self.udp, _ = await loop.create_datagram_endpoint(Udp, local_addr=(_SERVER, 0))
+        self.port = self.udp.get_extra_info("sockname")[1]
+
+        async def handle(reader: Any, writer: Any) -> None:
+            try:
+                length = struct.unpack("!H", await reader.readexactly(2))[0]
+                data = await reader.readexactly(length)
+            except Exception:  # noqa: BLE001 - client went away
+                writer.close()
+                return
+            answers = self._answers(self._record(data, "tcp"))
+            if answers is None:
+                await asyncio.sleep(5)
+            for answer in answers or []:
+                writer.write(struct.pack("!H", len(answer)) + answer)
+            await writer.drain()
+            writer.close()
+
+        self.tcp = await asyncio.start_server(handle, _SERVER, self.port)
+
+    def close(self) -> None:
+        self.udp.close()
+        self.tcp.close()
+
+
+def _run_executor_case(
+    url: str,
+    data: Any,
+    steps: list[dict[str, Any]],
+    resolv_conf: str = _DEFAULT_RESOLV,
+) -> dict[str, Any]:
+    import dns.resolver
+
+    from nyxmon.adapters.runner.executors.dns_executor import DnsCheckExecutor
+    from nyxmon.domain import Check
+
+    server = _ScriptedDns(steps)
+    original_reset = dns.resolver.BaseResolver.reset
+    original_read = dns.resolver.BaseResolver.read_resolv_conf
+
+    def reset(self: Any) -> None:
+        original_reset(self)
+        self.port = server.port
+
+    def read_resolv_conf(self: Any, f: Any) -> None:
+        if resolv_conf is None:
+            raise dns.resolver.NoResolverConfiguration("cannot open /etc/resolv.conf")
+        original_read(self, io.StringIO(resolv_conf))
+
+    async def run() -> Any:
+        await server.start()
+        try:
+            check = Check(
+                check_id=1, service_id=1, name="c", check_type="dns", url=url, data=data
+            )
+            return await DnsCheckExecutor().execute(check)
+        finally:
+            server.close()
+
+    with (
+        mock.patch.object(dns.resolver.BaseResolver, "reset", reset),
+        mock.patch.object(
+            dns.resolver.BaseResolver, "read_resolv_conf", read_resolv_conf
+        ),
+    ):
+        result = asyncio.run(run())
+    result_data = dict(result.data)
+    keys = list(result_data)
+    if "query_time_ms" in result_data:
+        result_data["query_time_ms"] = "<ms>"
+    message = str(result_data.get("error_msg", ""))
+    if message.startswith("All nameservers failed"):
+        result_data["error_msg"] = "<P2>"
+    elif "error_msg" in result_data:
+        result_data["error_msg"] = _normalise_set_reprs(message)
+    return {
+        "url": url,
+        "data": data,
+        "resolv_conf": resolv_conf,
+        "steps": steps,
+        "outcome": {"status": str(result.status), "keys": keys, "data": result_data},
+        "requests": server.requests,
+    }
+
+
+def _executor_scenarios() -> list[dict[str, Any]]:
+    name = "www.example.test"
+    a_ok = _response(name, "A", answer=[(name + ".", "A", "192.0.2.1")])
+    base = {"expected_ips": ["192.0.2.1"], "dns_server": _SERVER, "timeout": 2}
+    fast = {**base, "timeout": 0.2}
+
+    def case(
+        steps: list[dict[str, Any]],
+        data: Any = None,
+        url: str = name,
+        resolv_conf: str | None = _DEFAULT_RESOLV,
+    ) -> dict[str, Any]:
+        return {
+            "url": url,
+            "data": base if data is None else data,
+            "steps": steps,
+            "resolv_conf": resolv_conf,
+        }
+
+    mx = _response(
+        name,
+        "MX",
+        answer=[
+            (name + ".", "MX", "10 mail.example.test."),
+            (name + ".", "MX", "20 Backup.Example.Test."),
+        ],
+    )
+    txt = _response(
+        name,
+        "TXT",
+        answer=[
+            (name + ".", "TXT", '"v=spf1" "-all"'),
+            (name + ".", "TXT", '"caf\\195\\169 \\"quoted\\""'),
+            (name + ".", "TXT", '""'),
+        ],
+    )
+    cname_chain = _response(
+        name,
+        "A",
+        answer=[
+            (name + ".", "CNAME", "alias.example.test."),
+            ("alias.example.test.", "CNAME", "final.example.test."),
+            ("final.example.test.", "A", "192.0.2.1"),
+            ("final.example.test.", "A", "192.0.2.9"),
+            ("other.example.test.", "A", "192.0.2.77"),
+        ],
+    )
+    return [
+        case([_reply(a_ok)]),
+        case([_reply(a_ok)], data={**base, "expected_ips": ["192.0.2.2"]}),
+        case([_reply(a_ok)], data={**base, "source_ip": "127.0.0.1"}),
+        case([_reply(a_ok)], data={**base, "dns_server": ""}),
+        case([_reply(a_ok)], data={**base, "dns_server": None}),
+        case(
+            [_reply(a_ok)],
+            data={k: v for k, v in base.items() if k != "dns_server"},
+            resolv_conf="# comment\n; also\nnameserver\nsearch example.test\noptions rotate timeout:1 ndots:2\nnameserver 127.0.0.1\n",
+        ),
+        case(
+            [_reply(a_ok)],
+            data={k: v for k, v in base.items() if k != "dns_server"},
+            resolv_conf="options edns0\nnameserver 127.0.0.1\n",
+        ),
+        case([_reply(a_ok)], resolv_conf="options edns0\nnameserver 127.0.0.1\n"),
+        case([_reply(a_ok)], resolv_conf="search example.test\n"),
+        case([_reply(a_ok)], resolv_conf=None),
+        case([_reply(a_ok)], resolv_conf="nameserver not-an-address\n"),
+        case([_reply(a_ok)], data={**base, "dns_server": 5}),
+        case([_reply(a_ok)], url="WWW.Example.TEST."),
+        case(
+            [
+                _reply(
+                    _response(
+                        "WWW.Example.TEST",
+                        "A",
+                        answer=[("www.example.test.", "A", "192.0.2.1")],
+                    )
+                )
+            ],
+            url="WWW.Example.TEST",
+        ),
+        case([_reply(a_ok)], url="a..b"),
+        case([_reply(a_ok)], url="x\\"),
+        case([_reply(a_ok)], url="a" * 64),
+        case(
+            [
+                _reply(
+                    _response(
+                        "a\\.b c", "A", answer=[("a\\.b\\032c.", "A", "192.0.2.1")]
+                    )
+                )
+            ],
+            url="a\\.b c",
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "AAAA",
+                        answer=[
+                            (name + ".", "AAAA", "2a01:4f8:0:0::1"),
+                            (name + ".", "AAAA", "::ffff:192.0.2.1"),
+                            (name + ".", "AAAA", "1:0:0:1:0:0:0:1"),
+                        ],
+                    )
+                )
+            ],
+            data={**base, "query_type": "AAAA", "expected_ips": ["2A01:04F8::0001"]},
+        ),
+        case(
+            [_reply(mx)],
+            data={**base, "query_type": "MX", "expected_ips": ["mail.example.test."]},
+        ),
+        case(
+            [_reply(mx)],
+            data={
+                **base,
+                "query_type": "MX",
+                "expected_ips": ["10 mail.example.test."],
+            },
+        ),
+        case(
+            [_reply(txt)],
+            data={**base, "query_type": "TXT", "expected_ips": ["v=spf1 -all"]},
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name, "TXT", answer=[(name + ".", "TXT", '"ok" "\\255bad"')]
+                    )
+                )
+            ],
+            data={**base, "query_type": "TXT", "expected_ips": ["x"]},
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "CNAME",
+                        answer=[(name + ".", "CNAME", "Target.Example.test.")],
+                    )
+                )
+            ],
+            data={
+                **base,
+                "query_type": "CNAME",
+                "expected_ips": ["target.example.test."],
+            },
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "NS",
+                        answer=[
+                            (name + ".", "NS", "ns1.example.test."),
+                            (name + ".", "NS", "ns2.example.test."),
+                        ],
+                    )
+                )
+            ],
+            data={**base, "query_type": "NS", "expected_ips": ["ns2.example.test."]},
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "SOA",
+                        answer=[
+                            (
+                                name + ".",
+                                "SOA",
+                                "ns1.example.test. hostmaster.example.test. 2024010101 7200 3600 1209600 300",
+                            )
+                        ],
+                    )
+                )
+            ],
+            data={**base, "query_type": "SOA", "expected_ips": ["x"]},
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        "1.2.0.192.in-addr.arpa",
+                        "PTR",
+                        answer=[
+                            ("1.2.0.192.in-addr.arpa.", "PTR", "host.example.test.")
+                        ],
+                    )
+                )
+            ],
+            url="1.2.0.192.in-addr.arpa",
+            data={**base, "query_type": "PTR", "expected_ips": ["host.example.test."]},
+        ),
+        case([_reply(cname_chain)]),
+        case(
+            [
+                _reply(
+                    _response(
+                        name, "A", answer=[(name + ".", "CNAME", "alias.example.test.")]
+                    )
+                )
+            ],
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "A",
+                        rcode="NXDOMAIN",
+                        answer=[(name + ".", "CNAME", "gone.example.test.")],
+                    )
+                )
+            ],
+        ),
+        case([_reply(_response(name, "A", rcode="NXDOMAIN"))]),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "A",
+                        rcode="NXDOMAIN",
+                        answer=[(name + ".", "A", "192.0.2.1")],
+                    )
+                )
+            ]
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "A",
+                        authority=[("example.test.", "SOA", "ns. host. 1 2 3 4 5")],
+                    )
+                )
+            ],
+        ),
+        case([_reply(_response(name, "A", answer=[(name + ".", "AAAA", "::1")]))]),
+        case([_reply(_response(name, "A", rcode="SERVFAIL"))]),
+        case([_reply(_response(name, "A", rcode="REFUSED", no_question=True))]),
+        case([_reply(_response(name, "A", rcode="YXDOMAIN"))]),
+        case(
+            [_reply(_response(name, "A", rcode="SERVFAIL")), _reply(a_ok)],
+            data={k: v for k, v in base.items() if k != "dns_server"},
+            resolv_conf="nameserver 127.0.0.1\nnameserver 127.0.0.1\n",
+        ),
+        case([_reply(_response(name, "A", tc=True)), _reply(a_ok)]),
+        case(
+            [
+                _reply(_response(name, "A", tc=True)),
+                _reply(
+                    _response(
+                        name, "A", tc=True, answer=[(name + ".", "A", "192.0.2.1")]
+                    )
+                ),
+            ]
+        ),
+        case([_reply(_response(name, "A", tc=True)), _CLOSE]),
+        case([_reply("00ff", a_ok)]),
+        case([_reply(a_ok, id_mode="other"), _DROP], data=fast),
+        case(
+            [
+                _reply(
+                    _response(
+                        "other.example.test",
+                        "A",
+                        answer=[("other.example.test.", "A", "192.0.2.1")],
+                    ),
+                    a_ok,
+                )
+            ]
+        ),
+        case(
+            [_reply(_response(name, "MX", answer=[(name + ".", "MX", "1 x.")]), a_ok)]
+        ),
+        case([_reply(_response(name, "A", qr=False), a_ok)]),
+        case([_reply(a_ok + "00", a_ok)]),
+        case([_DROP], data=fast),
+        case([_DROP], data={**fast, "source_ip": 5}),
+        case(
+            [
+                _reply(
+                    _response(
+                        name,
+                        "A",
+                        answer=[
+                            (name + ".", "A", "192.0.2.1"),
+                            (name + ".", "A", "192.0.2.1"),
+                            (name + ".", "A", "192.0.2.3"),
+                        ],
+                    )
+                )
+            ],
+            data={**base, "expected_ips": ["192.0.2.3"]},
+        ),
+        case(
+            [
+                _reply(
+                    _response(
+                        name, "A", answer=[(name + ".", "A", "192.0.2.1")], edns=True
+                    )
+                )
+            ],
+            resolv_conf="options edns0\nnameserver 127.0.0.1\n",
+        ),
+        case([_reply(a_ok)], data={**base, "timeout": 0}),
+        case([_reply(a_ok)], data={**base, "query_type": "BAD"}),
+        case([_reply(a_ok)], data={**base, "query_type": ["A"]}),
+        case([_reply(a_ok)], data=["expected_ips"]),
+        case([_reply(a_ok)], data=5),
+    ]
+
+
 def build_config_dns() -> dict[str, Any]:
     return {
         "cases": [
             {"data": data, "outcome": _config_outcome(data)}
             for data in _config_corpus()
+        ],
+        "executor_cases": [
+            _run_executor_case(**spec) for spec in _executor_scenarios()
         ],
     }
 

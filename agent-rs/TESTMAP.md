@@ -191,6 +191,15 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `dns.name.from_text`/`to_text`, `dns.ipv6.inet_ntoa`, `bytes.decode()` errors, `Message.is_response`, `resolve_chaining` | `dns_text.json` (`nyxmon-checks/src/dns/wire/tests.rs`) and wire unit tests (pointers, trailing bytes, rdata lengths, chain limit, EDNS) | done |
 | D-16 (non-ASCII names) | `dns/wire/tests.rs::non_ascii_names_fail_closed` | done |
 
+## S5b part 2 — DNS executor
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `DnsCheckExecutor.execute` with `DnspythonResolver` (`test_dns_executor.py`: success, mismatch, timeout, NXDOMAIN, invalid configuration, metadata; `test_dns_source_ip.py`, `test_dns_executor.py::test_resolver_binds_source_ip`; `test_dns_address_normalization.py::test_legacy_raw_aaaa_expectation_matches`, `::test_different_address_still_mismatches`, `::test_non_ip_values_keep_exact_matching`, `::test_ip_looking_txt_values_are_compared_exactly`, `::test_wrong_family_is_a_configuration_error`, `::test_string_expected_ips_is_a_configuration_error`): resolv.conf handling, `dns_server` override, query names, EDNS, CNAME chains, NXDOMAIN/no answer/SERVFAIL/REFUSED/YXDOMAIN, truncation and TCP fallback, ignored datagrams, record texts of every query type, TXT decode errors, integer `source_ip` | `config_dns.json` `executor_cases` (the Python executor against a scripted DNS server) replayed by `nyxmon-checks/src/dns/tests.rs::executor_cases_match_python` | done |
+| `test_dns_executor.py::test_query_time_measurement` | `query_time_ms` checked as a non-negative integer (P2) | done |
+| lifetime, nameserver dropping, `ignore_unexpected` | `dns/tests.rs::a_lost_query_times_out_after_the_lifetime`, `::an_unreachable_nameserver_is_dropped_and_the_next_one_answers`, `::responses_from_other_addresses_are_ignored` | done |
+| D-16 (non-ASCII names, DoH nameservers) | `dns/tests.rs::non_ascii_names_are_a_configuration_error`, `::doh_nameservers_in_resolv_conf_are_a_configuration_error` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -201,7 +210,6 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `tests/unit/test_site_dependency.py` | `site_dependency.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_holds.py` (snapshot) | `site_snapshot.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
-| `tests/unit/test_dns_executor.py`, `test_dns_source_ip.py`, executor parts of `test_dns_address_normalization.py` | `config_dns.json` `executor_cases`, fake DNS responder | S5b part 2 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | done |
 | `tests/unit/test_imap_*.py`, `test_mail_tls_verify.py` (IMAP executor) | `config_imap.json`, fake servers | S7 (IMAP part) | pending |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
