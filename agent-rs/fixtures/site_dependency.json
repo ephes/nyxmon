@@ -1,0 +1,750 @@
+{
+ "scenarios": [
+  [
+   {
+    "check_id": 3,
+    "data_json": "{}",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "null",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "[]",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "\"x\"",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": null}",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \"internet\"}",
+    "value": {
+     "path_names": [
+      "dns",
+      "ipv4",
+      "ipv6"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ],
+      [
+       "ipv4",
+       "ipv6"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \" Internet \"}",
+    "value": {
+     "path_names": [
+      "dns",
+      "ipv4",
+      "ipv6"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ],
+      [
+       "ipv4",
+       "ipv6"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \"INTERNET\"}",
+    "value": {
+     "path_names": [
+      "dns",
+      "ipv4",
+      "ipv6"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ],
+      [
+       "ipv4",
+       "ipv6"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \"none\"}",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \" NONE \"}",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \"\"}",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \"   \"}",
+    "value": null,
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \"intranet\"}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (unknown shorthand, got 'intranet'); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": \"\\u0130nternet\"}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (unknown shorthand, got '\u0130nternet'); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": 5}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (must be a string or an object, got 5); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": true}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (must be a string or an object, got True); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": 1.5}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (must be a string or an object, got 1.5); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": [\"dns\"]}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (must be a string or an object, got ['dns']); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (requires must be a non-empty list, got {}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": null}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (requires must be a non-empty list, got {'requires': None}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": []}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (requires must be a non-empty list, got {'requires': []}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": \"dns\"}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (requires must be a non-empty list, got {'requires': 'dns'}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": {\"dns\": 1}}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (requires must be a non-empty list, got {'requires': {'dns': 1}}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [\"dns\"]}}",
+    "value": {
+     "path_names": [
+      "dns"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}",
+    "value": {
+     "path_names": [
+      "ipv6"
+     ],
+     "requirements": [
+      [
+       "ipv6"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [\"DNS \", [\"ipv4\", \"IPv6\"], \"dns\", [\"ipv4\", \"ipv6\"], [\"ipv6\", \"ipv4\"]]}}",
+    "value": {
+     "path_names": [
+      "dns",
+      "ipv4",
+      "ipv6"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ],
+      [
+       "ipv4",
+       "ipv6"
+      ],
+      [
+       "ipv6",
+       "ipv4"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [[\"dns\", \"dns\", \" DNS\"]]}}",
+    "value": {
+     "path_names": [
+      "dns"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [[\"ipv4\"], \"ipv4\"]}}",
+    "value": {
+     "path_names": [
+      "ipv4"
+     ],
+     "requirements": [
+      [
+       "ipv4"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [[]]}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (every requirement must name one of dns, ipv4, ipv6, got {'requires': [[]]}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [\"ipv5\"]}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (every requirement must name one of dns, ipv4, ipv6, got {'requires': ['ipv5']}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [[\"ipv4\", 4]]}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (every requirement must name one of dns, ipv4, ipv6, got {'requires': [['ipv4', 4]]}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [5]}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (every requirement must name one of dns, ipv4, ipv6, got {'requires': [5]}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [null]}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (every requirement must name one of dns, ipv4, ipv6, got {'requires': [None]}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [{\"x\": 1}]}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (every requirement must name one of dns, ipv4, ipv6, got {'requires': [{'x': 1}]}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [\"\\u0130pv4\"]}}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=3 is invalid (every requirement must name one of dns, ipv4, ipv6, got {'requires': ['\u0130pv4']}); treating the check as unclassified"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [\"ipv4\\u00a0\"]}}",
+    "value": {
+     "path_names": [
+      "ipv4"
+     ],
+     "requirements": [
+      [
+       "ipv4"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 3,
+    "data_json": "{\"site_dependency\": {\"requires\": [\"dns\", [\"ipv4\", \"ipv6\"]], \"extra\": [1, 2.5, null]}}",
+    "value": {
+     "path_names": [
+      "dns",
+      "ipv4",
+      "ipv6"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ],
+      [
+       "ipv4",
+       "ipv6"
+      ]
+     ]
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 1,
+    "data_json": "{\"site_dependency\": \"bogus\"}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=1 is invalid (unknown shorthand, got 'bogus'); treating the check as unclassified"
+     ]
+    ]
+   },
+   {
+    "check_id": 1,
+    "data_json": "{\"site_dependency\": 5}",
+    "value": null,
+    "warnings": []
+   },
+   {
+    "check_id": 2,
+    "data_json": "{\"site_dependency\": \"bogus\"}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=2 is invalid (unknown shorthand, got 'bogus'); treating the check as unclassified"
+     ]
+    ]
+   },
+   {
+    "check_id": 2,
+    "data_json": "{\"site_dependency\": \"internet\"}",
+    "value": {
+     "path_names": [
+      "dns",
+      "ipv4",
+      "ipv6"
+     ],
+     "requirements": [
+      [
+       "dns"
+      ],
+      [
+       "ipv4",
+       "ipv6"
+      ]
+     ]
+    },
+    "warnings": []
+   },
+   {
+    "check_id": 0,
+    "data_json": "{\"site_dependency\": \"bogus\"}",
+    "value": null,
+    "warnings": [
+     [
+      "nyxmon.service_layer.site_dependency",
+      "site_dependency for check_id=0 is invalid (unknown shorthand, got 'bogus'); treating the check as unclassified"
+     ]
+    ]
+   }
+  ]
+ ],
+ "unobserved": [
+  {
+   "checks": [
+    [
+     1,
+     "{\"site_dependency\": \"internet\"}"
+    ],
+    [
+     2,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}"
+    ],
+    [
+     3,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\", \"dns\", [\"ipv4\"]]}}"
+    ],
+    [
+     4,
+     "{\"site_dependency\": {\"requires\": [[\"ipv4\", \"ipv6\"]]}}"
+    ],
+    [
+     5,
+     "{\"site_dependency\": \"bogus\"}"
+    ],
+    [
+     6,
+     "{}"
+    ]
+   ],
+   "unobserved": [],
+   "value": null,
+   "warnings": []
+  },
+  {
+   "checks": [
+    [
+     1,
+     "{\"site_dependency\": \"internet\"}"
+    ],
+    [
+     2,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}"
+    ],
+    [
+     3,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\", \"dns\", [\"ipv4\"]]}}"
+    ],
+    [
+     4,
+     "{\"site_dependency\": {\"requires\": [[\"ipv4\", \"ipv6\"]]}}"
+    ],
+    [
+     5,
+     "{\"site_dependency\": \"bogus\"}"
+    ],
+    [
+     6,
+     "{}"
+    ]
+   ],
+   "unobserved": [
+    "ipv6"
+   ],
+   "value": null,
+   "warnings": [
+    [
+     "nyxmon.adapters.site_connectivity",
+     "check_id=2 requires the unobserved path(s) ipv6; the requirement is always met and can never hold a notification"
+    ],
+    [
+     "nyxmon.adapters.site_connectivity",
+     "check_id=3 requires the unobserved path(s) ipv6; the requirement is always met and can never hold a notification"
+    ],
+    [
+     "nyxmon.service_layer.site_dependency",
+     "site_dependency for check_id=5 is invalid (unknown shorthand, got 'bogus'); treating the check as unclassified"
+    ]
+   ]
+  },
+  {
+   "checks": [
+    [
+     1,
+     "{\"site_dependency\": \"internet\"}"
+    ],
+    [
+     2,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}"
+    ],
+    [
+     3,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\", \"dns\", [\"ipv4\"]]}}"
+    ],
+    [
+     4,
+     "{\"site_dependency\": {\"requires\": [[\"ipv4\", \"ipv6\"]]}}"
+    ],
+    [
+     5,
+     "{\"site_dependency\": \"bogus\"}"
+    ],
+    [
+     6,
+     "{}"
+    ]
+   ],
+   "unobserved": [
+    "ipv6",
+    "dns",
+    "ipv4"
+   ],
+   "value": null,
+   "warnings": [
+    [
+     "nyxmon.adapters.site_connectivity",
+     "check_id=1 requires the unobserved path(s) dns; the requirement is always met and can never hold a notification"
+    ]
+   ]
+  },
+  {
+   "checks": [
+    [
+     1,
+     "{\"site_dependency\": \"internet\"}"
+    ],
+    [
+     2,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}"
+    ],
+    [
+     3,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\", \"dns\", [\"ipv4\"]]}}"
+    ],
+    [
+     4,
+     "{\"site_dependency\": {\"requires\": [[\"ipv4\", \"ipv6\"]]}}"
+    ],
+    [
+     5,
+     "{\"site_dependency\": \"bogus\"}"
+    ],
+    [
+     6,
+     "{}"
+    ]
+   ],
+   "unobserved": [
+    "ipv6"
+   ],
+   "value": null,
+   "warnings": []
+  },
+  {
+   "checks": [
+    [
+     2,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}"
+    ],
+    [
+     7,
+     "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}"
+    ]
+   ],
+   "unobserved": [
+    "ipv6"
+   ],
+   "value": null,
+   "warnings": [
+    [
+     "nyxmon.adapters.site_connectivity",
+     "check_id=7 requires the unobserved path(s) ipv6; the requirement is always met and can never hold a notification"
+    ]
+   ]
+  }
+ ]
+}

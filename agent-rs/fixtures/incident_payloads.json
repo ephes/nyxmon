@@ -1,0 +1,193 @@
+{
+ "delivery_markers": {
+  "carry": [
+   {
+    "carried_json": "{}",
+    "existing_json": "{}",
+    "payload_json": "{}"
+   },
+   {
+    "carried_json": "{}",
+    "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "payload_json": "{}"
+   },
+   {
+    "carried_json": "{\"delivery_pending\": true, \"delivery_attempt\": 1}",
+    "existing_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "payload_json": "{}"
+   },
+   {
+    "carried_json": "{\"delivery_pending\": false}",
+    "existing_json": "{\"delivery_pending\": false, \"x\": null}",
+    "payload_json": "{}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": \"3\"}",
+    "existing_json": "{\"delivery_attempt\": \"3\"}",
+    "payload_json": "{}"
+   },
+   {
+    "carried_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "existing_json": "{}",
+    "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}"
+   },
+   {
+    "carried_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}"
+   },
+   {
+    "carried_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+    "existing_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}"
+   },
+   {
+    "carried_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2, \"delivery_pending\": false}",
+    "existing_json": "{\"delivery_pending\": false, \"x\": null}",
+    "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}"
+   },
+   {
+    "carried_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2, \"delivery_attempt\": \"3\"}",
+    "existing_json": "{\"delivery_attempt\": \"3\"}",
+    "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "existing_json": "{}",
+    "payload_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "payload_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "existing_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "payload_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": false, \"b\": [1]}",
+    "existing_json": "{\"delivery_pending\": false, \"x\": null}",
+    "payload_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": \"3\", \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "existing_json": "{\"delivery_attempt\": \"3\"}",
+    "payload_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}"
+   },
+   {
+    "carried_json": "{\"delivery_pending\": false, \"x\": null}",
+    "existing_json": "{}",
+    "payload_json": "{\"delivery_pending\": false, \"x\": null}"
+   },
+   {
+    "carried_json": "{\"delivery_pending\": false, \"x\": null}",
+    "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "payload_json": "{\"delivery_pending\": false, \"x\": null}"
+   },
+   {
+    "carried_json": "{\"delivery_pending\": true, \"x\": null, \"delivery_attempt\": 1}",
+    "existing_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "payload_json": "{\"delivery_pending\": false, \"x\": null}"
+   },
+   {
+    "carried_json": "{\"delivery_pending\": false, \"x\": null}",
+    "existing_json": "{\"delivery_pending\": false, \"x\": null}",
+    "payload_json": "{\"delivery_pending\": false, \"x\": null}"
+   },
+   {
+    "carried_json": "{\"delivery_pending\": false, \"x\": null, \"delivery_attempt\": \"3\"}",
+    "existing_json": "{\"delivery_attempt\": \"3\"}",
+    "payload_json": "{\"delivery_pending\": false, \"x\": null}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": \"3\"}",
+    "existing_json": "{}",
+    "payload_json": "{\"delivery_attempt\": \"3\"}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": \"3\"}",
+    "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "payload_json": "{\"delivery_attempt\": \"3\"}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": 1, \"delivery_pending\": true}",
+    "existing_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "payload_json": "{\"delivery_attempt\": \"3\"}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": \"3\", \"delivery_pending\": false}",
+    "existing_json": "{\"delivery_pending\": false, \"x\": null}",
+    "payload_json": "{\"delivery_attempt\": \"3\"}"
+   },
+   {
+    "carried_json": "{\"delivery_attempt\": \"3\"}",
+    "existing_json": "{\"delivery_attempt\": \"3\"}",
+    "payload_json": "{\"delivery_attempt\": \"3\"}"
+   }
+  ],
+  "intent": [
+   {
+    "attempt": 1,
+    "payload_json": "{}",
+    "with_intent_json": "{\"delivery_pending\": true, \"delivery_attempt\": 1}",
+    "without_markers_json": "{}"
+   },
+   {
+    "attempt": 7,
+    "payload_json": "{}",
+    "with_intent_json": "{\"delivery_pending\": true, \"delivery_attempt\": 7}",
+    "without_markers_json": "{}"
+   },
+   {
+    "attempt": 1,
+    "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "with_intent_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+    "without_markers_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}"
+   },
+   {
+    "attempt": 7,
+    "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}",
+    "with_intent_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2, \"delivery_pending\": true, \"delivery_attempt\": 7}",
+    "without_markers_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2}"
+   },
+   {
+    "attempt": 1,
+    "payload_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "with_intent_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "without_markers_json": "{\"a\": 1, \"b\": [1]}"
+   },
+   {
+    "attempt": 7,
+    "payload_json": "{\"delivery_attempt\": 1, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "with_intent_json": "{\"delivery_attempt\": 7, \"a\": 1, \"delivery_pending\": true, \"b\": [1]}",
+    "without_markers_json": "{\"a\": 1, \"b\": [1]}"
+   },
+   {
+    "attempt": 1,
+    "payload_json": "{\"delivery_pending\": false, \"x\": null}",
+    "with_intent_json": "{\"delivery_pending\": true, \"x\": null, \"delivery_attempt\": 1}",
+    "without_markers_json": "{\"x\": null}"
+   },
+   {
+    "attempt": 7,
+    "payload_json": "{\"delivery_pending\": false, \"x\": null}",
+    "with_intent_json": "{\"delivery_pending\": true, \"x\": null, \"delivery_attempt\": 7}",
+    "without_markers_json": "{\"x\": null}"
+   },
+   {
+    "attempt": 1,
+    "payload_json": "{\"delivery_attempt\": \"3\"}",
+    "with_intent_json": "{\"delivery_attempt\": 1, \"delivery_pending\": true}",
+    "without_markers_json": "{}"
+   },
+   {
+    "attempt": 7,
+    "payload_json": "{\"delivery_attempt\": \"3\"}",
+    "with_intent_json": "{\"delivery_attempt\": 7, \"delivery_pending\": true}",
+    "without_markers_json": "{}"
+   }
+  ]
+ }
+}

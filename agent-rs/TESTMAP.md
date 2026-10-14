@@ -28,6 +28,23 @@ fails when a committed fixture no longer matches the Python code.
 | `ssl` `server_hostname` IDNA encoding (`str.encode("idna")`) | `tls/tests.rs::idna_encoding_matches_python` against `fixtures/idna.json` | done |
 | `test_mail_tls_verify.py::*_verifies_certificate_by_default` | `tls/tests.rs::verifying_config_*` (verification itself); executor wiring in S7 | done / pending S7 |
 
+## S3 — alerting core
+
+All in `nyxmon-core/src/alerting_tests.rs` unless noted; the fixtures are
+built by `fixtures/gen_alerting.py`.
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `notification_policy.py:resolve_notification_policy` (per-check overrides, `warning_*` preference, bool/float/out-of-range rejection, warn once per `(check_id, key)`, non-object policy and data); `test_notification_reminders.py::test_per_check_policy_overrides_threshold_and_reminder`, `::test_malformed_per_check_policy_falls_back_to_global_default`, `::test_warning_results_use_the_warning_reminder_cadence` (policy part) | `policy_matches_python` against `policy.json` | done |
+| `handlers.py:_should_notify_check_result`: every branch of PLAN.md 5.3 (OK clear, force, `collector_internal`, suppression streak reset, holds incl. exhaustion and `held_since` re-arm, observe-mode annotation, delivery retry, immediate cooldown, threshold and reminder); decision parts of `test_notification_dampening.py`, `test_notification_reminders.py`, `test_notification_delivery_retry.py`, `test_notification_suppression.py::test_suppressed_result_breaks_failure_notification_streak`, `::test_a_suppressed_sample_does_not_re_arm_the_hold_budget`, `::test_a_hold_still_wins_over_a_due_delivery_retry` | `decision_matches_python` against `decision.json`; the generator fails unless the corpus executes every line of the Python function | done (handler loop, persistence and send: S9) |
+| `site_dependency.py:resolve_site_dependency`, `SiteDependency.path_names`; `test_site_dependency.py` (all) | `site_dependency_matches_python` against `site_dependency.json` | done |
+| `site_connectivity.py:warn_unobserved_requirements`; `test_site_connectivity_holds.py::test_a_requirement_on_an_unobserved_path_never_holds_and_warns_once` (warning part) | `site_dependency_matches_python` (`unobserved`) | done (startup wiring: S11) |
+| `SiteConnectivitySnapshot` `hold_reason`, `observed_reason`, `dependency_recovered`, `dependency_usable` (any-of groups, unobserved members, watermarks, stale snapshot, claim 0); snapshot parts of `test_site_connectivity_holds.py` | `site_snapshot_matches_python` against `site_snapshot.json` | done (observer runtime: S4/S11) |
+| `notification_suppression.py` `_lookup`, `_rule_matches`, `_finite_seconds`, `_int_or_none`, `_timeout_seconds`, `_build_auth`, `notification_suppression_details` with a stubbed fetch; `test_notification_suppression.py` rule/freshness tests (`test_suppression_active_*`, `test_stale_payload_never_suppresses`, `test_suppression_fails_open_*`, `test_hostile_freshness_values_fail_open_without_raising`, `test_active_if_rule_*`, `test_suppression_ignores_malformed_active_if`, `test_suppression_clamps_timeout`) | `suppression_rules_match_python` against `suppression_rules.json`; `list_indexes_accept_ascii_digits_only` (D-6), `suppression_ignores_a_non_object_data_column` (D-11) | done (fetch: S5; handler merge: S9) |
+| `repr()`/`str()` of JSON values in warnings and suppression details | `suppression_rules_match_python` (`value_text`) | done |
+| `collector.py:estimated_check_runtime_seconds`; `test_collector_recovery.py::test_runtime_estimate_*` | `lease_estimate_matches_python` against `lease.json` | done (lease wiring: S10) |
+| `interface.py` `carry_delivery_markers`, `with_delivery_intent`, `without_delivery_markers` | `delivery_markers_match_python` against `incident_payloads.json` (`delivery_markers`) | done (store use: S2; `_merge_stale_batch_payload` and the incident messages: S10) |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -35,10 +52,6 @@ fails when a committed fixture no longer matches the Python code.
 | `tests/adapters/test_sqlite_repo.py`, `tests/unit/repositories/sqlite_repo_test.py` | `nyxmon-store` tests on `fixtures/schema/schema.sql` | S2 | pending |
 | `tests/adapters/test_collector_incident_store.py`, `test_collector_incident_delivery_ack.py` | `nyxmon-store` incident tests | S2 | pending |
 | `tests/adapters/test_site_connectivity_persistence.py` | `nyxmon-store` + S4 payload codec | S2/S4 | pending |
-| `tests/unit/test_notification_dampening.py`, `test_notification_reminders.py`, `test_notification_delivery_retry.py` (decision parts) | `decision.json`, `policy.json` | S3 | pending |
-| `tests/unit/test_notification_suppression.py` (rules) | `suppression_rules.json` | S3 | pending |
-| `tests/unit/test_site_dependency.py` | `site_dependency.json` | S3 | pending |
-| `tests/unit/test_site_connectivity_holds.py` (snapshot) | `site_snapshot.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
 | `tests/unit/test_http_executor.py`, `test_json_metrics_executor.py`, `test_json_metrics_config.py`, `test_dns_*.py`, `test_config_numeric_contracts.py` | `config_*.json`, `metrics_eval.json`, fake-server tests | S5 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | `starttls_text.json`, `ping_text.json`, fake servers | S6 | pending |

@@ -1,10 +1,11 @@
-//! Python string helpers: `str.isspace`, `str.strip()`, `len`, `repr(str)`
-//! and `repr(bytes)`.
+//! Python string helpers: `str.isspace`, `str.strip()`, `len`, `repr(str)`,
+//! `repr(bytes)`, and `repr()`/`str()` of JSON values.
 
 use std::fmt::Write as _;
 use std::sync::OnceLock;
 
-use super::loads;
+use super::num::py_float_repr;
+use super::{PyJson, loads};
 
 /// `str.isspace()` for one character: Unicode `White_Space` plus the ASCII
 /// separators U+001C..U+001F, which Python also treats as whitespace.
@@ -128,4 +129,72 @@ pub fn py_bytes_repr(data: &[u8]) -> String {
     }
     out.push(char::from(quote));
     out
+}
+
+/// `repr(value)` for a decoded JSON value (`None`, `True`, `'text'`,
+/// `[1, 2.0]`, `{'key': None}`), as `%r` renders it in a log message.
+///
+/// Iterative, so hostile nesting cannot overflow the stack (CPython would
+/// raise `RecursionError` beyond its recursion limit instead).
+pub fn py_repr(value: &PyJson) -> String {
+    enum Item<'a> {
+        Value(&'a PyJson),
+        Key(&'a str),
+        Text(&'static str),
+    }
+    let mut out = String::new();
+    let mut pending = vec![Item::Value(value)];
+    while let Some(item) = pending.pop() {
+        match item {
+            Item::Text(text) => out.push_str(text),
+            Item::Key(key) => {
+                out.push_str(&py_str_repr(key));
+                out.push_str(": ");
+            }
+            Item::Value(value) => match value {
+                PyJson::Null => out.push_str("None"),
+                PyJson::Bool(true) => out.push_str("True"),
+                PyJson::Bool(false) => out.push_str("False"),
+                PyJson::Int(number) => {
+                    let _ = write!(out, "{number}");
+                }
+                PyJson::BigInt(number) => {
+                    let _ = write!(out, "{number}");
+                }
+                PyJson::Float(number) => out.push_str(&py_float_repr(*number)),
+                PyJson::Str(text) => out.push_str(&py_str_repr(text)),
+                PyJson::List(items) => {
+                    out.push('[');
+                    pending.push(Item::Text("]"));
+                    for (index, item) in items.iter().enumerate().rev() {
+                        pending.push(Item::Value(item));
+                        if index > 0 {
+                            pending.push(Item::Text(", "));
+                        }
+                    }
+                }
+                PyJson::Dict(map) => {
+                    out.push('{');
+                    pending.push(Item::Text("}"));
+                    for (index, (key, item)) in map.iter().enumerate().rev() {
+                        pending.push(Item::Value(item));
+                        pending.push(Item::Key(key));
+                        if index > 0 {
+                            pending.push(Item::Text(", "));
+                        }
+                    }
+                }
+            },
+        }
+    }
+    out
+}
+
+/// `str(value)` for a decoded JSON value: the text of a string, otherwise
+/// [`py_repr`].
+pub fn py_str(value: &PyJson) -> String {
+    match value {
+        PyJson::Str(text) => text.clone(),
+        other => py_repr(other),
+    }
 }

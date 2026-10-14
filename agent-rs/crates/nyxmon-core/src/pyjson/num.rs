@@ -317,3 +317,24 @@ pub fn bigint_to_i64_saturating(value: &BigInt) -> i64 {
             i64::MAX
         })
 }
+
+/// `float(n)` for a Python `int`: correctly rounded (half to even).
+///
+/// # Errors
+/// `OverflowError` ("int too large to convert to float") when the rounded
+/// value does not fit in a double, like CPython.
+pub fn py_float_of_int(value: &BigInt) -> Result<f64, PyNumError> {
+    let converted = match value.to_i64() {
+        // Exact below 2**53 and correctly rounded above, like the decimal
+        // parse below.
+        Some(small) => small as f64,
+        None => value.to_string().parse::<f64>().unwrap_or(f64::INFINITY),
+    };
+    if converted.is_finite() {
+        Ok(converted)
+    } else {
+        Err(PyNumError::OverflowError(
+            "int too large to convert to float".to_owned(),
+        ))
+    }
+}

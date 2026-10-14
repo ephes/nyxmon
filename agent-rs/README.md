@@ -8,7 +8,11 @@ rsync and git deploys ship `src/` only, and the ops-library role ignores
 
 Status: slice S1 (foundations): workspace, CI, recipes, the `pyjson`
 module, the fixture pipeline, the environment readers, the domain types and
-the TLS helpers. The binary only answers `--version`.
+the TLS helpers; slice S3 (alerting core): notification policy, site
+dependencies, the site snapshot hold logic, maintenance-suppression rules,
+the notification decision, the runtime (lease) estimate and the incident
+delivery markers, all pure functions in `nyxmon-core`. The binary only
+answers `--version`.
 
 ## Layout
 
@@ -20,13 +24,15 @@ agent-rs/
   PLAN.md               the implementation plan and parity contract
   TESTMAP.md            Python test -> Rust test coverage, per slice
   crates/
-    nyxmon-core/        pure logic (no I/O): pyjson, env readers, domain types
+    nyxmon-core/        pure logic (no I/O): pyjson, env readers, domain types,
+                        alerting (policy, site, suppression, decision, lease)
     nyxmon-store/       SQLite store (S2)
     nyxmon-checks/      executors (S5-S7); TLS helpers (S1)
     nyxmon-notify/      Telegram, OpsGate, logging notifier (S8)
     nyxmon-agent/       the binary (S9+)
   fixtures/
     generate.py         writes the fixtures from the Python code
+    gen_*.py            per-slice fixture builders loaded by generate.py
     *.json              generated fixtures (do not edit by hand)
 ```
 
@@ -89,6 +95,13 @@ Current fixtures:
 - `unicode_nonprintable.json`: the code points `str.isprintable()` rejects.
   `nyxmon-core` embeds it, so `repr(str)` escapes exactly what the oracle's
   Unicode database (15.1 for CPython 3.13) escapes.
+- `policy.json`, `site_dependency.json`, `site_snapshot.json`,
+  `suppression_rules.json`, `decision.json`, `lease.json`,
+  `incident_payloads.json` (`gen_alerting.py`): the alerting core. JSON
+  whose key order matters is stored as JSON text (`*_json`) because the
+  files are written with sorted keys. `decision.json` is generated under
+  `sys.monitoring` line tracing and the generator fails unless the corpus
+  executes every line of `_should_notify_check_result`.
 
 ## Conventions for later slices
 
@@ -104,6 +117,9 @@ Current fixtures:
   `nyxmon_core::log::LogSink` with the Python logger name; `TracingSink`
   forwards to `tracing` with that name as the target, `RecordingSink`
   captures them in tests.
+- Warn-once state of the alerting readers (Python's module-level
+  `_warned_*` sets) lives in one `nyxmon_core::log::WarnOnce` per process,
+  keyed by `(scope, check_id, field)`.
 - Environment readers take an `&Env` (`Env::process()` in the binary,
   `Env::from_map` in tests); its warn-once state lives as long as the `Env`.
   Unbounded integers are returned exactly as `BigInt` (see the `env`
