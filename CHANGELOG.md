@@ -250,8 +250,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Rust checks, and CI gains a `rust` job. Nothing deploys the Rust agent
   yet; the Python agent is unchanged.
 - Rust agent store (`nyxmon-store`, slice S2 of `agent-rs/PLAN.md`): the
-  SQLite actor with the check claim, stale reclaim, release and hold
-  operations of the Python repository, and the schema contract. The Rust agent runs no DDL;
+  SQLite actor with every claim, result, incident and cleaner operation of
+  the Python repository, the agent lock, and the schema contract. The Rust agent runs no DDL;
   it verifies the Django-migrated schema instead. `agent-rs/fixtures/schema/`
   holds the migrated schema the Rust tests run against, and
   `tests/unit/test_agent_rs_schema_contract.py` fails when a migration changes
@@ -415,6 +415,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the observer's recovery recheck) nor cancels an unacknowledged send.
 
 ### Changed
+- `start-agent` takes an exclusive lock on `<db path>.agent.lock` (created
+  with mode 0600 next to the database) before touching the database and holds
+  it until it exits. A second agent on the same database, Python or the Rust
+  port, logs `another nyxmon agent holds <lock path>; refusing to start` and
+  exits 1. The ops-library deployment is unaffected: the file matches its
+  existing `db.sqlite3*` rsync excludes and permission normalisation.
+  `just push` now excludes `db.sqlite3*` as well (it excluded only
+  `db.sqlite3`), so its `rsync --delete` cannot remove a held lock file.
 - Notifiers now report whether a message was actually delivered.
   `Notifier.notify_check_failed` returns `bool | None`; the Telegram notifier
   returns `False` only for an attempted request that failed (the OpsGate ticket

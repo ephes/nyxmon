@@ -15,10 +15,9 @@ delivery markers, all pure functions in `nyxmon-core`; slice S4 (site
 observer core): the site connectivity observer as a pure state machine
 (`nyxmon_core::site::Observer`: path and phase machines, payload codec and
 restore, ongoing alert, summaries, recovery recheck, message rendering) whose
-I/O goes through the `SitePorts` trait; slice S2 (in progress): the SQLite
-store (`nyxmon-store`: DB actor, claims and holds) and the schema contract;
-result persistence, incidents, the cleaner batch and the agent lock follow.
-The binary only answers `--version`.
+I/O goes through the `SitePorts` trait; slice S2 (store): the SQLite
+store (`nyxmon-store`: DB actor and every repository operation), the schema
+contract and the agent lock. The binary only answers `--version`.
 
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
 ticket integration, and the logging/shadow notifier.
@@ -35,7 +34,7 @@ agent-rs/
   crates/
     nyxmon-core/        pure logic (no I/O): pyjson, env readers, domain types,
                         alerting (policy, site, suppression, decision, lease)
-    nyxmon-store/       SQLite store: DB actor, all SQL, schema contract
+    nyxmon-store/       SQLite store: DB actor, all SQL, schema contract, agent lock
     nyxmon-checks/      executors (S5-S7); TLS helpers (S1)
     nyxmon-notify/      Telegram, OpsGate, logging notifier (S8, done)
     nyxmon-agent/       the binary (S9+)
@@ -214,3 +213,6 @@ Never add DDL to the Python agent; a new required column raises
 - A `health_check.data` value that cannot be decoded reads as `PyJson::Null`
   (`nyxmon_store::data_is_undecodable`; valid `null` reads as `{}`, D-11).
   The runner reports such a check as `configuration_error` (D-8).
+- The agent lock (`nyxmon_store::AgentLock`, `<db>.agent.lock`) is taken after
+  the schema verification and held for the lifetime of the process; the
+  Python agent takes the same `flock` (`src/nyxmon/agent_lock.py`).

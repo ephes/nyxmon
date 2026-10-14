@@ -170,7 +170,7 @@ remove:
 push:
     rsync -az --delete \
       --exclude ".git" --exclude "__pycache__" --exclude "*.pyc" \
-      --exclude ".venv" --exclude "venv" --exclude "db.sqlite3" \
+      --exclude ".venv" --exclude "venv" --exclude "db.sqlite3*" \
       --exclude "cache" --exclude "staticfiles" \
       src/django/ {{USER}}@{{HOST}}:/opt/apps/nyxmon/site/
     rsync -az --delete \

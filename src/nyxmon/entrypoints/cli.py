@@ -12,11 +12,15 @@ from nyxmon.adapters.cleaner import AsyncResultsCleaner, running_cleaner
 from nyxmon.adapters.collector import AsyncCheckCollector, running_collector
 
 from ..adapters.notification import AsyncTelegramNotifier, LoggingNotifier
+from ..agent_lock import AgentLockHeld, acquire_agent_lock, agent_lock_path
 from ..adapters.repositories import SqliteStore
 from ..bootstrap import bootstrap
 from ..startup_validation import validate_check_types
 
 logger = logging.getLogger(__name__)
+
+# Descriptor of the agent lock; kept open (and the lock held) until exit.
+_agent_lock_fd: int | None = None
 
 
 def setup_logging(log_level: str) -> None:
@@ -152,6 +156,18 @@ def start_agent():
     db_path = Path(args.db)
     if not db_path.exists():
         logger.error(f"Database file not found: {db_path}")
+        sys.exit(1)
+
+    # One agent per database, Python or Rust (agent-rs/PLAN.md 3.6). The
+    # descriptor stays open, and the lock held, until the process exits.
+    global _agent_lock_fd
+    try:
+        _agent_lock_fd = acquire_agent_lock(db_path)
+    except AgentLockHeld as exc:
+        logger.error("another nyxmon agent holds %s; refusing to start", exc.path)
+        sys.exit(1)
+    except OSError as exc:
+        logger.error("cannot take the agent lock %s: %s", agent_lock_path(db_path), exc)
         sys.exit(1)
 
     try:
