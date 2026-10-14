@@ -180,3 +180,29 @@ def test_shutdown_during_stale_recovery_keeps_results_and_alert(monkeypatch):
     assert notifier.notify_check_failed.call_args.args[1].data["error_type"] == (
         "stale_processing_lease_batch"
     )
+
+
+def test_failed_lease_release_does_not_hang_shutdown(monkeypatch, caplog):
+    from anyio.from_thread import BlockingPortalProvider
+
+    from nyxmon.adapters.collector import AsyncCheckCollector
+
+    store = InMemoryStore()
+
+    async def fail(checks):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(store.checks, "release_claims_async", fail)
+    collector = AsyncCheckCollector(interval=3600)
+    provider = BlockingPortalProvider()
+    bootstrap(store=store, collector=collector, portal_provider=provider)
+    collector.set_portal_provider(provider)
+    collector.start()
+    time.sleep(0.1)
+    import threading
+
+    stopper = threading.Thread(target=collector.stop, daemon=True)
+    stopper.start()
+    stopper.join(timeout=2)
+    assert not stopper.is_alive()
+    assert "failed to release check leases on shutdown" in caplog.text

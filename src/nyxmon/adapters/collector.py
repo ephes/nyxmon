@@ -1020,6 +1020,9 @@ class AsyncCheckCollector(CheckCollector):
                     abandon_on_cancel=True,
                     limiter=self._batch_limiter,
                 )
+            # A check whose result could not be persisted keeps its lease on
+            # purpose: like any other unrecorded execution it is reclaimed and
+            # alerted after expiry, and shutdown does not hide that failure.
             self._active_batch_checks = []
             if cancel_scope.cancel_called:
                 self._abandoned_batch_done = batch_done
@@ -1068,12 +1071,17 @@ class AsyncCheckCollector(CheckCollector):
                 tasks.cancel_scope.cancel()
         finally:
             self._running = False
-            if self._stop_requested.is_set():
-                with anyio.CancelScope(shield=True):
-                    await self._bus.uow.store.checks.release_claims_async(
-                        self._active_batch_checks + self._abandoned_batch_checks
-                    )
-            self._shutdown_done.set()
+            try:
+                if self._stop_requested.is_set():
+                    with anyio.CancelScope(shield=True):
+                        await self._bus.uow.store.checks.release_claims_async(
+                            self._active_batch_checks + self._abandoned_batch_checks
+                        )
+            except Exception:
+                # Unreleased leases fall back to expiry recovery and its alert.
+                logger.exception("failed to release check leases on shutdown")
+            finally:
+                self._shutdown_done.set()
 
     def start(self) -> None:
         if (

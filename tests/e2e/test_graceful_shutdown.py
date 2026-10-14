@@ -88,6 +88,9 @@ def monitor(tmp_path, request):
             if getattr(request, "param", 1) != "hung"
             else "1",
             "NYXMON_SITE_MODE": "off",
+            "NYXMON_TEST_HUNG_THREAD": "1"
+            if getattr(request, "param", 1) == "hung"
+            else "0",
         },
     )
     try:
