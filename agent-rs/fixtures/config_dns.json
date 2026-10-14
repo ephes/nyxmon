@@ -1657,5 +1657,2651 @@
     "error": "Invalid source_ip: {'a': 1}. Must be a valid IP address."
    }
   }
+ ],
+ "executor_cases": [
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.2"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "actual": [
+      "192.0.2.1"
+     ],
+     "dns_server": "127.0.0.1",
+     "error_type": "resolution_mismatch",
+     "expected": [
+      "192.0.2.2"
+     ],
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "error_type",
+     "expected",
+     "actual",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": "127.0.0.1",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ],
+     "source_address": "127.0.0.1"
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server",
+     "source_address"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "system",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": null,
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "system",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "system",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "# comment\n; also\nnameserver\nsearch example.test\noptions rotate timeout:1 ndots:2\nnameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "system",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": 0,
+     "flags": 256,
+     "payload": 1232,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "options edns0\nnameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": 0,
+     "flags": 256,
+     "payload": 1232,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "options edns0\nnameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "no nameservers",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "search example.test\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "cannot open /etc/resolv.conf",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": null,
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "nameserver not-an-address is not a dns.nameserver.Nameserver instance or text form, IP address, nor a valid https URL",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver not-an-address\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": 5,
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "nameserver 5 is not a dns.nameserver.Nameserver instance or text form, IP address, nor a valid https URL",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "WWW.Example.TEST. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "WWW.Example.TEST.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "WWW.Example.TEST."
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "WWW.Example.TEST. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "WWW.Example.TEST.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003575757074578616d706c6504544553540000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "WWW.Example.TEST"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "A DNS label is empty.",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "a..b"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "An escaped code in a text format of DNS name is invalid.",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "x\\"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "A DNS label is > 63 octets long.",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "a\\.b\\032c. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "a\\.b\\032c.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000005612e6220630000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "a\\.b c"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "2A01:04F8::0001"
+    ],
+    "query_type": "AAAA",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN AAAA"
+     ],
+     "resolved_ips": [
+      "2a01:4f8::1",
+      "::ffff:192.0.2.1",
+      "1:0:0:1::1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "2a01:4f8::1",
+      "::ffff:192.0.2.1",
+      "1:0:0:1::1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "AAAA",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100030000000003777777076578616d706c65047465737400001c0001c00c001c00010000012c00102a0104f8000000000000000000000001c00c001c00010000012c001000000000000000000000ffffc0000201c00c001c00010000012c001000010000000000010000000000000001"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "mail.example.test."
+    ],
+    "query_type": "MX",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN MX"
+     ],
+     "resolved_ips": [
+      "mail.example.test.",
+      "Backup.example.test."
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "mail.example.test.",
+      "Backup.example.test."
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "MX",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100020000000003777777076578616d706c65047465737400000f0001c00c000f00010000012c0009000a046d61696cc010c00c000f00010000012c000b0014064261636b7570c010"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "10 mail.example.test."
+    ],
+    "query_type": "MX",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "actual": [
+      "mail.example.test.",
+      "Backup.example.test."
+     ],
+     "dns_server": "127.0.0.1",
+     "error_type": "resolution_mismatch",
+     "expected": [
+      "10 mail.example.test."
+     ],
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN MX"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "mail.example.test.",
+      "Backup.example.test."
+     ]
+    },
+    "keys": [
+     "error_type",
+     "expected",
+     "actual",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "MX",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100020000000003777777076578616d706c65047465737400000f0001c00c000f00010000012c0009000a046d61696cc010c00c000f00010000012c000b0014064261636b7570c010"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "v=spf1 -all"
+    ],
+    "query_type": "TXT",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN TXT"
+     ],
+     "resolved_ips": [
+      "v=spf1 -all",
+      "caf\u00e9 \"quoted\"",
+      ""
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "v=spf1 -all",
+      "caf\u00e9 \"quoted\"",
+      ""
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "TXT",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100030000000003777777076578616d706c6504746573740000100001c00c001000010000012c000c06763d73706631042d616c6cc00c001000010000012c000f0e636166c3a9202271756f74656422c00c001000010000012c000100"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "TXT",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "TXT",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000100001c00c001000010000012c0008026f6b04ff626164"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "target.example.test."
+    ],
+    "query_type": "CNAME",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "actual": [
+      "Target.example.test."
+     ],
+     "dns_server": "127.0.0.1",
+     "error_type": "resolution_mismatch",
+     "expected": [
+      "target.example.test."
+     ],
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN CNAME"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "Target.example.test."
+     ]
+    },
+    "keys": [
+     "error_type",
+     "expected",
+     "actual",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "CNAME",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000050001c00c000500010000012c000906546172676574c010"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "ns2.example.test."
+    ],
+    "query_type": "NS",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN NS"
+     ],
+     "resolved_ips": [
+      "ns1.example.test.",
+      "ns2.example.test."
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "ns1.example.test.",
+      "ns2.example.test."
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "NS",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100020000000003777777076578616d706c6504746573740000020001c00c000200010000012c0006036e7331c010c00c000200010000012c0006036e7332c010"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "x"
+    ],
+    "query_type": "SOA",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "actual": [
+      "ns1.example.test. hostmaster.example.test. 2024010101 7200 3600 1209600 300"
+     ],
+     "dns_server": "127.0.0.1",
+     "error_type": "resolution_mismatch",
+     "expected": [
+      "x"
+     ],
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN SOA"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "ns1.example.test. hostmaster.example.test. 2024010101 7200 3600 1209600 300"
+     ]
+    },
+    "keys": [
+     "error_type",
+     "expected",
+     "actual",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "SOA",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000060001c00c000600010000012c0027036e7331c0100a686f73746d6173746572c01078a3f17500001c2000000e10001275000000012c"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "host.example.test."
+    ],
+    "query_type": "PTR",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "1.2.0.192.in-addr.arpa. IN PTR"
+     ],
+     "resolved_ips": [
+      "host.example.test."
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "host.example.test."
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "1.2.0.192.in-addr.arpa.",
+     "qtype": "PTR",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "0000810000010001000000000131013201300331393207696e2d61646472046172706100000c0001c00c000c00010000012c001304686f7374076578616d706c65047465737400"
+     ]
+    }
+   ],
+   "url": "1.2.0.192.in-addr.arpa"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1",
+      "192.0.2.9"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1",
+      "192.0.2.9"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100050000000003777777076578616d706c6504746573740000010001c00c000500010000012c000805616c696173c010c02e000500010000012c00080566696e616cc010c042000100010000012c0004c0000201c042000100010000012c0004c0000209056f74686572c010000100010000012c0004c000024d"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "No answer received for www.example.test",
+     "error_type": "no_answer"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000500010000012c000805616c696173c010"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "Domain www.example.test does not exist",
+     "error_type": "nxdomain"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008103000100010000000003777777076578616d706c6504746573740000010001c00c000500010000012c000704676f6e65c010"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "Domain www.example.test does not exist",
+     "error_type": "nxdomain"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008103000100000000000003777777076578616d706c6504746573740000010001"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008103000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "No answer received for www.example.test",
+     "error_type": "no_answer"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100000001000003777777076578616d706c6504746573740000010001c010000600010000012c001e026e730004686f7374000000000100000002000000030000000400000005"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "No answer received for www.example.test",
+     "error_type": "no_answer"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c001c00010000012c001000000000000000000000000000000001"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008102000100000000000003777777076578616d706c6504746573740000010001"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "000081050000000000000000"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "The DNS query name is too long after DNAME substitution.",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008106000100000000000003777777076578616d706c6504746573740000010001"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "system",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    },
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\nnameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008102000100000000000003777777076578616d706c6504746573740000010001"
+     ]
+    },
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    },
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "tcp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008300000100000000000003777777076578616d706c6504746573740000010001"
+     ]
+    },
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    },
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "tcp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008300000100000000000003777777076578616d706c6504746573740000010001"
+     ]
+    },
+    {
+     "id": "match",
+     "reply": [
+      "00008300000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    },
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "tcp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008300000100000000000003777777076578616d706c6504746573740000010001"
+     ]
+    },
+    {
+     "close": true
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00ff",
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 0.2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "DNS query timed out for www.example.test",
+     "error_type": "timeout"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "other",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    },
+    {
+     "drop": true
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "000081000001000100000000056f74686572076578616d706c6504746573740000010001c00c000100010000012c0004c0000201",
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c65047465737400000f0001c00c000f00010000012c00050001017800",
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00000100000100000000000003777777076578616d706c6504746573740000010001",
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c000020100",
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 0.2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "DNS query timed out for www.example.test",
+     "error_type": "timeout"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "drop": true
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "source_ip": 5,
+    "timeout": 0.2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "DNS query timed out for www.example.test",
+     "error_type": "timeout"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "drop": true
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.3"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1",
+      "192.0.2.3"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1",
+      "192.0.2.3"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": -1,
+     "flags": 256,
+     "payload": 0,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100030000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201c00c000100010000012c0004c0000201c00c000100010000012c0004c0000203"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "dns_server": "127.0.0.1",
+     "query_time_ms": "<ms>",
+     "questions": [
+      "www.example.test. IN A"
+     ],
+     "resolved_ips": [
+      "192.0.2.1"
+     ],
+     "response_code": "NOERROR",
+     "rrset": [
+      "192.0.2.1"
+     ]
+    },
+    "keys": [
+     "resolved_ips",
+     "query_time_ms",
+     "response_code",
+     "questions",
+     "rrset",
+     "dns_server"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "edns": 0,
+     "flags": 256,
+     "payload": 1232,
+     "qname": "www.example.test.",
+     "qtype": "A",
+     "transport": "udp"
+    }
+   ],
+   "resolv_conf": "options edns0\nnameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000103777777076578616d706c6504746573740000010001c00c000100010000012c0004c000020100002904d0000000000000"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "timeout": 0
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "timeout must be a finite positive number up to 300 seconds",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "query_type": "BAD",
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "Invalid query_type: BAD. Must be one of {'A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'TXT'}",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": {
+    "dns_server": "127.0.0.1",
+    "expected_ips": [
+     "192.0.2.1"
+    ],
+    "query_type": [
+     "A"
+    ],
+    "timeout": 2
+   },
+   "outcome": {
+    "data": {
+     "error_msg": "unhashable type: 'list'",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": [
+    "expected_ips"
+   ],
+   "outcome": {
+    "data": {
+     "error_msg": "list indices must be integers or slices, not str",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  },
+  {
+   "data": 5,
+   "outcome": {
+    "data": {
+     "error_msg": "argument of type 'int' is not iterable",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "resolv_conf": "nameserver 127.0.0.1\n",
+   "steps": [
+    {
+     "id": "match",
+     "reply": [
+      "00008100000100010000000003777777076578616d706c6504746573740000010001c00c000100010000012c0004c0000201"
+     ]
+    }
+   ],
+   "url": "www.example.test"
+  }
  ]
 }

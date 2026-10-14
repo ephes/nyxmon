@@ -285,7 +285,8 @@ section 3.6); no other new variable is introduced by the port.
   - a check URL with non-ASCII characters: dnspython IDNA-2008-encodes it
     ("practical" codec); Rust reports `configuration_error` "non-ASCII DNS
     names are not supported; use the IDNA (xn--) form"
-    (`dns/wire/tests.rs::non_ascii_names_fail_closed`).
+    (`dns/wire/tests.rs::non_ascii_names_fail_closed`,
+    `dns/tests.rs::non_ascii_names_are_a_configuration_error`);
   - malformed responses: Rust validates the message structure, names, the
     rdata of A, AAAA, MX, TXT, CNAME, NS, PTR, SOA, the OPT placement and
     the OPT option framing; dnspython also validates the rdata of every
@@ -294,7 +295,17 @@ section 3.6); no other new variable is introduced by the port.
     where dnspython rejects it (UDP: ignored, TCP: nameserver dropped).
     No production nameserver sends malformed packets
     (`dns/wire/tests.rs::compression_pointers_must_point_backwards`,
-    `::opt_options_must_fill_the_rdata`).
+    `::opt_options_must_fill_the_rdata`);
+  - a `resolv.conf` `nameserver` that is a DNS-over-HTTPS URL: dnspython
+    queries it over DoH; Rust reports `configuration_error`
+    "DNS-over-HTTPS nameserver … is not supported"
+    (`dns/tests.rs::doh_nameservers_in_resolv_conf_are_a_configuration_error`);
+    `domain`/`search` lines are not parsed (dnspython raises on invalid
+    names there; the check never uses a search list);
+  - malformed TCP responses: every response Rust cannot parse drops the
+    nameserver (`unexpected_error` once all are dropped); dnspython drops
+    it on `FormError` but retries other parse exceptions (e.g. an A rdata
+    of the wrong length) until the lifetime ends (`timeout`).
 - **D-17 Non-UTF-8 `PATH` entries.** The ping binary lookup
   (`shutil.which`) skips `PATH` directories whose name is not UTF-8, which
   Python would search through `surrogateescape`; the `/sbin`, `/bin`,
@@ -832,8 +843,8 @@ parallel with few merge conflicts.
 | Telegram, OpsGate | `hyper` 1 + `tokio-rustls` + `webpki-roots` (S8) | bodies we build ourselves |
 | TLS for tcp/smtp/imap | `tokio-rustls` + `rustls-native-certs` | Python `ssl.create_default_context()` uses the system store |
 | certificate expiry | `x509-parser` (notAfter only) | `tcp_executor.py:_cert_days_remaining` |
-| DNS checks | `hickory-resolver` (tokio, no DNSSEC) | replaces dnspython (section 5.6) |
-| system resolution (probes, ping, happy eyeballs, reqwest) | libc `getaddrinfo` via `tokio::net::lookup_host` / reqwest's default `GaiResolver` | same resolver semantics as Python (see 8.1) |
+| DNS checks | own stub resolver on tokio UDP/TCP sockets (`nyxmon-checks/src/dns.rs`, `dns/wire.rs`; S5b) | replaces dnspython: its resolution loop (lifetime, backoff, nameserver dropping, TCP fallback), response matching and record texts are reproduced directly, which a resolver library would hide (section 5.6) |
+| system resolution (probes, ping, happy eyeballs, HTTP clients) | libc `getaddrinfo` via `tokio::net::lookup_host` | same resolver semantics as Python (see 8.1) |
 | IMAP | `async-imap` (tokio feature) | STARTTLS done by hand on the raw stream |
 | SMTP | hand-rolled (≈ 400 lines) | `lettre` lacks smtplib's error taxonomy, CRAM-MD5 and the recipient-refused semantics; see 5.7 |
 | SQLite | `rusqlite` (`bundled`) | section 3.2 |
@@ -1087,27 +1098,71 @@ raised). Any error in this function is logged as
 
 ### 5.6 DNS (`dns_executor.py`)
 
-- `resolve(check.url, query_type)` with `search=None`: the name is made
-  absolute, no search list; nameservers = `dns_server` or the system
-  `resolv.conf` list (queried in order); `timeout` and `lifetime` = config
-  timeout → whole query wrapped in `tokio::time::timeout`, per-attempt
-  timeout = the same; UDP with TCP fallback on truncation; optional bind
-  `source_ip`.
-- Records: only RRs of the query type from the answer section after CNAME
-  chasing (hickory returns CNAMEs in the lookup; they must be filtered out).
-  Rendering as dnspython `to_text()`: A dotted quad; AAAA RFC 5952 compressed;
-  MX `exchange` with trailing dot (preference dropped); CNAME/NS/PTR target
-  with trailing dot; SOA `mname rname serial refresh retry expire minimum`;
-  TXT strings joined by a single space without quotes (non-UTF-8 bytes:
-  Python `bytes.decode()` would raise → `unexpected_error`).
-- `questions`: `"<qname as queried, with trailing dot> IN <TYPE>"`;
-  `response_code`: rcode text.
-- Match: for A/AAAA compare `normalize_dns_value` (IP canonical form) sets;
-  otherwise exact string sets; any intersection → OK.
-- Error mapping: NXDOMAIN → `nxdomain`; timeout → `timeout`; NOERROR without
-  records of the type → `no_answer`; everything else → `unexpected_error`.
-- Config validation incl. `expected_ip_error` messages — fixture. All four
-  production DNS checks set `dns_server` explicitly.
+Implemented in S5b as an own stub resolver (`nyxmon-checks/src/dns.rs`,
+wire format and texts in `dns/wire.rs`, config in
+`nyxmon-core/src/config/dns.rs`) that follows dnspython 2.8 directly; a
+resolver library (the planned `hickory-resolver`) would hide the
+resolution loop and the message handling the results depend on.
+
+- `DnspythonResolver.query`: `Resolver()` reads `/etc/resolv.conf` on every
+  check, also when `dns_server` is set (unreadable → `unexpected_error`
+  "cannot open /etc/resolv.conf"; no `nameserver` line → "no nameservers";
+  an entry that is not an IP address → the setter's `ValueError` →
+  `configuration_error`); only `nameserver`, `options rotate` and
+  `options edns0` matter (EDNS version 0 with payload 1232 only with
+  `edns0`, otherwise no OPT record). A truthy `dns_server` replaces the
+  list (a non-string such as `5` passes `validate` as an integer address
+  and fails in the setter: `configuration_error`).
+- `resolve(check.url, query_type, source=source_ip)` with `search=None`:
+  `dns.name.from_text` (escapes, `EmptyLabel`/`LabelTooLong`/
+  `NameTooLong`/`BadEscape` → `unexpected_error` with dnspython's text;
+  non-ASCII → D-16), made absolute, no search list; `timeout` and
+  `lifetime` = config timeout. The `_Resolution` loop: nameservers in
+  order (shuffled with `rotate`), a backoff of 0.1 s doubling to 2 s before
+  each further round, each attempt bounded by `min(lifetime - elapsed,
+  timeout)`, `LifetimeTimeout` → `timeout` once the lifetime is used up;
+  socket errors (`OSError`, e.g. a `source_ip` of the other family), `EOF`,
+  unparseable or non-matching TCP responses, truncated TCP responses and
+  rcodes other than NOERROR/NXDOMAIN/YXDOMAIN (SERVFAIL included, no
+  `retry_servfail`) drop the nameserver; a timeout or another exception
+  (e.g. an integer `source_ip`) keeps it; all dropped → `NoNameservers` →
+  `unexpected_error` (P2 text); a truncated UDP response is retried once
+  over TCP. UDP reads (unconnected socket) skip datagrams from other
+  addresses, unparseable ones and those that are not a response to the
+  query (`is_response`: QR, ID, opcode, question compared
+  case-insensitively; FORMERR/SERVFAIL/NOTIMP/REFUSED without a question
+  count as responses).
+- Answer (`resolve_chaining`): the RRset of the query type for the
+  response's question name, following CNAMEs in the answer section (at
+  most 16, `ChainTooLong` drops the nameserver); duplicates within an RRset
+  are dropped (rdata compared in canonical form); NXDOMAIN with an answer
+  RRset (`AnswerForNXDOMAIN`) drops the nameserver, NXDOMAIN otherwise →
+  `nxdomain` (also with CNAMEs); NOERROR without the RRset → `no_answer`;
+  YXDOMAIN → `unexpected_error` (dnspython's text).
+- Record texts as dnspython `to_text()`: A dotted quad; AAAA by
+  `dns.ipv6.inet_ntoa` (longest zero run of at least two as `::`,
+  `::a.b.c.d`/`::ffff:a.b.c.d` for the embedded IPv4 forms); MX `exchange`
+  (preference dropped); CNAME/NS/PTR target; SOA `mname rname serial
+  refresh retry expire minimum`; names with dnspython's escaping
+  (`_escapify`) and a trailing dot, case as on the wire; TXT strings joined
+  by a single space without quotes; a TXT string that is not UTF-8 raises
+  `UnicodeDecodeError`, a `ValueError` → `configuration_error` with
+  CPython's message.
+- `questions`: `"<qname as queried, escaped, with trailing dot> IN
+  <TYPE>"`; `response_code`: `"NOERROR"`; `dns_server`: the configured
+  value or `"system"`; `source_address` when `source_ip` is truthy.
+- Match: for A/AAAA compare `normalize_dns_value` (`ipaddress`
+  `compressed` form, IPv4-mapped as `::ffff:a.b.c.d`) sets; otherwise exact
+  string sets; any intersection → OK.
+- Config validation (`from_dict` + `validate`, including the `TypeError`s
+  of non-object data and unhashable `query_type`, which the executor
+  reports as `unexpected_error` with `str(exc)`) and `expected_ip_error` —
+  fixture `config_dns.json` (`cases`); the executor end to end —
+  `config_dns.json` `executor_cases`: the real Python executor against a
+  scripted DNS server (UDP/TCP), replayed by the Rust tests against the
+  same script (results, key order, queries received); text helpers —
+  `dns_text.json`. All four production DNS checks set `dns_server`
+  explicitly.
 
 ### 5.7 SMTP (`smtp_executor.py`) — hand-rolled client, fake server tests
 
@@ -1658,6 +1713,7 @@ level, stable inputs, injected clocks/nonces/env via monkeypatching):
 | `ping_unicode.json` | `re` `\w`/`\s`, `IGNORECASE` letter classes, `str.splitlines` separators | embedded `\w` table for the ping parsers |
 | `starttls_text.json` | `_is_positive_starttls_response`, regexes, `_truncate` | |
 | `dns_text.json` | `normalize_dns_value`, `expected_ip_error`, `_check_ip_match`, `dns.name.from_text`/`to_text`, `dns.ipv6.inet_ntoa`, UTF-8 decode errors | |
+| `config_dns.json` `executor_cases` (S5b) | `DnsCheckExecutor` with dnspython against a scripted local DNS server | wire templates, results, queries received |
 | `suppression_fetch.json` (S5b) | `_fetch_payload` on an httpx `MockTransport` | payload or failure, requests |
 | `smtp_text.json` | `_build_subject` (token/time injected), `_message_id_domain`, header validation | |
 | `schema/` | Django migrate | section 2.4 |

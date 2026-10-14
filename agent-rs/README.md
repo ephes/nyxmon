@@ -21,7 +21,8 @@ contract and the agent lock; slice S5a: the `http`, `json-http` and
 `json-metrics` executors with their configs, the json-metrics evaluation
 and the httpx-compatible HTTP client; slice S5b part 1: the
 maintenance-suppression fetch, and the DNS check's configuration, text
-helpers and wire format (the stub resolver and executor follow in part 2).
+helpers and wire format; S5b part 2: the `dns` executor on an own stub
+resolver that follows dnspython.
 The binary only answers `--version`.
 
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
@@ -132,6 +133,11 @@ Current fixtures:
 - `config_dns.json` (`gen_dns.py`): `DnsCheckConfig.from_dict` +
   `validate` outcomes (`cases`), including the exception class and message
   of the `TypeError`s the executor reports as `unexpected_error`.
+  `executor_cases`: the real Python executor (dnspython) against a scripted
+  DNS server on `127.0.0.1` (UDP and TCP on one port; response templates
+  whose ID the server replaces), with the result, key order and the queries
+  received; the Rust tests replay the same scripts on their own fake DNS
+  server.
 - `dns_text.json` (`gen_dns.py`): `normalize_dns_value`,
   `expected_ip_error`, `_check_ip_match`, query names
   (`dns.name.from_text` + `to_text`), `dns.ipv6.inet_ntoa` and CPython's
@@ -260,6 +266,9 @@ Never add DDL to the Python agent; a new required column raises
   `nyxmon_checks::suppression_fetch::fetch_payload(&SuppressionRequest)`
   (`None` = fail open); it builds a fresh `HttpSession` per fetch, so no
   cookies are shared with the batch.
+- The DNS executor is `nyxmon_checks::dns::execute(check, &DnsSettings)`
+  (returns a `CheckResult`, never an exception); `DnsSettings::default()`
+  reads `/etc/resolv.conf` and queries port 53 (tests point both at fakes).
 - The DNS configuration (`nyxmon_core::config::dns::DnsConfig::from_data`)
   returns `DnsConfigError::Value` (`configuration_error`) or
   `DnsConfigError::Exception { class, message }`: the DNS executor reports
