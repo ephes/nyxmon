@@ -1,0 +1,6 @@
+# Pinned toolchain for the Rust agent (PLAN.md section 4.1, Q9). The pinned
+# version is also the MSRV (`rust-version` in Cargo.toml). Update both together.
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

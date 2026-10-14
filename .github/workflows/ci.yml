@@ -1,6 +1,7 @@
 name: CI
 
-# Same checks as `just lint`, `just typecheck`, `just test` and `npm test`.
+# Same checks as `just lint`, `just typecheck`, `just test` and `npm test`
+# (the Rust agent in agent-rs/ runs in the `rust` job).
 # Lint runs the pre-commit Ruff hooks (check and format) exactly as locally.
 # Tests use config.settings.test (SQLite, no external services), so no
 # secrets are needed.
@@ -71,3 +72,46 @@ jobs:
         run: npm ci
       - name: Tests (npm test)
         run: npm test
+
+
+  rust:
+    name: Rust agent (fmt, clippy, tests, release build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: agent-rs
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned toolchain (agent-rs/rust-toolchain.toml)
+        run: |
+          rustup toolchain install
+          rustc --version
+      - name: Cache cargo registry and build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            agent-rs/target
+          key: rust-${{ runner.os }}-${{ hashFiles('agent-rs/rust-toolchain.toml', 'agent-rs/Cargo.lock') }}
+          restore-keys: rust-${{ runner.os }}-
+      - name: Format (cargo fmt)
+        run: cargo fmt --all --check
+      - name: Lint (cargo clippy)
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests (cargo test)
+        run: cargo test --workspace --locked
+      - name: Release build
+        run: cargo build --release --locked
+      - name: Binary size
+        run: |
+          size=$(stat -c %s target/release/nyxmon-agent)
+          echo "nyxmon-agent release binary: ${size} bytes"
+          echo "nyxmon-agent release binary: ${size} bytes" >> "$GITHUB_STEP_SUMMARY"

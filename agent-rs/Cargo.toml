@@ -1,0 +1,40 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/nyxmon-core",
+    "crates/nyxmon-store",
+    "crates/nyxmon-checks",
+    "crates/nyxmon-notify",
+    "crates/nyxmon-agent",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+repository = "https://github.com/ephes/nyxmon"
+publish = false
+
+# Shared dependency versions. Slices add the crates they need here and refer to
+# them with `workspace = true` from their crate manifests.
+[workspace.dependencies]
+nyxmon-core = { path = "crates/nyxmon-core" }
+nyxmon-store = { path = "crates/nyxmon-store" }
+nyxmon-checks = { path = "crates/nyxmon-checks" }
+nyxmon-notify = { path = "crates/nyxmon-notify" }
+indexmap = "2"
+num-bigint = "0.4"
+num-traits = "0.2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "unwind"

@@ -29,17 +29,20 @@ install:
 add PACKAGE:
     uv pip install {{PACKAGE}}
 
-# Lint code
+# Lint code (Python pre-commit hooks, then the Rust agent)
 lint:
     uvx pre-commit run --all-files
+    just rs-lint
 
-# Type check
+# Type check (mypy, then cargo check of the Rust agent)
 typecheck:
     uv run mypy
+    cd agent-rs && cargo check --workspace --all-targets --locked
 
-# Run all tests
+# Run all tests (Python suite incl. the Rust fixture drift test, then the Rust agent)
 test:
     uv run pytest
+    just rs-test
 
 # Run specific test
 test-one TEST_PATH:
@@ -76,6 +79,39 @@ build:
 # Publish package to PyPI
 publish: build
     uv publish
+
+# ========= Rust agent (agent-rs/, see agent-rs/README.md) =========
+# Recipes cd into agent-rs so rustup picks up agent-rs/rust-toolchain.toml.
+
+# Rust agent tests
+rs-test:
+    cd agent-rs && cargo test --workspace --locked
+
+# Rust agent lint: rustfmt check and clippy with warnings as errors
+rs-lint:
+    cd agent-rs && cargo fmt --all --check
+    cd agent-rs && cargo clippy --workspace --all-targets --locked -- -D warnings
+
+# Format the Rust agent
+rs-fmt:
+    cd agent-rs && cargo fmt --all
+
+# Regenerate the shared fixtures from the Python implementation
+rs-fixtures:
+    uv run python agent-rs/fixtures/generate.py
+
+# Release build of the Rust agent for this host
+rs-build:
+    cd agent-rs && cargo build --release --locked
+
+# Release build for macmini (x86_64 glibc) in Docker; output in agent-rs/target/docker-linux-amd64
+rs-build-linux:
+    docker run --rm --platform linux/amd64 \
+      -v "{{justfile_directory()}}/agent-rs:/work" -w /work \
+      -v nyxmon-agent-rs-cargo-registry:/usr/local/cargo/registry \
+      -e CARGO_TARGET_DIR=/work/target/docker-linux-amd64 \
+      rust:1.99.0-bookworm \
+      cargo build --release --locked --target x86_64-unknown-linux-gnu
 
 # ========= Documentation Commands =========
 
