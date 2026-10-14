@@ -65,7 +65,7 @@ the probed targets, the snapshot and the raised exception.
 | `_iso`, `_duration`, `_as_int` | `render.rs` unit tests and every replay message | done |
 | `::test_run_restores_then_loops_until_stopped`, `::test_run_logs_and_continues_when_a_round_raises`, `::test_run_returns_immediately_when_the_feature_is_off`, `::test_default_probe_runner_reports_a_refused_connection`, `::test_held_checks_are_counted_without_the_blocking_portal`, `::test_a_scheduler_without_the_async_counter_still_works`, `::test_lifecycle_against_the_real_in_memory_store` | — | pending S11 (loop, probe runner, store wiring) |
 
-## S2 — store (first part: actor, claims, holds, schema contract)
+## S2 — store
 
 Rust tests live in `crates/nyxmon-store/tests/` (databases built from
 `fixtures/schema/schema.sql`) unless noted.
@@ -79,6 +79,15 @@ Rust tests live in `crates/nyxmon-store/tests/` (databases built from
 | `test_site_connectivity_persistence.py::test_acknowledgement_is_fenced_by_the_attempt_sequence`, `::test_acknowledgement_after_an_ok_cleared_the_row_changes_nothing`, `::test_sqlite_acknowledgement_is_reachable_through_the_sync_port` | `checks.rs::acknowledgement_is_fenced_by_the_attempt_sequence`, `::acknowledgement_after_an_ok_cleared_the_row_changes_nothing` | done |
 | `test_site_connectivity_persistence.py::test_list_held_checks_joins_state_and_check`, `::test_sqlite_count_held_checks_is_reachable_through_the_sync_port`, `::test_reschedule_*`, `::test_counts_only_processing_claims_older_than_the_epoch` | `checks.rs::list_held_checks_joins_state_and_check`, `::reschedule_touches_only_idle_enabled_and_later_checks`, `::counts_only_processing_claims_older_than_the_epoch` | done |
 | `test_site_connectivity_persistence.py::test_worker_upgrades_*`, `::test_the_upgrade_does_not_claim_a_streak_adoption`, `::test_state_reads_tolerate_a_five_column_row` | `schema.rs::deliberately_old_schema_is_reported_precisely` (Rust refuses old schemas instead) | n/a (D-5) |
+| `test_sqlite_repo.py::test_result_and_notification_state_are_atomic`, `::test_state_write_failure_rolls_back_result_and_check`, `::test_stale_notification_state_is_rejected_atomically`, `::test_conflict_is_detected_on_reminder_timestamps_alone`, `::test_reminder_timestamps_round_trip_through_persist`, `::test_notification_state_is_deleted_with_its_check` | `persist.rs` (same names), `::unchanged_transition_writes_no_state_row`, `::result_row_matches_python_storage`, `::nan_in_result_data_fails_json_valid_and_rolls_back` | done |
+| `test_sqlite_repo.py::test_late_completion_cannot_release_newer_claim`, `::test_late_completion_cannot_override_reclaimed_idle_backoff`, `::test_result_only_persistence_never_mutates_anchor_check`, `::test_disabled_claim_is_released_without_late_reenable`, `::test_late_completion_does_not_resurrect_deleted_check`, `::test_reclaimed_result_does_not_resurrect_deleted_check` | `persist.rs` (same names), `::result_only_persistence_for_a_deleted_check_is_dropped` | done |
+| `test_site_connectivity_persistence.py::test_all_eight_fields_round_trip_through_persist`, `::test_stale_expectation_on_a_new_field_still_conflicts` | `persist.rs` (same names) | done |
+| `test_site_connectivity_persistence.py::test_hold_marker_*`, `::test_a_stale_completion_marks_nothing`, `::test_a_deleted_check_marks_nothing` | `persist.rs` (same names) | done |
+| `test_site_connectivity_persistence.py::test_sqlite_open_collector_incident_is_silent`, `::test_sqlite_claim_records_delivery_intent`, `::test_delivery_intent_is_committed_with_the_claim` | `incidents.rs::open_collector_incident_is_silent`, `::claim_records_delivery_intent_and_markers_are_carried`, `::delivery_intent_is_committed_with_the_claim` | done |
+| `test_collector_incident_store.py::test_sqlite_collector_incident_lifecycle`, `::test_collector_incident_dedup_survives_a_restart` | `incidents.rs::collector_incident_lifecycle`, `::collector_incident_dedup_survives_a_restart`, `::reminder_interval_is_at_least_one_second`, `::undecodable_payloads_read_as_empty` | done |
+| `test_collector_incident_delivery_ack.py::test_acknowledgement_clears_only_the_delivery_markers`, `::test_acknowledgement_is_fenced_by_the_attempt`, `::test_sqlite_ack_cannot_lose_a_claim_granted_while_it_runs` | `incidents.rs` (first two, `::acknowledgement_compares_with_python_equality`); `src/incidents.rs::tests::acknowledgement_cannot_lose_a_claim_granted_while_it_runs` | done |
+| `sqlite_repo_test.py::test_delete_old_results_async`, `::…_with_custom_retention`, `::…_with_batch_size`, `::…_sync_wrapper`, `::test_cutoff_is_utc_on_non_utc_host`; `cleaner_test.py` session parts | `cleaner.rs` (the cutoff is computed by SQLite, no host clock involved) | done (cleaner loop: S9) |
+| Agent lock (PLAN.md 3.6, D-10): `cli.py:start_agent` | `tests/unit/test_agent_lock.py`; `agent_lock.rs` (Rust↔Rust and Rust↔Python processes) | done (binary wiring: S9) |
 | Busy timeout / `BEGIN IMMEDIATE` against another writer (PLAN.md 3.3, 7.1) | `concurrency.rs` | done |
 | Schema verification, `--check-schema` core (PLAN.md 2.2) | `schema.rs`; `tests/unit/test_agent_rs_schema_contract.py` (Python drift + simulated migrations) | done (CLI flag: S9) |
 
@@ -132,15 +141,6 @@ another.
 
 | Python test file | Rust counterpart | Slice | Status |
 | --- | --- | --- | --- |
-| `test_sqlite_repo.py::test_result_and_notification_state_are_atomic`, `::test_state_write_failure_rolls_back_result_and_check`, `::test_stale_notification_state_is_rejected_atomically`, `::test_conflict_is_detected_on_reminder_timestamps_alone`, `::test_reminder_timestamps_round_trip_through_persist`, `::test_notification_state_is_deleted_with_its_check` | `nyxmon-store` tests | S2 (second part) | pending |
-| `test_sqlite_repo.py::test_late_completion_cannot_release_newer_claim`, `::test_late_completion_cannot_override_reclaimed_idle_backoff`, `::test_result_only_persistence_never_mutates_anchor_check`, `::test_disabled_claim_is_released_without_late_reenable`, `::test_late_completion_does_not_resurrect_deleted_check`, `::test_reclaimed_result_does_not_resurrect_deleted_check` | `nyxmon-store` tests | S2 (second part) | pending |
-| `test_site_connectivity_persistence.py::test_all_eight_fields_round_trip_through_persist`, `::test_stale_expectation_on_a_new_field_still_conflicts` | `nyxmon-store` tests | S2 (second part) | pending |
-| `test_site_connectivity_persistence.py::test_hold_marker_*`, `::test_a_stale_completion_marks_nothing`, `::test_a_deleted_check_marks_nothing` | `nyxmon-store` tests | S2 (second part) | pending |
-| `test_site_connectivity_persistence.py::test_sqlite_open_collector_incident_is_silent`, `::test_sqlite_claim_records_delivery_intent`, `::test_delivery_intent_is_committed_with_the_claim` | `nyxmon-store` tests | S2 (second part) | pending |
-| `test_collector_incident_store.py::test_sqlite_collector_incident_lifecycle`, `::test_collector_incident_dedup_survives_a_restart` | `nyxmon-store` tests | S2 (second part) | pending |
-| `test_collector_incident_delivery_ack.py::test_acknowledgement_clears_only_the_delivery_markers`, `::test_acknowledgement_is_fenced_by_the_attempt`, `::test_sqlite_ack_cannot_lose_a_claim_granted_while_it_runs` | `nyxmon-store` tests | S2 (second part) | pending |
-| `sqlite_repo_test.py::test_delete_old_results_async`, `::…_with_custom_retention`, `::…_with_batch_size`, `::…_sync_wrapper`, `::test_cutoff_is_utc_on_non_utc_host`; `cleaner_test.py` session parts | `nyxmon-store` tests | S2 (second part) | pending |
-| Agent lock (PLAN.md 3.6, D-10): `cli.py:start_agent` | `nyxmon-store` tests | S2 (second part) | pending |
 | `tests/adapters/test_site_connectivity_persistence.py` (payload codec) | S4 payload codec | S4 | pending |
 | `tests/unit/test_notification_dampening.py`, `test_notification_reminders.py`, `test_notification_delivery_retry.py` (decision parts) | `decision.json`, `policy.json` | S3 | pending |
 | `tests/unit/test_notification_suppression.py` (rules) | `suppression_rules.json` | S3 | pending |

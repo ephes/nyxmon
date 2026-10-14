@@ -1,9 +1,9 @@
 //! Row decoding (`sqlite_repo.py:row_to_check`, `_parse_check_data`,
-//! `NotificationState.from_row`; PLAN.md 3.5).
+//! `_row_to_collector_incident`, `NotificationState.from_row`; PLAN.md 3.5).
 
 use nyxmon_core::PyJson;
-use nyxmon_core::model::{Check, NOTIFICATION_STATE_COLUMNS, NotificationState};
-use nyxmon_core::pyjson::{loads, py_int};
+use nyxmon_core::model::{Check, CollectorIncident, NOTIFICATION_STATE_COLUMNS, NotificationState};
+use nyxmon_core::pyjson::{PyDict, loads, loads_bytes, py_int};
 use rusqlite::types::{Type, ValueRef};
 use rusqlite::{Connection, OptionalExtension, Row};
 
@@ -13,6 +13,10 @@ use crate::error::StoreError;
 /// `row_to_check` order.
 pub(crate) const CHECK_COLUMNS: &str = "id, service_id, name, check_type, url, check_interval, \
      next_check_time, processing_started_at, status, disabled, data";
+
+/// The `collector_incident` columns, in `_row_to_collector_incident` order.
+pub(crate) const INCIDENT_COLUMNS: &str =
+    "incident_key, opened_at, last_alert_at, alert_count, payload";
 
 fn conversion_error(index: usize, kind: Type, message: String) -> rusqlite::Error {
     rusqlite::Error::FromSqlConversionFailure(index, kind, message.into())
@@ -138,6 +142,55 @@ pub(crate) fn row_to_check(row: &Row<'_>) -> rusqlite::Result<Check> {
         // `Check.__init__`: the claim identity is the loaded lease timestamp.
         claim_started_at: processing_started_at,
     })
+}
+
+/// Decode an incident payload: `json.loads(payload) if payload else {}`,
+/// with `TypeError`/`ValueError` and non-dict documents reading as `{}`.
+fn decode_payload(value: ValueRef<'_>) -> Result<PyDict, StoreError> {
+    let decoded = match value {
+        ValueRef::Text(bytes) if !bytes.is_empty() => match std::str::from_utf8(bytes) {
+            Ok(text) => loads(text),
+            Err(_) => return Ok(PyDict::new()),
+        },
+        ValueRef::Blob(bytes) if !bytes.is_empty() => loads_bytes(bytes),
+        // NULL, empty text, and numbers (`json.loads(5)` is a TypeError).
+        _ => return Ok(PyDict::new()),
+    };
+    match decoded {
+        Ok(document) => Ok(document.into_dict().unwrap_or_default()),
+        // `RecursionError` is not caught by `_row_to_collector_incident`.
+        Err(err) if !err.is_value_error() => Err(StoreError::Json(err.to_string())),
+        Err(_) => Ok(PyDict::new()),
+    }
+}
+
+/// Select one incident row (`_row_to_collector_incident`).
+pub(crate) fn select_incident(
+    connection: &Connection,
+    incident_key: &str,
+) -> Result<Option<CollectorIncident>, StoreError> {
+    let sql = format!("SELECT {INCIDENT_COLUMNS} FROM collector_incident WHERE incident_key = ?");
+    let row = connection
+        .query_row(&sql, [incident_key], |row| {
+            Ok((
+                text_or_empty(row, 0)?,
+                int_or_zero(row, 1)?,
+                int_or_zero(row, 2)?,
+                int_or_zero(row, 3)?,
+                row.get::<_, rusqlite::types::Value>(4)?,
+            ))
+        })
+        .optional()?;
+    let Some((incident_key, opened_at, last_alert_at, alert_count, payload)) = row else {
+        return Ok(None);
+    };
+    Ok(Some(CollectorIncident {
+        incident_key,
+        opened_at,
+        last_alert_at,
+        alert_count,
+        payload: decode_payload(ValueRef::from(&payload))?,
+    }))
 }
 
 /// `_select_notification_state`: missing row or NULLs read as zeros.

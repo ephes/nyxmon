@@ -856,6 +856,20 @@ store = SqliteStore(db_path="/path/to/database.sqlite")
 
 
 
+## Operations: one agent per database
+
+`start-agent` takes a non-blocking exclusive `flock` on `<db path>.agent.lock`
+(for example `/home/nyxmon/site/db.sqlite3.agent.lock`, created with mode
+0600) before it touches the database and holds it until the process exits.
+A second agent started on the same database logs
+`another nyxmon agent holds <lock path>; refusing to start` and exits with
+status 1. The Rust port of the agent (`agent-rs/`) takes the same lock, so the
+two implementations can never run against one database at the same time. The
+lock path is derived from `--db` as given; a copy of the database (a shadow
+run) has its own lock. The file may stay behind after the agent exits; it is
+not a stale lock (the kernel drops `flock` locks with the process), so never
+delete it to "unlock" a database.
+
 ## Operations: graceful monitor shutdown
 
 `start-agent` handles SIGTERM (including systemd restarts) and SIGINT by stopping
