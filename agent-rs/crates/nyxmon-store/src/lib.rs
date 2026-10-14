@@ -1,7 +1,27 @@
-//! SQLite store of the nyxmon agent.
+//! SQLite store of the nyxmon agent (PLAN.md sections 2 and 3).
 //!
-//! Slice S2 fills this crate (PLAN.md sections 2, 3): the rusqlite actor on a
-//! dedicated thread, schema verification against the Django schema contract,
-//! and every claim/result/incident/cleaner operation of section 3.4.
-//! S1 only creates the crate so parallel slices add modules, not workspace
-//! members.
+//! One dedicated OS thread owns the only read-write connection (the "DB
+//! actor"); [`Store`] is a cloneable handle that sends one closure per
+//! operation and awaits the reply. Every operation is one transaction, like
+//! the per-operation connections of `sqlite_repo.py`, and every write
+//! transaction starts with `BEGIN IMMEDIATE` (section 3.3). The SQL of every
+//! operation is copied from `sqlite_repo.py` (section 3.4); the store runs no
+//! DDL and verifies the Django schema contract instead ([`schema`]).
+//!
+//! Where Python reads the clock or `check_batch_size()` inside an operation,
+//! the Rust operation takes `now` / `batch_size` as parameters, so the caller
+//! (and the tests) control them.
+
+mod actor;
+mod checks;
+mod error;
+mod rows;
+pub mod schema;
+
+pub use actor::{Store, StoreOptions};
+pub use error::StoreError;
+pub use rows::data_is_undecodable;
+pub use schema::{MIN_NYXBOARD_MIGRATION, REQUIRED_COLUMNS, SchemaReport, check_schema};
+
+/// Python logger name of `sqlite_repo.py`, used as the `tracing` target.
+pub const LOGGER: &str = "nyxmon.adapters.repositories.sqlite_repo";

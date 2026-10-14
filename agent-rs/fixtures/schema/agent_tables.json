@@ -1,0 +1,46 @@
+{
+ "min_nyxboard_migration": [
+  "nyxboard",
+  "0013_site_connectivity_state"
+ ],
+ "tables": {
+  "check_notification_state": [
+   "check_id",
+   "failure_count",
+   "last_attempt_count",
+   "last_immediate_at",
+   "last_notified_at",
+   "first_failure_at",
+   "held_since",
+   "attempt_seq",
+   "attempt_at"
+  ],
+  "check_result": [
+   "id",
+   "status",
+   "created_at",
+   "data",
+   "health_check_id"
+  ],
+  "collector_incident": [
+   "incident_key",
+   "opened_at",
+   "last_alert_at",
+   "alert_count",
+   "payload"
+  ],
+  "health_check": [
+   "id",
+   "check_type",
+   "check_interval",
+   "service_id",
+   "next_check_time",
+   "processing_started_at",
+   "status",
+   "name",
+   "disabled",
+   "data",
+   "url"
+  ]
+ }
+}
