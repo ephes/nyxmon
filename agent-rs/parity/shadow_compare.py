@@ -16,7 +16,10 @@ check that is not a mail check (``smtp``/``imap`` are disabled in the copy):
   the baseline B0 of ``shadow_prepare.py`` with ``--baseline``, else the
   first recorded tick) and the ticks at which it rose; with ``--shadow-log``
   (``journalctl -o short-unix``) also the ``notification check_id=...``
-  lines of the shadow agent's journal inside the recorded window;
+  lines of the shadow agent's journal from T0 to the start of the last
+  shadow snapshot, plus those up to ``--log-grace-seconds`` after it (a
+  decision is recorded before its alert is logged): the rise must lie
+  between the two counts;
 - ``stale_processing_lease`` results (none expected in the shadow database);
 - claims stuck in ``processing`` longer than ``--lease-seconds`` in any
   recorded lease snapshot;

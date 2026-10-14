@@ -222,18 +222,25 @@ install -o nyxmon -g nyxmon -m 0600 shadow_prepare.py shadow_record.py \
        --json /var/lib/nyxmon-shadow/report.json
    ```
 
-   Export the journal before the transient unit is stopped; `short-unix`
-   timestamps let the comparison count only the alert lines inside the
-   recorded window (earlier runs of the same unit name are left out). The
-   report lists per check the outcomes of both agents, every shadow
+   Export the journal before the transient unit is stopped. With the
+   `short-unix` timestamps the comparison counts the alert lines from T0 to
+   the start of the last recorded shadow snapshot (`shadow_log`; earlier runs
+   of the same unit name are left out) and, separately, the lines up to
+   `--log-grace-seconds` (default 60) after it (`shadow_log_after_window`):
+   the agent records a decision before it logs the alert, so a decision the
+   last snapshot saw may be logged just after it. A check is a finding
+   unless its `attempt_seq` rise lies between `shadow_log` and
+   `shadow_log + shadow_log_after_window`.
+
+   The report lists per check the outcomes of both agents, every shadow
    sample whose status or error type differs from the nearest production
    sample (with both timestamps, so a changed endpoint explains it), data
    key lists that occur in only one database, the number of notification
    decisions per database (`attempt_seq` now minus `attempt_seq` in B0,
-   cross-checked with the shadow agent's notification lines), stale-lease
-   results, claims stuck in `processing`, whether the shadow cleaner deletes old results, and memory
-   and CPU against the budgets of PLAN.md 4.4. It ends with the findings to
-   explain; acceptance is "every finding explained".
+   cross-checked with the journal lines as above), stale-lease results,
+   claims stuck in `processing`, whether the shadow cleaner deletes old
+   results, and memory and CPU against the budgets of PLAN.md 4.4. It ends
+   with the findings to explain; acceptance is "every finding explained".
 
 5. **Phase B** repeats the run with `NYXMON_SITE_CONNECTIVITY_MODE=observe`;
    **phase C** runs the mail checks once from the copy:
