@@ -14,6 +14,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Test (all): `uv run pytest`
 - Test (single): `uv run pytest path/to/test.py::TestClass::test_function -v`
 - Run Django server: `cd src/django && uv run manage.py runserver`
+- Rust agent (`agent-rs/`, see `agent-rs/README.md`): `just rs-test`,
+  `just rs-lint`, `just rs-fmt`; `just test`/`just lint`/`just typecheck`
+  include them. After changing agent behaviour in `src/nyxmon`, run
+  `just rs-fixtures` (the fixture drift test fails otherwise).
 
 ## Production Deployment
 - Build and publish package: `uv build && uv publish`

@@ -29,3 +29,6 @@ node_modules/
 
 # documentation build artifacts
 docs/_build/
+
+# Rust agent build output
+/agent-rs/target/

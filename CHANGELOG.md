@@ -241,6 +241,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unchanged.
 
 ### Added
+- Rust port of the monitoring agent, foundations (`agent-rs/`, plan in
+  `agent-rs/PLAN.md`): Cargo workspace with a pinned toolchain and the
+  CPython-compatible JSON module, tested against fixtures generated from
+  the Python code (`just rs-fixtures`; `tests/unit/test_agent_rs_fixtures.py`
+  fails on drift). `just test`, `just lint` and `just typecheck` now also run
+  the Rust checks, and CI gains a `rust` job. Nothing deploys the Rust agent
+  yet; the Python agent is unchanged.
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but
