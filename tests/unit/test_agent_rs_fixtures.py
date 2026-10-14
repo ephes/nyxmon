@@ -50,12 +50,11 @@ def test_drift_check_detects_a_hand_edited_fixture(
         shutil.copy(generator.FIXTURES_DIR / name, tmp_path / name)
     assert generator.check_fixtures(tmp_path) == []
 
-    edited = tmp_path / "pyjson.json"
+    edited = tmp_path / "env.json"
     text = edited.read_text(encoding="utf-8")
-    edited.write_text(
-        text.replace('"truthy": false', '"truthy": true', 1), encoding="utf-8"
-    )
-    assert generator.check_fixtures(tmp_path) == ["pyjson.json"]
+    assert '"value": 5' in text
+    edited.write_text(text.replace('"value": 5', '"value": 6', 1), encoding="utf-8")
+    assert generator.check_fixtures(tmp_path) == ["env.json"]
 
-    edited.unlink()
-    assert generator.check_fixtures(tmp_path) == ["pyjson.json"]
+    (tmp_path / "pyjson.json").unlink()
+    assert generator.check_fixtures(tmp_path) == ["env.json", "pyjson.json"]

@@ -1,0 +1,1800 @@
+{
+ "cases": [
+  {
+   "ascii": "example.com",
+   "host": "example.com"
+  },
+  {
+   "ascii": "Example.COM",
+   "host": "Example.COM"
+  },
+  {
+   "ascii": "127.0.0.1",
+   "host": "127.0.0.1"
+  },
+  {
+   "ascii": "xn--bcher-kva.example",
+   "host": "xn--bcher-kva.example"
+  },
+  {
+   "ascii": "xn--bcher-kva.example",
+   "host": "b\u00fccher.example"
+  },
+  {
+   "ascii": "xn--bcher-kva.example",
+   "host": "B\u00dcCHER.example"
+  },
+  {
+   "ascii": "WWW.xn--bcher-kva.DE",
+   "host": "WWW.B\u00fccher.DE"
+  },
+  {
+   "ascii": "home.xn--wersdrfer-47a.de",
+   "host": "home.wersd\u00f6rfer.de"
+  },
+  {
+   "ascii": "strasse.de",
+   "host": "stra\u00dfe.de"
+  },
+  {
+   "ascii": "xn--kxa6akbbkh.gr",
+   "host": "\u03c3\u03af\u03c3\u03c5\u03c6\u03bf\u03c2.gr"
+  },
+  {
+   "ascii": "xn--wgv71a119e.jp",
+   "host": "\u65e5\u672c\u8a9e\u3002jp"
+  },
+  {
+   "ascii": "example.com",
+   "host": "\uff45\uff58\uff41\uff4d\uff50\uff4c\uff45\uff0e\uff43\uff4f\uff4d"
+  },
+  {
+   "ascii": "xn--bcher-kva.example.",
+   "host": "b\u00fccher.example."
+  },
+  {
+   "ascii": "xn--caf-dma.com",
+   "host": "caf\u00e9.com"
+  },
+  {
+   "ascii": "xn--n3h.net",
+   "host": "\u2603.net"
+  },
+  {
+   "ascii": "xn--ab-yka.example",
+   "host": "a\u200db\u00fc.example"
+  },
+  {
+   "ascii": "xn--bcher-kva.de",
+   "host": "b\u00fc\u00adcher.de"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc..example"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fcxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.example"
+  },
+  {
+   "ascii": "xn--mnchen-3ya.de",
+   "host": "M\u00dcNCHEN.de"
+  },
+  {
+   "ascii": "xn--fa-64s.de",
+   "host": "fa\u1e9e.de"
+  },
+  {
+   "ascii": "ab.de",
+   "host": "a\u1806b.de"
+  },
+  {
+   "ascii": "xn--4dbc.il",
+   "host": "\u05d0\u05d1.il"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0a\u05d1.il"
+  },
+  {
+   "ascii": null,
+   "host": "a\u05d0.il"
+  },
+  {
+   "ascii": null,
+   "host": "xn--b\u00fc.de"
+  },
+  {
+   "ascii": "iv.example",
+   "host": "\u2163.example"
+  },
+  {
+   "ascii": "hpa.example",
+   "host": "\u3371.example"
+  },
+  {
+   "ascii": "xn--j74i.example",
+   "host": "\ud87e\udc68.example"
+  },
+  {
+   "ascii": "xn--b-eha56699a.example",
+   "host": "b\u00fc\ud83e\udee9.example"
+  },
+  {
+   "ascii": "xn--b-eha36m.example",
+   "host": "\u0301b\u00fc.example"
+  },
+  {
+   "ascii": "xn--9ca2b.example",
+   "host": "e\u0301\u00fc.example"
+  },
+  {
+   "ascii": "xn--a-4cb8o.de",
+   "host": "a\u0350\u0316.de"
+  },
+  {
+   "ascii": "xn--a-4cb8o.de",
+   "host": "a\u0316\u0350.de"
+  },
+  {
+   "ascii": "xn--1ca7c52gwg.de",
+   "host": "\u00fca\u0301\u0316\u0350.de"
+  },
+  {
+   "ascii": "xn--e-xbb0v.de",
+   "host": "e\u0350\u0301.de"
+  },
+  {
+   "ascii": "xn--lsan803s.de",
+   "host": "a\u0308\u0301\u0323.de"
+  },
+  {
+   "ascii": "xn--tda5768f.kr",
+   "host": "\u1100\u1161\u11a8\u00fc.kr"
+  },
+  {
+   "ascii": "xn--p39a.kr",
+   "host": "\uac00\u11a8.kr"
+  },
+  {
+   "ascii": "xn--11b2f.in",
+   "host": "\u0915\u093c.in"
+  },
+  {
+   "ascii": "xn--86b.in",
+   "host": "\u09c7\u09be.in"
+  },
+  {
+   "ascii": "xn--tda3688uhba.example",
+   "host": "\ud834\udd5e\u00fc.example"
+  },
+  {
+   "ascii": "xn--tda515eda.example",
+   "host": "\u0f73\u00fc.example"
+  },
+  {
+   "ascii": "xn--a b-joa.example",
+   "host": "a\u00a0b\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "a\udb40\udc01\u00fc.example"
+  },
+  {
+   "ascii": "",
+   "host": ""
+  },
+  {
+   "ascii": null,
+   "host": "a..b"
+  },
+  {
+   "ascii": null,
+   "host": "a.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  {
+   "ascii": "xn--istanbul-o0e.tr",
+   "host": "\u0130stanbul.tr"
+  },
+  {
+   "ascii": "m.example",
+   "host": "m.example"
+  },
+  {
+   "ascii": "xn--zvtn-8y99boc.example",
+   "host": "zvt\uff2e\ud834\udd5e.example"
+  },
+  {
+   "ascii": "xn--dd-nnf0422n.example",
+   "host": "d\ua66fd\u0915\u00ad.example"
+  },
+  {
+   "ascii": "xn--p-0la28kf2fw7j98g.example",
+   "host": "\u0cc6p\u1166\u014c\u0315\u0670.example"
+  },
+  {
+   "ascii": "xn--q-ggb.example",
+   "host": "\uff31\u0350.example"
+  },
+  {
+   "ascii": "xn--vea.example",
+   "host": "\u0120.example"
+  },
+  {
+   "ascii": "xn--y-6fc72146avba.example",
+   "host": "\uff39\u05b0\ud834\udd5e.example"
+  },
+  {
+   "ascii": "xn--m3a23vwrdb9fdus.example",
+   "host": "\u1164\u0483\u0cc6\u1dc0\u093c.example"
+  },
+  {
+   "ascii": "xn--sef-7ua686c.example",
+   "host": "\uff33\u0137\uff25f\u0591.example"
+  },
+  {
+   "ascii": "xn--e-5qc625f.example",
+   "host": "e\u0670\u1164.example"
+  },
+  {
+   "ascii": "xn--gs-cnk045j.example",
+   "host": "\uff27\u20d0s\u110b.example"
+  },
+  {
+   "ascii": "xn--usd.example",
+   "host": "\u1165.example"
+  },
+  {
+   "ascii": "xn--k-65g3245hba.example",
+   "host": "\uff2b\ua66f\u1109\ua66f.example"
+  },
+  {
+   "ascii": "xn--7dg.example",
+   "host": "\u1dc0.example"
+  },
+  {
+   "ascii": "xn--j74i.example",
+   "host": "\ud87e\udc68.example"
+  },
+  {
+   "ascii": "xn--iv-qra.example",
+   "host": "\u2163\u014a.example"
+  },
+  {
+   "ascii": "xn--rj-umk.example",
+   "host": "\u1106r\uff2a.example"
+  },
+  {
+   "ascii": "xn--ghpa-g4a897sha49423gvda.example",
+   "host": "\ud834\udd5eg\u0153\u0f73\u3371.example"
+  },
+  {
+   "ascii": "xn--iv-3vb4uu6l34e.example",
+   "host": "\u0670\u0317\u2163\u093c\u0350.example"
+  },
+  {
+   "ascii": "xn--fq-cvb90y.example",
+   "host": "\u05b0\u030ef\uff31.example"
+  },
+  {
+   "ascii": "xn--bt-gna17s.example",
+   "host": "\u0335\uff22t\u0118.example"
+  },
+  {
+   "ascii": "xn--bg-mub574d.example",
+   "host": "\u093c\uff22\uff27\u0305\u1806\u00ad.example"
+  },
+  {
+   "ascii": "xn--r-sma.example",
+   "host": "\u015b\uff32.example"
+  },
+  {
+   "ascii": "xn--mua380ag3h.example",
+   "host": "\u0915\u116e\u0348.example"
+  },
+  {
+   "ascii": "xn--zsa1087uhba.example",
+   "host": "\ud834\udd5e\u030f.example"
+  },
+  {
+   "ascii": "xn--n-1ga.example",
+   "host": "n\u00d6.example"
+  },
+  {
+   "ascii": "xn--vb-rxb564alxsxa.example",
+   "host": "\uff36\u0670\u032a\u116d\u1169b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200c.example"
+  },
+  {
+   "ascii": "xn--p-ccb1e61pyor.example",
+   "host": "\u1111\u200d\u031f\u0670\uff30\u0308.example"
+  },
+  {
+   "ascii": "n.example",
+   "host": "\uff2e\u1806.example"
+  },
+  {
+   "ascii": "xn--u-uga77n6yb9w5a.example",
+   "host": "\u00f3u\u031d\u0483\u1102.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\u0644.example"
+  },
+  {
+   "ascii": "xn--cfa94h.example",
+   "host": "\u0337\u0131.example"
+  },
+  {
+   "ascii": "xn--kedc95jc284a.example",
+   "host": "\u0f73\u1111\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00d6\u200c\u05ea\uff24\u0627.example"
+  },
+  {
+   "ascii": "xn--2da0p97le0hsrf9b.example",
+   "host": "\u0105\u110d\u0670\u1101\u015c\u0cd5.example"
+  },
+  {
+   "ascii": "xn--rea42hs6pcwcfa44v.example",
+   "host": "\u0cc6\u0f73\u1107\u011c\u0316.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0101\u0915\u05d0\uff25\u0324\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\ud834\udd5e\u093c\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0160\u1dff\u05d0\u0341.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05ea\u0627\ua66f.example"
+  },
+  {
+   "ascii": "xn--4db.example",
+   "host": "\u05d0.example"
+  },
+  {
+   "ascii": "xn--f-2eb86761b.example",
+   "host": "\uff26\u0338\ud87e\udc68.example"
+  },
+  {
+   "ascii": null,
+   "host": "g\u1174\u0644\ud83d\ude00ni.example"
+  },
+  {
+   "ascii": "xn--q-dja95l1a3w18kit2c.example",
+   "host": "\u033a\u1ab0\u05b0\u0344\u011e\uff31.example"
+  },
+  {
+   "ascii": "xn--gta7h846b.example",
+   "host": "\u0353\u031f\u116e.example"
+  },
+  {
+   "ascii": "xn--7ca95ih5v.example",
+   "host": "\u0324\u1101\u00e7.example"
+  },
+  {
+   "ascii": "xn--c-jv3s.example",
+   "host": "c\ud83d\ude00.example"
+  },
+  {
+   "ascii": "xn--hea7857w.example",
+   "host": "\ud83d\ude00\u0113.example"
+  },
+  {
+   "ascii": "xn--nfi-n4b23dy1mytnnmj.example",
+   "host": "\u0149\u0cc6\u1172\ufb01\u0337\u064b.example"
+  },
+  {
+   "ascii": "v.example",
+   "host": "\uff36.example"
+  },
+  {
+   "ascii": "xn--y-ffb517b.example",
+   "host": "y\u093c\u00ad\u033e.example"
+  },
+  {
+   "ascii": "xn--ho-xta44og56a.example",
+   "host": "\u0316\uff28\u1110\u0165\uff2f.example"
+  },
+  {
+   "ascii": "xn--t-6ja97lg8d.example",
+   "host": "\u0316\u1806t\u012c\u05b0\u200c.example"
+  },
+  {
+   "ascii": "xn--i-iv3s.example",
+   "host": "\ud83d\ude00\uff29.example"
+  },
+  {
+   "ascii": "xn--46b.example",
+   "host": "\u09c7.example"
+  },
+  {
+   "ascii": "xn--1ea7h79ctyyfa564t.example",
+   "host": "\u015a\u031e\u1dff\u0f73\u0127.example"
+  },
+  {
+   "ascii": "xn--va-jzb658gdldga.example",
+   "host": "\u033f\uff36\u0f73a\u0cc2.example"
+  },
+  {
+   "ascii": "xn--tfa040d.example",
+   "host": "\u0141\u0cd5.example"
+  },
+  {
+   "ascii": "xn--o-cha6h794ecq9o.example",
+   "host": "\uff2f\u11a8\u00db\u011d\ua66f.example"
+  },
+  {
+   "ascii": "xn--y-6fc306eea.example",
+   "host": "\u0f73\uff39\u05b0.example"
+  },
+  {
+   "ascii": "xn--a-rch97996a.example",
+   "host": "\ud87e\udc68\u116b\uff21.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u033d\u09c7.example"
+  },
+  {
+   "ascii": "xn--xj-qub954a.example",
+   "host": "\u0307x\u064bj.example"
+  },
+  {
+   "ascii": "u.example",
+   "host": "u.example"
+  },
+  {
+   "ascii": "xn--uua.example",
+   "host": "\u0350.example"
+  },
+  {
+   "ascii": "xn--0fg.example",
+   "host": "\u1dff.example"
+  },
+  {
+   "ascii": "xn--s-yxb.example",
+   "host": "\u0483s.example"
+  },
+  {
+   "ascii": "xn--7cb32aj8zs056b9ba2556a.example",
+   "host": "\u064b\u1166\u05b0\ud83e\udee9\ud834\udd5e.example"
+  },
+  {
+   "ascii": "xn--iva-3eo.example",
+   "host": "\u2163\uff21\u1169.example"
+  },
+  {
+   "ascii": "xn--xu-zqf652v.example",
+   "host": "\uff38\u20d0u\u093c.example"
+  },
+  {
+   "ascii": "xn--huc209f396h.example",
+   "host": "\u0cd5\ua66f\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1168\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1164\ud83d\ude00\u0cc6\u0644\u20d0\u0321.example"
+  },
+  {
+   "ascii": "xn--gqd.example",
+   "host": "\u1111.example"
+  },
+  {
+   "ascii": "xn--8e1h2a745u.example",
+   "host": "\ud834\udd5e\ud83d\ude00.example"
+  },
+  {
+   "ascii": "y.example",
+   "host": "y.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\ufb01.example"
+  },
+  {
+   "ascii": "xn--q-z4d561d.example",
+   "host": "\u09c7\u11a8q.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1806.example"
+  },
+  {
+   "ascii": "d.example",
+   "host": "\uff24.example"
+  },
+  {
+   "ascii": "n.example",
+   "host": "n.example"
+  },
+  {
+   "ascii": "xn--fi-gwd346a8pm84s.example",
+   "host": "\u1166\u09be\ufb01\u1dff\u064b.example"
+  },
+  {
+   "ascii": "xn--s-nm3e.example",
+   "host": "\ua66fs.example"
+  },
+  {
+   "ascii": "xn--1tc732epo3i.example",
+   "host": "\u1ab0\ua66f\u0cc6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0915\u05d0\u1ab0.example"
+  },
+  {
+   "ascii": "xn--uua490l.example",
+   "host": "\u0350\u1e9e.example"
+  },
+  {
+   "ascii": "xn--zfa62go05b.example",
+   "host": "\u0148\u0310\u1ab0.example"
+  },
+  {
+   "ascii": "xn--fta.example",
+   "host": "\u200d\u031e.example"
+  },
+  {
+   "ascii": "xn--g-lja.example",
+   "host": "\u0123g.example"
+  },
+  {
+   "ascii": "xn--cy-ryb198ge8f.example",
+   "host": "\u0336\uff23\u11a8\u0cc2\uff39.example"
+  },
+  {
+   "ascii": "f.example",
+   "host": "\uff26.example"
+  },
+  {
+   "ascii": "xn--fiq-x2a39r8f.example",
+   "host": "\ufb01\uff31\u031a\u033d\u017a.example"
+  },
+  {
+   "ascii": "xn--x-5ga654j.example",
+   "host": "x\u00d8\u110a.example"
+  },
+  {
+   "ascii": "xn--l-ggb424e.example",
+   "host": "\uff2c\u0cd5\u0350.example"
+  },
+  {
+   "ascii": "xn--kedc.example",
+   "host": "\u0f73.example"
+  },
+  {
+   "ascii": "xn--wg-1yb097dfl78d.example",
+   "host": "\uff37\u0339\u09be\ud83e\udee9g.example"
+  },
+  {
+   "ascii": "xn--hdak.example",
+   "host": "\u00f0\u00d5.example"
+  },
+  {
+   "ascii": "xn--ghba518p.example",
+   "host": "\u0644\u1e9e\u0644.example"
+  },
+  {
+   "ascii": "xn--e28h.example",
+   "host": "\ud83d\ude00.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u0483\u1105.example"
+  },
+  {
+   "ascii": "j.example",
+   "host": "\uff2a.example"
+  },
+  {
+   "ascii": "xn--i-5fc387pco27b.example",
+   "host": "\u05b0\u1dff\ud87e\udc68\uff29.example"
+  },
+  {
+   "ascii": "xn--w-5na72ml93cbja.example",
+   "host": "\u1dc0\u0172\u1dff\uff37\u036b.example"
+  },
+  {
+   "ascii": "xn--5ta26n.example",
+   "host": "\u0338\u0670.example"
+  },
+  {
+   "ascii": "xn--6ca.example",
+   "host": "\u00c6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0347\u05ea\u09c7w.example"
+  },
+  {
+   "ascii": "p.example",
+   "host": "p.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116b\u00f5\u0342\u0627.example"
+  },
+  {
+   "ascii": "xn--1tc79u.example",
+   "host": "\u116e\u0cc6.example"
+  },
+  {
+   "ascii": "xn--ihpa-yyc011b75pjii.example",
+   "host": "\uff29\u3371\u0cc2\u0316\u1100\u05b0.example"
+  },
+  {
+   "ascii": "xn--sg-0ka929n9y9o.example",
+   "host": "\uff33\u1169\ua66f\u00dd\uff27.example"
+  },
+  {
+   "ascii": "xn--pfa30h9c.example",
+   "host": "\u032d\u0350\u1806\u013d\u1806.example"
+  },
+  {
+   "ascii": "k.example",
+   "host": "\uff2b.example"
+  },
+  {
+   "ascii": "xn--iv-bjua.example",
+   "host": "\u200d\u20d0\u20d0\u2163.example"
+  },
+  {
+   "ascii": "xn--hpatz-eyuu2b68212a.example",
+   "host": "\u1100\u3371t\u1164\ud83d\ude00z.example"
+  },
+  {
+   "ascii": "xn--dqd.example",
+   "host": "\u110e.example"
+  },
+  {
+   "ascii": "fi.example",
+   "host": "\ufb01.example"
+  },
+  {
+   "ascii": "xn--aj-nia5651act60c.example",
+   "host": "\ud83d\ude00\uff21j\u1e9e\u00e1.example"
+  },
+  {
+   "ascii": "xn--4da6e562a.example",
+   "host": "\u09be\u0106\u012b.example"
+  },
+  {
+   "ascii": "xn--xtc.example",
+   "host": "\u0cc2.example"
+  },
+  {
+   "ascii": "xn--c-d7k.example",
+   "host": "\u1ab0c.example"
+  },
+  {
+   "ascii": "xn--3ca032d.example",
+   "host": "\u00c3\u0cd5.example"
+  },
+  {
+   "ascii": "xn--piv-s0h.example",
+   "host": "\uff30\u2163\u09c7.example"
+  },
+  {
+   "ascii": "xn--iv-sna7n1467v.example",
+   "host": "\ud83d\ude00\u2163\u0146\u011c.example"
+  },
+  {
+   "ascii": "xn--v6b.example",
+   "host": "\u09be.example"
+  },
+  {
+   "ascii": "xn--xp-fja38668b9ba5632a.example",
+   "host": "\ud834\udd5ex\ud83d\ude00p\u00ca.example"
+  },
+  {
+   "ascii": "xn--w-0oc656frpp.example",
+   "host": "\u064b\uff37\u20d0\u116a.example"
+  },
+  {
+   "ascii": "xn--fda88ug5l.example",
+   "host": "\u1104\u200c\u00ee\u0591.example"
+  },
+  {
+   "ascii": "xn--i-fmb98qw047f.example",
+   "host": "\u0345i\u064b\ud83e\udee9.example"
+  },
+  {
+   "ascii": "xn--e-6bh.example",
+   "host": "\u1161\uff25.example"
+  },
+  {
+   "ascii": "xn--f-dja453j.example",
+   "host": "\u011f\u110f\uff26.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0\ud834\udd5e.example"
+  },
+  {
+   "ascii": "xn--hpa-sfo.example",
+   "host": "\u3371\u116f\u1806.example"
+  },
+  {
+   "ascii": "xn--t-1ia201bx2ht9f.example",
+   "host": "\u064bt\u0118\u1170\u0cc6.example"
+  },
+  {
+   "ascii": "xn--bea9f87d899cmkc.example",
+   "host": "\u1e9e\u00ad\u0138\u010d\u20d0\u0311.example"
+  },
+  {
+   "ascii": "xn--tqf.example",
+   "host": "\u1ab0.example"
+  },
+  {
+   "ascii": "xn--h-0ka33lekj39c4vn.example",
+   "host": "\u1102\u036e\u013c\u1ab0\u0315\uff28.example"
+  },
+  {
+   "ascii": "xn--hpay-nxa413jnqn.example",
+   "host": "\u1105\u0915\u3371\u0123y.example"
+  },
+  {
+   "ascii": "wt.example",
+   "host": "\uff37\uff34.example"
+  },
+  {
+   "ascii": "xn--lfa.example",
+   "host": "\u0139.example"
+  },
+  {
+   "ascii": "xn--6ta254ai5gbkk.example",
+   "host": "\u1ab0\u1175\u0339\u09be.example"
+  },
+  {
+   "ascii": "xn--ev-7pa.example",
+   "host": "\u013a\uff25\uff36.example"
+  },
+  {
+   "ascii": "xn--m-zha76m5658gyz4a.example",
+   "host": "\u030d\u0107m\ud87e\udc68\ud83d\ude00.example"
+  },
+  {
+   "ascii": "hpa.example",
+   "host": "\u3371.example"
+  },
+  {
+   "ascii": "xn--yx8a.example",
+   "host": "\ua66f.example"
+  },
+  {
+   "ascii": "xn--nn-8pa25ssv2a.example",
+   "host": "\u0351\uff2e\u0139\u200c\uff2e\u11af.example"
+  },
+  {
+   "ascii": "xn--jfa6j03ca449o.example",
+   "host": "\u0138\u0174\u0316\u0316\u1104.example"
+  },
+  {
+   "ascii": "xn--mgb.example",
+   "host": "\u0627.example"
+  },
+  {
+   "ascii": "xn--jl-zqf654f.example",
+   "host": "\uff2a\u1162l\u093c.example"
+  },
+  {
+   "ascii": "xn--gf-emk8c.example",
+   "host": "\uff27\uff26\u1100\u110f.example"
+  },
+  {
+   "ascii": "yl.example",
+   "host": "y\uff2c.example"
+  },
+  {
+   "ascii": "xn--8fa473f.example",
+   "host": "\u0150\u1173.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\ud834\udd5e\uff2d\u00ad\u064b\u05d0.example"
+  },
+  {
+   "ascii": "xn--5ua70j.example",
+   "host": "\u035b\u05b0.example"
+  },
+  {
+   "ascii": "xn--11b59ps9e7pp.example",
+   "host": "\u1dff\u0cc2\u0915\u11a8.example"
+  },
+  {
+   "ascii": "xn--fy-1vb490hsjf.example",
+   "host": "f\u110f\u0316\u0cd5\uff39.example"
+  },
+  {
+   "ascii": "xn--i-4cb9wq49bgpa7216s2ca.example",
+   "host": "\u1172i\u036b\u0316\ud834\udd5e\u1107.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u110a\u0627\u11af\u0106\u05d0.example"
+  },
+  {
+   "ascii": "xn--veb.example",
+   "host": "\u05ea.example"
+  },
+  {
+   "ascii": "xn--i-4cba6g44ff1m.example",
+   "host": "\uff29\u0316\u0316\u093c\u0483\u032d.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05ea\uff23r\uff27.example"
+  },
+  {
+   "ascii": "xn--v6b8365h.example",
+   "host": "\u09be\u1112\u1166.example"
+  },
+  {
+   "ascii": "xn--uda.example",
+   "host": "\u00dd.example"
+  },
+  {
+   "ascii": "xn--x-cx5s.example",
+   "host": "\ud83e\udee9x.example"
+  },
+  {
+   "ascii": null,
+   "host": "p\u0349\u05d0\u05b0.example"
+  },
+  {
+   "ascii": "xn--s-bdb028hra.example",
+   "host": "\u017f\u110a\u00ad\u0319\u110e.example"
+  },
+  {
+   "ascii": "xn--q-ija540gc7qz5a.example",
+   "host": "\u1dc0\u1e9eq\u0120\u0cc2.example"
+  },
+  {
+   "ascii": "xn--m3a.example",
+   "host": "\u0483.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0\u1e9e\u05d0.example"
+  },
+  {
+   "ascii": "xn--6pd.example",
+   "host": "\u1108.example"
+  },
+  {
+   "ascii": "xn--w-ncb9856j.example",
+   "host": "\u030e\ua66f\uff37.example"
+  },
+  {
+   "ascii": "xn--g-foa687fa101dko18f.example",
+   "host": "\u1170g\u0cc2\ud87e\udc68\u0cc2\u0176.example"
+  },
+  {
+   "ascii": "xn--r-dx5s.example",
+   "host": "\uff32\ud83e\udee9.example"
+  },
+  {
+   "ascii": "xn--r-k6g.example",
+   "host": "\u1110r.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u011f\u05ea\u012e\u1166.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dff\u3371\ud83e\udee9\u0483\u05ea.example"
+  },
+  {
+   "ascii": "xn--j-0fb8fr8z.example",
+   "host": "\u0365\u0349\uff2a\u093c.example"
+  },
+  {
+   "ascii": "xn--t-sga25y1s84e.example",
+   "host": "\u0483\u00d2\ud83e\udee9t.example"
+  },
+  {
+   "ascii": "xn--sshpaij-rjb55308h9da.example",
+   "host": "\u00df\ud834\udd5e\u200c\u3371\u0141\u0132.example"
+  },
+  {
+   "ascii": "xn--p-mja913jktm.example",
+   "host": "\u1dff\u1108p\u0123.example"
+  },
+  {
+   "ascii": "xn--iv-62b336djkkoja.example",
+   "host": "\u2163\u11a8\u1171\u00ad\u09c7\u0369.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u015b\u0337\u0355\u05ea.example"
+  },
+  {
+   "ascii": "xn--lk-00b74vfwaj8z.example",
+   "host": "\u0cc6l\u0350\uff2b\u064b\u05b0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u11a8\u05d0\uff32\u00c1\ua66f\u0591.example"
+  },
+  {
+   "ascii": "xn--nsa4ri3d.example",
+   "host": "\u0591\u0303\u0367.example"
+  },
+  {
+   "ascii": "xn--kkg.example",
+   "host": "\u1e9e.example"
+  },
+  {
+   "ascii": "xn--wda2ozd15e1h3c.example",
+   "host": "\u0176\u0316\u035b\u00ff\u0153\u034c.example"
+  },
+  {
+   "ascii": "ivgh.example",
+   "host": "\u2163gh.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1806t\ud834\udd5e\u00f4\u09c7\u0627.example"
+  },
+  {
+   "ascii": "xn--fiw-fgh95fw9kyrj.example",
+   "host": "\ufb01\u1166\u0915\u09be\uff37\u0cd5.example"
+  },
+  {
+   "ascii": "cs.example",
+   "host": "c\uff33.example"
+  },
+  {
+   "ascii": "xn--hpa-y3n.example",
+   "host": "\u1111\u3371.example"
+  },
+  {
+   "ascii": "xn--46b230b.example",
+   "host": "\u09c7\u116e.example"
+  },
+  {
+   "ascii": "xn--fta780ci5bea.example",
+   "host": "\u0f73\u200c\u0cd5\u031e.example"
+  },
+  {
+   "ascii": "xn--pea7h232g848j.example",
+   "host": "\u014f\u011b\u1dc0\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u032c\u00ad\u05d0\u0670\u11a8.example"
+  },
+  {
+   "ascii": "xn--y-icb1sy86f8zg.example",
+   "host": "y\u030b\u0350\u20d0\u1ab0.example"
+  },
+  {
+   "ascii": "xn--dua.example",
+   "host": "\u033f.example"
+  },
+  {
+   "ascii": "xn--lh-8ma08ak8ex79d.example",
+   "host": "\u0173\u0331\uff2c\u0117\u1e9eh.example"
+  },
+  {
+   "ascii": "xn--imb-tdc183axtx.example",
+   "host": "\u0591i\u1105\uff2d\u0303b.example"
+  },
+  {
+   "ascii": "xn--6ta311a.example",
+   "host": "\u0915\u00ad\u0339.example"
+  },
+  {
+   "ascii": "xn--kfi-mva87uknp32f.example",
+   "host": "\uff2b\u1162\u0361\ufb01\u0343\u013a.example"
+  },
+  {
+   "ascii": "xn--iv-9wb907jfa.example",
+   "host": "\u2163\u0f73\u0324.example"
+  },
+  {
+   "ascii": "xn--u-4fa79ofvy.example",
+   "host": "\u0339\u1112u\u00e6.example"
+  },
+  {
+   "ascii": "xn--j-8j8qhb.example",
+   "host": "\uff2a\ud834\udd5e.example"
+  },
+  {
+   "ascii": "xn--p-uigd29q.example",
+   "host": "\u1161\u0f73p.example"
+  },
+  {
+   "ascii": "xn--11b.example",
+   "host": "\u0915.example"
+  },
+  {
+   "ascii": "xn--tz-00b.example",
+   "host": "t\u0350\uff3a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116e\uff38\u0627\u00d5.example"
+  },
+  {
+   "ascii": "xn--q-5ka301by2dqy1a.example",
+   "host": "\uff31\u09c7\u1ab0\u0670\u013e.example"
+  },
+  {
+   "ascii": "xn--7cb831dlv70bxde.example",
+   "host": "\u05b0\ud83d\ude00\ud83e\udee9\u1174.example"
+  },
+  {
+   "ascii": "xn--s-zxb.example",
+   "host": "s\u0483.example"
+  },
+  {
+   "ascii": "xn--ky-vsa523cn3mga.example",
+   "host": "\u0670\u0158\uff2by\u0f73.example"
+  },
+  {
+   "ascii": "xn--iv-nub.example",
+   "host": "\u0306\u2163.example"
+  },
+  {
+   "ascii": "xn--kpr-noa20y36g.example",
+   "host": "\u0670\uff2b\uff30\u0317r\u00dd.example"
+  },
+  {
+   "ascii": "xn--v-ggba020ds73a.example",
+   "host": "\u1e9e\uff36\u0915\u0350\u0350.example"
+  },
+  {
+   "ascii": "xn--ysd8371w.example",
+   "host": "\u1169\ud83e\udee9.example"
+  },
+  {
+   "ascii": "xn--ea-e0b07jvxn.example",
+   "host": "\u0349\u0483e\u09c7\uff21.example"
+  },
+  {
+   "ascii": "xn--u-zxb326ayvelpg9x37f.example",
+   "host": "u\u0cd5\u0915\ud83e\udee9\u1106\u0483.example"
+  },
+  {
+   "ascii": "xn--nab-bpa441s.example",
+   "host": "n\uff21\u0102\u1171\uff22.example"
+  },
+  {
+   "ascii": "xn--ec-pka.example",
+   "host": "\uff25c\u00f9.example"
+  },
+  {
+   "ascii": "xn--j-5hb269b.example",
+   "host": "\uff2a\u036e\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1110\u05d0\ud87e\udc68.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0483\uff24\u1163o\u010c\u05d0.example"
+  },
+  {
+   "ascii": "xn--cy-wmk73a623cca.example",
+   "host": "\uff23\u116d\u1dffy\u1106\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff30\u00e9\u05ea\u0350\u0591.example"
+  },
+  {
+   "ascii": "xn--m3a52g.example",
+   "host": "\u0483\u064b\u1806.example"
+  },
+  {
+   "ascii": "xn--fi-dja.example",
+   "host": "\u00ca\ufb01.example"
+  },
+  {
+   "ascii": "xn--gfie-k8c6636b.example",
+   "host": "\u20d0\u035ag\ufb01\u200c\uff25.example"
+  },
+  {
+   "ascii": "xn--7ua.example",
+   "host": "\u00ad\u035d.example"
+  },
+  {
+   "ascii": "xn--psa529kx912avba.example",
+   "host": "\ud834\udd5e\u0305\u1dff\u1806.example"
+  },
+  {
+   "ascii": "xn--q-iga162iea2292t.example",
+   "host": "\u1107\u1167\u0f73\u00cd\uff31.example"
+  },
+  {
+   "ascii": "xn--xga31giyknyi.example",
+   "host": "\u09be\u032b\u1169\u0168.example"
+  },
+  {
+   "ascii": "xn--ida82zmuk1um.example",
+   "host": "\u00d1\u0670\u1dff\u1164\u200c.example"
+  },
+  {
+   "ascii": "xn--y-ehb573e1ke0oae373u.example",
+   "host": "\u1108\ud83d\ude00\u0361\u116f\uff39\u0cd5.example"
+  },
+  {
+   "ascii": "xn--nva.example",
+   "host": "\u036c.example"
+  },
+  {
+   "ascii": "xn--s-5ka03l54s.example",
+   "host": "\u0cc2\uff33\u200c\u013d\u0316.example"
+  },
+  {
+   "ascii": "xn--rta845e.example",
+   "host": "\u032a\u11af.example"
+  },
+  {
+   "ascii": "xn--q-zxb.example",
+   "host": "\uff31\u0483.example"
+  },
+  {
+   "ascii": "xn--6sa7161y.example",
+   "host": "\ud87e\udc68\u0316.example"
+  },
+  {
+   "ascii": "xn--hpay-pq5a.example",
+   "host": "\u200d\u1e9e\u3371y.example"
+  },
+  {
+   "ascii": "xn--btd.example",
+   "host": "\u1175.example"
+  },
+  {
+   "ascii": "xn--hpane-ixd805v.example",
+   "host": "\u1109\u036c\u3371ne.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff27\u05ea\u093c\u0329\u00cd\u032b.example"
+  },
+  {
+   "ascii": "xn--lua580aipa19g32g8tw.example",
+   "host": "\u1dff\u1102\u0cc6\u09c7\u0915\u0347.example"
+  },
+  {
+   "ascii": "xn--k-pdb64vlv9a.example",
+   "host": "k\u064b\u0320\u1dc0.example"
+  },
+  {
+   "ascii": "xn--u-uud91cf396l9ba.example",
+   "host": "\u09be\uff35\ud834\udd5e\u0915.example"
+  },
+  {
+   "ascii": "xn--fwz-lie713g.example",
+   "host": "fw\u0cc2\uff3a\u0591.example"
+  },
+  {
+   "ascii": "xn--hpa-ugc7ws77l.example",
+   "host": "\u031e\u1dff\u3371\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0312n\u0627\u0cd5.example"
+  },
+  {
+   "ascii": "xn--8fa77fua789d.example",
+   "host": "\u0344\u09be\u0151.example"
+  },
+  {
+   "ascii": "xn--xtc.example",
+   "host": "\u0cc2\u1806.example"
+  },
+  {
+   "ascii": "xn--e-9fa61pcud.example",
+   "host": "\u0342\u05b0\u00e9\uff25.example"
+  },
+  {
+   "ascii": "xn--qivu-gjrz5ax725y.example",
+   "host": "q\u1105\ud83e\udee9\u1161\u2163u.example"
+  },
+  {
+   "ascii": "xn--hpat-upa834aopa28760avda.example",
+   "host": "\u00ed\u0317\u0364\u3371t\ud834\udd5e.example"
+  },
+  {
+   "ascii": "d.example",
+   "host": "d.example"
+  },
+  {
+   "ascii": "xn--i-kch.example",
+   "host": "i\u1167.example"
+  },
+  {
+   "ascii": "xn--11b.example",
+   "host": "\u0915.example"
+  },
+  {
+   "ascii": "xn--fea205f.example",
+   "host": "\u0110\u1173.example"
+  },
+  {
+   "ascii": "xn--p-lcb468bj3i.example",
+   "host": "\u030d\uff30\u093c\u1112.example"
+  },
+  {
+   "ascii": "xn--sshpa-isd937hfnq.example",
+   "host": "\u00df\u1164\u3371\u034e\u093c.example"
+  },
+  {
+   "ascii": "xn--bva.example",
+   "host": "\u0360.example"
+  },
+  {
+   "ascii": "xn--vl-ypa03s.example",
+   "host": "\u0137\u0348v\uff2c.example"
+  },
+  {
+   "ascii": "xn--p-3cba463lhnl.example",
+   "host": "\u1101\u1ab0\u0316\u00ad\u0316p.example"
+  },
+  {
+   "ascii": "xn--y-8la02l4z2aija.example",
+   "host": "y\u0326\u11af\u0150\u116e.example"
+  },
+  {
+   "ascii": "xn--v-om3e.example",
+   "host": "\uff36\ua66f.example"
+  },
+  {
+   "ascii": "xn--j-mef.example",
+   "host": "j\u0cc2.example"
+  },
+  {
+   "ascii": "xn--tda8uo2k.example",
+   "host": "\u00fc\u0170\u064b.example"
+  },
+  {
+   "ascii": "xn--4db.example",
+   "host": "\u05d0.example"
+  },
+  {
+   "ascii": "xn--ur-mnf.example",
+   "host": "\uff35\u0915\uff32.example"
+  },
+  {
+   "ascii": "xn--ve-9zb306lu2k.example",
+   "host": "\u116e\u1ab0\uff36\uff25\u0347.example"
+  },
+  {
+   "ascii": "xn--iv-qha080c.example",
+   "host": "\u00d7\u2163\u05b0.example"
+  },
+  {
+   "ascii": "j.example",
+   "host": "j.example"
+  },
+  {
+   "ascii": "xn--yst-iie638ls914e.example",
+   "host": "\u0591y\uff33\u1111\ud87e\udc68t.example"
+  },
+  {
+   "ascii": "xn--n-zxb29lq69b.example",
+   "host": "\uff2e\u0483\u0670\u1e9e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u0127.example"
+  },
+  {
+   "ascii": "xn--mta630c56bea6734q.example",
+   "host": "\ua66f\u0325\u0cc2\u0f73.example"
+  },
+  {
+   "ascii": "s.example",
+   "host": "s.example"
+  },
+  {
+   "ascii": "xn--whpaf-iib704a.example",
+   "host": "\uff37\u017c\u3371\u0352\uff26.example"
+  },
+  {
+   "ascii": "xn--gr-9xhz31b.example",
+   "host": "\u1112g\u0cc2r.example"
+  },
+  {
+   "ascii": "xn--m-3gb209h.example",
+   "host": "\u035c\u1168\uff2d.example"
+  },
+  {
+   "ascii": "i.example",
+   "host": "\uff29.example"
+  },
+  {
+   "ascii": "xn--kedc.example",
+   "host": "\u0f73.example"
+  },
+  {
+   "ascii": "xn--qda21j.example",
+   "host": "\u00f9\u0350.example"
+  },
+  {
+   "ascii": "xn--fm-1vk.example",
+   "host": "\uff26\u200c\u1171\uff2d.example"
+  },
+  {
+   "ascii": "xn--oyc-fec800ph182d2ca.example",
+   "host": "oyc\u1103\ud834\udd5e\u0308.example"
+  },
+  {
+   "ascii": "xn--piv-fdc.example",
+   "host": "\u0340\uff30\u2163.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u064b\uff22\uff2c\u05ea\ud834\udd5e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u110b\u05ea\u014a\u116c\u0cc2.example"
+  },
+  {
+   "ascii": "xn--qua414a.example",
+   "host": "\u034c\u09be.example"
+  },
+  {
+   "ascii": "xn--c-pla36mgwr.example",
+   "host": "\u0cc6\u0147\u1806\uff23\u034c.example"
+  },
+  {
+   "ascii": "xn--v6b987f.example",
+   "host": "\u1ab0\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0\u00da\u0627\u09be\u1104\u00cb.example"
+  },
+  {
+   "ascii": "xn--uhpa-gzcm4b810t.example",
+   "host": "\uff35\u0322\u031a\u1108\u031c\u3371.example"
+  },
+  {
+   "ascii": "xn--3ta.example",
+   "host": "\u0336.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u034d\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0\u1105\u1173\ud83e\udee9\u0644s.example"
+  },
+  {
+   "ascii": "xn--s-qga202gj9t.example",
+   "host": "\u00d1s\u20d0\u0cc6.example"
+  },
+  {
+   "ascii": "xn--jb-10b.example",
+   "host": "\uff2a\uff22\u0350.example"
+  },
+  {
+   "ascii": "xn--vsd.example",
+   "host": "\u1166.example"
+  },
+  {
+   "ascii": "xn--goiv-j6a471a.example",
+   "host": "g\uff2f\u2163\u0160\u035f.example"
+  },
+  {
+   "ascii": "xn--f-bcb11961b.example",
+   "host": "\ud87e\udc68\u0308f.example"
+  },
+  {
+   "ascii": "xn--t-bch5q078b.example",
+   "host": "\u1e9e\u1163\u11a8\uff34.example"
+  },
+  {
+   "ascii": "xn--k-mna.example",
+   "host": "\uff2b\u0169.example"
+  },
+  {
+   "ascii": "xn--nl-1ea4qv0gw0x.example",
+   "host": "\u0149\u00c7\u0cc6\u0140.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u11af\u05ea\u0319\u200d\u2163.example"
+  },
+  {
+   "ascii": "xn--k-yna890j.example",
+   "host": "k\u110a\u016e.example"
+  },
+  {
+   "ascii": "xn--q-ceb935gea97r.example",
+   "host": "\uff31\u0f73\u110f\u032b.example"
+  },
+  {
+   "ascii": "xn--pfa47hdc29cvzx.example",
+   "host": "\u0369\u0483\u200d\u013d\u0cc2\u0350.example"
+  },
+  {
+   "ascii": "xn--u-v5g2b.example",
+   "host": "\u1104\u1111u.example"
+  },
+  {
+   "ascii": "xn--4da83u.example",
+   "host": "\u0106\u0591.example"
+  },
+  {
+   "ascii": "xn--nfa26gnh.example",
+   "host": "\u013c\u0316\u036c.example"
+  },
+  {
+   "ascii": "xn--0sa335a.example",
+   "host": "\u09be\u0310.example"
+  },
+  {
+   "ascii": "xn--qg-3ls.example",
+   "host": "\u1dc0q\uff27.example"
+  },
+  {
+   "ascii": "xn--f-pga.example",
+   "host": "\uff26\u00d0.example"
+  },
+  {
+   "ascii": "xn--yud292dhnc.example",
+   "host": "\u11af\u1dc0\u20d0\u200c.example"
+  },
+  {
+   "ascii": "xn--kedc.example",
+   "host": "\u0f73.example"
+  },
+  {
+   "ascii": "xn--9ua421e.example",
+   "host": "\u035f\u1110.example"
+  },
+  {
+   "ascii": "xn--fea008lq073a.example",
+   "host": "\ud83d\ude00\u0111\u1dc0.example"
+  },
+  {
+   "ascii": "xn--5ea66t.example",
+   "host": "\u012b\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cd5\u116e\u05d0\u016a.example"
+  },
+  {
+   "ascii": "xn--sua-1le2786r.example",
+   "host": "\u05b0\uff33\uff35\uff21\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc2\u0483\u016c\u064b\u0644\u0368.example"
+  },
+  {
+   "ascii": "xn--p-8fb883e.example",
+   "host": "\u0cc6\u034d\uff30.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00d9\u012f\u0627\u0cc6.example"
+  },
+  {
+   "ascii": "xn--q-lga297j.example",
+   "host": "\uff31\u00ee\u1170.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff30\u116e\u0627\u0591\u0350\u110c.example"
+  },
+  {
+   "ascii": "xn--v6b853h.example",
+   "host": "\u09be\u1dc0.example"
+  },
+  {
+   "ascii": "xn--a-iv3s.example",
+   "host": "\ud83d\ude00a.example"
+  },
+  {
+   "ascii": "xn--b-rlm.example",
+   "host": "\u1dffb.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u0343.example"
+  },
+  {
+   "ascii": "xn--efihpa-rib5504ara.example",
+   "host": "e\u1171\u116f\ufb01\u0158\u3371.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0\u0359\u0591\u0310.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u064b\u1170s\u05b0\u05ea\u0915.example"
+  },
+  {
+   "ascii": "xn--v-9ch.example",
+   "host": "\u1174\uff36.example"
+  },
+  {
+   "ascii": "xn--f-uef576aga.example",
+   "host": "\uff26\u116b\u0cc6\u00ad\u1169.example"
+  },
+  {
+   "ascii": "xn--yua231e7461b.example",
+   "host": "\u0354\u1109\ud87e\udc68.example"
+  },
+  {
+   "ascii": "xn--hqd.example",
+   "host": "\u1112.example"
+  },
+  {
+   "ascii": "xn--l-xfa3ip636t.example",
+   "host": "\ud83e\udee9\u00e3\uff2c\u0106.example"
+  },
+  {
+   "ascii": "xn--f-7ha956j9a.example",
+   "host": "\u116a\u1161\u1806\u010bf.example"
+  },
+  {
+   "ascii": "c.example",
+   "host": "c.example"
+  },
+  {
+   "ascii": "xn--wivd-76c602gtmg.example",
+   "host": "\u093cw\u2163\u0350\uff24\u0cc2.example"
+  },
+  {
+   "ascii": "xn--uua.example",
+   "host": "\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff28\u034b\u0316\u05d0\u015b.example"
+  },
+  {
+   "ascii": "xn--y-3cb90ic2c6z9b.example",
+   "host": "\u200c\u0483\u0316\u1ab0\u064b\uff39.example"
+  },
+  {
+   "ascii": "xn--uua056kgx0h.example",
+   "host": "\u200d\ua66f\u0350\u1dc0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u035b\ud83d\ude00\ud83e\udee9\u1dff\u0644.example"
+  },
+  {
+   "ascii": "xn--lsaih8c7dtfuh.example",
+   "host": "\u0354\u0315\u0344\u033a\u0326\u0305.example"
+  },
+  {
+   "ascii": "xn--uda4vy4fmz2w00to.example",
+   "host": "\ua66f\u0483\ud83e\udee9\u00fd\u0174.example"
+  },
+  {
+   "ascii": "xn--6sa.example",
+   "host": "\u0316.example"
+  },
+  {
+   "ascii": "xn--uua541ag3u.example",
+   "host": "\u1e9e\u0350\u093c.example"
+  },
+  {
+   "ascii": "xn--tqf2783f.example",
+   "host": "\u110e\u1164\u1ab0.example"
+  },
+  {
+   "ascii": "xn--m3a135d.example",
+   "host": "\u110c\u0483.example"
+  },
+  {
+   "ascii": "xn--oiv-ozh988g5c.example",
+   "host": "\u09be\u1172\u1161\uff2f\u2163.example"
+  },
+  {
+   "ascii": "xn--cg-jsa.example",
+   "host": "\u0155cg.example"
+  },
+  {
+   "ascii": "xn--m-fmb13lnzx.example",
+   "host": "\u0345\u1171\uff2d\u0591.example"
+  },
+  {
+   "ascii": "xn--nhpa-okf182ppcq2370c.example",
+   "host": "n\u3371\u1165\u0591\u1171\ud83d\ude00.example"
+  },
+  {
+   "ascii": "xn--s-mla00m1y0aho24cpca1820d.example",
+   "host": "\ud834\udd5e\u0336\ud87e\udc68\uff33\u1163\u0146.example"
+  },
+  {
+   "ascii": "xn--zga916l.example",
+   "host": "\u1dc0\u016a.example"
+  },
+  {
+   "ascii": "xn--0la57c.example",
+   "host": "\u0334t\u200c\u0326.example"
+  },
+  {
+   "ascii": "xn--eda496f.example",
+   "host": "\u00cd\u11af\u00ad.example"
+  },
+  {
+   "ascii": "xn--7cb101d.example",
+   "host": "\u1162\u05b0.example"
+  },
+  {
+   "ascii": "xn--l-eec23zgze2wgjw37f.example",
+   "host": "\u0cd5\u0591l\ud83e\udee9\u093c\u1110.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1105\u1107\u05eaq\uff22.example"
+  },
+  {
+   "ascii": "xn--wv-8ma08ut40a9q00e.example",
+   "host": "\ud83d\ude00\u1109\u0367w\u0116v.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116b\u0627.example"
+  },
+  {
+   "ascii": "xn--fha.example",
+   "host": "\u0179\u00ad.example"
+  },
+  {
+   "ascii": "xn--w-y5g768d1md.example",
+   "host": "w\u1105\u1ab0\u1dff.example"
+  },
+  {
+   "ascii": "xn--zsd.example",
+   "host": "\u116a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0644\u09c7\u064b\u1174\u0168\uff2f.example"
+  },
+  {
+   "ascii": "xn--qfi-z7e7784a.example",
+   "host": "\u0670q\ufb01\u20d0.example"
+  },
+  {
+   "ascii": "xn--z-5ka15nwuq.example",
+   "host": "\u0cd5\uff3a\u0360\u013d.example"
+  },
+  {
+   "ascii": "xn--11b.example",
+   "host": "\u0915.example"
+  },
+  {
+   "ascii": "xn--o-uef.example",
+   "host": "\uff2f\u00ad\u0cc6.example"
+  },
+  {
+   "ascii": "xn--hpamk-w0u60889b.example",
+   "host": "\u3371\uff2d\ud83e\udee9\u110e\uff2b.example"
+  },
+  {
+   "ascii": "xn--f-vigd60u9v51a.example",
+   "host": "f\u0f73\u11af\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00f2\u0644\u3371\ud83e\udee9.example"
+  },
+  {
+   "ascii": "xn--pd-mka147aupn.example",
+   "host": "\uff30d\u0483\u0cc2\u00f8.example"
+  },
+  {
+   "ascii": "xn--hpa-gsa3e5vh93gz9v.example",
+   "host": "\u012d\u011e\u0170\u3371\u1e9e\u1172.example"
+  },
+  {
+   "ascii": "xn--kedc87370b.example",
+   "host": "\u0f73\ud87e\udc68.example"
+  },
+  {
+   "ascii": "xn--vu-fwdba546n.example",
+   "host": "\u110fv\u064b\uff35\u064b\u064b.example"
+  },
+  {
+   "ascii": "xn--xtc.example",
+   "host": "\u0cc2.example"
+  },
+  {
+   "ascii": "xn--fi-cpa289i.example",
+   "host": "\ufb01\u012e\u0cc6.example"
+  },
+  {
+   "ascii": "xn--fi-41f158r.example",
+   "host": "\u1dff\ufb01\u09be.example"
+  },
+  {
+   "ascii": "xn--m3a864i.example",
+   "host": "\u0483\u1ab0.example"
+  },
+  {
+   "ascii": "xn--tqf.example",
+   "host": "\u1ab0.example"
+  },
+  {
+   "ascii": "xn--zea291kjp42avbav96y.example",
+   "host": "\u0124\ud834\udd5e\u1ab0\ud83d\ude00.example"
+  },
+  {
+   "ascii": "xn--2pd5167e.example",
+   "host": "\ua66f\u1104.example"
+  },
+  {
+   "ascii": "xn--dga0dy97d.example",
+   "host": "\u0155\u0170\u110f\u200d.example"
+  },
+  {
+   "ascii": "xn--pib1099x.example",
+   "host": "\u200d\ud87e\udc68\u0670.example"
+  },
+  {
+   "ascii": "xn--i-ech.example",
+   "host": "i\u1164.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ufb01\uff25\ufb01g\u116c\u0627.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dc0\u00d7\ufb01\u0644.example"
+  },
+  {
+   "ascii": "xn--cva519b48nlk46b.example",
+   "host": "\u0cc2\u200d\ud83e\udee9\u0361\u1806\u1dc0.example"
+  },
+  {
+   "ascii": "xn--qiv-xma390a.example",
+   "host": "\uff31\u2163\u200c\u0342\u00ee.example"
+  },
+  {
+   "ascii": "iv.example",
+   "host": "\u2163.example"
+  },
+  {
+   "ascii": "xn--yda2i.example",
+   "host": "\u0101\u0136.example"
+  },
+  {
+   "ascii": "xn--11b25a.example",
+   "host": "\u0915\u09be.example"
+  },
+  {
+   "ascii": "xn--fii-n90a.example",
+   "host": "\u20d0\ufb01i.example"
+  }
+ ]
+}

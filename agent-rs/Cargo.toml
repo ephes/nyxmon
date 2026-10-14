@@ -26,6 +26,14 @@ nyxmon-notify = { path = "crates/nyxmon-notify" }
 indexmap = "2"
 num-bigint = "0.4"
 num-traits = "0.2"
+tracing = "0.1"
+idna = "1"
+unicode-normalization = "0.1"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rustls-native-certs = "0.8"
+tokio = "1"
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
+rcgen = "0.14"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
