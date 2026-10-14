@@ -273,8 +273,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (maintenance suppression, notification decision, persistence, alert and
   acknowledgement), the results cleaner, the claim/execute/sleep collector
   loop and SIGTERM/SIGINT shutdown with the grace period and lease release.
-  Stale-lease recovery, collector incidents and site connectivity follow in
-  later slices; nothing deploys the Rust agent yet.
+  Stale-lease recovery and collector incidents follow in a later slice;
+  nothing deploys the Rust agent yet.
 - Rust agent release pipeline (slice S13 of `agent-rs/PLAN.md`):
   `.github/workflows/agent-rs-release.yml` builds `nyxmon-agent` on
   ubuntu-22.04 for a tag `agent-rs-v<version>` (which must equal the crate
@@ -284,6 +284,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `workflow_dispatch` builds the same files as a workflow artifact.
   `nyxmon-agent --version` now also prints the git commit. The CI `rust` job
   runs `cargo deny` (licenses, advisories, sources; `just rs-deny`).
+- Rust agent site connectivity runtime (slice S11 of `agent-rs/PLAN.md`):
+  with `NYXMON_SITE_CONNECTIVITY_MODE=observe` or `enforce` the
+  `nyxmon-agent` binary now runs the site connectivity observer like the
+  Python agent: TCP and DNS probes every probe interval, the persisted
+  `site:connectivity` lifecycle, the ongoing alert and recovery summary
+  through the process notifier, the recovery recheck, holds in the result
+  handler, and the startup warning about requirements on unobserved paths.
+  The mode is logged at startup (`site connectivity observation is
+  <mode>`); with the mode off (the default) nothing changes.
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but
