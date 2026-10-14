@@ -372,3 +372,26 @@ async fn counts_only_processing_claims_older_than_the_epoch() {
     );
     assert_eq!(store.count_processing_claims_before(0).await.unwrap(), 0);
 }
+
+#[test]
+fn read_check_loads_one_row_read_only() {
+    // `run-check` (PLAN.md 7.4): the row as a claim would load it, without
+    // writing anything (the claim columns stay as they are).
+    let db = TestDb::new();
+    db.insert(row(1).processing(50).disabled().data(r#"{"b": 1, "a": 2}"#));
+    db.insert(row(2));
+
+    let check = nyxmon_store::read_check(db.path(), 1).unwrap().unwrap();
+    assert_eq!(check.check_id, 1);
+    assert_eq!(check.status, CHECK_STATUS_PROCESSING);
+    assert_eq!(check.claim_started_at, 50);
+    assert!(check.disabled);
+    assert_eq!(check.data.to_json_string().unwrap(), r#"{"b": 1, "a": 2}"#);
+    assert_eq!(db.schedule(1), Some(("processing".to_owned(), 0, 50)));
+    assert!(nyxmon_store::read_check(db.path(), 3).unwrap().is_none());
+
+    // A read-only connection cannot create a missing database.
+    let missing = db.path().with_file_name("missing.sqlite3");
+    assert!(nyxmon_store::read_check(&missing, 1).is_err());
+    assert!(!missing.exists());
+}

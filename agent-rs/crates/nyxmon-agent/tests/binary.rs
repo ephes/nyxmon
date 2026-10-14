@@ -1,6 +1,7 @@
-//! Process-level tests of the `nyxmon-agent` binary (PLAN.md 5.1, 7.3 for
-//! the parts S9 owns): exit codes of the startup checks, a run against a
-//! fake HTTP server, and SIGTERM handling with lease release.
+//! Process-level tests of the `nyxmon-agent` binary (PLAN.md 5.1, 7.3):
+//! exit codes of the startup checks, runs against fake servers, SIGTERM,
+//! SIGINT and SIGKILL with lease release and stale-lease reclaim, the
+//! cleaner, the site observer, and `run-check`.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
@@ -69,25 +70,49 @@ fn run(args: &[&str]) -> (i32, String) {
     )
 }
 
-/// A server answering every request with `200 OK` (or never answering).
-fn fake_server(respond: bool) -> String {
+/// How the fake HTTP server answers.
+#[derive(Clone, Copy)]
+enum Answer {
+    /// `200 OK` at once.
+    Ok,
+    /// Never: the connection is held open.
+    Never,
+    /// `200 OK` after the delay.
+    After(Duration),
+}
+
+/// A server answering every request as `answer` says.
+fn fake_server_with(answer: Answer) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     std::thread::spawn(move || {
         let mut held = Vec::new();
         for stream in listener.incoming() {
             let Ok(mut stream) = stream else { break };
-            if !respond {
-                held.push(stream);
-                continue;
-            }
-            let mut buffer = [0u8; 4096];
-            let _ = stream.read(&mut buffer);
-            let _ = stream
-                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+            let delay = match answer {
+                Answer::Never => {
+                    held.push(stream);
+                    continue;
+                }
+                Answer::Ok => Duration::ZERO,
+                Answer::After(delay) => delay,
+            };
+            std::thread::spawn(move || {
+                let mut buffer = [0u8; 4096];
+                let _ = stream.read(&mut buffer);
+                std::thread::sleep(delay);
+                let _ = stream.write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
+                );
+            });
         }
     });
     format!("http://{address}/health")
+}
+
+/// A server answering every request with `200 OK` (or never answering).
+fn fake_server(respond: bool) -> String {
+    fake_server_with(if respond { Answer::Ok } else { Answer::Never })
 }
 
 fn wait_until(what: &str, condition: impl Fn() -> bool) {
@@ -98,12 +123,16 @@ fn wait_until(what: &str, condition: impl Fn() -> bool) {
     }
 }
 
-fn terminate(child: Child) -> Output {
+fn send_signal(child: &Child, name: &str) {
     let status = Command::new("kill")
-        .args(["-TERM", &child.id().to_string()])
+        .args([&format!("-{name}"), &child.id().to_string()])
         .status()
         .unwrap();
     assert!(status.success());
+}
+
+fn terminate(child: Child) -> Output {
+    send_signal(&child, "TERM");
     child.wait_with_output().unwrap()
 }
 
@@ -400,4 +429,353 @@ fn site_connectivity_off_starts_no_observer() {
     assert_eq!(output.status.code(), Some(0), "{stderr}");
     assert!(!stderr.contains("site connectivity"), "{stderr}");
     assert!(site_payload(&db.path).is_none());
+}
+
+fn status_of(db: &Path, check_id: i64) -> String {
+    query(
+        db,
+        &format!("SELECT status FROM health_check WHERE id = {check_id}"),
+    )
+}
+
+/// Wait for the `Monitoring started` line; the agent holds its lock and
+/// its signal handlers are installed from then on.
+fn started(child: &mut Child) -> std::thread::JoinHandle<String> {
+    let mut stderr = BufReader::new(child.stderr.take().unwrap());
+    let mut seen = String::new();
+    loop {
+        let mut line = String::new();
+        assert!(
+            stderr.read_line(&mut line).unwrap() > 0,
+            "agent ended: {seen}"
+        );
+        seen.push_str(&line);
+        if line.contains("Monitoring started") {
+            break;
+        }
+    }
+    // Keep draining, so the agent never blocks on a full pipe.
+    std::thread::spawn(move || {
+        let mut rest = String::new();
+        let _ = stderr.read_to_string(&mut rest);
+        seen + &rest
+    })
+}
+
+#[test]
+fn sigint_during_an_in_flight_check_releases_the_claim_without_a_result() {
+    // `test_signal_releases_unfinished_claim_without_alert[SIGINT]`.
+    let db = migrated_db();
+    add_http_check(&db.path, 1, &fake_server(false), r#"{"timeout": 60}"#);
+    let path = db.path.to_str().unwrap();
+    let mut child = agent(&["--db", path, "--disable-cleaner", "--shadow"])
+        .spawn()
+        .unwrap();
+    let log = started(&mut child);
+    wait_until("the claim", || status_of(&db.path, 1) == "processing");
+    send_signal(&child, "INT");
+    let status = child.wait().unwrap();
+    let stderr = log.join().unwrap();
+    assert_eq!(status.code(), Some(0), "{stderr}");
+    assert!(stderr.contains(" - INFO - Received signal 2, shutting down..."));
+    assert!(!stderr.contains("notification check_id="), "{stderr}");
+    assert_eq!(status_of(&db.path, 1), "idle");
+    assert!(
+        query::<i64>(
+            &db.path,
+            "SELECT next_check_time FROM health_check WHERE id = 1"
+        ) > 0
+    );
+    assert_eq!(
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM check_result"),
+        0
+    );
+    assert_eq!(
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM collector_incident"),
+        0
+    );
+}
+
+#[test]
+fn a_result_finishing_within_the_grace_is_recorded() {
+    // `test_result_finishing_during_grace_is_recorded`: the check answers
+    // one second after the signal, inside the five-second grace.
+    let db = migrated_db();
+    add_http_check(
+        &db.path,
+        1,
+        &fake_server_with(Answer::After(Duration::from_millis(1500))),
+        "{}",
+    );
+    let path = db.path.to_str().unwrap();
+    let mut child = agent(&["--db", path, "--disable-cleaner", "--shadow"])
+        .env("NYXMON_SHUTDOWN_GRACE_SECONDS", "5")
+        .spawn()
+        .unwrap();
+    let log = started(&mut child);
+    wait_until("the claim", || status_of(&db.path, 1) == "processing");
+    std::thread::sleep(Duration::from_millis(300));
+    send_signal(&child, "TERM");
+    let status = child.wait().unwrap();
+    let stderr = log.join().unwrap();
+    assert_eq!(status.code(), Some(0), "{stderr}");
+    assert_eq!(
+        query::<String>(&db.path, "SELECT status FROM check_result"),
+        "ok"
+    );
+    assert_eq!(status_of(&db.path, 1), "idle");
+    assert_eq!(
+        query::<i64>(
+            &db.path,
+            "SELECT processing_started_at FROM health_check WHERE id = 1"
+        ),
+        0
+    );
+}
+
+#[test]
+fn an_idle_agent_shuts_down_promptly() {
+    let db = migrated_db();
+    let path = db.path.to_str().unwrap();
+    let mut child = agent(&["--db", path, "--interval", "1"])
+        .env("NYXMON_SHUTDOWN_GRACE_SECONDS", "5")
+        .spawn()
+        .unwrap();
+    let log = started(&mut child);
+    let signalled = Instant::now();
+    send_signal(&child, "TERM");
+    let status = child.wait().unwrap();
+    let stderr = log.join().unwrap();
+    assert_eq!(status.code(), Some(0), "{stderr}");
+    // At most one interval sleep; the grace applies only to a batch.
+    assert!(signalled.elapsed() < Duration::from_secs(3), "{stderr}");
+}
+
+#[test]
+fn sigkill_leaves_the_claim_and_the_next_start_reclaims_it_after_the_lease() {
+    // `test_hard_kill_still_reclaims_and_alerts` with the real binary on
+    // both sides of the kill (PLAN.md 7.3).
+    let db = migrated_db();
+    add_http_check(&db.path, 1, &fake_server(false), r#"{"timeout": 60}"#);
+    let path = db.path.to_str().unwrap();
+    let mut killed = agent(&["--db", path, "--disable-cleaner", "--shadow"])
+        .spawn()
+        .unwrap();
+    wait_until("the claim", || status_of(&db.path, 1) == "processing");
+    killed.kill().unwrap();
+    killed.wait().unwrap();
+    let claimed_at: i64 = query(
+        &db.path,
+        "SELECT processing_started_at FROM health_check WHERE id = 1",
+    );
+    assert!(claimed_at > 0);
+
+    // Within the lease the claim is left alone, and a clean shutdown does
+    // not release a claim this process does not own.
+    let mut within = agent(&[
+        "--db",
+        path,
+        "--interval",
+        "1",
+        "--disable-cleaner",
+        "--shadow",
+    ])
+    .spawn()
+    .unwrap();
+    let log = started(&mut within);
+    std::thread::sleep(Duration::from_millis(2500));
+    send_signal(&within, "TERM");
+    assert_eq!(within.wait().unwrap().code(), Some(0));
+    let stderr = log.join().unwrap();
+    assert!(!stderr.contains("notification check_id="), "{stderr}");
+    assert_eq!(status_of(&db.path, 1), "processing");
+    assert_eq!(
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM check_result"),
+        0
+    );
+
+    // Age the persisted lease past the effective lease (900 s by default)
+    // instead of waiting for it.
+    Connection::open(&db.path)
+        .unwrap()
+        .execute(
+            "UPDATE health_check SET processing_started_at = processing_started_at - 901,
+                check_interval = 3600 WHERE id = 1",
+            [],
+        )
+        .unwrap();
+    let mut next = agent(&[
+        "--db",
+        path,
+        "--interval",
+        "1",
+        "--disable-cleaner",
+        "--shadow",
+    ])
+    .spawn()
+    .unwrap();
+    let log = started(&mut next);
+    wait_until("the stale result", || {
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM check_result") >= 1
+    });
+    wait_until("the incident", || {
+        query::<i64>(
+            &db.path,
+            "SELECT COUNT(*) FROM collector_incident
+             WHERE incident_key = 'collector:stale_processing_lease' AND alert_count = 1",
+        ) == 1
+    });
+    std::thread::sleep(Duration::from_millis(2500));
+    send_signal(&next, "TERM");
+    assert_eq!(next.wait().unwrap().code(), Some(0));
+    let stderr = log.join().unwrap();
+
+    let data: String = query(&db.path, "SELECT data FROM check_result");
+    assert!(
+        data.starts_with(r#"{"error_type": "stale_processing_lease", "#),
+        "{data}"
+    );
+    assert_eq!(
+        query::<String>(&db.path, "SELECT status FROM check_result"),
+        "error"
+    );
+    // Rescheduled one interval ahead, so the check did not run again.
+    assert_eq!(
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM check_result"),
+        1
+    );
+    assert_eq!(status_of(&db.path, 1), "idle");
+    // Exactly one alert: the batch alert; the check's own first failure is
+    // below the default threshold of two.
+    let alerts: Vec<&str> = stderr
+        .lines()
+        .filter(|line| line.contains("notification check_id="))
+        .collect();
+    assert_eq!(alerts.len(), 1, "{stderr}");
+    assert!(
+        alerts[0].ends_with(
+            " - nyxmon.adapters.notification - ERROR - notification check_id=0 status=error \
+             error_type=stale_processing_lease_batch"
+        ),
+        "{}",
+        alerts[0]
+    );
+}
+
+#[test]
+fn the_cleaner_deletes_expired_results_and_sessions() {
+    // `cleaner_e2e_test.py::test_cleaner_integration` through the binary.
+    let db = migrated_db();
+    add_http_check(&db.path, 1, "http://127.0.0.1:1/never", "{}");
+    Connection::open(&db.path)
+        .unwrap()
+        .execute_batch(
+            "UPDATE health_check SET disabled = 1;
+             INSERT INTO check_result (health_check_id, status, data, created_at) VALUES
+                (1, 'ok', '{}', datetime('now', '-3 days')),
+                (1, 'ok', '{}', datetime('now', '-2 days')),
+                (1, 'ok', '{}', datetime('now', '-1 hours'));
+             INSERT INTO django_session (session_key, session_data, expire_date) VALUES
+                ('old', 'x', datetime('now', '-1 days')),
+                ('new', 'x', datetime('now', '+1 days'));",
+        )
+        .unwrap();
+    let path = db.path.to_str().unwrap();
+    let mut child = agent(&["--db", path, "--batch-size", "1"]).spawn().unwrap();
+    let log = started(&mut child);
+    wait_until("the cleanup", || {
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM check_result") == 1
+    });
+    wait_until("the session cleanup", || {
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM django_session") == 1
+    });
+    send_signal(&child, "TERM");
+    assert_eq!(child.wait().unwrap().code(), Some(0));
+    let stderr = log.join().unwrap();
+    assert_eq!(
+        query::<String>(&db.path, "SELECT session_key FROM django_session"),
+        "new"
+    );
+    assert!(stderr.contains("Cleaned up"), "{stderr}");
+}
+
+fn run_check(args: &[&str]) -> (i32, String, String) {
+    let output = agent(&[&["run-check"], args].concat()).output().unwrap();
+    (
+        output.status.code().unwrap_or(-1),
+        String::from_utf8(output.stdout).unwrap(),
+        String::from_utf8_lossy(&output.stderr).into_owned(),
+    )
+}
+
+#[test]
+fn run_check_prints_one_result_without_writing_the_database() {
+    let db = migrated_db();
+    let url = fake_server(true);
+    add_http_check(&db.path, 1, &url, r#"{"expected_status": 200}"#);
+    add_http_check(&db.path, 2, &url, "{}");
+    Connection::open(&db.path)
+        .unwrap()
+        .execute_batch("UPDATE health_check SET disabled = 1, check_type = 'legacy' WHERE id = 2")
+        .unwrap();
+    let path = db.path.to_str().unwrap();
+
+    let (code, stdout, stderr) = run_check(&["--db", path, "--check-id", "1"]);
+    assert_eq!(code, 0, "{stderr}");
+    let line = stdout.strip_suffix('\n').expect("one line");
+    assert!(
+        line.starts_with(r#"{"check_id": 1, "check_type": "http", "status": "ok", "data": {"#),
+        "{line}"
+    );
+    assert!(!line.contains('\n'));
+    // Disabled checks run too (the shadow copy disables the mail checks).
+    let (code, stdout, _) = run_check(&["--db", path, "--check-id", "2"]);
+    assert_eq!(code, 0);
+    assert!(
+        stdout.starts_with(
+            r#"{"check_id": 2, "check_type": "legacy", "status": "error", "data": {"error_type": "unknown_check_type", "#
+        ),
+        "{stdout}"
+    );
+    // Even while an agent holds the lock (no lock is taken).
+    let mut running = agent(&["--db", path, "--disable-cleaner"]).spawn().unwrap();
+    let log = started(&mut running);
+    let (code, _, stderr) = run_check(&["--db", path, "--check-id", "1"]);
+    assert_eq!(code, 0, "{stderr}");
+    send_signal(&running, "TERM");
+    assert_eq!(running.wait().unwrap().code(), Some(0));
+    drop(log.join());
+
+    let (code, stdout, stderr) = run_check(&["--db", path, "--check-id", "3"]);
+    assert_eq!((code, stdout.as_str()), (1, ""));
+    assert!(
+        stderr.contains(&format!(" - ERROR - check 3 not found in {path}")),
+        "{stderr}"
+    );
+    let (code, _, stderr) = run_check(&["--db", "missing.sqlite3", "--check-id", "1"]);
+    assert_eq!(code, 1);
+    assert!(stderr.contains("Database file not found: missing.sqlite3"));
+    assert_eq!(run_check(&["--db", path]).0, 2);
+    assert_eq!(run_check(&["--db", path, "--check-id", "x"]).0, 2);
+
+    // The running agent wrote its results; run-check wrote none of its own.
+    let rows: i64 = query(&db.path, "SELECT COUNT(*) FROM check_result");
+    let agent_rows: i64 = query(
+        &db.path,
+        "SELECT COUNT(*) FROM check_result WHERE health_check_id = 1",
+    );
+    assert_eq!(rows, agent_rows);
+    assert!(rows <= 1);
+}
+
+#[test]
+fn run_check_leaves_an_untouched_database_unmodified() {
+    let db = migrated_db();
+    add_http_check(&db.path, 1, &fake_server(true), "{}");
+    let before = std::fs::read(&db.path).unwrap();
+    let path = db.path.to_str().unwrap();
+    let (code, _, stderr) = run_check(&["--db", path, "--check-id", "1"]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(std::fs::read(&db.path).unwrap(), before);
+    assert!(!db.path.with_extension("sqlite3.agent.lock").exists());
 }

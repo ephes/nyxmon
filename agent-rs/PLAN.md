@@ -1969,6 +1969,16 @@ differences" is its gate.
 one check from a database opened read-only and prints the result JSON
 (no persistence, no notification, no lock). It is used by the harness for
 single-check comparisons and on macmini for the mail checks (9.1 phase C).
+Implementation (S12, `crates/nyxmon-agent/src/run_check.rs`): the schema
+is verified read-only first; the check runs through the registry and the
+batch runner like a claimed batch of one (so unknown types, undecodable
+data, exceptions and panics give the runner results of 1.6), also when it
+is disabled; `--imap-no-delete` sets `delete_after_check` to `false` in an
+IMAP check's data before it runs. stdout is one line,
+`{"check_id": N, "check_type": "...", "status": "...", "data": {...}}`
+(`json.dumps` format, data keys in result order); log lines go to stderr.
+Exit 0 when the check ran (whatever its status), 1 for a missing database,
+an old schema or an unknown check id, 2 for usage errors.
 
 ### 7.5 CI and just recipes
 

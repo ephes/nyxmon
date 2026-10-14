@@ -114,6 +114,25 @@ plus `cargo deny --locked check` (a pinned, checksum-verified cargo-deny
 release; PLAN.md R9), and reports the release binary size; the fixture drift
 test runs in the `python` job as part of pytest.
 
+## Running the binary
+
+```
+nyxmon-agent --db PATH [--interval 5] [--cleanup-interval 3600]
+             [--retention-period 86400] [--batch-size 1000] [--disable-cleaner]
+             [--log-level INFO] [--enable-telegram]     # start-agent's flags
+nyxmon-agent --db PATH --check-schema    # verify the schema read-only, exit 0/1
+nyxmon-agent --db PATH --shadow          # shadow run: machine-readable alert lines, no Telegram
+nyxmon-agent run-check --db PATH --check-id N [--imap-no-delete] [--log-level LEVEL]
+nyxmon-agent --version
+```
+
+`run-check` executes one check from a database opened read-only (no lock,
+no result row, no notification; disabled checks run too) and prints one
+JSON line, `{"check_id": N, "check_type": "...", "status": "...", "data":
+{...}}`, on stdout; logs go to stderr. `--imap-no-delete` keeps the matched
+messages of an IMAP check in the mailbox. Exit status 0 when the check ran,
+1 for a missing database, an old schema or an unknown id (PLAN.md 7.4).
+
 ## Releases
 
 `.github/workflows/agent-rs-release.yml` builds the binary the deployment

@@ -18,6 +18,20 @@ pub(crate) fn list_checks(connection: &Connection) -> Result<Vec<Check>, StoreEr
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+/// One check by id, from a read-only connection (`run-check`, PLAN.md 7.4):
+/// no lock, no write, the row as the claim would load it.
+pub fn read_check(path: &std::path::Path, check_id: i64) -> Result<Option<Check>, StoreError> {
+    let connection = crate::actor::open_read_only(path)?;
+    let check = connection
+        .query_row(
+            &format!("SELECT {CHECK_COLUMNS} FROM health_check WHERE id = ?"),
+            params![check_id],
+            row_to_check,
+        )
+        .optional()?;
+    Ok(check)
+}
+
 /// `list_due_checks_async`: atomically claim up to `batch_size` due checks.
 pub(crate) fn claim_due_checks(
     connection: &mut Connection,
