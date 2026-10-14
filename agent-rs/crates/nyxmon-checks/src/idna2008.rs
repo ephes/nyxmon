@@ -353,7 +353,13 @@ fn alabel(label: &str) -> Result<String, IdnaError> {
                 if encoded.ends_with('-') {
                     return Err(error("A-label must not end with a hyphen"));
                 }
-                let decoded = idna::punycode::decode_to_string(encoded)
+                // Python's punycode codec splits at the last '-': a leading
+                // delimiter means an empty basic part.
+                let punycode = match encoded.rfind('-') {
+                    Some(0) => &encoded[1..],
+                    _ => encoded,
+                };
+                let decoded = idna::punycode::decode_to_string(punycode)
                     .ok_or_else(|| error("Invalid A-label"))?;
                 check_label(&decoded)?;
             }
@@ -382,7 +388,20 @@ pub fn idna2008_resolve(host: &str) -> Result<String, IdnaError> {
     if host.is_ascii() {
         return Ok(host.to_owned());
     }
-    let mapped = uts46_remap(host)?;
+    encode_labels(&uts46_remap(host)?)
+}
+
+/// `idna.encode(domain)` (no UTS 46 mapping) as text: what httpx sends for a
+/// non-ASCII host (`httpx/_urlparse.py:encode_host`).
+///
+/// # Errors
+/// The domain is not a valid IDNA 2008 domain name.
+pub fn idna_encode(domain: &str) -> Result<String, IdnaError> {
+    encode_labels(domain)
+}
+
+/// The label loop of `idna.encode` after the optional UTS 46 mapping.
+fn encode_labels(mapped: &str) -> Result<String, IdnaError> {
     if mapped.chars().count() > 254 {
         return Err(error("Domain too long"));
     }

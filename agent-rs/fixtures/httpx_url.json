@@ -1,0 +1,1060 @@
+{
+ "parse": [
+  {
+   "host": "a",
+   "is_relative": false,
+   "netloc": "a",
+   "password": "",
+   "port": null,
+   "raw_path": "/%2e%2e/b",
+   "scheme": "http",
+   "str": "http://a/%2e%2e/b",
+   "url": "http://a/%2e%2e/b",
+   "username": ""
+  },
+  {
+   "host": "a.test",
+   "is_relative": false,
+   "netloc": "a.test",
+   "password": "",
+   "port": null,
+   "raw_path": "/y/z?q=a%20b",
+   "scheme": "http",
+   "str": "http://a.test/y/z?q=a%20b#f",
+   "url": "http://A.Test:80/x/../y/./z?q=a b#f",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "https",
+   "str": "https://h",
+   "url": "https://h:443",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "https",
+   "str": "https://h/",
+   "url": "https://h:443/",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h:8",
+   "password": "",
+   "port": 8,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://h:8/",
+   "url": "http://h:08/",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://h/",
+   "url": "http://h:+8_0/",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h:8",
+   "password": "",
+   "port": 8,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://h:8/",
+   "url": "http://h: 8/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://h:x/"
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h:99999",
+   "password": "",
+   "port": 99999,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://h:99999/",
+   "url": "http://h:99999/",
+   "username": ""
+  },
+  {
+   "host": "::1",
+   "is_relative": false,
+   "netloc": "[::1]:8080",
+   "password": "",
+   "port": 8080,
+   "raw_path": "/a",
+   "scheme": "http",
+   "str": "http://[::1]:8080/a",
+   "url": "http://[::1]:8080/a",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://[::1/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://[::g]/"
+  },
+  {
+   "host": "fe80::1%25eth0",
+   "is_relative": false,
+   "netloc": "[fe80::1%25eth0]",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://[fe80::1%25eth0]/",
+   "url": "http://[fe80::1%25eth0]/",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "p@",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://u:p%40@h/",
+   "url": "http://u:p%40@h/",
+   "username": "u"
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://u@h/",
+   "url": "http://u@h/",
+   "username": "u"
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "p",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://:p@h/",
+   "url": "http://:p@h/",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://a%40b@h/",
+   "url": "http://a@b@h/",
+   "username": "a@b"
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/a%20b%7B%7D|^%60%22%3C%3E",
+   "scheme": "http",
+   "str": "http://h/a%20b%7B%7D|^%60%22%3C%3E",
+   "url": "http://h/a b{}|^`\"<>",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/%C3%A9?%C3%A9",
+   "scheme": "http",
+   "str": "http://h/%C3%A9?%C3%A9#%C3%A9",
+   "url": "HTTP://h/\u00e9?\u00e9#\u00e9",
+   "username": ""
+  },
+  {
+   "host": "xn--wersdrfer-47a.de",
+   "is_relative": false,
+   "netloc": "xn--wersdrfer-47a.de",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--wersdrfer-47a.de/",
+   "url": "http://wersd\u00f6rfer.de/",
+   "username": ""
+  },
+  {
+   "host": "xn--wersdrfer-47a.de",
+   "is_relative": false,
+   "netloc": "xn--wersdrfer-47a.de",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--wersdrfer-47a.de/",
+   "url": "http://WERSD\u00d6RFER.de/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\uff45xample.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://e\u0301.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u2603.net/"
+  },
+  {
+   "host": "xn--strae-oqa.de",
+   "is_relative": false,
+   "netloc": "xn--strae-oqa.de",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--strae-oqa.de/",
+   "url": "http://stra\u00dfe.de/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://a\u200db.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u2167.com/"
+  },
+  {
+   "host": "xn--mgb2d.com",
+   "is_relative": false,
+   "netloc": "xn--mgb2d.com",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--mgb2d.com/",
+   "url": "http://\u0627\u0644.com/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://ex\u00e4mple..com/"
+  },
+  {
+   "host": "xn--ll-0ea.cat",
+   "is_relative": false,
+   "netloc": "xn--ll-0ea.cat",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--ll-0ea.cat/",
+   "url": "http://l\u00b7l.cat/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://a\u00b7b.cat/"
+  },
+  {
+   "host": "xn--11b2ezcs70k.in",
+   "is_relative": false,
+   "netloc": "xn--11b2ezcs70k.in",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--11b2ezcs70k.in/",
+   "url": "http://\u0915\u094d\u200c\u0937.in/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://a\u200cb.com/"
+  },
+  {
+   "host": "xn--11b2ezcw70k.in",
+   "is_relative": false,
+   "netloc": "xn--11b2ezcw70k.in",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--11b2ezcw70k.in/",
+   "url": "http://\u0915\u094d\u200d\u0937.in/",
+   "username": ""
+  },
+  {
+   "host": "xn--4dbc.il",
+   "is_relative": false,
+   "netloc": "xn--4dbc.il",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--4dbc.il/",
+   "url": "http://\u05d0\u05d1.il/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://a\u05d0.il/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u05d0a.il/"
+  },
+  {
+   "host": "xn--4db4e.il",
+   "is_relative": false,
+   "netloc": "xn--4db4e.il",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--4db4e.il/",
+   "url": "http://\u05d0\u05f3.il/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://a\u05f3.il/"
+  },
+  {
+   "host": "xn--wva3je.gr",
+   "is_relative": false,
+   "netloc": "xn--wva3je.gr",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--wva3je.gr/",
+   "url": "http://\u03b1\u0375\u03b2.gr/",
+   "username": ""
+  },
+  {
+   "host": "xn--ccka0y.jp",
+   "is_relative": false,
+   "netloc": "xn--ccka0y.jp",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--ccka0y.jp/",
+   "url": "http://\u30a2\u30fb\u30a2.jp/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://a\u30fbb.jp/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u0661\u06f1.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u0661\u0662.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u0301a.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u00e9-.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://ab--\u00e9.com/"
+  },
+  {
+   "host": "xn--9ca.xn--9ca.com",
+   "is_relative": false,
+   "netloc": "xn--9ca.xn--9ca.com",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--9ca.xn--9ca.com/",
+   "url": "http://xn--9ca.\u00e9.com/",
+   "username": ""
+  },
+  {
+   "host": "xn--9ca.com.",
+   "is_relative": false,
+   "netloc": "xn--9ca.com.",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--9ca.com./",
+   "url": "http://\u00e9.com./",
+   "username": ""
+  },
+  {
+   "host": "xn--9ca.com",
+   "is_relative": false,
+   "netloc": "xn--9ca.com",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--9ca.com/",
+   "url": "http://\u00e9\u3002com/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://_x.\u00e9.com/"
+  },
+  {
+   "host": "xn--mgb0j.com",
+   "is_relative": false,
+   "netloc": "xn--mgb0j.com",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--mgb0j.com/",
+   "url": "http://\u0627\u0661.com/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u0627a.com/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9.com/"
+  },
+  {
+   "host": "xn---9ca.xn--9ca",
+   "is_relative": false,
+   "netloc": "xn---9ca.xn--9ca",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn---9ca.xn--9ca/",
+   "url": "http://xn---9ca.\u00e9/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://xn--9ca-.\u00e9/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://xn--.\u00e9/"
+  },
+  {
+   "host": "xn--zzzzzzz.xn--9ca",
+   "is_relative": false,
+   "netloc": "xn--zzzzzzz.xn--9ca",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://xn--zzzzzzz.xn--9ca/",
+   "url": "http://xn--zzzzzzz.\u00e9/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://[::1%]/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://[::1%a%b]/"
+  },
+  {
+   "host": "::1%25a",
+   "is_relative": false,
+   "netloc": "[::1%25a]",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://[::1%25a]/",
+   "url": "http://[::1%25a]/",
+   "username": ""
+  },
+  {
+   "host": "h\\x",
+   "is_relative": false,
+   "netloc": "h\\x",
+   "password": "",
+   "port": null,
+   "raw_path": "/y",
+   "scheme": "http",
+   "str": "http://h\\x/y",
+   "url": "http://h\\x/y",
+   "username": ""
+  },
+  {
+   "host": "h%41",
+   "is_relative": false,
+   "netloc": "h%41",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://h%41/",
+   "url": "http://H%41/",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/%zz%41",
+   "scheme": "http",
+   "str": "http://h/%zz%41",
+   "url": "http://h/%zz%41",
+   "username": ""
+  },
+  {
+   "host": "a",
+   "is_relative": false,
+   "netloc": "a",
+   "password": "",
+   "port": null,
+   "raw_path": "/b;c?d",
+   "scheme": "http",
+   "str": "http://a/b;c?d",
+   "url": "http://a/b;c?d",
+   "username": ""
+  },
+  {
+   "host": "a",
+   "is_relative": false,
+   "netloc": "a",
+   "password": "",
+   "port": null,
+   "raw_path": "/b?",
+   "scheme": "http",
+   "str": "http://a/b?",
+   "url": "http://a/b?",
+   "username": ""
+  },
+  {
+   "host": "a",
+   "is_relative": false,
+   "netloc": "a",
+   "password": "",
+   "port": null,
+   "raw_path": "/b",
+   "scheme": "http",
+   "str": "http://a/b#",
+   "url": "http://a/b#",
+   "username": ""
+  },
+  {
+   "host": "a",
+   "is_relative": false,
+   "netloc": "a",
+   "password": "",
+   "port": null,
+   "raw_path": "/?x",
+   "scheme": "http",
+   "str": "http://a?x",
+   "url": "http://a?x",
+   "username": ""
+  },
+  {
+   "host": "a",
+   "is_relative": false,
+   "netloc": "a",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://a#x",
+   "url": "http://a#x",
+   "username": ""
+  },
+  {
+   "host": "1.2.3.4",
+   "is_relative": false,
+   "netloc": "1.2.3.4",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://1.2.3.4/",
+   "url": "http://1.2.3.4/",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://1.2.3.256/"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://01.2.3.4/"
+  },
+  {
+   "host": "1.2.3",
+   "is_relative": false,
+   "netloc": "1.2.3",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://1.2.3/",
+   "url": "http://1.2.3/",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": true,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/x",
+   "scheme": "",
+   "str": "//h/x",
+   "url": "//h/x",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "/x",
+   "scheme": "http",
+   "str": "http:/x",
+   "url": "http:/x",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "x",
+   "scheme": "http",
+   "str": "http:x",
+   "url": "http:x",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "/rel",
+   "scheme": "",
+   "str": "/rel",
+   "url": "/rel",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "rel/x",
+   "scheme": "",
+   "str": "rel/x",
+   "url": "rel/x",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "example.com/x",
+   "scheme": "",
+   "str": "example.com/x",
+   "url": "example.com/x",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "8080/x",
+   "scheme": "localhost",
+   "str": "localhost:8080/x",
+   "url": "localhost:8080/x",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "x",
+   "scheme": "",
+   "str": "x",
+   "url": ":x",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "",
+   "str": "",
+   "url": "//",
+   "username": ""
+  },
+  {
+   "host": "",
+   "is_relative": true,
+   "netloc": "",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "",
+   "str": "",
+   "url": "",
+   "username": ""
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://h/\u007f"
+  },
+  {
+   "error": "InvalidURL",
+   "url": "http://h/\t"
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/x",
+   "scheme": "ftp",
+   "str": "ftp://h/x",
+   "url": "ftp://h/x",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/x",
+   "scheme": "ftp",
+   "str": "ftp://h/x",
+   "url": "ftp://h:21/x",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/x",
+   "scheme": "ws",
+   "str": "ws://h/x",
+   "url": "ws://h:80/x",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/c",
+   "scheme": "http",
+   "str": "http://h/c",
+   "url": "http://h/a/./b/../../../c",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://h/",
+   "url": "http://h/./",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/",
+   "scheme": "http",
+   "str": "http://h",
+   "url": "http://h/..",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/.../a",
+   "scheme": "http",
+   "str": "http://h/.../a",
+   "url": "http://h/.../a",
+   "username": ""
+  },
+  {
+   "host": "h",
+   "is_relative": false,
+   "netloc": "h",
+   "password": "",
+   "port": null,
+   "raw_path": "/a",
+   "scheme": "http",
+   "str": "http://h/a",
+   "url": "http://h/a/.",
+   "username": ""
+  }
+ ],
+ "redirect": [
+  {
+   "base": "http://h/a/b?q",
+   "location": "../c",
+   "raw_path": "/c",
+   "str": "http://h/c"
+  },
+  {
+   "base": "http://h/a/b",
+   "location": "%2e%2e/c",
+   "raw_path": "/a/%2e%2e/c",
+   "str": "http://h/a/%2e%2e/c"
+  },
+  {
+   "base": "http://h/a/b",
+   "location": "https:/x",
+   "raw_path": "/x",
+   "str": "https://h/x"
+  },
+  {
+   "base": "http://h/a/b",
+   "error": "InvalidURL",
+   "location": "http:x",
+   "request_error": false
+  },
+  {
+   "base": "http://h:8080/a",
+   "location": "http:",
+   "raw_path": "/",
+   "str": "http://h"
+  },
+  {
+   "base": "http://h:8080/a",
+   "location": "https:",
+   "raw_path": "/",
+   "str": "https://h"
+  },
+  {
+   "base": "http://h/a#f",
+   "location": "/x",
+   "raw_path": "/x",
+   "str": "http://h/x#f"
+  },
+  {
+   "base": "http://h/a#f",
+   "location": "/x#g",
+   "raw_path": "/x",
+   "str": "http://h/x#g"
+  },
+  {
+   "base": "http://h/a",
+   "location": "//o/p",
+   "raw_path": "/p",
+   "str": "http://o/p"
+  },
+  {
+   "base": "http://h/a",
+   "location": "//o",
+   "raw_path": "/",
+   "str": "http://o"
+  },
+  {
+   "base": "http://h/a",
+   "location": "?z",
+   "raw_path": "/a?z",
+   "str": "http://h/a?z"
+  },
+  {
+   "base": "http://h/a?y",
+   "location": "#z",
+   "raw_path": "/a?y",
+   "str": "http://h/a?y#z"
+  },
+  {
+   "base": "http://h/a/b/",
+   "location": "./",
+   "raw_path": "/a/b/",
+   "str": "http://h/a/b/"
+  },
+  {
+   "base": "http://h/a/b/",
+   "location": ".",
+   "raw_path": "/a/b/",
+   "str": "http://h/a/b/"
+  },
+  {
+   "base": "http://h/a/b/",
+   "location": "..",
+   "raw_path": "/a/",
+   "str": "http://h/a/"
+  },
+  {
+   "base": "http://h/a/b/",
+   "location": "../../../..",
+   "raw_path": "/",
+   "str": "http://h/"
+  },
+  {
+   "base": "http://h/a",
+   "location": "",
+   "raw_path": "/a",
+   "str": "http://h/a"
+  },
+  {
+   "base": "http://h/a",
+   "location": "g;x?y#s",
+   "raw_path": "/g;x?y",
+   "str": "http://h/g;x?y#s"
+  },
+  {
+   "base": "http://h/a;p/b;q",
+   "location": "c",
+   "raw_path": "/a;p/c",
+   "str": "http://h/a;p/c"
+  },
+  {
+   "base": "http://h/a;p/b;q",
+   "location": ";r",
+   "raw_path": "/a;p/;r",
+   "str": "http://h/a;p/;r"
+  },
+  {
+   "base": "http://h/a//b//c",
+   "location": "d",
+   "raw_path": "/a/b/d",
+   "str": "http://h/a/b/d"
+  },
+  {
+   "base": "http://h/a//b//",
+   "location": "../d",
+   "raw_path": "/a/d",
+   "str": "http://h/a/d"
+  },
+  {
+   "base": "http://h",
+   "location": "x",
+   "raw_path": "/x",
+   "str": "http://h/x"
+  },
+  {
+   "base": "http://h/a b/",
+   "location": "c d",
+   "raw_path": "/a%20b/c%20d",
+   "str": "http://h/a%20b/c%20d"
+  },
+  {
+   "base": "http://h/a",
+   "location": "ftp://o/x",
+   "raw_path": "/x",
+   "str": "ftp://o/x"
+  },
+  {
+   "base": "http://h/a",
+   "error": "InvalidURL",
+   "location": "mailto:x@y",
+   "request_error": false
+  },
+  {
+   "base": "http://h/a",
+   "error": "RemoteProtocolError",
+   "location": "http://[::1",
+   "request_error": true
+  },
+  {
+   "base": "http://h/a",
+   "error": "RemoteProtocolError",
+   "location": "http://h:x/",
+   "request_error": true
+  },
+  {
+   "base": "http://h/a",
+   "location": "\u00e9/x",
+   "raw_path": "/%C3%A9/x",
+   "str": "http://h/%C3%A9/x"
+  },
+  {
+   "base": "https://h/a",
+   "location": "//[::1]:8443/x",
+   "raw_path": "/x",
+   "str": "https://[::1]:8443/x"
+  },
+  {
+   "base": "http://u:p@h/a",
+   "location": "/b",
+   "raw_path": "/b",
+   "str": "http://u:p@h/b"
+  }
+ ]
+}

@@ -2982,6 +2982,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "unicode_nonprintable.json": build_unicode_nonprintable,
     **_slice_generators("gen_alerting"),
     **_slice_generators("gen_site"),
+    **_slice_generators("gen_http"),
     "unicode_untrusted.json": build_unicode_untrusted,
     "unicode_props.json": build_unicode_props,
 }

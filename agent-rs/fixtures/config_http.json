@@ -1,0 +1,4731 @@
+{
+ "cases": [
+  {
+   "data": {},
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": null,
+   "outcome": {
+    "error": "check.data must be an object"
+   }
+  },
+  {
+   "data": [],
+   "outcome": {
+    "error": "check.data must be an object"
+   }
+  },
+  {
+   "data": [
+    "not",
+    "an",
+    "object"
+   ],
+   "outcome": {
+    "error": "check.data must be an object"
+   }
+  },
+  {
+   "data": "x",
+   "outcome": {
+    "error": "check.data must be an object"
+   }
+  },
+  {
+   "data": 5,
+   "outcome": {
+    "error": "check.data must be an object"
+   }
+  },
+  {
+   "data": {
+    "retries": 2,
+    "retry_delay": 0,
+    "timeout": 5
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 2,
+     "retry_delay": 0.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 5.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": null
+   },
+   "outcome": {
+    "error": "retry_status_codes must be a list of HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": "502"
+   },
+   "outcome": {
+    "error": "retry_status_codes must be a list of HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": {}
+   },
+   "outcome": {
+    "error": "retry_status_codes must be a list of HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": []
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     500,
+     502
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      500,
+      502
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     502,
+     "503"
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "follow_redirects": false
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": false,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "follow_redirects": 0
+   },
+   "outcome": {
+    "error": "follow_redirects must be a boolean"
+   }
+  },
+  {
+   "data": {
+    "follow_redirects": "false"
+   },
+   "outcome": {
+    "error": "follow_redirects must be a boolean"
+   }
+  },
+  {
+   "data": {
+    "follow_redirects": null
+   },
+   "outcome": {
+    "error": "follow_redirects must be a boolean"
+   }
+  },
+  {
+   "data": {
+    "expected_location": null
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_location": 5
+   },
+   "outcome": {
+    "error": "expected_location must be a string"
+   }
+  },
+  {
+   "data": {
+    "expected_location": ""
+   },
+   "outcome": {
+    "error": "expected_location must not be empty"
+   }
+  },
+  {
+   "data": {
+    "expected_location": "",
+    "follow_redirects": false
+   },
+   "outcome": {
+    "error": "expected_location must not be empty"
+   }
+  },
+  {
+   "data": {
+    "expected_location": "/next"
+   },
+   "outcome": {
+    "error": "expected_location requires follow_redirects to be false"
+   }
+  },
+  {
+   "data": {
+    "expected_location": "/next",
+    "follow_redirects": false
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": "/next",
+     "expected_status": null,
+     "follow_redirects": false,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_location": "https://example.test/",
+    "expected_status": 301,
+    "follow_redirects": false
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": "https://example.test/",
+     "expected_status": 301,
+     "follow_redirects": false,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_status": null
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "follow_redirects": "x",
+    "retries": -1,
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "follow_redirects must be a boolean"
+   }
+  },
+  {
+   "data": {
+    "retries": -1,
+    "retry_status_codes": "x",
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "retry_status_codes must be a list of HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retries": -1,
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retries": -1,
+    "retry_delay": -1
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retries": -1,
+    "retry_status_codes": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 1,
+    "retry_status_codes": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "expected_location": "",
+    "expected_status": 1,
+    "follow_redirects": false
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_location": 5,
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "expected_location must be a string"
+   }
+  },
+  {
+   "data": {
+    "timeout": 0
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": 0.0
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": -0.0
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": 0.25
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 0.25
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 1
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 1.0
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 1.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 1.0
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 1.9
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 1.9
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 100
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 100.0
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 101
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 101.0
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 200.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 200.0
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 300
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 300.0
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 300.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 300.0
+    }
+   }
+  },
+  {
+   "data": {
+    "timeout": 300.5
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": 301
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": 599
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": 600
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": -1
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": -0.5
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": true
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": false
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": "5"
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": "junk"
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": null
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": []
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": {}
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": 9223372036854775808
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": Infinity
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": -Infinity
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "timeout": NaN
+   },
+   "outcome": {
+    "error": "timeout must be a finite number greater than zero and between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 0.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 0.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 0.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": -0.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": -0.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 0.25
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 0.25,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 1
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 1.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 1.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 1.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 1.9
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 1.9,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 100
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 100.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 101
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 101.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 200.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 200.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 300
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 300.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 300.0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 300.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 300.5
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 301
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 599
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 600
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": -1
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": -0.5
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": true
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": false
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": "5"
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": "junk"
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": null
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": []
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": {}
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 9223372036854775808
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": Infinity
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": -Infinity
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retry_delay": NaN
+   },
+   "outcome": {
+    "error": "retry_delay must be a finite number between 0 and 300 seconds"
+   }
+  },
+  {
+   "data": {
+    "retries": 0
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retries": 0.0
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": -0.0
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 0.25
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 1
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retries": 1.0
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 1.9
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 100
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 100,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retries": 101
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 200.0
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 300
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 300.0
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 300.5
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 301
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 599
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 600
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": -1
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": -0.5
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": true
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": false
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": "5"
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": "junk"
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": null
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": []
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": {}
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 9223372036854775808
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": Infinity
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": -Infinity
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "retries": NaN
+   },
+   "outcome": {
+    "error": "retries must be an integer between 0 and 100"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 0
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 0.0
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": -0.0
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 0.25
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 1
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 1.0
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 1.9
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 100
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": 100,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_status": 101
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": 101,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_status": 200.0
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 300
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": 300,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_status": 300.0
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 300.5
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 301
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": 301,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_status": 599
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": 599,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_status": 600
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": -1
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": -0.5
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": true
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": false
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": "5"
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": "junk"
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": null
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      502,
+      503,
+      504
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "expected_status": []
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": {}
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 9223372036854775808
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": Infinity
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": -Infinity
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "expected_status": NaN
+   },
+   "outcome": {
+    "error": "expected_status must be an integer HTTP status code"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     0
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     0.0
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     -0.0
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     0.25
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     1
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     1.0
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     1.9
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     100
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      100
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     101
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      101
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     200.0
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     300
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      300
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     300.0
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     300.5
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     301
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      301
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     599
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "expected_location": null,
+     "expected_status": null,
+     "follow_redirects": true,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "retry_status_codes": [
+      599
+     ],
+     "timeout": 10.0
+    }
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     600
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     -1
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     -0.5
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     true
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     false
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     "5"
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     "junk"
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     null
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     []
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     {}
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     [
+      1
+     ]
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     9223372036854775808
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     Infinity
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     -Infinity
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  },
+  {
+   "data": {
+    "retry_status_codes": [
+     NaN
+    ]
+   },
+   "outcome": {
+    "error": "retry_status_codes must contain integer HTTP status codes"
+   }
+  }
+ ],
+ "executor_cases": [
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6f6b",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "timeout": 0
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 0,
+     "attempts": 0,
+     "error_msg": "timeout must be a finite number greater than zero and between 0 and 300 seconds",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 2,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 3,
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "attempt",
+     "attempts",
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "attempt",
+     "attempts",
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 502
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 2,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5,
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 3,
+     "attempts": 3,
+     "error_msg": "HTTP 504",
+     "error_type": "http_error",
+     "status_code": 504
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 502
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 504
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 2,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 3,
+     "error_msg": "HTTP 404",
+     "error_type": "http_error",
+     "status_code": 404
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 404
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 2,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 3,
+     "error_msg": "HTTP 500",
+     "error_type": "http_error",
+     "status_code": 500
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 500
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "HTTP 301",
+     "error_type": "http_error",
+     "status_code": 301
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 301
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "HTTP 599",
+     "error_type": "http_error",
+     "status_code": 599
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [
+       [
+        "Location",
+        ""
+       ]
+      ],
+      "status": 302
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "HTTP 304",
+     "error_type": "http_error",
+     "status_code": 304
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 304
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 201
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 204
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_status": 204
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "status_code": 204
+    },
+    "keys": [
+     "status_code"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 204
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_status": 200
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "Expected HTTP 200, got 404",
+     "error_type": "unexpected_status",
+     "expected_status": 200,
+     "status_code": 404
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "expected_status",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 404
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_status": 200,
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "duration_ms": "<duration>",
+     "status_code": 200
+    },
+    "keys": [
+     "attempt",
+     "attempts",
+     "duration_ms",
+     "status_code"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_status": 200,
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "error_msg": "Expected HTTP 200, got 503",
+     "error_type": "unexpected_status",
+     "expected_status": 200,
+     "status_code": 503
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "expected_status",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_status": 404,
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 2,
+     "error_msg": "Expected HTTP 404, got 500",
+     "error_type": "unexpected_status",
+     "expected_status": 404,
+     "status_code": 500
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "expected_status",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 500
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 1,
+    "retry_delay": 0.5,
+    "retry_status_codes": [
+     404
+    ],
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "attempt",
+     "attempts",
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 404
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 3,
+    "retry_delay": 0.5,
+    "retry_status_codes": [],
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 4,
+     "error_msg": "HTTP 503",
+     "error_type": "http_error",
+     "status_code": 503
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_location": "/next",
+    "expected_status": 301,
+    "follow_redirects": false
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "location": "/next",
+     "status_code": 301
+    },
+    "keys": [
+     "status_code",
+     "location"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 301
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_location": "/next",
+    "expected_status": 301,
+    "follow_redirects": false
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "HTTP Location header does not match the configured target",
+     "error_type": "unexpected_location",
+     "expected_location": "/next",
+     "location": "/other"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "expected_location",
+     "location",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/other"
+       ]
+      ],
+      "status": 301
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_location": "/next",
+    "expected_status": 301,
+    "follow_redirects": false
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "HTTP Location header does not match the configured target",
+     "error_type": "unexpected_location",
+     "expected_location": "/next",
+     "location": null
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "expected_location",
+     "location",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 301
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_location": "/next",
+    "expected_status": 301,
+    "follow_redirects": false
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "Expected HTTP 301, got 200",
+     "error_type": "unexpected_status",
+     "expected_status": 301,
+     "status_code": 200
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "expected_status",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_location": "/next",
+    "expected_status": 301,
+    "follow_redirects": false,
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "duration_ms": "<duration>",
+     "location": "/next",
+     "status_code": 301
+    },
+    "keys": [
+     "attempt",
+     "attempts",
+     "duration_ms",
+     "status_code",
+     "location"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 502
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 301
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "follow_redirects": false
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "HTTP 302",
+     "error_type": "http_error",
+     "status_code": 302
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 302
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_status": 302,
+    "follow_redirects": false
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "status_code": 302
+    },
+    "keys": [
+     "status_code"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 302
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/next"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/next"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/a?b=1"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/c"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/d"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "next"
+       ]
+      ],
+      "status": 301
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/a?b=1"
+       ]
+      ],
+      "status": 303
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/c"
+       ]
+      ],
+      "status": 307
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/d"
+       ]
+      ],
+      "status": 308
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 204
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "HTTP 503",
+     "error_type": "http_error",
+     "status_code": 503
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "status_code",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/next"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "<P2>",
+     "error_type": "request_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/r"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/r"
+       ]
+      ],
+      "status": 302
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "attempt",
+     "attempts",
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "timeout": true
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "error_msg": "<P2>",
+     "error_type": "timeout"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "timeout": true
+    },
+    {
+     "timeout": true
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "<P2>",
+     "error_type": "timeout"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "timeout": true
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retries": 1,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "attempt": 2,
+     "attempts": 2,
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "attempt",
+     "attempts",
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "disconnect": true
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "<P2>",
+     "error_type": "request_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "disconnect": true
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "expected_status": 200,
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "<P2>",
+     "error_type": "request_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    }
+   ],
+   "steps": [
+    {
+     "disconnect": true
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {
+    "retry_delay": 0.5,
+    "timeout": 0.5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "attempt": 1,
+     "attempts": 1,
+     "error_msg": "<P2>",
+     "error_type": "timeout"
+    },
+    "keys": [
+     "error_type",
+     "error_msg",
+     "attempt",
+     "attempts"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/next"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "timeout": true
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/check"
+    },
+    {
+     "authorization": null,
+     "cookie": "sid=deep; sid=root; other=1",
+     "path": "/deep/x"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [
+       [
+        "Location",
+        "/deep/x"
+       ],
+       [
+        "Set-Cookie",
+        "sid=root; Path=/"
+       ],
+       [
+        "Set-Cookie",
+        "sid=deep; Path=/deep"
+       ],
+       [
+        "Set-Cookie",
+        "other=1; Path=/"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/check"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/a/%2e%2e/b/d?q=%2e&x=a%20b"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/a/%2e%2e/b/./c/../d?q=%2e&x=a b"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/a/b"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/%2e%2e/c;p?z"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "../%2e%2e/c;p?z#f"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://http.test/a/b"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": "Basic dXNlcjpwQHNz",
+     "cookie": null,
+     "path": "/start"
+    },
+    {
+     "authorization": "Basic dXNlcjpwQHNz",
+     "cookie": null,
+     "path": "/same"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "http://http.test/same"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://user:p%40ss@http.test/start"
+  },
+  {
+   "check_type": "http",
+   "data": {},
+   "delays": [],
+   "outcome": {
+    "data": {},
+    "keys": [],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": "Basic dXNlcjpwdw==",
+     "cookie": null,
+     "path": "/start"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/x"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "http://other.test/x"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://user:pw@http.test/start"
+  }
+ ]
+}

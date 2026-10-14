@@ -768,7 +768,8 @@ parallel with few merge conflicts.
 | Need | Crate | Notes |
 | --- | --- | --- |
 | async runtime | `tokio` (rt-multi-thread, net, time, process, signal, sync, fs, macros) | |
-| HTTP checks, json-metrics, suppression, Telegram, OpsGate | `reqwest` (`rustls-tls-webpki-roots-no-provider` + `rustls` ring provider, `stream`, `cookies`; **no** `gzip`/`deflate`/`brotli`/`zstd` features, **no** `http2`) + `flate2` for our own streaming decoder | httpx 0.28 without brotli/zstandard installed (`uv.lock`) sends `Accept-Encoding: gzip, deflate` and speaks HTTP/1.1 only; redirects and decoding are reimplemented to match httpx (5.5); certifi ↔ webpki-roots (both the Mozilla bundle) |
+| HTTP checks, json-metrics, suppression | own HTTP/1.1 client on `hyper` 1 (`client::conn::http1`) + `tokio-rustls` (ring) + `webpki-roots` + `cookie_store` (`preserve_order`) + `flate2` for our own streaming decoder (S5 review: reqwest cannot express httpx's per-read timeouts or its request target) | httpx 0.28 without brotli/zstandard installed (`uv.lock`) sends `Accept-Encoding: gzip, deflate` and speaks HTTP/1.1 only; URLs, redirects and decoding are reimplemented to match httpx (5.5); certifi ↔ webpki-roots (both the Mozilla bundle) |
+| Telegram, OpsGate | `hyper` 1 + `tokio-rustls` + `webpki-roots` (S8) | bodies we build ourselves |
 | TLS for tcp/smtp/imap | `tokio-rustls` + `rustls-native-certs` | Python `ssl.create_default_context()` uses the system store |
 | certificate expiry | `x509-parser` (notAfter only) | `tcp_executor.py:_cert_days_remaining` |
 | DNS checks | `hickory-resolver` (tokio, no DNSSEC) | replaces dnspython (section 5.6) |
@@ -948,16 +949,21 @@ raised). Any error in this function is logged as
 
 - One HTTP "session" per batch, dropped when the batch ends
   (`_async_run_batch` creates one `httpx.AsyncClient` per batch, shared by
-  the http, json-http and json-metrics executors). reqwest client options
-  are client-level, so the batch keeps a small cache of reqwest clients keyed
-  by timeout, **all sharing one batch-scoped cookie jar**
-  (`cookie_provider(Arc<Jar>)`): httpx keeps one cookie jar per client, so a
-  cookie set by one check's response (or redirect) is sent by later requests
-  of other checks in the same batch to the matching domain.
-- All reqwest clients run with `redirect::Policy::none()` and automatic
-  decompression **disabled**; redirects and decoding are done by our own
-  code to reproduce httpx:
-  - redirects (`nyxmon-checks/src/redirect.rs`, mirroring
+  the http, json-http and json-metrics executors), **with one batch-scoped
+  cookie jar**: httpx keeps one cookie jar per client, so a cookie set by
+  one check's response (or redirect) is sent by later requests of other
+  checks in the same batch to the matching domain; the `Cookie` header lists
+  longer paths first like `http.cookiejar`.
+- The session (`nyxmon-checks/src/http_client.rs`) is an HTTP/1.1 client on
+  hyper's connection API, one connection per request, no proxy support
+  (no proxy variable is set for the production agent); TCP connects use
+  anyio's Happy Eyeballs (address order, 250 ms stagger) and the cookie jar
+  matches the path as sent. URLs are parsed and
+  joined like httpx (`httpx_url.rs`: `_urlparse`, `URL.join`/`urljoin`,
+  credentials in the URL as basic auth), so the request target is httpx's
+  `raw_path` (e.g. `%2e%2e` is not resolved, unlike a WHATWG parser);
+  redirects and decoding are done by our own code to reproduce httpx:
+  - redirects (`http_client.rs`, mirroring
     `AsyncClient._send_handling_redirects` and `_build_redirect_request`):
     only for 301/302/303/307/308 with a `Location`; URL joined against the
     request URL (fragment handling as httpx); method rules (303 → GET; a
@@ -975,17 +981,19 @@ raised). Any error in this function is logged as
     encodings pass the body through undecoded (httpx behaviour); the
     declared `Content-Length` header stays visible for the json-metrics
     header cap, and the decoded-bytes cap applies to the decoder output.
-- httpx timeout semantics: `timeout=t` bounds connect (incl. DNS and TLS),
-  each read and each write separately — not the whole request. Rust:
-  `connect_timeout(t)` + `read_timeout(t)` (+ write via the same per-I/O
-  timeout), no total timeout.
+- httpx timeout semantics: `timeout=t` bounds connect (incl. DNS), the TLS
+  handshake, each read and each write separately — not the whole request.
+  Rust: the socket is wrapped so every read and write that waits longer than
+  `t` fails; no total timeout. An integer timeout beyond float range fails
+  like httpcore (`OverflowError` → `unexpected_error`).
 - Default request headers as httpx: `Accept: */*`,
   `Accept-Encoding: gzip, deflate`, `Connection: keep-alive`, and the
   User-Agent `python-httpx/0.28.1` (Q2). HTTP/1.1 only.
 - The HTTP check never reads the final response body (`_fetch_headers`
   streams and closes); it does read redirect bodies when following (above).
-- Error classification: httpx `TimeoutException` → reqwest `is_timeout()`;
-  `ConnectError` → `is_connect()`; other transport errors → `request_error`;
+- Error classification: httpx `TimeoutException` → a timed-out connect,
+  handshake, read or write; `ConnectError` → DNS/TCP/TLS connect failures;
+  other transport errors → `request_error`;
   URL build errors (`InvalidURL` is not a `RequestError` in httpx) →
   `unexpected_error`. IDN hosts (`https://home.wersdörfer.de` exists in
   production) are IDNA-encoded by both.

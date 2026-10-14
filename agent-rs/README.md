@@ -17,7 +17,9 @@ observer core): the site connectivity observer as a pure state machine
 restore, ongoing alert, summaries, recovery recheck, message rendering) whose
 I/O goes through the `SitePorts` trait; slice S2 (store): the SQLite
 store (`nyxmon-store`: DB actor and every repository operation), the schema
-contract and the agent lock. The binary only answers `--version`.
+contract and the agent lock; slice S5a: the `http`, `json-http` and
+`json-metrics` executors with their configs, the json-metrics evaluation
+and the httpx-compatible HTTP client. The binary only answers `--version`.
 
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
 ticket integration, and the logging/shadow notifier.
@@ -109,10 +111,21 @@ Current fixtures:
 - `idna2008_tables.json`: the data behind `idna.encode(host, uts46=True)`:
   the `idna` package's UTS 46 table, code point classes, joining types and
   scripts, and CPython's bidirectional classes, marks and virama class,
-  embedded by `nyxmon_checks::idna2008`.
+  embedded by `nyxmon_checks::idna2008` (also used without UTS 46 for
+  httpx hosts, `idna.encode(host)`).
 - `starttls_text.json`: the STARTTLS classification helpers and patterns,
   and scripted dialogues (received chunks, sent bytes, outcome) replayed
   through `nyxmon_checks::starttls`.
+- `config_http.json`, `config_json_metrics.json`: `from_dict` + `validate`
+  outcomes for a data corpus (`cases`), and `executor_cases`: the real
+  Python executor run on a scripted httpx `MockTransport` (result, key
+  order, requests, retry delays), which the Rust tests replay against a
+  local fake server. Messages derived from httpx or Python internals are
+  stored as `<P2>`.
+- `httpx_url.json`: httpx URL parsing (`raw_path`, host, port, credentials)
+  and redirect resolution (`Client._redirect_url`, `urljoin`).
+- `metrics_eval.json`: json-metrics path resolution, evaluation, failure
+  summaries and the `actual` truncation.
 - `unicode_nonprintable.json`: the code points `str.isprintable()` rejects.
   `nyxmon-core` embeds it, so `repr(str)` escapes exactly what the oracle's
   Unicode database (15.1 for CPython 3.13) escapes.
@@ -201,6 +214,18 @@ Never add DDL to the Python agent; a new required column raises
   `ConfigOutcome` (`Ok`, `ConfigError(message)` for Python's `ValueError`,
   `PyException(class)` for exceptions that escape the executor and become
   `executor_exception`).
+- HTTP goes through `nyxmon_checks::http_client::HttpSession` (one per
+  batch), a small HTTP/1.1 client on hyper's connection API that reproduces
+  httpx (PLAN.md 5.5): URLs parsed and joined like httpx
+  (`nyxmon_checks::httpx_url`, so the request target is httpx's `raw_path`),
+  per-read/per-write timeouts, redirects and `Authorization` stripping,
+  `Content-Encoding` decoding, anyio's Happy Eyeballs connects, and a batch
+  cookie jar ordered like `http.cookiejar`. A plain reqwest client cannot express the per-read
+  timeouts or the request target. Proxy environment variables are not read
+  (none is set for the production agent). Retry delays go through
+  `nyxmon_checks::ctx::Sleeper` so tests can record them.
+- Config parsers written with `?` use `nyxmon_core::config::ConfigError`
+  and convert with `ConfigError::into_outcome`.
 - TLS goes through `nyxmon_checks::tls` (rustls with the `ring` provider,
   system roots, TLS 1.2+); `tls::server_name` IDNA-encodes Unicode hosts
   like Python.
