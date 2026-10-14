@@ -108,6 +108,26 @@ scenarios against a local fake Telegram/OpsGate server).
 | `test_opsgate_notification.py::test_hostile_result_data_cannot_steer_ticket_permissions_or_identity`, `::test_internal_collector_alert_keeps_incident_key_task_ref` | `prompts`/`payloads` `task_ref`; `http` scenarios "hostile data …", "internal alert keys off its incident" | done |
 | `LoggingNotifier` (`--shadow` line) | `http.rs::logging_notifier_lines` | done |
 
+## S6 — TCP + ping
+
+Part 1 (configuration, host and address handling, IDNA, STARTTLS dialogues),
+part 2 (TCP executor) and part 3 (ping) are reviewed and merged one after
+another.
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `test_tcp_config.py` (`from_dict` defaults/overrides, missing port, invalid TLS mode, timeouts, retry/cert limits, port bound message, STARTTLS command) and `test_tcp_executor.py::test_config_rejects_unknown_starttls_protocol`, `::test_config_defaults_to_generic_and_round_trips` | `config_tcp.json` cases (`nyxmon-core/src/config/tcp/tests.rs`), including non-object data, odd JSON types, `urlparse(url).hostname` and the `ValueError`/`TypeError` paths that escape the executor | done |
+| `test_tcp_config.py::test_to_dict_roundtrip` | — | n/a (`to_dict` is not used by the agent) |
+| `str.lower()` (final sigma, Unicode 15.1) and the NFKC netloc check of `urlsplit` | `unicode_props.json`, `config_tcp.json` URL cases | done |
+| `str(host)` of non-string hosts, `ipaddress.ip_address(int)` in `anyio.connect_tcp` | `config_tcp.json` `str_values`/`ip_from_int` (`config/tcp/tests.rs`) | done |
+| anyio `idna2008_resolve` (`idna.encode(host, uts46=True)`) for connecting and SNI | `config_tcp.json` `idna2008` (`nyxmon-checks/src/idna2008.rs`) | done |
+| anyio Happy Eyeballs (address order, staggered attempts, "All connection attempts failed") | `nyxmon-checks/src/happy_eyeballs.rs` tests | done |
+| `socket.gaierror`/`OSError` texts (`[Errno N] ...`) | `nyxmon-checks/src/pyos.rs` tests | done |
+| `_is_positive_starttls_response`, `_truncate`, the IMAP/Sieve regexes, `str.isdigit` | `starttls_text.json` (`nyxmon-checks/src/starttls/tests.rs`), `unicode_props.json` (`pyjson/props.rs`) | done |
+| `test_tcp_executor.py` STARTTLS dialogue tests (`test_starttls_smtp_sends_ehlo_before_starttls`, `test_starttls_imap_uses_tagged_command`, `test_starttls_protocol_rejection_is_clean`, `test_generic_starttls_can_read_greeting_first`, `test_imap_greeting_is_not_taken_as_starttls_reply`, `test_imap_untagged_bye_is_rejected`, `test_negative_greeting_is_rejected`, `test_smtp_ehlo_rejection_reports_stage`, `test_data_pipelined_after_starttls_reply_is_refused`, `test_overlong_greeting_line_is_refused`, `test_connection_closed_during_dialogue`) | `starttls_text.json` scripted dialogues (sent bytes, outcome, error data) replayed by `starttls/tests.rs`; fake-server counterparts in part 2 | done (fixture) / pending part 2 |
+| `test_tcp_executor.py` executor tests (plain, connection error, retries, implicit TLS, cert expiry, SNI, STARTTLS upgrade) | `nyxmon-checks` TCP executor fake-server tests | pending part 2 |
+| `test_ping_executor.py` | `ping_text.json`, fake `ping` scripts | pending part 3 |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -128,7 +148,7 @@ scenarios against a local fake Telegram/OpsGate server).
 | `tests/unit/test_site_connectivity_holds.py` (snapshot) | `site_snapshot.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
 | `tests/unit/test_http_executor.py`, `test_json_metrics_executor.py`, `test_json_metrics_config.py`, `test_dns_*.py`, `test_config_numeric_contracts.py` | `config_*.json`, `metrics_eval.json`, fake-server tests | S5 | pending |
-| `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | `starttls_text.json`, `ping_text.json`, fake servers | S6 | pending |
+| `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | in progress |
 | `tests/unit/test_smtp_executor.py`, `test_imap_*.py`, `test_mail_tls_verify.py` (executors) | `smtp_text.json`, `config_imap.json`, fake servers | S7 | pending |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
 | `tests/unit/test_shutdown_claims.py`, `cleaner_test.py`, `test_startup_validation.py`, `test_runner_shutdown_stream.py`, `test_async_runner_refactor.py`, `test_executor_registry.py`, `test_cli_logging.py` | `nyxmon-agent` tests | S9 | pending |

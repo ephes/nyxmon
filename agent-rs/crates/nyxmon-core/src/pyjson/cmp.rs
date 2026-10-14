@@ -72,7 +72,8 @@ impl fmt::Display for TypeError {
 
 impl std::error::Error for TypeError {}
 
-fn type_name(value: &PyJson) -> &'static str {
+/// `type(value).__name__`.
+pub fn type_name(value: &PyJson) -> &'static str {
     match value {
         PyJson::Null => "NoneType",
         PyJson::Bool(_) => "bool",
