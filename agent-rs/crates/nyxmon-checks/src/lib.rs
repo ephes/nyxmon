@@ -21,6 +21,7 @@ pub mod net;
 pub mod ping;
 pub mod pyidna;
 pub mod pyos;
+pub mod registry;
 pub mod smtp;
 pub mod starttls;
 pub mod suppression_fetch;

@@ -12,11 +12,23 @@ publish.workspace = true
 name = "nyxmon-agent"
 path = "src/main.rs"
 
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
 nyxmon-core.workspace = true
 nyxmon-store.workspace = true
 nyxmon-checks.workspace = true
 nyxmon-notify.workspace = true
+chrono.workspace = true
+num-bigint.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
+tracing.workspace = true
+
+[dev-dependencies]
+rusqlite.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time", "test-util"] }
 
 [lints]
 workspace = true
