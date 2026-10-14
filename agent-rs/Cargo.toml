@@ -52,6 +52,7 @@ dns-lookup = "3"
 hmac = "0.12"
 md-5 = "0.10"
 rustix = { version = "1", default-features = false, features = ["std"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

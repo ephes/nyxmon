@@ -28,6 +28,13 @@ The binary only answers `--version`.
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
 ticket integration, and the logging/shadow notifier.
 
+Slice S9a adds the agent runtime library (`nyxmon-agent`): the executor
+registry (`nyxmon_checks::registry`), the batch runner with the shutdown
+intake stop, the result handler (`add_check_result`: suppression, decision,
+persistence, notification, acknowledgement), the results cleaner and the
+Python log format. The collector loop, the CLI and the shutdown
+orchestration follow in S9b.
+
 Slice S6 part 3 adds the `ping` executor (`nyxmon_checks::ping`): the
 system `ping` binary as a subprocess per attempt, with the command line,
 output parsers and statistics in `nyxmon_core::ping_text`.
@@ -47,7 +54,8 @@ agent-rs/
     nyxmon-store/       SQLite store: DB actor, all SQL, schema contract, agent lock
     nyxmon-checks/      executors (S5-S7); TLS helpers (S1)
     nyxmon-notify/      Telegram, OpsGate, logging notifier (S8, done)
-    nyxmon-agent/       the binary (S9+)
+    nyxmon-agent/       runtime library (runner, result handler, cleaner, logging)
+                        and the binary (S9+)
   fixtures/
     generate.py         writes the fixtures from the Python code
     gen_*.py            per-slice fixture builders loaded by generate.py
@@ -295,6 +303,18 @@ Never add DDL to the Python agent; a new required column raises
 - A `health_check.data` value that cannot be decoded reads as `PyJson::Null`
   (`nyxmon_store::data_is_undecodable`; valid `null` reads as `{}`, D-11).
   The runner reports such a check as `configuration_error` (D-8).
+- The runner executes checks through `nyxmon_checks::registry::Executors`
+  (`Registry` in production, fakes in tests); an executor returns
+  `Result<CheckResult, PyException>`, and the runner turns an `Err`, a
+  panic (D-4), an unknown type and undecodable data (D-8) into the runner
+  results of PLAN.md 1.6. Results reach `nyxmon_agent::results::
+  ResultHandler::receive` one at a time; the handler is generic over
+  `ResultStore` so tests can inject conflicts and failures, and takes an
+  injectable clock, suppression fetch and `SiteState` (S11 supplies the
+  observer's snapshot; `NullSiteState` until then).
+- Runtime log lines use `tracing` with the Python logger name as target;
+  `nyxmon_agent::logging::capture()` collects them in tests (current-thread
+  runtime).
 - The agent lock (`nyxmon_store::AgentLock`, `<db>.agent.lock`) is taken after
   the schema verification and held for the lifetime of the process; the
   Python agent takes the same `flock` (`src/nyxmon/agent_lock.py`).

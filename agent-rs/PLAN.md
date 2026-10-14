@@ -224,6 +224,11 @@ section 3.6); no other new variable is introduced by the port.
   payload suppresses nothing (fails open) where Python could have suppressed;
   a `health_check.data` value with a lone surrogate makes that check's
   executor return `configuration_error` ("check data is not valid JSON").
+  The same runner result covers every `data` column the store cannot
+  decode (integers over 4300 digits, text that is not UTF-8 or not JSON;
+  `nyxmon_store::data_is_undecodable`, S2/S9a), where Python's
+  `row_to_check` raises after the claim committed and strands the batch
+  until the lease expires.
 - **D-9 TLS library.** rustls instead of OpenSSL: no TLS 1.0/1.1, no SHA-1
   signatures, no RSA keys under 2048 bits. All production TLS endpoints are
   own, current services; the shadow run (section 9) verifies them.
@@ -838,9 +843,11 @@ parallel with few merge conflicts.
   SiteSnapshot, SiteDependency, SiteConfig, Observer}` (section 6).
 - `nyxmon-store`: `Store` (cloneable handle to the actor) with one async
   method per operation of section 3.4; `NotificationStateConflict` error.
-- `nyxmon-checks`: `trait Executor { async fn execute(&self, check: &Check, ctx: &BatchCtx) -> CheckResult }`,
-  `BatchCtx` (per-batch HTTP clients, clock, sleep), `Registry` with the
-  Python registration order.
+- `nyxmon-checks`: `trait Executors { fn registered_types(&self) -> &[&str]; fn execute(&self, check: Check, batch: Arc<BatchCtx>) -> Option<ExecFuture> }`
+  (`registry.rs`; `ExecFuture` is a boxed `Result<CheckResult, PyException>`
+  future, `None` = no executor for the type), `BatchCtx` (the batch's HTTP
+  session and retry sleeper), `Registry` with the Python registration order
+  (S9a).
 - `nyxmon-notify`: `trait Notifier { fn notify_check_failed(&self, check: &Check, result: &CheckResult) -> NotifyFuture }`
   (a boxed future of `Result<Delivery, NotifyRaised>`, so the trait is
   object-safe) with `Delivery { Delivered, Failed, Unknown }` mirroring
@@ -1323,6 +1330,23 @@ Names: `Nyxmon collector (stale check leases)`,
 All checks of a batch start concurrently; results are consumed serially in
 completion order (3.7). Unknown types and executor panics produce the runner
 results of 1.6. `validate_check_types` uses the same registered type list.
+
+Implementation (S9a, `nyxmon-agent/src/runner.rs`): every check is a task
+of a `JoinSet`, so dropping the batch future aborts the checks still running
+(D-3). An exception escaping an executor (`Err(PyException)`) or a panic is
+logged as `check executor raised unexpectedly for check_id=<id>
+check_type=<t>` and becomes `executor_exception`; a check whose `data`
+column cannot be decoded (`nyxmon_store::data_is_undecodable`) becomes
+`{"error_type": "configuration_error", "error_msg": "check data is not
+valid JSON"}` (D-8) before its executor runs. An intake stop is watched while
+a result is being handled, as in Python: it aborts the running checks at
+once, the results that had already finished are still handed over, then
+`drained` is set. Because an abort cannot interrupt a poll that is already
+running, every check task checks a per-batch cutoff flag (set together with
+the abort) as it finishes and discards a result that completed after it;
+executor panics are caught inside the task so they pass the same gate. One `BatchCtx` (one HTTP session) is created per batch;
+Python creates its client only for batches with HTTP-family checks, which is
+not observable because the session opens no connection until used.
 
 ### 5.10 Cleaner (`cleaner.py`)
 
