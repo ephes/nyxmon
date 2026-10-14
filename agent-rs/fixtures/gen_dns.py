@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import io
 import struct
 from collections.abc import Callable, Mapping
@@ -486,9 +487,6 @@ class _ScriptedDns:
                 for answer in answers or []:
                     self.transport.sendto(answer, addr)
 
-        self.udp, _ = await loop.create_datagram_endpoint(Udp, local_addr=(_SERVER, 0))
-        self.port = self.udp.get_extra_info("sockname")[1]
-
         async def handle(reader: Any, writer: Any) -> None:
             try:
                 length = struct.unpack("!H", await reader.readexactly(2))[0]
@@ -504,7 +502,22 @@ class _ScriptedDns:
             await writer.drain()
             writer.close()
 
-        self.tcp = await asyncio.start_server(handle, _SERVER, self.port)
+        # The TCP listener needs the UDP port; another socket (e.g. a client
+        # connection of an earlier fixture) may already hold it over TCP.
+        for _ in range(50):
+            self.udp, _ = await loop.create_datagram_endpoint(
+                Udp, local_addr=(_SERVER, 0)
+            )
+            self.port = self.udp.get_extra_info("sockname")[1]
+            try:
+                self.tcp = await asyncio.start_server(handle, _SERVER, self.port)
+            except OSError as exc:
+                self.udp.close()
+                if exc.errno != errno.EADDRINUSE:
+                    raise
+                continue
+            return
+        raise RuntimeError("no port free for both UDP and TCP")
 
     def close(self) -> None:
         self.udp.close()
