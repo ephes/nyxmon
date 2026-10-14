@@ -334,6 +334,15 @@ section 3.6); no other new variable is introduced by the port.
   `imap_dialogues.json` fixture models. Pinned by `config/imap/tests.rs`
   (`configuration_matches_python`, `out_of_range_dates_are_errors`).
 
+- **D-19 Site restore that raises at startup.** Python's
+  `SiteConnectivityObserver.run` calls `restore()` outside its round
+  `try`, so a persisted payload whose timestamp `int()` cannot convert
+  (`Infinity`, `NaN`; only a hand-edited row can hold one, the agent writes
+  integers) ends the observer task silently. The Rust observer ends the
+  same way but logs `site connectivity observer stopped: restoring the
+  persisted lifecycle failed` with the exception class. Pinned by
+  `site/tests.rs::a_restore_that_raises_stops_the_observer_with_a_log_line`.
+
 ### 1.6 Result `data` shapes per check type (P1)
 
 Order of keys as written. `[x]` = present only under the stated condition.
@@ -1323,8 +1332,10 @@ Names: `Nyxmon collector (stale check leases)`,
 Implemented in S9 (`nyxmon-agent/src/collector.rs`): the loop (claim with
 `check_batch_size()`, run the batch as a task, record each result through
 the result handler, sleep `--interval`) and the shutdown below; steps 1–5
-and the batch deadline of step 7 are S10. A claim failure is logged as
-`check collector iteration failed` and the loop continues.
+and the batch deadline of step 7 are S10, except the unobserved-site
+warning of step 1, which the observer task emits when it starts (S11,
+6.13). A claim failure is logged as `check collector iteration failed` and
+the loop continues.
 
 **Shutdown** (`_async_start` + `shutdown_deadline` + `request_stop`):
 
@@ -1736,6 +1747,32 @@ Production runs with the feature `off`. Parity therefore rests on the replay
 fixtures (7.2), the Rust unit/e2e tests, and the `observe`-mode shadow run
 (9.1 phase B). Enabling the feature in production remains a separate owner
 decision, unchanged by this port.
+
+### 6.13 Runtime (S11)
+
+Implemented in `nyxmon-agent/src/site.rs`. `SiteRuntime` owns the pure
+`Observer` and its ports: the `site:connectivity` row and the recheck
+queries on the `Store`, the process notifier through the synthetic row of
+`build_incident_notification` (`incident_notification.rs`; a raising
+notifier is logged under `nyxmon.adapters.collector` as `failed to send the
+site connectivity notification for site:connectivity` and counts as
+failed, like `site_incident_notifier`), and a `watch` channel whose
+receiver is the result handler's `SiteState` (hold bounds from the
+observer's configuration). The probe round spawns one task per target and
+gives up on the unfinished ones after `probe_timeout + 2` s;
+`DefaultProbeRunner` bounds each target by `probe_timeout`, resolves DNS
+names with `getaddrinfo` (IDNA 2008 encoding of non-ASCII names, as anyio)
+and connects to the IP literal (a zone id goes through `getaddrinfo`), and
+logs a failure at DEBUG. `app.rs` reads the configuration after the
+notifier selection and the cleaner construction (where `bootstrap` runs),
+logs `site connectivity observation is <mode>` under `nyxmon.bootstrap`
+when the mode is not off, and starts the observer task beside the
+collector. The task first emits the unobserved-requirement warnings of the
+collector's first iteration (`_warn_unobserved_site_requirements`; logged
+as `failed to check site dependencies against the probes` on a store
+error), then restores and probes every `probe_interval`. A signal stops it
+after the current round or sleep; it is aborted once the collector has
+released its claims (Python cancels the portal at that point).
 
 ---
 
