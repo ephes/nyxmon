@@ -241,6 +241,7 @@ def test_compare_reports_disagreements_keys_alerts_and_claims(
         "prod_times": [],
         "shadow_times": [check4["alerts"]["shadow_times"][0]],
         "shadow_log": 1,
+        "shadow_log_after_window": 0,
     }
     assert report["checks"]["5"]["key_differences"] == [
         {"outcome": "ok/", "only_prod": [], "only_shadow": [["duration_ms", "extra"]]}
@@ -447,3 +448,47 @@ def test_a_failed_tick_loses_nothing(tmp_path):
     retried = db.tick(now)
     assert [row[1] for row in retried["results"]] == [4]
     assert [row[0] for row in retried["states"]] == [1]
+
+
+def test_an_alert_logged_while_the_last_snapshot_is_read_still_matches(tmp_path):
+    # The recorder reads production, then shadow; a decision the shadow
+    # snapshot sees can be logged just after that snapshot began.
+    since, tick = 1_000_000, 1_000_100
+    sample = {"count": 1, "min_created_at": _created(since), "min_id": 1}
+    result = [[10, 1, "error", _created(since + 30), {"error_type": "x"}]]
+    lines = []
+    for ts, seq in ((since, 0), (tick, 1)):
+        for name in ("prod", "shadow"):
+            line = {
+                "ts": ts,
+                "db": name,
+                "read_at": ts + (0.02 if name == "shadow" else 0.0),
+                "results": result if (ts == tick) else [],
+                "states": [[1, 1, 1, 0, 1, 1, 0, seq, 0]],
+                "incidents": [],
+                "leases": [[1, "idle", 0, 0, 0]],
+                "retention": sample,
+            }
+            if ts == since:
+                line["checks"] = {"1": ["http", "c", 60]}
+            lines.append(line)
+    record = tmp_path / "record.jsonl"
+    record.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    log = tmp_path / "shadow.log"
+    alert = " host agent[1]: notification check_id=1 status=error error_type=x\n"
+
+    def mismatch(text):
+        log.write_text(text)
+        findings = _findings(tmp_path, record, since, "--shadow-log", str(log))
+        return [f for f in findings if "shadow notification line(s)" in f]
+
+    # Logged 31 ms after the shadow snapshot began: still that decision.
+    assert mismatch(f"{tick + 0.051}{alert}") == []
+    # Logged inside the window: matches too.
+    assert mismatch(f"{since + 50}{alert}") == []
+    # No line for a decision the snapshot saw: a finding.
+    assert mismatch("") != []
+    # Two lines for one decision inside the window: a finding.
+    assert mismatch(f"{since + 50}{alert}{since + 60}{alert}") != []
+    # A line far after the window belongs to a later decision: a finding.
+    assert mismatch(f"{tick + 3600}{alert}") != []

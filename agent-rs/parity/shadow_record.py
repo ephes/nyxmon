@@ -84,7 +84,13 @@ class DatabaseRecorder:
         return sqlite3.connect(f"file:{self.path}?mode=ro", uri=True, timeout=10)
 
     def tick(self, now: float) -> dict[str, Any]:
-        line: dict[str, Any] = {"ts": round(now, 3), "db": self.name}
+        # ``read_at``: when this database's snapshot began (``ts`` is the
+        # tick, shared by both databases); journal lines are cut there.
+        line: dict[str, Any] = {
+            "ts": round(now, 3),
+            "db": self.name,
+            "read_at": round(time.time(), 3),
+        }
         try:
             connection = self._connect()
         except sqlite3.Error as exc:
@@ -106,6 +112,7 @@ class DatabaseRecorder:
             line = {
                 "ts": round(now, 3),
                 "db": self.name,
+                "read_at": line["read_at"],
                 "error": f"{type(exc).__name__}: {exc}",
             }
         finally:

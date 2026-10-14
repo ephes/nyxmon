@@ -104,6 +104,8 @@ class Database:
     errors: list[tuple[float, str]] = field(default_factory=list)
     #: The tick that recorded every state row (the recorder's first).
     baseline_ts: float | None = None
+    #: When the last successful snapshot of this database began.
+    last_read_at: float | None = None
 
     def add(self, line: dict[str, Any]) -> None:
         ts = float(line["ts"])
@@ -135,6 +137,7 @@ class Database:
             self.leases.append((ts, line["leases"]))
         if "retention" in line:
             self.retention.append((ts, line["retention"]))
+            self.last_read_at = float(line.get("read_at", ts))
 
 
 def load(
@@ -223,33 +226,46 @@ def load_baseline(path: Path | None) -> dict[int, int] | None:
     }
 
 
+@dataclass
+class JournalAlerts:
+    """Alert lines of the shadow journal, per check."""
+
+    #: Lines between T0 and the start of the last shadow snapshot.
+    inside: Counter[int]
+    #: Lines up to ``grace`` seconds after it: an alert whose decision the
+    #: last snapshot already saw may be logged after the snapshot began.
+    boundary: Counter[int]
+    #: Alert lines without a Unix timestamp (counted in ``inside``).
+    untimed: int
+
+
 def shadow_alerts(
-    log: Path | None, start: float, end: float
-) -> tuple[Counter[int], int] | None:
-    """Alert lines per check in the shadow journal between ``start`` and
-    ``end``, and the number of alert lines without a Unix timestamp.
+    log: Path | None, start: float, end: float, grace: float
+) -> JournalAlerts | None:
+    """The ``notification check_id=`` lines of the shadow journal.
 
     The journal export must be ``journalctl -o short-unix`` (each line starts
     with the epoch), so lines outside the recorded window are left out.
     """
     if log is None:
         return None
-    counts: Counter[int] = Counter()
-    untimed = 0
+    alerts = JournalAlerts(Counter(), Counter(), 0)
     for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
         match = SHADOW_ALERT.search(line)
         if not match:
             continue
-        stamp = line.split(" ", 1)[0]
+        check_id = int(match.group(1))
         try:
-            moment = float(stamp)
+            moment = float(line.split(" ", 1)[0])
         except ValueError:
-            untimed += 1
-            counts[int(match.group(1))] += 1
+            alerts.untimed += 1
+            alerts.inside[check_id] += 1
             continue
         if start <= moment <= end:
-            counts[int(match.group(1))] += 1
-    return counts, untimed
+            alerts.inside[check_id] += 1
+        elif end < moment <= end + grace:
+            alerts.boundary[check_id] += 1
+    return alerts
 
 
 def stuck_claims(database: Database, lease_seconds: float) -> list[dict[str, Any]]:
@@ -399,16 +415,14 @@ def compare(args: argparse.Namespace) -> dict[str, Any]:
     databases, units = load(args.record, since)
     prod, shadow = databases["prod"], databases["shadow"]
     checks = compared_checks(prod, shadow)
-    ticks = [ts for ts, _ in shadow.retention]
-    window_end = max(ticks) if ticks else since
-    parsed_log = shadow_alerts(args.shadow_log, since, window_end)
-    log_alerts = None if parsed_log is None else parsed_log[0]
+    window_end = shadow.last_read_at or since
+    journal = shadow_alerts(args.shadow_log, since, window_end, args.log_grace_seconds)
     baseline = load_baseline(args.baseline)
     report: dict[str, Any] = {"since": utc(since), "checks": {}, "findings": []}
     findings: list[str] = report["findings"]
-    if parsed_log is not None and parsed_log[1]:
+    if journal is not None and journal.untimed:
         findings.append(
-            f"shadow log: {parsed_log[1]} alert line(s) without a Unix timestamp "
+            f"shadow log: {journal.untimed} alert line(s) without a Unix timestamp "
             "(export with journalctl -o short-unix), counted regardless of the window"
         )
     for name, database in databases.items():
@@ -499,12 +513,17 @@ def compare(args: argparse.Namespace) -> dict[str, Any]:
             "prod_times": [utc(ts) for ts in p_times],
             "shadow_times": [utc(ts) for ts in s_times],
         }
-        if log_alerts is not None:
-            entry["alerts"]["shadow_log"] = log_alerts.get(check_id, 0)
-            if log_alerts.get(check_id, 0) != s_alerts:
+        if journal is not None:
+            logged = journal.inside.get(check_id, 0)
+            late = journal.boundary.get(check_id, 0)
+            entry["alerts"]["shadow_log"] = logged
+            entry["alerts"]["shadow_log_after_window"] = late
+            # Every logged alert was decided before it was logged; a decision
+            # the last snapshot saw may be logged just after it began.
+            if not logged <= s_alerts <= logged + late:
                 findings.append(
-                    f"check {check_id}: {log_alerts.get(check_id, 0)} shadow notification line(s) "
-                    f"but attempt_seq rose by {s_alerts}"
+                    f"check {check_id}: {logged} shadow notification line(s) "
+                    f"(+{late} just after the window) but attempt_seq rose by {s_alerts}"
                 )
         if p_alerts != s_alerts:
             findings.append(
@@ -660,6 +679,12 @@ def main(argv: list[str] | None = None) -> int:
         "--shadow-unit",
         default="nyxmon-agent-shadow",
         help="unit checked against PLAN.md 4.4",
+    )
+    parser.add_argument(
+        "--log-grace-seconds",
+        type=float,
+        default=60,
+        help="journal lines this long after the last snapshot may belong to it",
     )
     parser.add_argument("--json", type=Path, help="also write the report as JSON")
     parser.add_argument(
