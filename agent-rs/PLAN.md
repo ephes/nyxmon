@@ -2259,6 +2259,17 @@ consumes — harmless).
 
 Stop and remove the shadow unit and copy afterwards.
 
+Tooling (S12, `agent-rs/parity/`, standard library only so the host's
+`python3` runs it; usage in `docs/agent-rs.md`): `shadow_prepare.py` does
+steps 1-2 (online copy through SQLite's backup API, mail checks disabled,
+inherited claims released, incidents deleted, T0 printed, B0 written to
+`<copy>.baseline.json`); `shadow_record.py` is the recorder of step 4 (plus
+`systemctl show` memory/CPU/restart samples of the given units);
+`shadow_compare.py` writes the report of step 4 with a closing list of
+findings to explain, taking `attempt_seq(T0)` from B0 (`--baseline`) and
+cross-checking the alert counts against the shadow journal's machine lines
+(`--shadow-log`).
+
 ### 9.2 Cutover
 
 1. Announce a window; the owner approves the deploy (it restarts the

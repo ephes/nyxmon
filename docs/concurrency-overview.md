@@ -104,3 +104,31 @@ When all `_run_one` tasks finish, the producer closes the send channel so the co
   from shutdown cancellation, so a stop during recovery waits for it.
 - See the operations runbook in `configuration.md` for the grace setting and
   the systemd timeout assumption.
+
+## 10. The Rust agent runtime (`agent-rs/`)
+
+The Rust port (`nyxmon-agent`, see {doc}`agent-rs`) keeps the observable
+ordering described above, not the thread and portal plumbing:
+
+- **One tokio runtime** (`multi_thread`, two worker threads, up to 32
+  blocking threads for `getaddrinfo`) runs every task: the collector loop,
+  the cleaner loop (unless `--disable-cleaner`), the site observer (only when
+  `NYXMON_SITE_CONNECTIVITY_MODE` is not `off`) and the main task, which
+  waits for SIGTERM/SIGINT. The signal handlers are installed before the
+  collector starts.
+- **One database thread** (the "DB actor") owns the only read-write SQLite
+  connection. Every store operation is a closure sent to it and is one
+  transaction; write transactions start with `BEGIN IMMEDIATE`, so the agent
+  waits for Django or backup locks (up to the 5 s busy timeout) instead of
+  failing on a lock upgrade. A dead database thread is fatal (exit 1).
+- **Batches.** Each collector iteration claims due checks and runs them
+  concurrently in one batch task; finished results are handled one at a time
+  in completion order (suppression fetch, decision, persistence, alert,
+  acknowledgement), as the Python runner does through its memory stream.
+  The batch deadline, abandoned batches and the execution-paused incident
+  follow the Python collector.
+- **Shutdown.** The grace period and the intake stop work as above; when
+  the grace ends the batch task is aborted *before* its claims are released,
+  so no result can be written after the release (PLAN.md D-3). Executor work
+  stuck in the system resolver does not hold process exit (the runtime is
+  shut down in the background, like Python's daemon threads).
