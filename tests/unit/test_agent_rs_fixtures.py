@@ -47,6 +47,7 @@ def test_drift_check_detects_a_hand_edited_fixture(
     generator: ModuleType, tmp_path: Path
 ) -> None:
     for name in generator.GENERATORS:
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(generator.FIXTURES_DIR / name, tmp_path / name)
     assert generator.check_fixtures(tmp_path) == []
 

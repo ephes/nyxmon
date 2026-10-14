@@ -11,8 +11,11 @@ module, the fixture pipeline, the environment readers, the domain types and
 the TLS helpers; slice S3 (alerting core): notification policy, site
 dependencies, the site snapshot hold logic, maintenance-suppression rules,
 the notification decision, the runtime (lease) estimate and the incident
-delivery markers, all pure functions in `nyxmon-core`. The binary only
-answers `--version`.
+delivery markers, all pure functions in `nyxmon-core`; slice S4 (site
+observer core): the site connectivity observer as a pure state machine
+(`nyxmon_core::site::Observer`: path and phase machines, payload codec and
+restore, ongoing alert, summaries, recovery recheck, message rendering) whose
+I/O goes through the `SitePorts` trait. The binary only answers `--version`.
 
 ## Layout
 
@@ -102,6 +105,15 @@ Current fixtures:
   files are written with sorted keys. `decision.json` is generated under
   `sys.monitoring` line tracing and the generator fails unless the corpus
   executes every line of `_should_notify_check_result`.
+- `site_replay/*.json` (`gen_site.py`): the real `SiteConnectivityObserver`
+  driven round by round by a scripted probe runner, clock, in-memory store
+  and scheduler (with injected read/write/query failures) and a recording
+  notifier. Each step records the store, scheduler and notifier calls and the
+  log lines in call order (payloads as `json.dumps` text), the probed
+  targets, the published snapshot and the exception a round raised;
+  `nyxmon-core` replays them against `site::Observer` with the same fakes.
+  `site_replay/coverage.json` fails generation unless the corpus executes
+  every line of the observer's pure methods and rendering helpers.
 
 ## Conventions for later slices
 
@@ -124,6 +136,12 @@ Current fixtures:
   `Env::from_map` in tests); its warn-once state lives as long as the `Env`.
   Unbounded integers are returned exactly as `BigInt` (see the `env`
   module documentation).
+- The site observer is I/O-free: the driver (S11) implements
+  `nyxmon_core::site::SitePorts` (clock, probe round, the
+  `site:connectivity` row, scheduler queries, notifier, snapshot publication,
+  log lines) and calls `Observer::restore`/`Observer::run_once`; an `Err`
+  from either is the Python exception a malformed persisted value raises,
+  which the loop logs as `site connectivity round failed`.
 - TLS goes through `nyxmon_checks::tls` (rustls with the `ring` provider,
   system roots, TLS 1.2+); `tls::server_name` IDNA-encodes Unicode hosts
   like Python.

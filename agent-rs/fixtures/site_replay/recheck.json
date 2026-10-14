@@ -1,0 +1,3567 @@
+{
+ "scenarios": [
+  {
+   "config": {
+    "dns": [
+     "cloudflare.com"
+    ],
+    "down_after_failures": 2,
+    "incident_notify_after_seconds": 900,
+    "incident_reminder_seconds": 21600,
+    "ipv4": [
+     [
+      "1.1.1.1",
+      443
+     ],
+     [
+      "8.8.8.8",
+      443
+     ]
+    ],
+    "ipv6": [
+     [
+      "2606:4700:4700::1111",
+      443
+     ]
+    ],
+    "max_hold_seconds": 10800,
+    "mode": "enforce",
+    "probe_interval": 60,
+    "probe_timeout": 3,
+    "recovery_grace_seconds": 900
+   },
+   "name": "recheck_reads_in_flight_before_the_held_set",
+   "results": [
+    {
+     "events": [
+      [
+       "store",
+       "get",
+       "none"
+      ],
+      [
+       "store",
+       "open",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000060, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}",
+       1700000060
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000060,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 opened: ipv4 down"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000120, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000120,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000180, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 1700001080, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000180,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "recovering",
+        1700000120,
+        1700000180,
+        1700001080,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 closed after 1m00s (summary: no)"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1,
+        2
+       ],
+       1700001080
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001080,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001140, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1,
+        2
+       ],
+       1700001140
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001140,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001200, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1,
+        2
+       ],
+       1700001200
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001200,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001260, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1,
+        2
+       ],
+       1700001260
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001260,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001320, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity recheck for release 2023-11-14T22:31:20Z completed"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001320, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": false, \"release_at\": 1700001080}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001320,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001380, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": false, \"release_at\": 1700001080}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001380,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "at": 1700000060,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv4"
+      ]
+     }
+    },
+    {
+     "at": 1700000120,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700000180,
+     "op": "round",
+     "set": {
+      "down_paths": []
+     }
+    },
+    {
+     "at": 1700001080,
+     "op": "round",
+     "set": {
+      "held": [
+       {
+        "check_id": 1,
+        "data_json": "{\"site_dependency\": \"internet\"}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       },
+       {
+        "check_id": 2,
+        "data_json": "{\"site_dependency\": {\"requires\": [\"ipv6\"]}}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       },
+       {
+        "check_id": 3,
+        "data_json": "{\"x\": 1}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       }
+      ],
+      "in_flight": 2
+     }
+    },
+    {
+     "at": 1700001140,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001200,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001260,
+     "op": "round",
+     "set": {
+      "in_flight": 0
+     }
+    },
+    {
+     "at": 1700001320,
+     "op": "round",
+     "set": {
+      "held": []
+     }
+    },
+    {
+     "at": 1700001380,
+     "op": "round",
+     "set": {}
+    }
+   ]
+  },
+  {
+   "config": {
+    "dns": [
+     "cloudflare.com"
+    ],
+    "down_after_failures": 2,
+    "incident_notify_after_seconds": 900,
+    "incident_reminder_seconds": 21600,
+    "ipv4": [
+     [
+      "1.1.1.1",
+      443
+     ],
+     [
+      "8.8.8.8",
+      443
+     ]
+    ],
+    "ipv6": [
+     [
+      "2606:4700:4700::1111",
+      443
+     ]
+    ],
+    "max_hold_seconds": 10800,
+    "mode": "enforce",
+    "probe_interval": 60,
+    "probe_timeout": 3,
+    "recovery_grace_seconds": 900
+   },
+   "name": "recheck_skips_checks_blocked_by_another_requirement",
+   "results": [
+    {
+     "events": [
+      [
+       "store",
+       "get",
+       "none"
+      ],
+      [
+       "store",
+       "open",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000060, \"paths\": {\"dns\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}",
+       1700000060
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000060,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 opened: dns, ipv4 down"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000120, \"paths\": {\"dns\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000120,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000180, \"paths\": {\"dns\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 1700001080, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000180,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "recovering",
+        1700000120,
+        1700000180,
+        1700001080,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": false, \"retired\": false, \"last_alert_at\": 0}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "send",
+       "site:connectivity",
+       "site connectivity",
+       "site_connectivity_outage",
+       "Site connectivity outage 1700000120: dns down since 2023-11-14T22:15:20Z (16m00s). Alerts of dependent checks are held for at most 3h00m.",
+       "error",
+       true
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        8
+       ],
+       1700001080
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001080,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001140, \"paths\": {\"dns\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        8
+       ],
+       1700001140
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001140,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001200, \"paths\": {\"dns\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700001200, \"release_at\": 1700002100, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        8
+       ],
+       1700001200
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001200,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "recovering",
+        1700000120,
+        1700001200,
+        1700002100,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "sched",
+       "count_held"
+      ],
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 closed after 18m00s (summary: yes)"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700002100, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700001200, \"release_at\": 0, \"last_release_at\": 1700002100}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [{\"incident_id\": 1700000120, \"started_at\": 1700000120, \"ended_at\": 1700001200, \"paths\": {\"dns\": {\"down_since\": 1700000120, \"recovered_at\": 1700001200}, \"ipv4\": {\"down_since\": 1700000120, \"recovered_at\": 1700000180}}, \"ongoing_delivered\": true, \"held_at_close\": 2, \"attempt_at\": 0, \"attempts\": 0}], \"recheck\": {\"pending\": true, \"release_at\": 1700002100}}"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700002100, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700001200, \"release_at\": 0, \"last_release_at\": 1700002100}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [{\"incident_id\": 1700000120, \"started_at\": 1700000120, \"ended_at\": 1700001200, \"paths\": {\"dns\": {\"down_since\": 1700000120, \"recovered_at\": 1700001200}, \"ipv4\": {\"down_since\": 1700000120, \"recovered_at\": 1700000180}}, \"ongoing_delivered\": true, \"held_at_close\": 2, \"attempt_at\": 1700002100, \"attempts\": 1}], \"recheck\": {\"pending\": true, \"release_at\": 1700002100}}"
+      ],
+      [
+       "send",
+       "site:connectivity",
+       "site connectivity",
+       "site_connectivity_summary",
+       "Site connectivity recovered: outage 1700000120 lasted 18m00s (dns down 2023-11-14T22:15:20Z until 2023-11-14T22:33:20Z; ipv4 down 2023-11-14T22:15:20Z until 2023-11-14T22:16:20Z). Ongoing alert delivered: yes. 2 dependent check(s) were held at close and are being rechecked.",
+       "warning",
+       false
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700002100, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700001200, \"release_at\": 0, \"last_release_at\": 1700002100}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700002100}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700002100
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        7,
+        8
+       ],
+       1700002100
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700002100,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        1700000120,
+        1700001200,
+        0,
+        1700002100
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700002160, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700001200, \"release_at\": 0, \"last_release_at\": 1700002100}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700002100}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700002100
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        7,
+        8
+       ],
+       1700002160
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700002160,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        1700000120,
+        1700001200,
+        0,
+        1700002100
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700002220, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700001200, \"release_at\": 0, \"last_release_at\": 1700002100}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {\"incident_id\": 1700000120, \"attempt_at\": 1700001080, \"attempts\": 1, \"delivered\": true, \"retired\": false, \"last_alert_at\": 1700001080}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700002100}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700002100
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        7,
+        8
+       ],
+       1700002220
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700002220,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        1700000120,
+        1700001200,
+        0,
+        1700002100
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "at": 1700000060,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv4",
+       "dns"
+      ]
+     }
+    },
+    {
+     "at": 1700000120,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700000180,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "dns"
+      ]
+     }
+    },
+    {
+     "at": 1700001080,
+     "op": "round",
+     "set": {
+      "held": [
+       {
+        "check_id": 7,
+        "data_json": "{\"site_dependency\": {\"requires\": [\"dns\", \"ipv4\"]}}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       },
+       {
+        "check_id": 8,
+        "data_json": "{\"site_dependency\": {\"requires\": [\"ipv4\"]}}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       }
+      ]
+     }
+    },
+    {
+     "at": 1700001140,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001200,
+     "op": "round",
+     "set": {
+      "down_paths": []
+     }
+    },
+    {
+     "at": 1700002100,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700002160,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700002220,
+     "op": "round",
+     "set": {}
+    }
+   ]
+  },
+  {
+   "config": {
+    "dns": [
+     "cloudflare.com"
+    ],
+    "down_after_failures": 2,
+    "incident_notify_after_seconds": 900,
+    "incident_reminder_seconds": 21600,
+    "ipv4": [
+     [
+      "1.1.1.1",
+      443
+     ],
+     [
+      "8.8.8.8",
+      443
+     ]
+    ],
+    "ipv6": [
+     [
+      "2606:4700:4700::1111",
+      443
+     ]
+    ],
+    "max_hold_seconds": 10800,
+    "mode": "enforce",
+    "probe_interval": 60,
+    "probe_timeout": 3,
+    "recovery_grace_seconds": 900
+   },
+   "name": "recheck_filters_disabled_and_due_checks_and_bad_dependencies",
+   "results": [
+    {
+     "events": [
+      [
+       "store",
+       "get",
+       "none"
+      ],
+      [
+       "store",
+       "open",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000060, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}",
+       1700000060
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000060,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 opened: ipv4 down"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000120, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000120,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000180, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 1700001080, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000180,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "recovering",
+        1700000120,
+        1700000180,
+        1700001080,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 closed after 1m00s (summary: no)"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "log",
+       "WARNING",
+       "nyxmon.service_layer.site_dependency",
+       "site_dependency for check_id=4 is invalid (unknown shorthand, got 'nope'); treating the check as unclassified"
+      ],
+      [
+       "log",
+       "WARNING",
+       "nyxmon.service_layer.site_dependency",
+       "site_dependency for check_id=5 is invalid (must be a string or an object, got 7); treating the check as unclassified"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        3
+       ],
+       1700001080
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001080,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001140, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001140,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001200, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity recheck for release 2023-11-14T22:31:20Z completed"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001200, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": false, \"release_at\": 1700001080}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001200,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "at": 1700000060,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv4"
+      ]
+     }
+    },
+    {
+     "at": 1700000120,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700000180,
+     "op": "round",
+     "set": {
+      "down_paths": []
+     }
+    },
+    {
+     "at": 1700001080,
+     "op": "round",
+     "set": {
+      "held": [
+       {
+        "check_id": 1,
+        "data_json": "{\"site_dependency\": \"internet\"}",
+        "disabled": true,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       },
+       {
+        "check_id": 2,
+        "data_json": "{\"site_dependency\": \"internet\"}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700001080,
+        "status": "idle"
+       },
+       {
+        "check_id": 3,
+        "data_json": "{\"site_dependency\": \"internet\"}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700001081,
+        "status": "idle"
+       },
+       {
+        "check_id": 4,
+        "data_json": "{\"site_dependency\": \"nope\"}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       },
+       {
+        "check_id": 5,
+        "data_json": "{\"site_dependency\": 7}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       }
+      ]
+     }
+    },
+    {
+     "at": 1700001140,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001200,
+     "op": "round",
+     "set": {
+      "held": []
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "dns": [
+     "cloudflare.com"
+    ],
+    "down_after_failures": 2,
+    "incident_notify_after_seconds": 900,
+    "incident_reminder_seconds": 21600,
+    "ipv4": [
+     [
+      "1.1.1.1",
+      443
+     ],
+     [
+      "8.8.8.8",
+      443
+     ]
+    ],
+    "ipv6": [
+     [
+      "2606:4700:4700::1111",
+      443
+     ]
+    ],
+    "max_hold_seconds": 10800,
+    "mode": "enforce",
+    "probe_interval": 60,
+    "probe_timeout": 3,
+    "recovery_grace_seconds": 900
+   },
+   "name": "recheck_query_and_reschedule_failures_keep_it_pending",
+   "results": [
+    {
+     "events": [
+      [
+       "store",
+       "get",
+       "none"
+      ],
+      [
+       "store",
+       "open",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000060, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}",
+       1700000060
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000060,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 opened: ipv4 down"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000120, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000120,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000180, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 1700001080, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000180,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "recovering",
+        1700000120,
+        1700000180,
+        1700001080,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 closed after 1m00s (summary: no)"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "log",
+       "ERROR",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity recheck query failed"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001080,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001140, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "log",
+       "ERROR",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity recheck query failed"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001140,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001200, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1
+       ],
+       1700001200
+      ],
+      [
+       "log",
+       "ERROR",
+       "nyxmon.adapters.site_connectivity",
+       "failed to reschedule held checks [1]"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001200,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001260, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1
+       ],
+       1700001260
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001260,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001320, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity recheck for release 2023-11-14T22:31:20Z completed"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001320, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": false, \"release_at\": 1700001080}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001320,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "at": 1700000060,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv4"
+      ]
+     }
+    },
+    {
+     "at": 1700000120,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700000180,
+     "op": "round",
+     "set": {
+      "down_paths": []
+     }
+    },
+    {
+     "at": 1700001080,
+     "op": "round",
+     "set": {
+      "fail_in_flight": true,
+      "held": [
+       {
+        "check_id": 1,
+        "data_json": "{\"site_dependency\": \"internet\"}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       }
+      ]
+     }
+    },
+    {
+     "at": 1700001140,
+     "op": "round",
+     "set": {
+      "fail_held": true,
+      "fail_in_flight": false
+     }
+    },
+    {
+     "at": 1700001200,
+     "op": "round",
+     "set": {
+      "fail_held": false,
+      "fail_reschedule": true
+     }
+    },
+    {
+     "at": 1700001260,
+     "op": "round",
+     "set": {
+      "fail_reschedule": false
+     }
+    },
+    {
+     "at": 1700001320,
+     "op": "round",
+     "set": {
+      "held": []
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "dns": [
+     "cloudflare.com"
+    ],
+    "down_after_failures": 2,
+    "incident_notify_after_seconds": 900,
+    "incident_reminder_seconds": 21600,
+    "ipv4": [
+     [
+      "1.1.1.1",
+      443
+     ],
+     [
+      "8.8.8.8",
+      443
+     ]
+    ],
+    "ipv6": [
+     [
+      "2606:4700:4700::1111",
+      443
+     ]
+    ],
+    "max_hold_seconds": 10800,
+    "mode": "enforce",
+    "probe_interval": 60,
+    "probe_timeout": 3,
+    "recovery_grace_seconds": 900
+   },
+   "name": "recheck_release_extends_while_another_path_recovers",
+   "results": [
+    {
+     "events": [
+      [
+       "store",
+       "get",
+       "none"
+      ],
+      [
+       "store",
+       "open",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000060, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}",
+       1700000060
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000060,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 opened: ipv4, ipv6 down"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000120, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000120,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000180, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 1700001080, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000180,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "recovering",
+        1700000120,
+        1700000180,
+        1700001080,
+        0
+       ],
+       "ipv6": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000360, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 1700001080, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 1700001260, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000360,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "recovering",
+        1700000120,
+        1700000180,
+        1700001080,
+        0
+       ],
+       "ipv6": [
+        "recovering",
+        1700000120,
+        1700000360,
+        1700001260,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 1700001260, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1
+       ],
+       1700001080
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001080,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "recovering",
+        1700000120,
+        1700000360,
+        1700001260,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001140, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 1700001260, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1
+       ],
+       1700001140
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001140,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "recovering",
+        1700000120,
+        1700000360,
+        1700001260,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700001200, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 1700001260, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001080
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1
+       ],
+       1700001200
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001200,
+      "enforce",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "recovering",
+        1700000120,
+        1700000360,
+        1700001260,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 closed after 4m00s (summary: no)"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001260, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 0, \"last_release_at\": 1700001260}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001260}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001260
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1
+       ],
+       1700001260
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001260,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        1700000120,
+        1700000360,
+        0,
+        1700001260
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001320, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 0, \"last_release_at\": 1700001260}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001260}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001260
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "sched",
+       "reschedule",
+       [
+        1
+       ],
+       1700001320
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001320,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        1700000120,
+        1700000360,
+        0,
+        1700001260
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001380, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 0, \"last_release_at\": 1700001260}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001260}}"
+      ],
+      [
+       "sched",
+       "in_flight",
+       1700001260
+      ],
+      [
+       "sched",
+       "held"
+      ],
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity recheck for release 2023-11-14T22:34:20Z completed"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001380, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000360, \"release_at\": 0, \"last_release_at\": 1700001260}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": false, \"release_at\": 1700001260}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001380,
+      "enforce",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        1700000120,
+        1700000360,
+        0,
+        1700001260
+       ]
+      }
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "at": 1700000060,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv4",
+       "ipv6"
+      ]
+     }
+    },
+    {
+     "at": 1700000120,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700000180,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv6"
+      ]
+     }
+    },
+    {
+     "at": 1700000360,
+     "op": "round",
+     "set": {
+      "down_paths": []
+     }
+    },
+    {
+     "at": 1700001080,
+     "op": "round",
+     "set": {
+      "held": [
+       {
+        "check_id": 1,
+        "data_json": "{\"site_dependency\": \"internet\"}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       }
+      ],
+      "in_flight": 1
+     }
+    },
+    {
+     "at": 1700001140,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001200,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001260,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001320,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001380,
+     "op": "round",
+     "set": {
+      "held": [],
+      "in_flight": 0
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "dns": [
+     "cloudflare.com"
+    ],
+    "down_after_failures": 2,
+    "incident_notify_after_seconds": 900,
+    "incident_reminder_seconds": 21600,
+    "ipv4": [
+     [
+      "1.1.1.1",
+      443
+     ],
+     [
+      "8.8.8.8",
+      443
+     ]
+    ],
+    "ipv6": [
+     [
+      "2606:4700:4700::1111",
+      443
+     ]
+    ],
+    "max_hold_seconds": 10800,
+    "mode": "observe",
+    "probe_interval": 60,
+    "probe_timeout": 3,
+    "recovery_grace_seconds": 900
+   },
+   "name": "observe_mode_never_reschedules",
+   "results": [
+    {
+     "events": [
+      [
+       "store",
+       "get",
+       "none"
+      ],
+      [
+       "store",
+       "open",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000060, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"failing\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}",
+       1700000060
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000060,
+      "observe",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "failing",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 opened: ipv4 down"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000120, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"down\", \"down_since\": 1700000120, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000120,
+      "observe",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "down",
+        1700000120,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"active\", \"incident_id\": 1700000120, \"observed_at\": 1700000180, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 1700001080, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700000180,
+      "observe",
+      1700000120,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "recovering",
+        1700000120,
+        1700000180,
+        1700001080,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "log",
+       "INFO",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity incident 1700000120 closed after 1m00s (summary: no)"
+      ],
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001080, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001080,
+      "observe",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001140, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001140,
+      "observe",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [
+      [
+       "store",
+       "set",
+       "ok",
+       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700001200, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 1700000120, \"recovered_at\": 1700000180, \"release_at\": 0, \"last_release_at\": 1700001080}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {\"pending\": true, \"release_at\": 1700001080}}"
+      ]
+     ],
+     "probed": [
+      "cloudflare.com",
+      "1.1.1.1:443",
+      "8.8.8.8:443",
+      "[2606:4700:4700::1111]:443"
+     ],
+     "raised": null,
+     "snapshot": [
+      1700001200,
+      "observe",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        1700000120,
+        1700000180,
+        0,
+        1700001080
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "at": 1700000060,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv4"
+      ],
+      "held": [
+       {
+        "check_id": 1,
+        "data_json": "{\"site_dependency\": \"internet\"}",
+        "disabled": false,
+        "held_since": 1700000200,
+        "next_check_time": 1700100000,
+        "status": "idle"
+       }
+      ]
+     }
+    },
+    {
+     "at": 1700000120,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700000180,
+     "op": "round",
+     "set": {
+      "down_paths": []
+     }
+    },
+    {
+     "at": 1700001080,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001140,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700001200,
+     "op": "round",
+     "set": {}
+    }
+   ]
+  },
+  {
+   "config": {
+    "dns": [
+     "cloudflare.com"
+    ],
+    "down_after_failures": 2,
+    "incident_notify_after_seconds": 900,
+    "incident_reminder_seconds": 21600,
+    "ipv4": [
+     [
+      "1.1.1.1",
+      443
+     ],
+     [
+      "8.8.8.8",
+      443
+     ]
+    ],
+    "ipv6": [
+     [
+      "2606:4700:4700::1111",
+      443
+     ]
+    ],
+    "max_hold_seconds": 10800,
+    "mode": "off",
+    "probe_interval": 60,
+    "probe_timeout": 3,
+    "recovery_grace_seconds": 900
+   },
+   "name": "off_mode_does_nothing",
+   "results": [
+    {
+     "events": [],
+     "probed": [],
+     "raised": null,
+     "snapshot": [
+      0,
+      "off",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [],
+     "probed": [],
+     "raised": null,
+     "snapshot": [
+      0,
+      "off",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "events": [],
+     "probed": [],
+     "raised": null,
+     "snapshot": [
+      0,
+      "off",
+      0,
+      {
+       "dns": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv4": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ],
+       "ipv6": [
+        "up",
+        0,
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "at": 1700000060,
+     "op": "round",
+     "set": {
+      "down_paths": [
+       "ipv4"
+      ]
+     }
+    },
+    {
+     "at": 1700000120,
+     "op": "round",
+     "set": {}
+    },
+    {
+     "at": 1700000180,
+     "op": "respawn",
+     "set": {}
+    }
+   ]
+  }
+ ]
+}
