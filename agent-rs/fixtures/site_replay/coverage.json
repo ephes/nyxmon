@@ -1,0 +1,51 @@
+{
+ "not_replayed": {
+  "__init__": "default probe runner (I/O driver, S11)",
+  "_count_held_checks": "sync scheduler fallback (I/O driver)",
+  "_send": "notifier missing (I/O driver, S11)",
+  "_store_get": "async store variant (I/O driver)",
+  "_store_open": "async store variant (I/O driver)",
+  "_store_set": "async store variant (I/O driver)",
+  "_wait_for_next_round": "loop (S11)",
+  "run": "loop (S11)",
+  "stop": "loop (S11)",
+  "unobserved_paths": "startup wiring (S11)",
+  "warn_unobserved_requirements": "startup wiring (S11)"
+ },
+ "not_replayed_lines": {
+  "_summary_line": "line = line[:limit]"
+ },
+ "replayed": [
+  "_advance_incident",
+  "_advance_paths",
+  "_apply_outcome",
+  "_as_int",
+  "_as_mapping",
+  "_close_incident",
+  "_count_processing_claims_before",
+  "_duration",
+  "_is_fresh",
+  "_iso",
+  "_list_held_checks",
+  "_observed_paths",
+  "_ongoing_message",
+  "_open_recheck",
+  "_probe_round",
+  "_process_ongoing",
+  "_process_recheck",
+  "_process_summaries",
+  "_publish_snapshot",
+  "_record_is_due",
+  "_render_summary_line",
+  "_reschedule",
+  "_retire_ongoing",
+  "_summary_batch",
+  "_summary_line",
+  "_targets",
+  "_write_payload",
+  "build_payload",
+  "restore",
+  "run_once",
+  "snapshot"
+ ]
+}

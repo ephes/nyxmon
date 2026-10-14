@@ -1349,6 +1349,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "pyjson.json": build_pyjson,
     "unicode_nonprintable.json": build_unicode_nonprintable,
     **_slice_generators("gen_alerting"),
+    **_slice_generators("gen_site"),
 }
 
 
@@ -1396,6 +1397,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"stale fixture: {name} (run `just rs-fixtures`)", file=sys.stderr)
         return 1 if stale else 0
     for name in sorted(GENERATORS):
+        (FIXTURES_DIR / name).parent.mkdir(parents=True, exist_ok=True)
         (FIXTURES_DIR / name).write_text(render(name), encoding="utf-8")
         print(f"wrote {FIXTURES_DIR / name}")
     return 0

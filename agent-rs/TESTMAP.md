@@ -45,14 +45,33 @@ built by `fixtures/gen_alerting.py`.
 | `collector.py:estimated_check_runtime_seconds`; `test_collector_recovery.py::test_runtime_estimate_*` | `lease_estimate_matches_python` against `lease.json` | done (lease wiring: S10) |
 | `interface.py` `carry_delivery_markers`, `with_delivery_intent`, `without_delivery_markers` | `delivery_markers_match_python` against `incident_payloads.json` (`delivery_markers`) | done (store use: S2; `_merge_stale_batch_payload` and the incident messages: S10) |
 
+## S4 — site observer core
+
+All in `nyxmon-core/src/site/replay_tests.rs` against `fixtures/site_replay/*.json`
+(built by `fixtures/gen_site.py`), unless noted. Each step compares the store,
+scheduler and notifier call sequence with the payload bytes, the log lines,
+the probed targets, the snapshot and the raised exception.
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `test_site_connectivity_observer.py::test_single_failing_target_never_takes_a_path_down`, `::test_failing_needs_two_rounds_before_down`, `::test_failing_returns_to_up_without_an_incident`, `::test_three_minute_reconnect_is_silent`, `::test_a_raising_probe_counts_as_a_failed_target` | `state_machine.json` | done |
+| `::test_a_failed_round_at_the_release_boundary_keeps_the_incident`, `::test_flap_during_grace_keeps_the_incident_and_needs_a_clean_grace`, `::test_ipv4_only_site_holds_internet_checks_end_to_end` (observer part) | `state_machine.json` | done |
+| `::test_summary_threshold_boundary`, `::test_long_outage_alerts_once_intent_first_and_retires_on_recovery`, `::test_delivered_ongoing_alert_is_not_repeated_before_the_reminder`, `::test_reminder_follows_the_reminder_interval`, `::test_retired_alert_is_not_retried_when_a_path_flaps_back`, `::test_a_retired_alert_still_allows_a_new_attempt_after_the_reminder`, `::test_ipv6_only_outage_alerts_over_ipv4_and_summarises`, `::test_defective_observer_still_reports_itself`, `::test_a_raising_notifier_counts_as_undelivered` | `ongoing.json` | done |
+| `::test_summary_is_retried_and_appended_only_once`, `::test_second_outage_while_a_summary_is_pending_reports_both`, `::test_a_summary_backlog_drains_in_size_bounded_batches`, `::test_a_failed_batch_does_not_touch_the_records_it_did_not_cover`, `::test_an_appended_record_does_not_shorten_the_retry_bound`, `::test_a_single_oversized_summary_record_is_truncated_not_dropped`, `::test_summary_records_the_number_of_held_checks`; character-budget batching | `summaries.json` | done |
+| `::test_restart_during_an_outage_restores_state_and_the_attempt`, `::test_restart_during_grace_honours_the_persisted_release`, `::test_restart_after_close_continues_the_recheck`, `::test_restart_after_a_long_disable_drops_the_stale_outage`, `::test_restart_after_every_single_write_is_consistent`, `::test_a_failed_restore_never_writes_over_the_persisted_lifecycle`, `::test_an_absent_row_counts_as_restored` | `restarts.json`; malformed persisted payloads in `restore_payloads.json` | done |
+| `::test_store_failures_do_not_stop_the_state_machine`, `::test_a_failed_intent_write_prevents_the_send`, `::test_the_site_incident_never_claims_an_alert`; a vanished row is recreated | `store_failures.json` | done |
+| `::test_recheck_reads_the_in_flight_count_before_the_held_set`, `::test_recheck_stays_pending_while_a_pre_release_claim_is_in_flight`, `::test_recheck_skips_checks_blocked_by_another_requirement`, `::test_recheck_filters_disabled_and_already_due_checks`, `::test_a_failed_reschedule_is_retried_next_round`, `::test_observe_mode_does_not_reschedule_anything`, `::test_off_mode_does_nothing`, `::test_resolve_site_dependency_accepts_a_held_row` | `recheck.json` | done |
+| `::test_observer_reports_its_unobserved_paths`; `build_payload` lists observed paths only | `replay_tests.rs::off_mode_observer_has_unobserved_paths_only_without_targets` | done |
+| `_iso`, `_duration`, `_as_int` | `render.rs` unit tests and every replay message | done |
+| `::test_run_restores_then_loops_until_stopped`, `::test_run_logs_and_continues_when_a_round_raises`, `::test_run_returns_immediately_when_the_feature_is_off`, `::test_default_probe_runner_reports_a_refused_connection`, `::test_held_checks_are_counted_without_the_blocking_portal`, `::test_a_scheduler_without_the_async_counter_still_works`, `::test_lifecycle_against_the_real_in_memory_store` | — | pending S11 (loop, probe runner, store wiring) |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
 | --- | --- | --- | --- |
 | `tests/adapters/test_sqlite_repo.py`, `tests/unit/repositories/sqlite_repo_test.py` | `nyxmon-store` tests on `fixtures/schema/schema.sql` | S2 | pending |
 | `tests/adapters/test_collector_incident_store.py`, `test_collector_incident_delivery_ack.py` | `nyxmon-store` incident tests | S2 | pending |
-| `tests/adapters/test_site_connectivity_persistence.py` | `nyxmon-store` + S4 payload codec | S2/S4 | pending |
-| `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
+| `tests/adapters/test_site_connectivity_persistence.py` | `nyxmon-store` (the payload codec is done in S4) | S2 | pending |
 | `tests/unit/test_http_executor.py`, `test_json_metrics_executor.py`, `test_json_metrics_config.py`, `test_dns_*.py`, `test_config_numeric_contracts.py` | `config_*.json`, `metrics_eval.json`, fake-server tests | S5 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | `starttls_text.json`, `ping_text.json`, fake servers | S6 | pending |
 | `tests/unit/test_smtp_executor.py`, `test_imap_*.py`, `test_mail_tls_verify.py` (executors) | `smtp_text.json`, `config_imap.json`, fake servers | S7 | pending |
