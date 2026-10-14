@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 mod alerting_tests;
+pub mod collector_incident;
 pub mod config;
 pub mod decision;
 pub mod env;

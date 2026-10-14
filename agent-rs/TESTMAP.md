@@ -233,13 +233,13 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 
 | Python test / function | Rust counterpart | Status |
 | --- | --- | --- |
-| `collector.py:_collect_once` claim/execute part, `_async_start` loop | `collector/tests.rs::due_checks_are_claimed_executed_and_recorded_and_idle_shutdown_is_prompt`, `::a_claim_failure_is_logged_and_the_loop_continues` | done (stale recovery, lease, deadline, incidents: S10) |
+| `collector.py:_collect_once` claim/execute part, `_async_start` loop | `collector/tests.rs::due_checks_are_claimed_executed_and_recorded_and_idle_shutdown_is_prompt`, `::a_claim_failure_is_logged_and_the_loop_continues` | done (stale recovery, lease, deadline, incidents: S10 section) |
 | `test_shutdown_claims.py::test_repeated_start_is_idempotent_and_idle_shutdown_is_prompt` | `collector/tests.rs::due_checks_are_claimed_executed_and_recorded_and_idle_shutdown_is_prompt` (one `run` per collector; there is no restartable thread) | done |
 | `test_shutdown_claims.py::test_failed_lease_release_does_not_hang_shutdown` | `collector/tests.rs::a_failed_lease_release_is_logged_and_does_not_hang_shutdown` | done |
 | `test_shutdown_claims.py::test_release_claims_preserves_other_claims_and_alert_state` | store part: S2; late result after release: `results/tests.rs::a_superseded_result_cannot_alert_or_change_state` | done |
 | `test_shutdown_claims.py::test_shutdown_grace_configuration` | `env.json` (S1) | done |
 | `test_shutdown_claims.py::test_collector_rejects_start_without_bus` | — | n/a (the collector is constructed with its store and handler) |
-| `test_shutdown_claims.py::test_shutdown_during_stale_recovery_keeps_results_and_alert` | — | S10 |
+| `test_shutdown_claims.py::test_shutdown_during_stale_recovery_keeps_results_and_alert` | `collector/reliability_tests.rs::shutdown_during_stale_recovery_keeps_results_and_alert` | done (S10) |
 | `shutdown_deadline` (grace, intake stop, flush window, D-3 abort) and `test_shutdown_flush.py::test_result_queued_behind_slow_alert_is_recorded_at_shutdown` | `collector/tests.rs::shutdown_releases_an_in_flight_claim_without_a_result`, `::a_result_finishing_within_the_grace_is_recorded_promptly`, `::a_result_queued_behind_a_slow_alert_is_recorded_at_shutdown`, `::results_not_recorded_within_the_flush_window_are_given_up` | done |
 | `test_startup_validation.py` | `startup.rs` tests (set reprs sorted, P2) | done |
 | `cli.py:start_agent` flags, defaults, exit codes; `test_cli_logging.py` | `cli.rs` tests; `tests/binary.rs` (missing DB, old schema, `--check-schema`, usage errors, `--shadow` with `--enable-telegram`, `--batch-size 0`, `--version`, lock contention, a run against a fake HTTP server with SIGTERM, SIGTERM during an in-flight check releases the claim); library targets capped at WARNING: `logging.rs` | done |
@@ -277,6 +277,37 @@ clock and scripted probes), the binary in `tests/binary.rs`.
 | `test_site_connectivity_holds.py::test_the_conflict_fallback_marks_the_hold_with_the_completion`, `::test_the_conflict_fallback_passes_no_marker_for_an_unheld_sample` | `results/tests.rs::the_contention_fallback_keeps_the_hold_marker`, `::contention_never_discards_the_result` (S9a) | done |
 | `bootstrap.py` observer wiring, `site connectivity observation is <mode>`, startup order | `tests/binary.rs::the_site_observer_probes_local_targets_and_persists_each_round` (observe mode, local probe targets, payload after each round), `::site_connectivity_off_starts_no_observer` | done |
 
+## S10 — collector reliability
+
+All in `crates/nyxmon-agent/src/collector/reliability_tests.rs` unless noted
+(SQLite store, manual clock, a gated fake executor for wedged batches).
+
+| Python test / function | Rust counterpart | Status |
+| --- | --- | --- |
+| `_merge_stale_batch_payload`, `_stale_batch_message`, `_paused_batch_message` (`build_incident_notification`: S11 section) | `nyxmon-core/src/collector_incident/tests.rs` against `collector_incidents.json` (`gen_collector.py`; payloads of every JSON type, uncaught exceptions as data) | done |
+| `test_collector_recovery.py::test_one_stale_result_failure_does_not_block_other_recoveries` | `::one_stale_result_failure_does_not_block_other_recoveries` | done |
+| `::test_reclaim_failure_does_not_block_due_checks` | `::a_reclaim_failure_does_not_block_due_checks` | done |
+| `::test_collect_once_records_stale_and_still_executes_due_checks` | `::collect_once_records_stale_results_and_still_executes_due_checks` | done |
+| `::test_disabled_reclaimed_check_does_not_emit_stale_alert` | `::a_disabled_reclaimed_check_is_released_without_a_result` | done |
+| `::test_collector_stale_result_never_pages_per_check` | `::a_stale_result_never_pages_per_check` | done |
+| `::test_collect_once_extends_lease_and_warns_once`, `::test_collect_once_clamps_only_derived_lease`, `::test_collect_once_reclaims_with_cached_budget_after_estimation_error` | `::collect_once_extends_the_lease_and_warns_once`, `::only_the_derived_lease_is_clamped_and_the_cap_warns_once`, `::a_failed_estimate_keeps_the_last_safe_budget`; D-20: `::a_lease_sqlite_cannot_bind_fails_the_reclaim` | done |
+| `::test_batch_deadline_bounds_wedged_thread_and_rearms_after_exit`, `::test_abandoned_batch_alert_never_borrows_an_unrelated_check` | `::a_batch_past_its_deadline_is_abandoned_and_execution_rearms_after_it_exits`, `::the_paused_alert_never_borrows_an_unrelated_check` | done |
+| `::test_processing_lease_configuration_logs_and_clamps`, `::test_runtime_estimate_*` | `env.json`, `lease.json` (S1, S3) | done |
+| `::test_in_memory_*`, `::test_concurrent_uow_store_forks_isolate_event_sets`, `::test_recovery_handler_has_independent_uow_during_live_sqlite_batch` | SQLite reclaim/claim: `nyxmon-store` (S2) | n/a (no in-memory store or unit of work; the store actor serialises the recovery with a running batch) |
+| `test_collector_incidents.py::test_legacy_stale_batch_alerts_once_and_recovers_every_check` | `::a_stale_batch_alerts_once_and_recovers_every_check` | done |
+| `::test_stale_lease_never_pages_even_with_first_sample_policy` | `::a_stale_lease_never_pages_even_with_a_first_sample_policy` | done |
+| `::test_stale_batch_incident_reminds_on_elapsed_time_then_resolves`, `::test_stale_batch_incident_is_deduplicated_across_a_restart` | `::the_stale_batch_incident_reminds_on_elapsed_time_then_resolves`, `::the_stale_batch_incident_is_deduplicated_across_a_restart` | done |
+| `::test_wedged_batch_alerts_once_then_reminds_on_elapsed_time`, `::test_wedged_batch_resolves_and_a_later_wedge_alerts_again`, `::test_paused_incident_from_a_previous_process_is_resolved_on_startup` | `::a_wedged_batch_alerts_once_then_reminds_on_elapsed_time`, `::a_wedged_batch_resolves_and_a_later_wedge_alerts_again`, `::a_paused_incident_of_a_previous_process_is_resolved_on_startup` | done |
+| `::test_stale_recovery_cannot_release_a_newer_claim`, `::test_stale_recovery_does_not_resurrect_a_deleted_check` | `::stale_recovery_cannot_release_a_newer_claim`, `::stale_recovery_does_not_resurrect_a_deleted_check` | done |
+| `::test_a_failed_incident_alert_is_retried_and_not_silently_resolved`, `::test_an_undelivered_incident_is_never_resolved` | same names | done |
+| `_notify_collector_incident` with a raising/panicking notifier (PLAN.md 5.8: a send that panics is `Failed`) | `::a_panicking_notifier_is_a_failed_send_and_the_collector_continues` | done |
+| `::test_failed_delivery_survives_a_worker_restart`, `::test_a_crash_between_claim_and_send_retries_after_a_restart` | `::a_failed_delivery_survives_a_restart` | done |
+| `::test_a_notifier_returning_false_marks_the_stale_batch_undelivered`, `::test_a_credential_less_telegram_notifier_starts_no_retry_loop`, `::test_a_notifier_returning_false_marks_the_paused_batch_undelivered` | `::a_failed_send_marks_the_stale_batch_undelivered`, `::a_notifier_that_attempted_nothing_starts_no_retry_loop` (`Delivery::Unknown`), `::a_failed_send_marks_the_paused_batch_undelivered` | done |
+| `::test_a_non_granting_payload_refresh_keeps_the_retry_intent`, `::test_a_late_acknowledgement_cannot_clear_a_newer_intent` | same names | done |
+| `::test_a_site_message_is_marked_undelivered_when_the_notifier_says_false` (`site_incident_notifier`) | see the S11 section (`site/tests.rs`) | done (S11) |
+| `test_collector_incident_delivery_ack.py` | store-level, see S2 (`incidents.rs`) | done |
+| `shutdown_deadline` / `_async_start` with an abandoned batch | `::shutdown_gives_an_abandoned_batch_the_grace_then_releases_its_claims`, `::an_abandoned_batch_finishing_within_the_grace_is_recorded` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -289,7 +320,6 @@ clock and scripted probes), the binary in `tests/binary.rs`.
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | done |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
-| `tests/unit/test_collector_recovery.py`, `test_collector_incidents.py` | `nyxmon-agent` collector tests, `lease.json`, `incident_payloads.json` | S10 | pending |
 | `tests/unit/test_site_connectivity_holds.py`, `test_site_connectivity_observer.py` (runtime) | `nyxmon-agent` site tests (section S11 above) | S11 | done |
 | `tests/e2e/test_graceful_shutdown.py`, `collector_e2e_test.py`, `cleaner_e2e_test.py`, `e2e_test.py`, `test_dns_checks.py` | process e2e (`crates/nyxmon-agent/tests/`) and parity harness | S12 | pending |
 | `tests/unit/repositories/in_memory_*` | — | — | n/a (in-memory store is not ported, PLAN.md 1.2) |

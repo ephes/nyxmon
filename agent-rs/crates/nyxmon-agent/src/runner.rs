@@ -99,7 +99,7 @@ async fn run_one(executors: Arc<dyn Executors>, check: Check, batch: Arc<BatchCt
 
 /// Turns a panic while polling the inner future into `Err(())`, so a
 /// panicking executor still yields a result inside its task.
-struct CatchUnwind<F>(Pin<Box<F>>);
+pub(crate) struct CatchUnwind<F>(pub(crate) Pin<Box<F>>);
 
 impl<F: Future> Future for CatchUnwind<F> {
     type Output = Result<F::Output, ()>;

@@ -1,0 +1,2739 @@
+{
+ "merge": [
+  {
+   "error": null,
+   "existing_json": null,
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": null,
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": null,
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": null,
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 3, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 3, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 7, \"iteration_count\": 3, \"check_ids\": [1, 2, 3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 28, \"iteration_count\": 3, \"check_ids\": [1, 2, 3, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 3, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 3, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 7, \"iteration_count\": 3, \"check_ids\": [1, 2, 3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 28, \"iteration_count\": 3, \"check_ids\": [1, 2, 3, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 25, \"iteration_count\": 4, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 5, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 25, \"iteration_count\": 4, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 26, \"iteration_count\": 5, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 25, \"iteration_count\": 4, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 29, \"iteration_count\": 5, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 25, \"iteration_count\": 4, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 50, \"iteration_count\": 5, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 30, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 30, \"iteration_count\": 1, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 30, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 31, \"iteration_count\": 1, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 30, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 34, \"iteration_count\": 1, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 30, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 55, \"iteration_count\": 1, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"4\", \"iteration_count\": \" 2 \", \"last_seen_at\": \"1799999900\"}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 3, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"4\", \"iteration_count\": \" 2 \", \"last_seen_at\": \"1799999900\"}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 5, \"iteration_count\": 3, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"4\", \"iteration_count\": \" 2 \", \"last_seen_at\": \"1799999900\"}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 8, \"iteration_count\": 3, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"4\", \"iteration_count\": \" 2 \", \"last_seen_at\": \"1799999900\"}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 29, \"iteration_count\": 3, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 2.9, \"iteration_count\": true, \"last_seen_at\": 1799999900.5}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2, \"iteration_count\": 2, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 2.9, \"iteration_count\": true, \"last_seen_at\": 1799999900.5}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 2.9, \"iteration_count\": true, \"last_seen_at\": 1799999900.5}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 6, \"iteration_count\": 2, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 2.9, \"iteration_count\": true, \"last_seen_at\": 1799999900.5}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 27, \"iteration_count\": 2, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"x\", \"iteration_count\": 1}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"x\", \"iteration_count\": 1}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"x\", \"iteration_count\": 1}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": \"x\", \"iteration_count\": 1}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": \"1.5\"}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": \"1.5\"}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": \"1.5\"}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": \"1.5\"}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": null, \"last_seen_at\": null}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": null, \"last_seen_at\": null}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": null, \"last_seen_at\": null}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": null, \"last_seen_at\": null}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": [1], \"iteration_count\": {}, \"last_seen_at\": []}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": [1], \"iteration_count\": {}, \"last_seen_at\": []}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": [1], \"iteration_count\": {}, \"last_seen_at\": []}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": [1], \"iteration_count\": {}, \"last_seen_at\": []}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": NaN, \"last_seen_at\": NaN}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": NaN, \"last_seen_at\": NaN}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": NaN, \"last_seen_at\": NaN}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": NaN, \"last_seen_at\": NaN}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": Infinity}",
+   "recovered": []
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": Infinity}",
+   "recovered": [
+    1
+   ]
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": Infinity}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ]
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": Infinity}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ]
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": -Infinity}",
+   "recovered": []
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": -Infinity}",
+   "recovered": [
+    1
+   ]
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": -Infinity}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ]
+  },
+  {
+   "error": {
+    "class": "OverflowError",
+    "message": "cannot convert float infinity to integer"
+   },
+   "existing_json": "{\"reclaimed_count\": 1, \"iteration_count\": -Infinity}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ]
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": Infinity}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": Infinity}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": Infinity}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": Infinity}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": true, \"check_ids\": []}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": true, \"check_ids\": []}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 2, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": true, \"check_ids\": []}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 5, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": true, \"check_ids\": []}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 26, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 123456789012345678901234567890, \"iteration_count\": 1}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 123456789012345678901234567890, \"iteration_count\": 2, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 123456789012345678901234567890, \"iteration_count\": 1}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 123456789012345678901234567891, \"iteration_count\": 2, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 123456789012345678901234567890, \"iteration_count\": 1}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 123456789012345678901234567894, \"iteration_count\": 2, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"reclaimed_count\": 123456789012345678901234567890, \"iteration_count\": 1}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 123456789012345678901234567915, \"iteration_count\": 2, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [true, 1, 1.0, \"2\", null, 2, [3], 99999999999999999999999, 2]}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [1, 2, 99999999999999999999999, 2], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [true, 1, 1.0, \"2\", null, 2, [3], 99999999999999999999999, 2]}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1, 2, 99999999999999999999999, 2], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [true, 1, 1.0, \"2\", null, 2, [3], 99999999999999999999999, 2]}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [1, 2, 99999999999999999999999, 2, 3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [true, 1, 1.0, \"2\", null, 2, [3], 99999999999999999999999, 2]}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [1, 2, 99999999999999999999999, 2, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": \"12\"}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": \"12\"}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": \"12\"}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": \"12\"}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": {\"7\": 1, \"8\": 2}}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": {\"7\": 1, \"8\": 2}}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": {\"7\": 1, \"8\": 2}}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": {\"7\": 1, \"8\": 2}}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'NoneType' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": null}",
+   "recovered": []
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'NoneType' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": null}",
+   "recovered": [
+    1
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'NoneType' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": null}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'NoneType' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": null}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'int' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 5}",
+   "recovered": []
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'int' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 5}",
+   "recovered": [
+    1
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'int' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 5}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'int' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 5}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'float' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 1.5}",
+   "recovered": []
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'float' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 1.5}",
+   "recovered": [
+    1
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'float' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 1.5}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'float' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": 1.5}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'bool' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": false}",
+   "recovered": []
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'bool' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": false}",
+   "recovered": [
+    1
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'bool' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": false}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ]
+  },
+  {
+   "error": {
+    "class": "TypeError",
+    "message": "'bool' object is not iterable"
+   },
+   "existing_json": "{\"check_ids\": false}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ]
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\\u00e9\", \"\", \"x y\"]}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\\u00e9\", \"\", \"x y\"]}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\\u00e9\", \"\", \"x y\"]}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\\u00e9\", \"\", \"x y\"]}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\"]}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\"]}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\"]}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"check_ids\": [\"\"]}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": 1700000000}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": 1700000000}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": 1700000000}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"last_seen_at\": 1700000000}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 3, \"check_ids\": [4, 5, 6]}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [4, 5, 6], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 3, \"check_ids\": [4, 5, 6]}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [4, 5, 6, 1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 3, \"check_ids\": [4, 5, 6]}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [4, 5, 6, 3], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 3, \"check_ids\": [4, 5, 6]}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [4, 5, 6, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": \"3\", \"check_ids\": []}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": \"3\", \"check_ids\": []}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": \"3\", \"check_ids\": []}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": \"3\", \"check_ids\": []}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 1.0, \"check_ids\": [1.5, null, false, {\"a\": [1]}]}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 1.0, \"check_ids\": [1.5, null, false, {\"a\": [1]}]}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 1.0, \"check_ids\": [1.5, null, false, {\"a\": [1]}]}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": 1.0, \"check_ids\": [1.5, null, false, {\"a\": [1]}]}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": null}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": null}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": null}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": null}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": [1, \"a\"], \"check_ids\": \"abc\"}",
+   "recovered": [],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 0, \"iteration_count\": 1, \"check_ids\": [], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": [1, \"a\"], \"check_ids\": \"abc\"}",
+   "recovered": [
+    1
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 1, \"iteration_count\": 1, \"check_ids\": [1], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": [1, \"a\"], \"check_ids\": \"abc\"}",
+   "recovered": [
+    3,
+    4,
+    4,
+    5
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 4, \"iteration_count\": 1, \"check_ids\": [3, 4, 5], \"last_seen_at\": 1800000000}"
+  },
+  {
+   "error": null,
+   "existing_json": "{\"batch_size\": [1, \"a\"], \"check_ids\": \"abc\"}",
+   "recovered": [
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54
+   ],
+   "value": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 25, \"iteration_count\": 1, \"check_ids\": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49], \"last_seen_at\": 1800000000}"
+  }
+ ],
+ "messages": [
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700}",
+   "stale": {
+    "error": null,
+    "value": "3 check processing lease(s) expired and were reclaimed over 300s across 2 collector iteration(s). Affected check ids: 1, 2, 3. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"incident_type\": \"stale_processing_lease\", \"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700}",
+   "stale": {
+    "error": null,
+    "value": "3 check processing lease(s) expired and were reclaimed over 0s across 2 collector iteration(s). Affected check ids: 1, 2, 3. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+   "stale": {
+    "error": null,
+    "value": "3 check processing lease(s) expired and were reclaimed over 300s across 2 collector iteration(s). Affected check ids: 1, 2, 3. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 3, \"iteration_count\": 2, \"check_ids\": [1, 2, 3], \"last_seen_at\": 1799999700, \"delivery_pending\": true, \"delivery_attempt\": 1}",
+   "stale": {
+    "error": null,
+    "value": "3 check processing lease(s) expired and were reclaimed over 0s across 2 collector iteration(s). Affected check ids: 1, 2, 3. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 25, \"iteration_count\": 4, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}",
+   "stale": {
+    "error": null,
+    "value": "25 check processing lease(s) expired and were reclaimed over 0s across 4 collector iteration(s). Affected check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (+15 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 25, \"iteration_count\": 4, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}",
+   "stale": {
+    "error": null,
+    "value": "25 check processing lease(s) expired and were reclaimed over 0s across 4 collector iteration(s). Affected check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (+15 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 30, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]}",
+   "stale": {
+    "error": null,
+    "value": "30 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (+20 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 30, \"check_ids\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]}",
+   "stale": {
+    "error": null,
+    "value": "30 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (+20 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": \"4\", \"iteration_count\": \" 2 \", \"last_seen_at\": \"1799999900\"}",
+   "stale": {
+    "error": null,
+    "value": "4 check processing lease(s) expired and were reclaimed over 500s across  2  collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": \"4\", \"iteration_count\": \" 2 \", \"last_seen_at\": \"1799999900\"}",
+   "stale": {
+    "error": null,
+    "value": "4 check processing lease(s) expired and were reclaimed over 0s across  2  collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 2.9, \"iteration_count\": true, \"last_seen_at\": 1799999900.5}",
+   "stale": {
+    "error": null,
+    "value": "2.9 check processing lease(s) expired and were reclaimed over 500s across True collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 2.9, \"iteration_count\": true, \"last_seen_at\": 1799999900.5}",
+   "stale": {
+    "error": null,
+    "value": "2.9 check processing lease(s) expired and were reclaimed over 0s across True collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": \"x\", \"iteration_count\": 1}",
+   "stale": {
+    "error": null,
+    "value": "x check processing lease(s) expired and were reclaimed over 0s across 1 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": \"x\", \"iteration_count\": 1}",
+   "stale": {
+    "error": null,
+    "value": "x check processing lease(s) expired and were reclaimed over 0s across 1 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 1, \"iteration_count\": \"1.5\"}",
+   "stale": {
+    "error": null,
+    "value": "1 check processing lease(s) expired and were reclaimed over 0s across 1.5 collector iteration(s). Affected check ids: none recorded (+1 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 1, \"iteration_count\": \"1.5\"}",
+   "stale": {
+    "error": null,
+    "value": "1 check processing lease(s) expired and were reclaimed over 0s across 1.5 collector iteration(s). Affected check ids: none recorded (+1 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": null, \"last_seen_at\": null}",
+   "stale": {
+    "error": null,
+    "value": "None check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": null, \"last_seen_at\": null}",
+   "stale": {
+    "error": null,
+    "value": "None check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": [1], \"iteration_count\": {}, \"last_seen_at\": []}",
+   "stale": {
+    "error": null,
+    "value": "[1] check processing lease(s) expired and were reclaimed over 0s across {} collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": [1], \"iteration_count\": {}, \"last_seen_at\": []}",
+   "stale": {
+    "error": null,
+    "value": "[1] check processing lease(s) expired and were reclaimed over 0s across {} collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": NaN, \"last_seen_at\": NaN}",
+   "stale": {
+    "error": null,
+    "value": "nan check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": NaN, \"last_seen_at\": NaN}",
+   "stale": {
+    "error": null,
+    "value": "nan check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": Infinity}",
+   "stale": {
+    "error": null,
+    "value": "inf check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": Infinity}",
+   "stale": {
+    "error": null,
+    "value": "inf check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 1, \"iteration_count\": -Infinity}",
+   "stale": {
+    "error": null,
+    "value": "1 check processing lease(s) expired and were reclaimed over 0s across -inf collector iteration(s). Affected check ids: none recorded (+1 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 1, \"iteration_count\": -Infinity}",
+   "stale": {
+    "error": null,
+    "value": "1 check processing lease(s) expired and were reclaimed over 0s across -inf collector iteration(s). Affected check ids: none recorded (+1 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"last_seen_at\": Infinity}",
+   "stale": {
+    "error": {
+     "class": "OverflowError",
+     "message": "cannot convert float infinity to integer"
+    }
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"last_seen_at\": Infinity}",
+   "stale": {
+    "error": {
+     "class": "OverflowError",
+     "message": "cannot convert float infinity to integer"
+    }
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": true, \"check_ids\": []}",
+   "stale": {
+    "error": null,
+    "value": "True check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded (+1 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": true, \"check_ids\": []}",
+   "stale": {
+    "error": null,
+    "value": "True check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded (+1 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 123456789012345678901234567890, \"iteration_count\": 1}",
+   "stale": {
+    "error": null,
+    "value": "123456789012345678901234567890 check processing lease(s) expired and were reclaimed over 0s across 1 collector iteration(s). Affected check ids: none recorded (+123456789012345678901234567890 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"reclaimed_count\": 123456789012345678901234567890, \"iteration_count\": 1}",
+   "stale": {
+    "error": null,
+    "value": "123456789012345678901234567890 check processing lease(s) expired and were reclaimed over 0s across 1 collector iteration(s). Affected check ids: none recorded (+123456789012345678901234567890 more). Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: True, 1, 1.0, 2, None, 2, [3], 99999999999999999999999, 2). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": [true, 1, 1.0, \"2\", null, 2, [3], 99999999999999999999999, 2]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: True, 1, 1.0, 2, None, 2, [3], 99999999999999999999999, 2. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: True, 1, 1.0, 2, None, 2, [3], 99999999999999999999999, 2). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": [true, 1, 1.0, \"2\", null, 2, [3], 99999999999999999999999, 2]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: True, 1, 1.0, 2, None, 2, [3], 99999999999999999999999, 2. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: 1, 2). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": \"12\"}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 1, 2. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: 1, 2). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": \"12\"}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 1, 2. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: 7, 8). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": {\"7\": 1, \"8\": 2}}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 7, 8. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: 7, 8). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": {\"7\": 1, \"8\": 2}}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 7, 8. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'NoneType' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": null}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'NoneType' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'NoneType' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": null}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'NoneType' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'int' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": 5}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'int' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'int' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": 5}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'int' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'float' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": 1.5}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'float' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'float' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": 1.5}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'float' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'bool' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": false}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'bool' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": {
+     "class": "TypeError",
+     "message": "'bool' object is not iterable"
+    }
+   },
+   "payload_json": "{\"check_ids\": false}",
+   "stale": {
+    "error": {
+     "class": "TypeError",
+     "message": "'bool' object is not iterable"
+    }
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s) (check ids: \u00e9, , x y). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": [\"\\u00e9\", \"\", \"x y\"]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: \u00e9, , x y. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s) (check ids: \u00e9, , x y). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": [\"\\u00e9\", \"\", \"x y\"]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: \u00e9, , x y. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": [\"\"]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"check_ids\": [\"\"]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"last_seen_at\": 1700000000}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 0 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"last_seen_at\": 1700000000}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 3 check(s) (check ids: 4, 5, 6). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": 3, \"check_ids\": [4, 5, 6]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 4, 5, 6. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 3 check(s) (check ids: 4, 5, 6). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": 3, \"check_ids\": [4, 5, 6]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 4, 5, 6. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 3 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": \"3\", \"check_ids\": []}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 3 check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": \"3\", \"check_ids\": []}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds 1.0 check(s) (check ids: 1.5, None, False, {'a': [1]}). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": 1.0, \"check_ids\": [1.5, null, false, {\"a\": [1]}]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 1.5, None, False, {'a': [1]}. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds 1.0 check(s) (check ids: 1.5, None, False, {'a': [1]}). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": 1.0, \"check_ids\": [1.5, null, false, {\"a\": [1]}]}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: 1.5, None, False, {'a': [1]}. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds None check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": null}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds None check(s). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": null}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: none recorded. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1799999400,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 600s. The wedged batch holds [1, 'a'] check(s) (check ids: a, b, c). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": [1, \"a\"], \"check_ids\": \"abc\"}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: a, b, c. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  },
+  {
+   "opened_at": 1800000050,
+   "paused": {
+    "error": null,
+    "value": "All new check executions are paused because an abandoned batch thread is still running after 0s. The wedged batch holds [1, 'a'] check(s) (check ids: a, b, c). Expired processing leases are still being reclaimed and rescheduled while execution stays paused."
+   },
+   "payload_json": "{\"batch_size\": [1, \"a\"], \"check_ids\": \"abc\"}",
+   "stale": {
+    "error": null,
+    "value": "0 check processing lease(s) expired and were reclaimed over 0s across 0 collector iteration(s). Affected check ids: a, b, c. Every affected check was released and rescheduled. This is one batch-level incident: lease recovery never pages per check."
+   }
+  }
+ ]
+}
