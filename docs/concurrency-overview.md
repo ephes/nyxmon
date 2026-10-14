@@ -97,5 +97,7 @@ When all `_run_one` tasks finish, the producer closes the send channel so the co
 - The collector cancels remaining portal tasks after release. Uninterruptible
   executor threads are daemon threads and cannot hold process exit. Async
   executor/client cleanup is cancellation-shielded and bounded to one second.
-- See the operations runbook in `configuration.md` for the grace setting,
-  systemd timeout assumption, and the remaining recovery-phase review blocker.
+- Stale-lease recovery (reclaim, its results and the batch alert) is shielded
+  from shutdown cancellation, so a stop during recovery waits for it.
+- See the operations runbook in `configuration.md` for the grace setting and
+  the systemd timeout assumption.

@@ -121,3 +121,62 @@ def test_repeated_start_is_idempotent_and_idle_shutdown_is_prompt(monkeypatch):
         assert time.monotonic() - started < 1
     finally:
         collector.stop()
+
+
+def test_shutdown_during_stale_recovery_keeps_results_and_alert(monkeypatch):
+    """A stop that arrives mid-recovery must not drop the reclaimed evidence."""
+    import threading
+
+    from anyio.from_thread import BlockingPortalProvider
+
+    from nyxmon.adapters.collector import AsyncCheckCollector
+
+    monkeypatch.setenv("NYXMON_SHUTDOWN_GRACE_SECONDS", "0")
+    store = InMemoryStore()
+    for check_id in (1, 2):
+        store.checks.add(
+            Check(
+                check_id=check_id,
+                service_id=1,
+                name=str(check_id),
+                check_type="http",
+                url="https://example.test",
+                data={},
+                status=CheckStatus.PROCESSING,
+                processing_started_at=int(time.time()) - 10_000,
+            )
+        )
+    notifier = MagicMock()
+    collector = AsyncCheckCollector(interval=3600)
+    provider = BlockingPortalProvider()
+    bootstrap(
+        store=store, collector=collector, notifier=notifier, portal_provider=provider
+    )
+    collector.set_portal_provider(provider)
+    original = collector._recovery_handler
+    recording = threading.Event()
+
+    def slow_recovery(command):
+        # Stop arrives after reclaim committed, while the first result is open.
+        recording.set()
+        assert collector._stop_requested.wait(timeout=5)
+        time.sleep(0.2)
+        return original(command)
+
+    collector.set_recovery_handler(slow_recovery)
+    collector.start()
+    try:
+        assert recording.wait(timeout=5)
+        collector.stop()
+    finally:
+        collector.stop()
+
+    results = store.results.list()
+    assert sorted(result.check_id for result in results) == [1, 2]
+    assert {result.data["error_type"] for result in results} == {
+        "stale_processing_lease"
+    }
+    notifier.notify_check_failed.assert_called_once()
+    assert notifier.notify_check_failed.call_args.args[1].data["error_type"] == (
+        "stale_processing_lease_batch"
+    )

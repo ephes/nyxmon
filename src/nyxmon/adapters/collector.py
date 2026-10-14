@@ -890,6 +890,33 @@ class AsyncCheckCollector(CheckCollector):
         except Exception:
             logger.exception("failed to check site dependencies against the probes")
 
+    async def _recover_stale_leases(self, effective_lease: int) -> None:
+        """Reclaim expired leases, record their results and sync the incident."""
+        stale_checks: list[Check] = []
+        for round_number in range(MAX_STALE_RECLAIM_ROUNDS):
+            try:
+                batch = await self._bus.uow.store.checks.reclaim_stale_checks_async(
+                    effective_lease
+                )
+            except Exception:
+                logger.exception("processing-lease reclaim failed")
+                break
+            if not batch:
+                break
+            stale_checks.extend(batch)
+            if round_number == MAX_STALE_RECLAIM_ROUNDS - 1:
+                logger.warning(
+                    "reclaimed %s expired leases without draining the backlog; "
+                    "the remainder is handled by the next collector iteration",
+                    len(stale_checks),
+                )
+
+        recovered: list[Check] = []
+        for check in stale_checks:
+            if not check.disabled and await self._record_stale_check(check):
+                recovered.append(check)
+        await self._sync_stale_batch_incident(recovered)
+
     async def _collect_once(self) -> None:
         if not self._startup_incidents_reconciled:
             self._startup_incidents_reconciled = True
@@ -948,30 +975,11 @@ class AsyncCheckCollector(CheckCollector):
                 "processing-lease runtime estimation failed; using the last safe budget"
             )
         effective_lease = max(configured_lease, self._cached_required_lease)
-        stale_checks: list[Check] = []
-        for round_number in range(MAX_STALE_RECLAIM_ROUNDS):
-            try:
-                batch = await self._bus.uow.store.checks.reclaim_stale_checks_async(
-                    effective_lease
-                )
-            except Exception:
-                logger.exception("processing-lease reclaim failed")
-                break
-            if not batch:
-                break
-            stale_checks.extend(batch)
-            if round_number == MAX_STALE_RECLAIM_ROUNDS - 1:
-                logger.warning(
-                    "reclaimed %s expired leases without draining the backlog; "
-                    "the remainder is handled by the next collector iteration",
-                    len(stale_checks),
-                )
-
-        recovered: list[Check] = []
-        for check in stale_checks:
-            if not check.disabled and await self._record_stale_check(check):
-                recovered.append(check)
-        await self._sync_stale_batch_incident(recovered)
+        # Reclaiming commits before the stale results and the batch alert are
+        # written, so shutdown waits for recovery instead of cancelling it
+        # halfway and losing that crash evidence.
+        with anyio.CancelScope(shield=True):
+            await self._recover_stale_leases(effective_lease)
 
         if self._abandoned_batch_done is not None:
             if not self._abandoned_batch_done.is_set():
@@ -1109,8 +1117,15 @@ class AsyncCheckCollector(CheckCollector):
         if self._site_observer is not None:
             self._site_observer.stop()
         if self._thread is not Auto and self._thread is not None:
-            if not self._shutdown_done.wait(timeout=shutdown_grace_seconds() + 10):
-                raise RuntimeError("collector shutdown did not release its claims")
+            # No fixed timeout: the collector task bounds batch draining by the
+            # grace period, but an in-progress stale-lease recovery must finish
+            # (its reclaim is already committed). The service manager's stop
+            # timeout remains the backstop for a genuinely hung process.
+            while not self._shutdown_done.wait(timeout=0.1):
+                if not self._thread.is_alive():
+                    raise RuntimeError(
+                        "collector thread exited without releasing claims"
+                    )
             # Portal cleanup can remain blocked inside an uninterruptible
             # executor. Its daemon threads must not extend the grace period.
             self._thread.join(timeout=0.1)

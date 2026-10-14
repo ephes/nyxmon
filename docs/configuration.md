@@ -882,8 +882,9 @@ process still leave leases for expiry recovery. Those leases retain the existing
 `stale_processing_lease_batch` alert. Do not suppress that alert globally: it
 still identifies interrupted monitoring that could not shut down gracefully.
 
-
-**Remaining review blocker:** a stop during stale-lease recovery can currently
-cancel the recording/incident phase after reclaim has cleared the expired leases.
-This can lose crash evidence and the collector alert. The feature branch must
-remain unmerged until this cancellation race is fixed and independently reviewed.
+If a stop arrives while the collector is recovering expired leases (for example
+after an earlier crash), shutdown waits for that recovery to finish: the expired
+leases are already cleared at that point, so their `stale_processing_lease`
+results and the `stale_processing_lease_batch` alert are written before the
+process exits. That wait is not limited by the grace period; only the unit's
+stop timeout ends a recovery that genuinely hangs.
