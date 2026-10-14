@@ -72,7 +72,7 @@ fn decode_response(data: &[u8]) -> String {
 }
 
 /// The `UnicodeEncodeError` text of `text.encode("ascii")`.
-fn ascii_error(text: &str) -> Option<String> {
+pub(crate) fn ascii_error(text: &str) -> Option<String> {
     let chars: Vec<char> = text.chars().collect();
     let start = chars.iter().position(|c| !c.is_ascii())?;
     let end = chars[start..]

@@ -24,7 +24,7 @@ fails when a committed fixture no longer matches the Python code.
 | `test_site_connectivity_observer.py::test_from_env_defaults`, `::test_from_env_reads_every_knob`, `::test_from_env_empty_target_list_marks_a_path_unobserved`, `::test_from_env_invalid_values_warn_once_and_use_the_default` | `env.json` scenarios `site_config`; `env/tests.rs::default_site_config_matches_documented_defaults` | done |
 | `AsyncTelegramNotifier.__init__` environment (`TELEGRAM_*`, `OPSGATE_*`, `_parse_positive_int`, `_parse_bool`) | `env.json` scenarios `notifier_config` | done |
 | `domain/models.py` `Check.schedule_next_check`, `NotificationState.cleared/with_streak_reset/from_row` | `nyxmon-core/src/model.rs` tests | done |
-| `test_mail_tls_verify.py::test_imap_verify_false_uses_unverified_context_and_warns`, `::test_smtp_verify_false_uses_unverified_context_and_warns` (warning text, unverified context) | `nyxmon-checks/src/tls/tests.rs::mail_config_warns_only_without_verification`, `::unverified_config_accepts_any_chain_and_name` | done (executor wiring: SMTP done in S7, IMAP pending) |
+| `test_mail_tls_verify.py::test_imap_verify_false_uses_unverified_context_and_warns`, `::test_smtp_verify_false_uses_unverified_context_and_warns` (warning text, unverified context) | `nyxmon-checks/src/tls/tests.rs::mail_config_warns_only_without_verification`, `::unverified_config_accepts_any_chain_and_name` | done (executor wiring: SMTP and IMAP done in S7) |
 | `ssl` `server_hostname` IDNA encoding (`str.encode("idna")`) | `tls/tests.rs::idna_encoding_matches_python` against `fixtures/idna.json` | done |
 | `test_mail_tls_verify.py::*_verifies_certificate_by_default` | `tls/tests.rs::verifying_config_*` (verification itself); executor wiring in S7 | done / pending S7 |
 
@@ -164,7 +164,7 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | httpx `Content-Encoding` decoders (`GZipDecoder` incl. header CRC, `DeflateDecoder` with raw fallback, `MultiDecoder`, unknown encodings) | `decode/tests.rs` and the gzip/deflate `executor_cases` | done |
 | Retry delays (`anyio.sleep`) | recorded per fixture case (`Sleeper::recording`); `http/tests.rs::retry_delays_wait_on_the_tokio_clock` checks the real sleeper on a paused clock | done |
 
-## S7 — SMTP (first part of S7; IMAP follows)
+## S7 — SMTP (S7a) and IMAP (S7b)
 
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
@@ -178,6 +178,15 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `::test_shutdown_preserves_delivery_outcome` | `smtp/tests.rs::quit_failures_after_data_keep_the_delivery`, `::partly_refused_recipients_report_the_first_refusal_after_delivery`, `::all_refused_recipients_report_the_python_dict`, `::temporary_greeting_is_retried_after_the_delay` | done |
 | `test_mail_tls_verify.py::test_smtp_implicit_tls_verifies_certificate_by_default`, `::test_smtp_starttls_verifies_certificate_by_default`, `::test_smtp_verify_false_uses_unverified_context_and_warns`, `::test_smtp_plain_mode_uses_no_tls`, `::test_smtp_certificate_failure_maps_to_tls_error`, `::test_smtp_executor_reports_tls_error_without_retry` | `smtp/tests.rs::implicit_tls_verifies_certificates_unless_disabled`, `::starttls_upgrades_and_repeats_ehlo`, `::delivery_matches_the_smtplib_dialogue` (plain, no warning) | done |
 | `smtplib` reply parsing, EHLO features, `_quote_periods`, AUTH challenge decoding, error mapping of `SmtplibClient._send_blocking` | `smtp/tests.rs::ehlo_features_follow_smtplib_parsing`, `::helpers_follow_python`, `::missing_extensions_are_smtp_errors`, `::socket_failures_map_like_the_python_except_chain` | done |
+
+### IMAP (S7b)
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `ImapCheckConfig.from_dict` + `validate` (`test_imap_config.py`, `test_imap_configuration_validation.py::test_cleanup_requires_boolean`, `::test_numeric_configuration_is_rejected`, `test_mail_tls_verify.py::test_imap_config_verify_defaults_true_and_round_trips`, `::test_mail_configs_reject_non_boolean_verify` for IMAP) | `nyxmon-core/src/config/imap/tests.rs::configuration_matches_python` against `fixtures/config_imap.json` (list/object hosts: D-18) | done |
+| `ImapCheckExecutor._normalize_host`, the UID match and INTERNALDATE conversion of `_fetch_internaldate` (`imaplib.Internaldate2tuple`, `parsedate_to_datetime` fallback), the `SEARCH` split | `config/imap/tests.rs::hosts_are_normalized_like_python`, `::internaldates_match_python`, `::search_results_split_like_python` (`fixtures/imap_text.json`), `::out_of_range_dates_are_errors` (D-18) | done |
+| `test_imap_executor.py` (search and delete, no recent message with critical/warning severity, retries then success, non-retryable errors, invalid configuration), `test_imap_uid_session.py` (UID-only cleanup, EXPUNGE only with UIDPLUS, unsolicited FETCH of other UIDs), `imaplib` parsing and errors (literals, response codes, BYE, READ-ONLY, BAD/NO completions, login failure as `str`, `password_secret` quirk, non-ASCII arguments, quoting) | `nyxmon-checks/src/imap/tests.rs::dialogues_match_the_python_executor`: 46 dialogues of the real executor against scripted servers (`fixtures/imap_dialogues.json`, incl. Dovecot- and Gmail-like sessions) replayed with result, key order, retry delays and wire transcript; `::imaplib_quoting_and_parsing_helpers`, `::configuration_problems_do_not_connect`, `::a_silent_server_times_out`, `::a_refused_connection_is_an_unexpected_error` | done |
+| `test_mail_tls_verify.py::test_imap_implicit_tls_verifies_certificate_by_default`, `::test_imap_starttls_verifies_certificate_by_default`, `::test_imap_verify_false_uses_unverified_context_and_warns`, `::test_imap_plain_mode_uses_no_tls`, `::test_imap_starttls_failure_closes_connection`, `::test_imap_certificate_failure_reports_tls_error_without_retry` | `imap/tests.rs::certificate_failures_are_tls_errors_without_retry`, `::starttls_upgrades_and_asks_for_capabilities_again`, `::implicit_tls_without_verification_runs_the_session`, the `starttls_*` and plain dialogues | done |
 
 ## S5b part 1 — suppression fetch, DNS configuration and wire format
 
@@ -211,7 +220,6 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `tests/unit/test_site_connectivity_holds.py` (snapshot) | `site_snapshot.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | done |
-| `tests/unit/test_imap_*.py`, `test_mail_tls_verify.py` (IMAP executor) | `config_imap.json`, fake servers | S7 (IMAP part) | pending |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
 | `tests/unit/test_shutdown_claims.py`, `cleaner_test.py`, `test_startup_validation.py`, `test_runner_shutdown_stream.py`, `test_async_runner_refactor.py`, `test_executor_registry.py`, `test_cli_logging.py` | `nyxmon-agent` tests | S9 | pending |
 | `tests/unit/test_collector_recovery.py`, `test_collector_incidents.py` | `nyxmon-agent` collector tests, `lease.json`, `incident_payloads.json` | S10 | pending |

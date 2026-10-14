@@ -9,6 +9,7 @@
 
 pub mod dns;
 pub mod http;
+pub mod imap;
 pub mod json_metrics;
 pub mod mail;
 pub mod ping;

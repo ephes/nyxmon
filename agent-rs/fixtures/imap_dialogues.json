@@ -1,0 +1,3412 @@
+{
+ "cases": [
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "sorted_deleted_and_expunged_with_uidplus",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "30",
+     "20"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 20 30 40\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 9 FETCH (UID 30 INTERNALDATE \"09-Oct-2025 10:45:00 +0200\")\r\n"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 20 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 2 FETCH (INTERNALDATE \"09-Oct-2025 10:45:00 +0200\" UID 30)\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 FETCH (UID 40 INTERNALDATE \"09-Oct-2025 07:00:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "tagged",
+      "OK STORE completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+     ],
+     [
+      "tagged",
+      "OK CAPABILITY completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK EXPUNGE completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 20 (INTERNALDATE)",
+     "UID FETCH 30 (INTERNALDATE)",
+     "UID FETCH 40 (INTERNALDATE)",
+     "UID STORE 30,20 +FLAGS (\\Deleted)",
+     "CAPABILITY",
+     "UID EXPUNGE 30,20",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "folder": "Monitoring Box",
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "flagged_only_without_uidplus",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4REV1\r\n"
+     ],
+     [
+      "tagged",
+      "OK done"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 IDLE\r\n"
+     ],
+     [
+      "tagged",
+      "OK done"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] selected"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "tagged",
+      "OK STORE completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 IDLE\r\n"
+     ],
+     [
+      "tagged",
+      "OK CAPABILITY completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "CAPABILITY",
+     "LOGIN monitor \"secret\"",
+     "CAPABILITY",
+     "SELECT \"Monitoring Box\"",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "UID STORE 5 +FLAGS (\\Deleted)",
+     "CAPABILITY",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "delete_after_check": false,
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "kept_without_delete_after_check",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "unsolicited_fetch_of_another_uid_is_ignored",
+   "result": {
+    "attempts": 1,
+    "error_msg": "No messages with subject '[nyxmon]' within 30 minutes",
+    "error_type": "no_recent_message",
+    "severity": "critical"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 9 FETCH (UID 6 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "send",
+      "* 2 FETCH (FLAGS (\\Seen))\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "literal_in_fetch_response",
+   "result": {
+    "attempts": 1,
+    "error_msg": "No messages with subject '[nyxmon]' within 30 minutes",
+    "error_type": "no_recent_message",
+    "severity": "critical"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 7\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 7 BODY[HEADER.FIELDS (SUBJECT)] {12}\r\nSubject: x\r\n)\r\n"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 7 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "tagged",
+      "OK STORE completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1\r\n"
+     ],
+     [
+      "tagged",
+      "OK CAPABILITY completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 7 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "missing_internaldate_is_skipped",
+   "result": {
+    "attempts": 1,
+    "error_msg": "No messages with subject '[nyxmon]' within 30 minutes",
+    "error_type": "no_recent_message",
+    "severity": "critical"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 FLAGS (\\Seen))\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "max_age_minutes": 5,
+    "no_recent_message_severity": "warning",
+    "password": "secret",
+    "retries": 1,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "no_recent_retried_then_warning",
+   "result": {
+    "attempts": 2,
+    "error_msg": "No messages with subject '[nyxmon]' within 5 minutes",
+    "error_type": "no_recent_message",
+    "severity": "warning"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH \r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ],
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH \r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [
+    7
+   ],
+   "status": "warning",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "LOGOUT"
+    ],
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 2,
+    "retry_delay": 2.5,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "no_recent_then_found",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH \r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ],
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "tagged",
+      "OK STORE completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+     ],
+     [
+      "tagged",
+      "OK CAPABILITY completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK done"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [
+    2.5
+   ],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "LOGOUT"
+    ],
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "UID STORE 5 +FLAGS (\\Deleted)",
+     "CAPABILITY",
+     "UID EXPUNGE 5",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "old_message_only_is_critical",
+   "result": {
+    "attempts": 1,
+    "error_msg": "No messages with subject '[nyxmon]' within 30 minutes",
+    "error_type": "no_recent_message",
+    "severity": "critical"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 40\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 FETCH (UID 40 INTERNALDATE \"09-Oct-2025 07:00:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 40 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 2,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "rejected_login",
+   "result": {
+    "attempts": 1,
+    "error_msg": "[AUTHENTICATIONFAILED] Authentication failed.",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO [AUTHENTICATIONFAILED] Authentication failed."
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\""
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "rejected_login_non_utf8",
+   "result": {
+    "attempts": 1,
+    "error_msg": "bad \ufffd login",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO bad \u00ff login"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\""
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 2,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "rejected_select",
+   "result": {
+    "attempts": 1,
+    "error_msg": "select failed: NO [b\"[NONEXISTENT] Mailbox doesn't exist\"]",
+    "error_type": "execution_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO [NONEXISTENT] Mailbox doesn't exist"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "folder": "Shared",
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "read_only_select",
+   "result": {
+    "attempts": 1,
+    "error_msg": "'Shared' is not writable",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [READ-ONLY] SELECT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT Shared"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "search_no",
+   "result": {
+    "attempts": 1,
+    "error_msg": "uid failed: NO [b'[SERVERBUG] search failed']",
+    "error_type": "execution_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO [SERVERBUG] search failed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "search_bad",
+   "result": {
+    "attempts": 1,
+    "error_msg": "UID command error: BAD [b'Could not parse command']",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "BAD Could not parse command"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "fetch_no",
+   "result": {
+    "attempts": 1,
+    "error_msg": "uid failed: NO [b'fetch failed']",
+    "error_type": "execution_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO fetch failed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "store_no",
+   "result": {
+    "attempts": 1,
+    "error_msg": "uid failed: NO [b'[CANNOT] store failed']",
+    "error_type": "execution_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO [CANNOT] store failed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "UID STORE 5 +FLAGS (\\Deleted)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "expunge_no",
+   "result": {
+    "attempts": 1,
+    "error_msg": "uid failed: NO [b'expunge failed']",
+    "error_type": "execution_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "tagged",
+      "OK STORE completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+     ],
+     [
+      "tagged",
+      "OK CAPABILITY completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO expunge failed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "UID STORE 5 +FLAGS (\\Deleted)",
+     "CAPABILITY",
+     "UID EXPUNGE 5",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "connection_drops_mid_command",
+   "result": {
+    "attempts": 1,
+    "error_msg": "command: UID => socket error: EOF",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "close"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\""
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "bye_during_command",
+   "result": {
+    "attempts": 1,
+    "error_msg": "command: UID => server shutting down",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE server shutting down\r\n"
+     ],
+     [
+      "close"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\""
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "bye_greeting",
+   "result": {
+    "attempts": 1,
+    "error_msg": "invalid greeting: * BYE go away",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* BYE go away\r\n"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "continuation_greeting",
+   "result": {
+    "attempts": 1,
+    "error_msg": "invalid greeting: + hello",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "+ hello\r\n"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "closed_before_greeting",
+   "result": {
+    "attempts": 1,
+    "error_msg": "socket error: EOF",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "close"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "unterminated_greeting",
+   "result": {
+    "attempts": 1,
+    "error_msg": "socket error: unterminated line: b'* OK ready'",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK ready"
+     ],
+     [
+      "close"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "not_imap4",
+   "result": {
+    "attempts": 1,
+    "error_msg": "server not IMAP4 compliant",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP2] ready\r\n"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "no_capability_response",
+   "result": {
+    "attempts": 1,
+    "error_msg": "no CAPABILITY response from server",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK done"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "CAPABILITY"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "preauth_greeting",
+   "result": {
+    "attempts": 1,
+    "error_msg": "command LOGIN illegal in state AUTH, only allowed in states NONAUTH",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* PREAUTH [CAPABILITY IMAP4rev1] welcome\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1\r\n"
+     ],
+     [
+      "tagged",
+      "OK done"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "CAPABILITY"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 0.5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "unexpected_response",
+   "result": {
+    "attempts": 1,
+    "error_msg": "command: UID => unexpected response: b'garbage'",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "garbage\r\n"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": null,
+    "password_secret": "s",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "password_secret_only",
+   "result": {
+    "attempts": 1,
+    "error_msg": "'NoneType' object has no attribute 'replace'",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "p\"w\\x",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "user name"
+   },
+   "name": "quoted_credentials",
+   "result": {
+    "attempts": 1,
+    "error_msg": "nope",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO nope"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN \"user name\" \"p\\\"w\\\\x\""
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "p\u00e4ssword",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "non_ascii_password",
+   "result": {
+    "attempts": 1,
+    "error_msg": "'ascii' codec can't encode character '\\xe4' in position 1: ordinal not in range(128)",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "Pr\u00fcfung",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "non_ascii_subject",
+   "result": {
+    "attempts": 1,
+    "error_msg": "'ascii' codec can't encode character '\\xfc' in position 3: ordinal not in range(128)",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "say \"hi\"",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "subject_with_quote",
+   "result": {
+    "attempts": 1,
+    "error_msg": "UID command error: BAD [b'invalid search']",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "BAD invalid search"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"say \"hi\"\"",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "starttls",
+    "username": "monitor"
+   },
+   "name": "starttls_not_advertised",
+   "result": {
+    "attempts": 1,
+    "error_msg": "TLS not supported by server",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1] ready\r\n"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    []
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 2,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "starttls",
+    "username": "monitor"
+   },
+   "name": "starttls_refused",
+   "result": {
+    "attempts": 1,
+    "error_msg": "Couldn't establish TLS session",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 STARTTLS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO not now"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "STARTTLS"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "starttls",
+    "username": "monitor"
+   },
+   "name": "starttls_bad",
+   "result": {
+    "attempts": 1,
+    "error_msg": "STARTTLS command error: BAD [b'no']",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 STARTTLS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "BAD no"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "STARTTLS"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "search_with_literal_data",
+   "result": {
+    "attempts": 1,
+    "error_msg": "'tuple' object has no attribute 'decode'",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH {2}\r\n20\r\n"
+     ],
+     [
+      "tagged",
+      "OK done"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "delete_after_check": false,
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "blank_lines_are_skipped",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "\r\n* SEARCH 5\r\n\r\n"
+     ],
+     [
+      "tagged",
+      "OK done"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "delete_after_check": false,
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "logout_failure_is_ignored",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "close"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "capability_after_store_without_response",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK stored"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK no caps"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "UID STORE 5 +FLAGS (\\Deleted)",
+     "CAPABILITY",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "max_age_minutes": 15,
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "dovecot_like_session",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "11",
+     "12"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN] Dovecot (Ubuntu) ready.\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAMESPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY PREVIEW STATUS=SIZE SAVEDATE LITERAL+ NOTIFY SPECIAL-USE] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)\r\n* OK [PERMANENTFLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft \\*)] Flags permitted.\r\n* 2 EXISTS\r\n* 0 RECENT\r\n* OK [UIDVALIDITY 1700000000] UIDs valid\r\n* OK [UIDNEXT 13] Predicted next UID\r\n* OK [HIGHESTMODSEQ 40] Highest\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] Select completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 11 12\r\n"
+     ],
+     [
+      "tagged",
+      "OK Search completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 11 INTERNALDATE \"09-Oct-2025 10:45:00 +0200\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK Fetch completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 2 FETCH (UID 12 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK Fetch completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 11 FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "send",
+      "* 2 FETCH (UID 12 FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "tagged",
+      "OK Store completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAMESPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY PREVIEW STATUS=SIZE SAVEDATE LITERAL+ NOTIFY SPECIAL-USE\r\n"
+     ],
+     [
+      "tagged",
+      "OK Capability completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 EXPUNGE\r\n* 1 EXPUNGE\r\n"
+     ],
+     [
+      "tagged",
+      "OK Expunge completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE Logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK Logout completed (0.001 + 0.000 secs)."
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 11 (INTERNALDATE)",
+     "UID FETCH 12 (INTERNALDATE)",
+     "UID STORE 11,12 +FLAGS (\\Deleted)",
+     "CAPABILITY",
+     "UID EXPUNGE 11,12",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "delete_after_check": true,
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "someone@gmail.com"
+   },
+   "name": "gmail_like_session",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "4711"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK Gimap ready for requests from 192.0.2.1 x1mb\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1 XYZZY SASL-IR AUTH=XOAUTH2 AUTH=PLAIN AUTH=PLAIN-CLIENTTOKEN AUTH=OAUTHBEARER\r\n"
+     ],
+     [
+      "tagged",
+      "OK Thats all she wrote! x1mb"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1 UIDPLUS COMPRESS=DEFLATE ENABLE MOVE CONDSTORE ESEARCH UTF8=ACCEPT LIST-EXTENDED LIST-STATUS LITERAL- SPECIAL-USE APPENDLIMIT=35651584\r\n"
+     ],
+     [
+      "tagged",
+      "OK someone@gmail.com authenticated (Success)"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* FLAGS (\\Answered \\Flagged \\Draft \\Deleted \\Seen $NotPhishing $Phishing)\r\n* OK [PERMANENTFLAGS (\\Answered \\Flagged \\Draft \\Deleted \\Seen $NotPhishing $Phishing \\*)] Flags permitted.\r\n* OK [UIDVALIDITY 3] UIDs valid.\r\n* 5 EXISTS\r\n* 0 RECENT\r\n* OK [UIDNEXT 4712] Predicted next UID.\r\n* OK [HIGHESTMODSEQ 987654]\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] INBOX selected. (Success)"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 4711\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed (Success)"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 5 FETCH (UID 4711 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK Success"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 5 FETCH (UID 4711 FLAGS (\\Deleted))\r\n"
+     ],
+     [
+      "tagged",
+      "OK Success"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1 UIDPLUS COMPRESS=DEFLATE ENABLE MOVE CONDSTORE ESEARCH UTF8=ACCEPT LIST-EXTENDED LIST-STATUS LITERAL- SPECIAL-USE APPENDLIMIT=35651584\r\n"
+     ],
+     [
+      "tagged",
+      "OK Success"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 5 EXPUNGE\r\n* 4 EXISTS\r\n"
+     ],
+     [
+      "tagged",
+      "OK Success"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE LOGOUT Requested\r\n"
+     ],
+     [
+      "tagged",
+      "OK 73 good day (Success)"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "CAPABILITY",
+     "LOGIN someone@gmail.com \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 4711 (INTERNALDATE)",
+     "UID STORE 4711 +FLAGS (\\Deleted)",
+     "CAPABILITY",
+     "UID EXPUNGE 4711",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "someone@gmail.com"
+   },
+   "name": "gmail_like_login_failure",
+   "result": {
+    "attempts": 1,
+    "error_msg": "[AUTHENTICATIONFAILED] Invalid credentials (Failure)",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK Gimap ready for requests from 192.0.2.1 x1mb\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1 XYZZY SASL-IR AUTH=XOAUTH2 AUTH=PLAIN AUTH=PLAIN-CLIENTTOKEN AUTH=OAUTHBEARER\r\n"
+     ],
+     [
+      "tagged",
+      "OK Thats all she wrote! x1mb"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "NO [AUTHENTICATIONFAILED] Invalid credentials (Failure)"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "CAPABILITY",
+     "LOGIN someone@gmail.com \"secret\""
+    ]
+   ]
+  },
+  {
+   "data": {
+    "delete_after_check": false,
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "logout_without_bye",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK bye"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  },
+  {
+   "data": {
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "read_only_during_session",
+   "result": {
+    "attempts": 1,
+    "error_msg": "mailbox status changed to READ-ONLY",
+    "error_type": "unexpected_error"
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* OK [READ-ONLY] mailbox now read-only\r\n* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "error",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\""
+    ]
+   ]
+  },
+  {
+   "data": {
+    "delete_after_check": false,
+    "host": "127.0.0.1",
+    "password": "secret",
+    "retries": 0,
+    "retry_delay": 7,
+    "search_subject": "[nyxmon]",
+    "timeout": 5,
+    "tls_mode": "none",
+    "username": "monitor"
+   },
+   "name": "untagged_no_and_alert_are_ignored",
+   "result": {
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
+   },
+   "scripts": [
+    [
+     [
+      "send",
+      "* OK [CAPABILITY IMAP4rev1 UIDPLUS] ready\r\n"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 3 EXISTS\r\n* OK [UIDVALIDITY 7] ok\r\n"
+     ],
+     [
+      "tagged",
+      "OK [READ-WRITE] SELECT completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* NO [ALERT] quota almost full\r\n* SEARCH 5\r\n"
+     ],
+     [
+      "tagged",
+      "OK SEARCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
+     ],
+     [
+      "tagged",
+      "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
+      "* BYE logging out\r\n"
+     ],
+     [
+      "tagged",
+      "OK LOGOUT completed"
+     ]
+    ]
+   ],
+   "sleeps": [],
+   "status": "ok",
+   "transcripts": [
+    [
+     "LOGIN monitor \"secret\"",
+     "SELECT INBOX",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
+     "UID FETCH 5 (INTERNALDATE)",
+     "LOGOUT"
+    ]
+   ]
+  }
+ ],
+ "now": 1760000000.75
+}
