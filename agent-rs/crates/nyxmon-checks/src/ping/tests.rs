@@ -311,7 +311,7 @@ fn fake_ping(scripts: &Scripts, body: &str) -> String {
     let log = scripts.path("args.log");
     scripts.write(
         "ping",
-        &format!("echo \"$@\" >> '{}'\n{body}", log.display()),
+        &format!("printf '%s\\n' \"$*\" >> '{}'\n{body}", log.display()),
         0o755,
     )
 }
