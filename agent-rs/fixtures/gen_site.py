@@ -198,7 +198,9 @@ class _World:
             for row in self.state["held"]
         ]
 
-    async def reschedule_checks_async(self, check_ids: list[int], *, run_at: int) -> int:
+    async def reschedule_checks_async(
+        self, check_ids: list[int], *, run_at: int
+    ) -> int:
         self.events.append(["sched", "reschedule", list(check_ids), run_at])
         if self.state["fail_reschedule"]:
             raise RuntimeError("database is busy")
@@ -549,7 +551,10 @@ def _ongoing() -> list[dict[str, Any]]:
     return [
         _scenario(
             "summary_threshold_below",
-            [_outage("ipv4", T0 + 60, T0 + 1019 - 59), _rounds(T0 + 1020, T0 + 2000, 120)],
+            [
+                _outage("ipv4", T0 + 60, T0 + 1019 - 59),
+                _rounds(T0 + 1020, T0 + 2000, 120),
+            ],
             incident_notify_after_seconds=900,
         ),
         _scenario(
@@ -665,7 +670,10 @@ def _summaries() -> list[dict[str, Any]]:
                 _round(T0 + 60),
                 _seed(
                     _payload(
-                        summaries=[_summary(1, attempt_at=T0 + 60, attempts=1), _summary(2)]
+                        summaries=[
+                            _summary(1, attempt_at=T0 + 60, attempts=1),
+                            _summary(2),
+                        ]
                     )
                 ),
                 _respawn(T0 + 75, deliver="delivered"),
@@ -691,7 +699,10 @@ def _summaries() -> list[dict[str, Any]]:
                             _summary(
                                 i,
                                 paths={
-                                    f"p{i}-{n:02d}": {"down_since": 1, "recovered_at": 2}
+                                    f"p{i}-{n:02d}": {
+                                        "down_since": 1,
+                                        "recovered_at": 2,
+                                    }
                                     for n in range(14)
                                 },
                             )
@@ -870,7 +881,9 @@ def _recheck() -> list[dict[str, Any]]:
                 _round(T0 + 60, down_paths=["ipv4", "dns"]),
                 _round(T0 + 120),
                 _round(T0 + 180, down_paths=["dns"]),
-                _rounds(T0 + 1080, T0 + 1140, held=[_held(7, blocked), _held(8, IPV4_ONLY)]),
+                _rounds(
+                    T0 + 1080, T0 + 1140, held=[_held(7, blocked), _held(8, IPV4_ONLY)]
+                ),
                 _round(T0 + 1200, down_paths=[]),
                 _rounds(T0 + 2100, T0 + 2220),
             ],
@@ -917,7 +930,10 @@ def _recheck() -> list[dict[str, Any]]:
         ),
         _scenario(
             "observe_mode_never_reschedules",
-            [_outage("ipv4", T0 + 60, T0 + 180, held=[_held(1)]), _rounds(T0 + 1080, T0 + 1200)],
+            [
+                _outage("ipv4", T0 + 60, T0 + 180, held=[_held(1)]),
+                _rounds(T0 + 1080, T0 + 1200),
+            ],
             mode="observe",
         ),
         _scenario(
@@ -942,7 +958,12 @@ def _restore_payloads() -> list[dict[str, Any]]:
     }
     odd_paths = {
         "dns": {"state": "failing", "down_since": True, "last_release_at": 12.9},
-        "ipv4": {**path, "state": "recovering", "recovered_at": T0 + 30, "release_at": T0 + 90},
+        "ipv4": {
+            **path,
+            "state": "recovering",
+            "recovered_at": T0 + 30,
+            "release_at": T0 + 90,
+        },
         "ipv6": "broken",
         "smtp": {"state": "down"},
     }
@@ -950,7 +971,11 @@ def _restore_payloads() -> list[dict[str, Any]]:
         ("unknown_version", _payload(version=2, phase="active", incident_id=T0), {}),
         ("float_version", _payload(version=1.0, phase="active", incident_id=T0), {}),
         ("true_version", _payload(version=True), {}),
-        ("missing_version", {"phase": "active", "incident_id": T0, "observed_at": T0}, {}),
+        (
+            "missing_version",
+            {"phase": "active", "incident_id": T0, "observed_at": T0},
+            {},
+        ),
         ("string_version", _payload(version="1"), {}),
         ("odd_paths", _payload(paths=odd_paths, observed_at=T0 + 10.7), {}),
         (
