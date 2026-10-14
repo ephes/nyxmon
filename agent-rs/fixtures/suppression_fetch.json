@@ -1,0 +1,2110 @@
+{
+ "cases": [
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "username": "u"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": 5,
+     "username": "u"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": [
+     "u",
+     "p"
+    ],
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://user:pw@maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic dXNlcjpwdw==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://user:pw@maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "a": [
+      1,
+      2.5,
+      null,
+      true
+     ],
+     "b": "\u00fc"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a205b312c20322e352c206e756c6c2c20747275655d2c202262223a20225c7530306663227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "bom": 1
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "efbbbf7b22626f6d223a20317d",
+      "headers": [],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "utf16": 1
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "fffe7b0022007500740066003100360022003a00200031007d00",
+      "headers": [],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6e6f74206a736f6e",
+      "headers": [],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": NaN
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "4e614e",
+      "headers": [],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": null
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6e756c6c",
+      "headers": [],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 204,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [],
+      "status": 404,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 500,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [],
+      "status": 302,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 304,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/final"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/final"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/final"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/final"
+       ]
+      ],
+      "status": 301,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/final?x=1"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/final?x=1"
+       ]
+      ],
+      "status": 303,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/final"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "final"
+       ]
+      ],
+      "status": 307,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/final"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "http://maint.test/final"
+       ]
+      ],
+      "status": 308,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "other.test",
+     "path": "/status"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "http://other.test/status"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "auth": {
+     "password": "s3cret",
+     "username": "nyxmon"
+    },
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": "Basic bnl4bW9uOnMzY3JldA==",
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "other.test",
+     "path": "/status"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/back"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "http://other.test/status"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "http://maint.test/back"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": "session=abc",
+     "host": "maint.test",
+     "path": "/final"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/final"
+       ],
+       [
+        "Set-Cookie",
+        "session=abc; Path=/"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": "a=1",
+     "host": "maint.test",
+     "path": "/m"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": "a=1",
+     "host": "maint.test",
+     "path": "/m2"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/m"
+       ],
+       [
+        "Set-Cookie",
+        "a=1"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/m2"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/loop"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/loop"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/loop"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/loop"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/loop"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/loop"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/loop"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/loop"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/loop"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/loop"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/loop"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/loop"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop0"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop1"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop2"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop3"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop4"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop0"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop1"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop2"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop3"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop4"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop0"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop1"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop2"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop3"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/hop4"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop0"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop1"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop2"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop3"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop4"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/hop5"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "http://[::1"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/final"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/final"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 404,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ],
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "1f8b08000000000002ffab56ca492c2e892f2e492c292d56b252502a2acdcbcbcc4b57aa05004137578a1a000000",
+      "headers": [
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ],
+       [
+        "Content-Encoding",
+        "identity"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running"
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ],
+       [
+        "Content-Encoding",
+        " Identity "
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ],
+       [
+        "Content-Encoding",
+        "identity, gzip"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226c6173745f737461747573223a202272756e6e696e67227d",
+      "headers": [
+       [
+        "Content-Type",
+        "application/json"
+       ],
+       [
+        "Content-Encoding",
+        "br"
+       ]
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "pad": [
+       262144,
+       ""
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "pad": [
+       262144,
+       ""
+      ],
+      "status": 200,
+      "stream": true
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running",
+     "pad": 262107
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "pad": [
+       262107,
+       ""
+      ],
+      "status": 200,
+      "stream": false
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "payload": {
+     "last_status": "running",
+     "pad": 262107
+    }
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "pad": [
+       262107,
+       ""
+      ],
+      "status": 200,
+      "stream": true
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "pad": [
+       262107,
+       " "
+      ],
+      "status": 200,
+      "stream": true
+     }
+    }
+   ]
+  },
+  {
+   "config": {
+    "timeout": 0.5,
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    }
+   ],
+   "steps": [
+    {
+     "timeout": true
+    }
+   ]
+  },
+  {
+   "config": {
+    "timeout": 0.5,
+    "url": "http://maint.test/maintenance"
+   },
+   "outcome": {
+    "failed": true
+   },
+   "requests": [
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/maintenance"
+    },
+    {
+     "accept_encoding": "identity",
+     "authorization": null,
+     "cookie": null,
+     "host": "maint.test",
+     "path": "/slow"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6d6f766564",
+      "headers": [
+       [
+        "Location",
+        "/slow"
+       ]
+      ],
+      "status": 302,
+      "stream": false
+     }
+    },
+    {
+     "timeout": true
+    }
+   ]
+  }
+ ]
+}

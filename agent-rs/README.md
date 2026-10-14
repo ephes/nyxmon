@@ -19,7 +19,10 @@ I/O goes through the `SitePorts` trait; slice S2 (store): the SQLite
 store (`nyxmon-store`: DB actor and every repository operation), the schema
 contract and the agent lock; slice S5a: the `http`, `json-http` and
 `json-metrics` executors with their configs, the json-metrics evaluation
-and the httpx-compatible HTTP client. The binary only answers `--version`.
+and the httpx-compatible HTTP client; slice S5b part 1: the
+maintenance-suppression fetch, and the DNS check's configuration, text
+helpers and wire format (the stub resolver and executor follow in part 2).
+The binary only answers `--version`.
 
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
 ticket integration, and the logging/shadow notifier.
@@ -122,6 +125,17 @@ Current fixtures:
   order, requests, retry delays), which the Rust tests replay against a
   local fake server. Messages derived from httpx or Python internals are
   stored as `<P2>`.
+- `config_dns.json` (`gen_dns.py`): `DnsCheckConfig.from_dict` +
+  `validate` outcomes (`cases`), including the exception class and message
+  of the `TypeError`s the executor reports as `unexpected_error`.
+- `dns_text.json` (`gen_dns.py`): `normalize_dns_value`,
+  `expected_ip_error`, `_check_ip_match`, query names
+  (`dns.name.from_text` + `to_text`), `dns.ipv6.inet_ntoa` and CPython's
+  UTF-8 decode errors.
+- `suppression_fetch.json` (`gen_suppression.py`): `_fetch_payload` on a
+  scripted httpx `MockTransport` (payload or failure, request paths,
+  `Authorization`, `Accept-Encoding`, `Cookie`), replayed against a fake
+  server; large bodies are described by their padding length.
 - `httpx_url.json`: httpx URL parsing (`raw_path`, host, port, credentials)
   and redirect resolution (`Client._redirect_url`, `urljoin`).
 - `metrics_eval.json`: json-metrics path resolution, evaluation, failure
@@ -227,8 +241,17 @@ Never add DDL to the Python agent; a new required column raises
   `Content-Encoding` decoding, anyio's Happy Eyeballs connects, and a batch
   cookie jar ordered like `http.cookiejar`. A plain reqwest client cannot express the per-read
   timeouts or the request target. Proxy environment variables are not read
-  (none is set for the production agent). Retry delays go through
+  (none is set for the production agent, PLAN.md D-15). Retry delays go through
   `nyxmon_checks::ctx::Sleeper` so tests can record them.
+- The maintenance-suppression fetch is
+  `nyxmon_checks::suppression_fetch::fetch_payload(&SuppressionRequest)`
+  (`None` = fail open); it builds a fresh `HttpSession` per fetch, so no
+  cookies are shared with the batch.
+- The DNS configuration (`nyxmon_core::config::dns::DnsConfig::from_data`)
+  returns `DnsConfigError::Value` (`configuration_error`) or
+  `DnsConfigError::Exception { class, message }`: the DNS executor reports
+  every exception as `unexpected_error` with `str(exc)`, so the message is
+  kept.
 - Config parsers written with `?` use `nyxmon_core::config::ConfigError`
   and convert with `ConfigError::into_outcome`.
 - TLS goes through `nyxmon_checks::tls` (rustls with the `ring` provider,

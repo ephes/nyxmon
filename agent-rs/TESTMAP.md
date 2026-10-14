@@ -173,6 +173,18 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `test_mail_tls_verify.py::test_smtp_implicit_tls_verifies_certificate_by_default`, `::test_smtp_starttls_verifies_certificate_by_default`, `::test_smtp_verify_false_uses_unverified_context_and_warns`, `::test_smtp_plain_mode_uses_no_tls`, `::test_smtp_certificate_failure_maps_to_tls_error`, `::test_smtp_executor_reports_tls_error_without_retry` | `smtp/tests.rs::implicit_tls_verifies_certificates_unless_disabled`, `::starttls_upgrades_and_repeats_ehlo`, `::delivery_matches_the_smtplib_dialogue` (plain, no warning) | done |
 | `smtplib` reply parsing, EHLO features, `_quote_periods`, AUTH challenge decoding, error mapping of `SmtplibClient._send_blocking` | `smtp/tests.rs::ehlo_features_follow_smtplib_parsing`, `::helpers_follow_python`, `::missing_extensions_are_smtp_errors`, `::socket_failures_map_like_the_python_except_chain` | done |
 
+## S5b part 1 — suppression fetch, DNS configuration and wire format
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `notification_suppression._fetch_payload`, `_read_capped_body` (`test_notification_suppression.py::test_suppression_reads_a_small_body_through_httpx`, `::test_oversized_suppression_body_fails_open`, `::test_declared_oversized_suppression_body_fails_open`, `::test_cross_origin_redirect_drops_credentials`, `::test_same_origin_redirect_keeps_credentials`, `::test_redirect_loop_fails_open`, `::test_compressed_suppression_body_is_refused`, `::test_suppression_inactive_when_endpoint_errors`); cookies within one fetch, URL credentials, `Content-Encoding` normalisation, exact-cap bodies, BOM/UTF-16 bodies | `suppression_fetch.json` replayed by `nyxmon-checks/src/suppression_fetch/tests.rs::fetch_cases_match_python` | done (handler merge: S9) |
+| `test_notification_suppression.py::test_redirect_bodies_are_never_read` | `suppression_fetch/tests.rs::redirect_bodies_are_never_read` | done |
+| fetch timeout, connection failure and unusable URLs (httpx `UnsupportedProtocol`, NaN timeout) | `suppression_fetch/tests.rs::the_timeout_bounds_each_read`, `::unusable_urls_and_timeouts_fail_open_without_a_request`, `::a_connection_failure_fails_open` | done |
+| `DnsCheckConfig.from_dict` + `validate` (`test_dns_config.py`, `test_dns_config_validation.py`, `test_dns_address_normalization.py::test_validate_rejects_wrong_family`, `::test_from_dict_requires_a_list_of_strings`; `test_config_numeric_contracts.py` DNS rows), incl. the `TypeError`s of non-object data and unhashable `query_type` | `config_dns.json` `cases` (`nyxmon-core/src/config/dns/tests.rs::config_cases_match_python`) | done |
+| `normalize_dns_value`, `expected_ip_error`, `_check_ip_match` (`test_dns_address_normalization.py::test_normalize_dns_value`; the comparison rules of `::test_legacy_raw_aaaa_expectation_matches`, `::test_different_address_still_mismatches`, `::test_non_ip_values_keep_exact_matching`, `::test_ip_looking_txt_values_are_compared_exactly`) | `dns_text.json` (`config/dns/tests.rs::text_helpers_match_python`) | done |
+| `dns.name.from_text`/`to_text`, `dns.ipv6.inet_ntoa`, `bytes.decode()` errors, `Message.is_response`, `resolve_chaining` | `dns_text.json` (`nyxmon-checks/src/dns/wire/tests.rs`) and wire unit tests (pointers, trailing bytes, rdata lengths, chain limit, EDNS) | done |
+| D-16 (non-ASCII names) | `dns/wire/tests.rs::non_ascii_names_fail_closed` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -183,7 +195,7 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `tests/unit/test_site_dependency.py` | `site_dependency.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_holds.py` (snapshot) | `site_snapshot.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
-| `tests/unit/test_dns_*.py`, `test_config_numeric_contracts.py` (DNS rows), `test_notification_suppression.py` (fetch: redirects, caps, compression refusal) | `config_dns.json`, `dns_text.json`, fake DNS responder, suppression fake-server tests | S5b | pending |
+| `tests/unit/test_dns_executor.py`, `test_dns_source_ip.py`, executor parts of `test_dns_address_normalization.py` | `config_dns.json` `executor_cases`, fake DNS responder | S5b part 2 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | in progress |
 | `tests/unit/test_imap_*.py`, `test_mail_tls_verify.py` (IMAP executor) | `config_imap.json`, fake servers | S7 (IMAP part) | pending |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |

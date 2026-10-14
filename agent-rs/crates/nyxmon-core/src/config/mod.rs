@@ -7,6 +7,7 @@
 //! another Python exception (`TypeError`, `AttributeError`, ...). The
 //! outcomes are pinned by the `config_<type>.json` fixtures.
 
+pub mod dns;
 pub mod http;
 pub mod json_metrics;
 pub mod mail;
