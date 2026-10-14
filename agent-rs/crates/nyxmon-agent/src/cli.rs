@@ -12,11 +12,21 @@ fn python_int(value: &str) -> Result<i64, String> {
     i64::try_from(parsed).map_err(|_| format!("int value out of range: '{value}'"))
 }
 
+/// `--version` text after the program name: the package version and the git
+/// commit the binary was built from (`build.rs`), e.g. `0.1.0 (27cf52e…)`.
+/// The release workflow and the deployment role parse the first word.
+pub const VERSION: &str = concat!(
+    env!("CARGO_PKG_VERSION"),
+    " (",
+    env!("NYXMON_AGENT_GIT_COMMIT"),
+    ")"
+);
+
 /// Run the NyxMon monitoring agent
 #[derive(Debug, Parser)]
 #[command(
     name = "nyxmon-agent",
-    version,
+    version = VERSION,
     about = "Run the NyxMon monitoring agent"
 )]
 pub struct Args {

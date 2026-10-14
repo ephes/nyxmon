@@ -49,6 +49,9 @@ agent-rs/
   Cargo.toml            workspace; release profile (thin LTO, stripped)
   Cargo.lock            committed; every build uses --locked
   rust-toolchain.toml   pinned toolchain (also the MSRV)
+  deny.toml             cargo-deny policy (licenses, advisories, sources)
+  scripts/
+    release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
   PLAN.md               the implementation plan and parity contract
   TESTMAP.md            Python test -> Rust test coverage, per slice
   crates/
@@ -90,11 +93,46 @@ From the repository root:
 | `just rs-fixtures` | regenerate `fixtures/*.json` from the Python code |
 | `just rs-build` | release build for the host (`agent-rs/target/release/nyxmon-agent`) |
 | `just rs-build-linux` | release build for macmini (`x86_64-unknown-linux-gnu`, glibc) in a pinned `rust:<ver>-bookworm` container; output under `agent-rs/target/docker-linux-amd64/` |
+| `just rs-deny` | `cargo deny --locked check` against `deny.toml` (licenses, advisories, sources); needs [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) on `PATH` |
 | `just test` / `just lint` / `just typecheck` | the Python checks followed by `rs-test` / `rs-lint` / `cargo check --workspace --all-targets --locked` |
 
-CI runs the same Rust checks in the `rust` job of `.github/workflows/ci.yml`
-and reports the release binary size; the fixture drift test runs in the
-`python` job as part of pytest.
+CI runs the same Rust checks in the `rust` job of `.github/workflows/ci.yml`,
+plus `cargo deny --locked check` (a pinned, checksum-verified cargo-deny
+release; PLAN.md R9), and reports the release binary size; the fixture drift
+test runs in the `python` job as part of pytest.
+
+## Releases
+
+`.github/workflows/agent-rs-release.yml` builds the binary the deployment
+role installs (PLAN.md 8.2):
+
+- Push a tag `agent-rs-v<version>` whose version equals the `nyxmon-agent`
+  crate version (`version` in `Cargo.toml`'s `[workspace.package]`; the
+  workflow fails otherwise). A semver pre-release (`0.2.0-rc.1`) becomes a
+  GitHub pre-release.
+- The build job runs on `ubuntu-22.04` (glibc 2.35) without a cargo cache:
+  fmt, clippy, `cargo test`, `cargo build --release --locked --target
+  x86_64-unknown-linux-gnu`, then `scripts/release_checks.py`:
+  `glibc-floor` (no symbol version newer than `GLIBC_2.35`, only
+  glibc/libgcc libraries linked), `smoke` (`--version` prints exactly
+  `nyxmon-agent <version> (<commit>)`), `pack`.
+- The archive `nyxmon-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` holds
+  `nyxmon-agent` (0755) and `LICENSE` (0644) at its root, owned by root, all
+  timestamps set to the commit time, so a rebuild of the same binary gives
+  the same archive. `<archive>.sha256` is `sha256sum` output. The job summary
+  shows the sha256 that ops-control pins (`nyxmon_agent_rust_sha256`).
+- The release job (the only one with `contents: write`) verifies the checksum
+  again and creates the GitHub release with both files.
+- `workflow_dispatch` (Actions tab or
+  `gh workflow run agent-rs-release.yml --ref main`) runs the same build and
+  checks without the tag check and uploads the two files as a workflow
+  artifact only; nothing is released.
+
+`nyxmon-agent --version` prints the version and the git commit, which
+`crates/nyxmon-agent/build.rs` takes from `NYXMON_AGENT_GIT_COMMIT` (set by
+the release workflow and `just rs-build-linux`), else from `git rev-parse
+HEAD`, else `unknown`. A local build from a dirty tree reports the HEAD
+commit.
 
 ## Fixtures: Python is the oracle
 
