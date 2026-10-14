@@ -134,6 +134,11 @@ def test_incident_payload_counters_are_compared_and_timestamps_masked():
     assert view("k", 1, payload % (1, 100)) == view("k", 1, payload % (1, 200))
     assert view("k", 1, payload % (1, 100)) != view("k", 1, payload % (99, 100))
     assert view("k", 1, "{}") != view("k", 2, "{}")
+    # Key order is compared, nested too.
+    assert view("k", 1, '{"a": 1, "b": 2}') != view("k", 1, '{"b": 2, "a": 1}')
+    assert view("k", 1, '{"n": {"a": 1, "b": 2}}') != view(
+        "k", 1, '{"n": {"b": 2, "a": 1}}'
+    )
 
 
 def _check(check_id, disabled=False):

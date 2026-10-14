@@ -671,10 +671,11 @@ def incident_view(key: str, alert_count: int, payload: str | None) -> dict[str, 
         decoded: Any = json.loads(payload or "{}")
     except ValueError:
         decoded = payload
+    # Serialised, so key order (nested too) is part of the comparison.
     return {
         "key": key,
         "alert_count": alert_count,
-        "payload": mask(decoded, "internal"),
+        "payload": json.dumps(mask(decoded, "internal")),
     }
 
 
