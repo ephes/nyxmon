@@ -1923,7 +1923,9 @@ Acceptance criteria per slice (in addition to the green checks):
   migration change.
 - **S3**: all decision/policy/dependency/suppression/lease fixtures
   match, covering every branch of 5.3 (the generator asserts branch coverage
-  of `_should_notify_check_result` via `coverage.py` ≥ 100 % lines).
+  of `_should_notify_check_result`: 100 % of its lines, traced with
+  `sys.monitoring` because coverage.py is not a dependency and would clash
+  with an outer tracer when the drift test runs under one).
 - **S4**: every replay fixture matches round by round (payload bytes via
   `pyjson`, snapshot, notifications, logs), including restore failures, store
   write failures, stale downgrade, flapping at the release boundary, summary

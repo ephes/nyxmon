@@ -1,0 +1,612 @@
+{
+ "cases": [
+  {
+   "check_type": "http",
+   "data_json": "{}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "{}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "http",
+   "data_json": "null",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "null",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "http",
+   "data_json": "[]",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "[]",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": 5, \"retries\": 2, \"retry_delay\": 3}",
+   "seconds": [
+    51,
+    51
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": 5, \"retries\": 2, \"retry_delay\": 3}",
+   "seconds": [
+    51,
+    51
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "json-metrics",
+   "data_json": "{\"timeout\": \"7.5\", \"retries\": \"1.9\", \"retry_delay\": \" 2 \"}",
+   "seconds": [
+    47,
+    47
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "json-metrics",
+   "data_json": "{\"timeout\": \"7.5\", \"retries\": \"1.9\", \"retry_delay\": \" 2 \"}",
+   "seconds": [
+    47,
+    47
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "imap",
+   "data_json": "{\"timeout\": 20, \"retries\": 1}",
+   "seconds": [
+    350,
+    350
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "imap",
+   "data_json": "{\"timeout\": 20, \"retries\": 1}",
+   "seconds": [
+    350,
+    350
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "smtp",
+   "data_json": "{\"timeout\": 30}",
+   "seconds": [
+    180,
+    180
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "smtp",
+   "data_json": "{\"timeout\": 30}",
+   "seconds": [
+    180,
+    180
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "tcp",
+   "data_json": "{}",
+   "seconds": [
+    60,
+    60
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "tcp",
+   "data_json": "{}",
+   "seconds": [
+    60,
+    60
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "tcp",
+   "data_json": "{\"connect_timeout\": 2, \"tls_handshake_timeout\": \"3\", \"timeout\": 4.5}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "tcp",
+   "data_json": "{\"connect_timeout\": 2, \"tls_handshake_timeout\": \"3\", \"timeout\": 4.5}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "tcp",
+   "data_json": "{\"connect_timeout\": null, \"tls_handshake_timeout\": true, \"timeout\": [1]}",
+   "seconds": [
+    60,
+    60
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric timeout; using runtime-estimate default 10"
+    ],
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric connect_timeout; using runtime-estimate default 10"
+    ],
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric tls_handshake_timeout; using runtime-estimate default 10"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "tcp",
+   "data_json": "{\"connect_timeout\": null, \"tls_handshake_timeout\": true, \"timeout\": [1]}",
+   "seconds": [
+    60,
+    60
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{}",
+   "seconds": [
+    60,
+    60
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{}",
+   "seconds": [
+    60,
+    60
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{\"count\": 0, \"timeout\": 1, \"interval\": 0.2}",
+   "seconds": [
+    36,
+    36
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{\"count\": 0, \"timeout\": 1, \"interval\": 0.2}",
+   "seconds": [
+    36,
+    36
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{\"count\": 2.9, \"timeout\": \"x\", \"interval\": NaN}",
+   "seconds": [
+    52,
+    52
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric timeout; using runtime-estimate default 5"
+    ],
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric interval; using runtime-estimate default 1"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{\"count\": 2.9, \"timeout\": \"x\", \"interval\": NaN}",
+   "seconds": [
+    52,
+    52
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{\"count\": -4, \"timeout\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"interval\": \"inf\"}",
+   "seconds": [
+    44,
+    44
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric timeout; using runtime-estimate default 5"
+    ],
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric interval; using runtime-estimate default 1"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "ping",
+   "data_json": "{\"count\": -4, \"timeout\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"interval\": \"inf\"}",
+   "seconds": [
+    44,
+    44
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": 12.1}",
+   "seconds": [
+    13,
+    13
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": 12.1}",
+   "seconds": [
+    13,
+    13
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": \"45\"}",
+   "seconds": [
+    45,
+    45
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": \"45\"}",
+   "seconds": [
+    45,
+    45
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": 0, \"timeout\": 2}",
+   "seconds": [
+    32,
+    32
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": 0, \"timeout\": 2}",
+   "seconds": [
+    32,
+    32
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": -10, \"timeout\": 2}",
+   "seconds": [
+    32,
+    32
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": -10, \"timeout\": 2}",
+   "seconds": [
+    32,
+    32
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": 1000000000000000000000000000000}",
+   "seconds": [
+    3601,
+    3601
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": 1000000000000000000000000000000}",
+   "seconds": [
+    3601,
+    3601
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": Infinity, \"timeout\": -Infinity}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric max_runtime_seconds; using runtime-estimate default 0"
+    ],
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric timeout; using runtime-estimate default 10"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": Infinity, \"timeout\": -Infinity}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": \"nan\", \"timeout\": \"1e400\"}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric max_runtime_seconds; using runtime-estimate default 0"
+    ],
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric timeout; using runtime-estimate default 10"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": \"nan\", \"timeout\": \"1e400\"}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": false, \"timeout\": true}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric max_runtime_seconds; using runtime-estimate default 0"
+    ],
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric timeout; using runtime-estimate default 10"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "dns",
+   "data_json": "{\"max_runtime_seconds\": false, \"timeout\": true}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": 1000000000.0, \"retries\": 1000000000.0, \"retry_delay\": 1000000000.0}",
+   "seconds": [
+    25938033,
+    25938033
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": 1000000000.0, \"retries\": 1000000000.0, \"retry_delay\": 1000000000.0}",
+   "seconds": [
+    25938033,
+    25938033
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": -0.0, \"retries\": -3, \"retry_delay\": \"-1\"}",
+   "seconds": [
+    30,
+    30
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": -0.0, \"retries\": -3, \"retry_delay\": \"-1\"}",
+   "seconds": [
+    30,
+    30
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": \"1_0\", \"retries\": \" 1 \", \"retry_delay\": \"0x10\"}",
+   "seconds": [
+    50,
+    50
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric retry_delay; using runtime-estimate default 0"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": \"1_0\", \"retries\": \" 1 \", \"retry_delay\": \"0x10\"}",
+   "seconds": [
+    50,
+    50
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": {\"a\": 1}}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [
+    [
+     "nyxmon.adapters.collector",
+     "check_id=9 has non-numeric timeout; using runtime-estimate default 10"
+    ]
+   ],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "http",
+   "data_json": "{\"timeout\": {\"a\": 1}}",
+   "seconds": [
+    40,
+    40
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  },
+  {
+   "check_type": "imap",
+   "data_json": "{\"timeout\": 0.1, \"retries\": 3, \"retry_delay\": 0.3}",
+   "seconds": [
+    35,
+    35
+   ],
+   "warnings": [],
+   "with_warning_keys": true
+  },
+  {
+   "check_type": "imap",
+   "data_json": "{\"timeout\": 0.1, \"retries\": 3, \"retry_delay\": 0.3}",
+   "seconds": [
+    35,
+    35
+   ],
+   "warnings": [],
+   "with_warning_keys": false
+  }
+ ]
+}

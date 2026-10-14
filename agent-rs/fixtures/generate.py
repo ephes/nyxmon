@@ -1329,12 +1329,26 @@ def build_unicode_nonprintable() -> dict[str, Any]:
 
 # ------------------------------------------------------------------ driver
 
+
+def _slice_generators(module_name: str) -> dict[str, Callable[[], Mapping[str, Any]]]:
+    """``GENERATORS`` of a sibling builder module (one per slice)."""
+    import importlib.util
+
+    path = FIXTURES_DIR / f"{module_name}.py"
+    spec = importlib.util.spec_from_file_location(f"agent_rs_{module_name}", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.GENERATORS
+
+
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "env.json": build_env,
     "idna.json": build_idna,
     "idna_tables.json": build_idna_tables,
     "pyjson.json": build_pyjson,
     "unicode_nonprintable.json": build_unicode_nonprintable,
+    **_slice_generators("gen_alerting"),
 }
 
 

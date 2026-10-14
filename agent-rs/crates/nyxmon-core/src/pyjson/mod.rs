@@ -7,7 +7,7 @@
 //!
 //! The helpers reproduce the Python built-ins the ported code relies on:
 //! `repr(float)`, `format(x, "g")`, `round`, `int()`, `float()`, truthiness,
-//! rich comparison, `repr(str)` and `repr(bytes)`.
+//! rich comparison, `repr(str)`, `repr(bytes)` and `repr()`/`str()` of values.
 
 mod cmp;
 mod dump;
@@ -18,11 +18,11 @@ mod repr;
 pub use cmp::{CmpOp, TypeError, json_kind, py_cmp, py_truthy};
 pub use dump::{DumpError, DumpOpts, dumps};
 pub use num::{
-    PyNumError, bigint_to_i64_saturating, py_float, py_float_repr, py_format_g, py_int, py_int_of,
-    py_round,
+    PyNumError, bigint_to_i64_saturating, py_float, py_float_of_int, py_float_repr, py_format_g,
+    py_int, py_int_of, py_round,
 };
 pub use parse::{LoadError, MAX_NESTING_DEPTH, loads, loads_bytes};
-pub use repr::{char_len, py_bytes_repr, py_isspace, py_str_repr, py_strip};
+pub use repr::{char_len, py_bytes_repr, py_isspace, py_repr, py_str, py_str_repr, py_strip};
 
 use indexmap::IndexMap;
 use num_bigint::BigInt;

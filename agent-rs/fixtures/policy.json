@@ -1,0 +1,4636 @@
+{
+ "scenarios": [
+  [
+   {
+    "check_id": 7,
+    "data_json": "{}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "null",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "null",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "[]",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "[]",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "\"text\"",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "\"text\"",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": null}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": null}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": 5}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": 5}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": [1, 2]}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": [1, 2]}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": \"x\"}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": \"x\"}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 3}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 3,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 3}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 3,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 1,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 1,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 100}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 100,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 100}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 100,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 101}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 101}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": -1}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": -1}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 2.0}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 2.0}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": true}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": true}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": \"3\"}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": \"3\"}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": null}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": null}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1000000000000000000000000000000}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1000000000000000000000000000000}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": [3]}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": [3]}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": {\"n\": \"it's\"}}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": {\"n\": \"it's\"}}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 60}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 60
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 60}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 60
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 59}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 59}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592000}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 2592000
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592000}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 2592000
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592001}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592001}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 3600.5}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 3600.5}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": NaN}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": NaN}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": \"\\u00fc\\n\"}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": \"\\u00fc\\n\"}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 4, \"reminder_seconds\": 7200, \"warning_consecutive_failures\": 6, \"warning_reminder_seconds\": 86400}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 7200
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 4, \"reminder_seconds\": 7200, \"warning_consecutive_failures\": 6, \"warning_reminder_seconds\": 86400}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 6,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 0, \"warning_reminder_seconds\": 10, \"consecutive_failures\": 5}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 5,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 0, \"warning_reminder_seconds\": 10, \"consecutive_failures\": 5}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 5,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 10); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": \"x\", \"warning_reminder_seconds\": false, \"consecutive_failures\": 0, \"reminder_seconds\": 1000000000.0}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": \"x\", \"warning_reminder_seconds\": false, \"consecutive_failures\": 0, \"reminder_seconds\": 1000000000.0}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got 'x'); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got False); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 7}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 7}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 7,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_reminder_seconds\": 120}}",
+    "env": {},
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_reminder_seconds\": 120}}",
+    "env": {},
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "null",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "null",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "[]",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "[]",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "\"text\"",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "\"text\"",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": null}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": null}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": 5}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": 5}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": [1, 2]}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": [1, 2]}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": \"x\"}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": \"x\"}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 3}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 3,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 3}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 3,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 1,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 1,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 100}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 100,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 100}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 100,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 101}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 101}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": -1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": -1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 2.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 2.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": true}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": true}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": \"3\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": \"3\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": null}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": null}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1000000000000000000000000000000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1000000000000000000000000000000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": [3]}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": [3]}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": {\"n\": \"it's\"}}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": {\"n\": \"it's\"}}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 60}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 60
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 60}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 60
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 59}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 59}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 2592000
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 2592000
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592001}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592001}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 3600.5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 3600.5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": NaN}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": NaN}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": \"\\u00fc\\n\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": \"\\u00fc\\n\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 4, \"reminder_seconds\": 7200, \"warning_consecutive_failures\": 6, \"warning_reminder_seconds\": 86400}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 7200
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 4, \"reminder_seconds\": 7200, \"warning_consecutive_failures\": 6, \"warning_reminder_seconds\": 86400}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 6,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 0, \"warning_reminder_seconds\": 10, \"consecutive_failures\": 5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 5,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 0, \"warning_reminder_seconds\": 10, \"consecutive_failures\": 5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 5,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 10); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": \"x\", \"warning_reminder_seconds\": false, \"consecutive_failures\": 0, \"reminder_seconds\": 1000000000.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": \"x\", \"warning_reminder_seconds\": false, \"consecutive_failures\": 0, \"reminder_seconds\": 1000000000.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got 'x'); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got False); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 7}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 7}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 7,
+     "reminder_seconds": 600
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_reminder_seconds\": 120}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_reminder_seconds\": 120}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "4",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "120",
+     "NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS": "600"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 120
+    },
+    "warnings": []
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "null",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "null",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "[]",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "[]",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "\"text\"",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "\"text\"",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": null}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": null}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": 5}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": 5}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": [1, 2]}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": [1, 2]}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": \"x\"}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": \"x\"}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 3}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 3,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 3}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 3,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 1,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 1,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 100}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 100,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 100}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 100,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 101}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 101}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": -1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": -1}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 2.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 2.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": true}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": true}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": \"3\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": \"3\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": null}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": null}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1000000000000000000000000000000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 1000000000000000000000000000000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": [3]}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": [3]}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": {\"n\": \"it's\"}}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": {\"n\": \"it's\"}}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 60}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 60
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 60}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 60
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 59}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 59}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 2592000
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592000}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 2592000
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592001}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 2592001}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 3600.5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 3600.5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": NaN}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": NaN}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": \"\\u00fc\\n\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": \"\\u00fc\\n\"}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 4, \"reminder_seconds\": 7200, \"warning_consecutive_failures\": 6, \"warning_reminder_seconds\": 86400}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 4,
+     "reminder_seconds": 7200
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 4, \"reminder_seconds\": 7200, \"warning_consecutive_failures\": 6, \"warning_reminder_seconds\": 86400}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 6,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 0, \"warning_reminder_seconds\": 10, \"consecutive_failures\": 5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 5,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 0, \"warning_reminder_seconds\": 10, \"consecutive_failures\": 5}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 5,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 10); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": \"x\", \"warning_reminder_seconds\": false, \"consecutive_failures\": 0, \"reminder_seconds\": 1000000000.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": \"x\", \"warning_reminder_seconds\": false, \"consecutive_failures\": 0, \"reminder_seconds\": 1000000000.0}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got 'x'); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got False); using the global default"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 7}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_consecutive_failures\": 7}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 7,
+     "reminder_seconds": 86400
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_reminder_seconds\": 120}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS is invalid; using default 21600"
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 7,
+    "data_json": "{\"notification_policy\": {\"warning_reminder_seconds\": 120}}",
+    "env": {
+     "NYXMON_NOTIFY_CONSECUTIVE_FAILURES": "0",
+     "NYXMON_NOTIFY_REPEAT_FAILURES": "3",
+     "NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS": "x"
+    },
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 120
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_CONSECUTIVE_FAILURES must be between 1 and 100; using default 2"
+     ],
+     [
+      "nyxmon.service_layer.notification_policy",
+      "NYXMON_NOTIFY_REPEAT_FAILURES=3 is deprecated and is IGNORED: reminder cadence is now elapsed-time based. A sample count cannot be translated to a duration because it means a different interval for every check. Set NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS (and optionally NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS) instead."
+     ]
+    ]
+   }
+  ],
+  [
+   {
+    "check_id": 1,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=1 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   },
+   {
+    "check_id": 1,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "status": "warning",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 86400
+    },
+    "warnings": []
+   },
+   {
+    "check_id": 1,
+    "data_json": "{\"notification_policy\": {\"reminder_seconds\": 1}}",
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.reminder_seconds for check_id=1 is invalid (must be between 60 and 2592000, got 1); using the global default"
+     ]
+    ]
+   },
+   {
+    "check_id": 2,
+    "data_json": "{\"notification_policy\": {\"consecutive_failures\": 0}}",
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.consecutive_failures for check_id=2 is invalid (must be between 1 and 100, got 0); using the global default"
+     ]
+    ]
+   },
+   {
+    "check_id": 0,
+    "data_json": "{\"notification_policy\": 1}",
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": [
+     [
+      "nyxmon.service_layer.notification_policy",
+      "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got 1); using the global default"
+     ]
+    ]
+   },
+   {
+    "check_id": 0,
+    "data_json": "{\"notification_policy\": 2}",
+    "status": "error",
+    "value": {
+     "consecutive_failures": 2,
+     "reminder_seconds": 21600
+    },
+    "warnings": []
+   }
+  ]
+ ]
+}
