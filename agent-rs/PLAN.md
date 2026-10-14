@@ -256,6 +256,21 @@ section 3.6); no other new variable is introduced by the port.
   httpx's per-phase timeouts can be reproduced (5.11); the production unit
   sets no proxy variable (checked on macmini 2026-10-14).
 
+- **D-14 SMTP addresses.** The Rust SMTP executor sends only plain ASCII
+  `from_addr`/`to_addr` values: `local@domain` (dot-atoms), optionally as
+  `Display Name <local@domain>` (atoms and periods, or one quoted string
+  without `"` and `\`) or `<local@domain>`; `to_addr` may list several
+  separated by `,` or `, `; no `=?`, and `From: `/`To: ` plus the value fit
+  one 78-character line. Any other value (non-ASCII text or whitespace,
+  comments, groups, quoted local parts, domain literals, malformed lists,
+  over-long values) is a `configuration_error` ("<field> is not supported
+  by the Rust agent: ...") where Python would render and send it through
+  its email policy. Production uses plain addresses only (2026-10-14:
+  `monitor@xn--wersdrfer-47a.de`, `wersdoerfer.mailmon@gmail.com`,
+  `nyxmon-local-probe@xn--wersdrfer-47a.de`). Pinned by
+  `config/smtp/tests.rs::unsupported_address_forms_are_configuration_errors`
+  and the `config_smtp.json` corpus.
+
 ### 1.6 Result `data` shapes per check type (P1)
 
 Order of keys as written. `[x]` = present only under the stated condition.
@@ -1089,6 +1104,25 @@ raised). Any error in this function is logged as
   `SMTPServerDisconnected` or connection refused → `connection_error`; other SMTP errors →
   `smtp_error`; TLS errors → `tls_error`; other OS errors →
   `connection_error`. Retries only for `temporary` (4xx), with `retry_delay`.
+  `timeout` is reached only by the connect and the TLS handshake: a timed-out
+  reply read is `SMTPServerDisconnected("Connection unexpectedly closed: timed
+  out")` and a timed-out write `SMTPServerDisconnected("Server not
+  connected")` in `smtplib`, so both are `connection_error`.
+- Implementation notes (S7): `from_addr` and `to_addr` must be plain ASCII
+  addresses (D-14); for those Python's email policy sends the header as
+  configured and the envelope is the bare addresses, so no part of
+  `email._header_value_parser` or `email._parseaddr` is ported. The fixture
+  confirms byte parity of the flattened message, the envelope and the
+  Message-ID domain for every corpus value Rust accepts. A `Subject` that is
+  ASCII and fits one 78-character line is sent as it is (always the case
+  with the default prefix); a longer or non-ASCII one becomes a series of
+  RFC 2047 encoded words, one per line, decoding to exactly the subject
+  (P2: Python folds it differently; wire bytes only, nothing stored).
+  `Message-ID` is never folded. SMTPUTF8 is never needed. The EHLO name is
+  `getfqdn()` via `gethostname` and `getnameinfo` (no `/etc/hosts` aliases),
+  computed once per process.
+  Retry delays go through an injected sleeper (`MailEnv`), so the tests
+  record them instead of using a paused clock.
 
 ### 5.8 Collector (`collector.py`) — the core loop
 

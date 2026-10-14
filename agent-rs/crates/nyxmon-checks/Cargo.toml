@@ -29,6 +29,11 @@ regex.workspace = true
 tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "time"] }
 tracing.workspace = true
 x509-parser.workspace = true
+dns-lookup.workspace = true
+hmac.workspace = true
+indexmap.workspace = true
+md-5.workspace = true
+rand.workspace = true
 
 [dev-dependencies]
 rcgen.workspace = true

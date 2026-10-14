@@ -126,6 +126,11 @@ Current fixtures:
   and redirect resolution (`Client._redirect_url`, `urljoin`).
 - `metrics_eval.json`: json-metrics path resolution, evaluation, failure
   summaries and the `actual` truncation.
+- `config_smtp.json`: `SmtpCheckConfig.from_dict` + `validate` and the
+  message the SMTP executor builds (clock, token and Message-ID injected),
+  over a corpus of plain and non-plain addresses (PLAN.md 1.5 D-14).
+- `smtp_text.json`: `_build_subject`. Mail fixture builders live in
+  `fixtures/gen_mail.py`.
 - `unicode_nonprintable.json`: the code points `str.isprintable()` rejects.
   `nyxmon-core` embeds it, so `repr(str)` escapes exactly what the oracle's
   Unicode database (15.1 for CPython 3.13) escapes.

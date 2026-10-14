@@ -6,14 +6,19 @@
 
 pub mod ctx;
 pub mod decode;
+#[cfg(test)]
+mod fake_server;
 pub mod happy_eyeballs;
 pub mod http;
 pub mod http_client;
 pub mod httpx_url;
 pub mod idna2008;
 pub mod json_metrics;
+pub mod mail;
+pub mod net;
 pub mod pyidna;
 pub mod pyos;
+pub mod smtp;
 pub mod starttls;
 pub mod tcp;
 #[cfg(test)]
