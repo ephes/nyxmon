@@ -55,7 +55,7 @@ pub fn order_addresses(resolved: &[SocketAddr]) -> Vec<SocketAddr> {
 }
 
 /// The name `getaddrinfo` sees: C strings end at the first NUL byte.
-fn c_name(name: &str) -> &str {
+pub(crate) fn c_name(name: &str) -> &str {
     name.split('\0').next().unwrap_or("")
 }
 

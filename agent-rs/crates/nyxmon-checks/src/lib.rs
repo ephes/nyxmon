@@ -17,6 +17,7 @@ pub mod idna2008;
 pub mod json_metrics;
 pub mod mail;
 pub mod net;
+pub mod ping;
 pub mod pyidna;
 pub mod pyos;
 pub mod smtp;

@@ -208,9 +208,12 @@ section 3.6); no other new variable is introduced by the port.
 - **D-5 Schema.** Rust runs no DDL and refuses to start on a database whose
   schema is older than the contract (section 2). Python creates/upgrades
   tables itself.
-- **D-6 Unicode digits.** Python's `int()`, `str.isdigit()` and `re` `\d`
-  accept non-ASCII digits in env values and JSON paths; Rust accepts ASCII
-  digits only.
+- **D-6 Unicode digits.** Python's `int()`, `float()`, `str.isdigit()` and
+  `re` `\d` accept non-ASCII digits in env values, JSON paths and numeric
+  strings in check data (e.g. a ping `"timeout": "\u0662"`); Rust accepts
+  ASCII digits only (a ping check then reports `configuration_error`
+  "timeout must be a number", pinned by
+  `config/ping/tests.rs::unicode_digits_are_not_numbers`).
 - **D-7 (withdrawn in plan round 2,** see D-1: big integers are exact up to
   CPython's 4300-digit conversion limit, which `pyjson` enforces the same way.)
 - **D-8 Lone UTF-16 surrogates** in JSON strings (`"\ud800"`): CPython keeps
@@ -255,7 +258,6 @@ section 3.6); no other new variable is introduced by the port.
   `trust_env`). The notifiers use a small hyper HTTP/1.1 client so that
   httpx's per-phase timeouts can be reproduced (5.11); the production unit
   sets no proxy variable (checked on macmini 2026-10-14).
-
 - **D-14 SMTP addresses.** The Rust SMTP executor sends only plain ASCII
   `from_addr`/`to_addr` values: `local@domain` (dot-atoms), optionally as
   `Display Name <local@domain>` (atoms and periods, or one quoted string
@@ -293,6 +295,11 @@ section 3.6); no other new variable is introduced by the port.
     No production nameserver sends malformed packets
     (`dns/wire/tests.rs::compression_pointers_must_point_backwards`,
     `::opt_options_must_fill_the_rdata`).
+- **D-17 Non-UTF-8 `PATH` entries.** The ping binary lookup
+  (`shutil.which`) skips `PATH` directories whose name is not UTF-8, which
+  Python would search through `surrogateescape`; the `/sbin`, `/bin`,
+  `/usr/bin`, `/usr/sbin` fallbacks still apply. Pinned by
+  `ping/tests.rs::which_skips_entries_that_are_not_utf8`.
 
 ### 1.6 Result `data` shapes per check type (P1)
 
@@ -1351,20 +1358,39 @@ exit 1).
 
 ### 5.13 Ping (`ping_executor.py`)
 
-- Target normalisation (`normalize_ping_target`), literal pass-through
-  (zone ids allowed), otherwise `getaddrinfo(host, None, SOCK_DGRAM)` first
-  address in resolver order, bounded by `timeout` → `dns_timeout`/`dns_error`.
-- Binary lookup: `PATH` then `/sbin/ping`, `/bin/ping`, `/usr/bin/ping`,
-  `/usr/sbin/ping` (and `ping6` fallbacks); command per platform exactly as
-  `build_ping_command` (Linux: `ping -n -c 1 -W <ceil(timeout)> <addr>`);
-  environment inherited plus `LC_ALL=C`, `LANG=C`; stdin null; killed after
-  `timeout + 2` s.
+- Configuration (`PingCheckConfig.from_dict` + `validate`: `float()`
+  coercion, booleans rejected, whole-number `count`, check order and
+  messages) and target normalisation (`normalize_ping_target`: URL host via
+  `urlparse`, brackets, whitespace and leading `-` rejected) — fixture
+  (`config_ping.json`).
+- Literal pass-through: anything whose part before the first `%` is an IP
+  address (also `192.0.2.1%x`) is used as is; otherwise
+  `anyio.getaddrinfo(host, None, type=SOCK_DGRAM)` (a non-ASCII name is
+  IDNA 2008 encoded first; the address text is `inet_ntop`'s, a non-zero
+  IPv6 scope id appended as `%<id>`), first address in resolver order,
+  bounded by `timeout` → `dns_timeout`/`dns_error`.
+- Binary lookup: `shutil.which` on `PATH` (`CS_PATH` when unset, nothing
+  for an empty `PATH`), then `/sbin/ping`, `/bin/ping`, `/usr/bin/ping`,
+  `/usr/sbin/ping` (and `ping6` fallbacks), per check; command per
+  platform exactly as `build_ping_command` (Linux:
+  `ping -n -c 1 -W <max(1, ceil(timeout))> <addr>`); environment inherited
+  plus `LC_ALL=C`, `LANG=C`; stdin null; output decoded with
+  `errors="replace"`; killed after `timeout + 2` s.
 - Per attempt: `interval` sleep between attempts; RTT parsing
-  (`parse_rtt_ms` incl. the localized/TTL/source fallbacks), permission
-  markers, `_error_detail`, early stop on `permission_error`/`ping_unavailable`,
-  all-timeouts message, packet stats with `round(…, 1)` — fixture. Spawn
-  errors: `NotFound` → `ping_unavailable`, `PermissionDenied` →
-  `permission_error` with `PERMISSION_HINT`, others → `execution_error`.
+  (`parse_rtt_ms` incl. the localized/TTL/source fallbacks; the four
+  regexes are matched by hand with CPython `re` semantics: Unicode `\s`,
+  `\w`/`\b` from the oracle's table `ping_unicode.json`, the `IGNORECASE`
+  classes of the pattern letters, greedy backtracking order), permission
+  markers, `_error_detail` (`str.splitlines`, `str.lower`), early stop on
+  `permission_error`/`ping_unavailable`, all-timeouts message, packet stats
+  with `round(…, 1)`, `rtt_avg_ms` from Python's compensated `sum` —
+  fixture (`ping_text.json`, incl. scripted executor runs). Spawn errors
+  render as `[Errno N] <strerror>: '<binary>'`: `ENOENT` →
+  `ping_unavailable`, `EACCES`/`EPERM` → `permission_error` with
+  `PERMISSION_HINT`, others → `execution_error`. A command line with a NUL
+  character (an IPv6 zone id can carry one) and a resolver answer that is
+  not an IP literal raise `ValueError` out of the executor
+  (`executor_exception`), as in Python.
 - Note: under the unit's `NoNewPrivileges=true`, file capabilities on
   `/usr/bin/ping` are not granted and `ping_group_range` is closed, so ping
   checks report `permission_error` with either agent (Q4). No production
@@ -1628,7 +1654,8 @@ level, stable inputs, injected clocks/nonces/env via monkeypatching):
 | `incident_payloads.json` | `_merge_stale_batch_payload`, `_stale_batch_message`, `_paused_batch_message`, delivery-marker helpers | |
 | `telegram.json` | `escape_markdown_v2`, `markdown_v2_to_plain_text`, `_truncate`, the message builder of `async_notify_check_failed` (OpsGate stubbed) | |
 | `opsgate.json` | `_build_opsgate_ticket_payload`, `_build_opsgate_prompt`, `sanitize_untrusted_data`, `_opsgate_task_ref` (nonce and time injected; incl. `tests/unit/fixtures/opsgate_prompt_injection.json`) | |
-| `ping_text.json` | `build_ping_command`, `parse_rtt_ms`, `is_permission_failure`, `_error_detail`, `normalize_ping_target`, `_packet_stats` | |
+| `ping_text.json` | `build_ping_command`, `parse_rtt_ms`, `is_permission_failure`, `_error_detail`, `_packet_stats`, RTT statistics, output decoding, scripted executor runs (stub runner/resolver/sleep) | |
+| `ping_unicode.json` | `re` `\w`/`\s`, `IGNORECASE` letter classes, `str.splitlines` separators | embedded `\w` table for the ping parsers |
 | `starttls_text.json` | `_is_positive_starttls_response`, regexes, `_truncate` | |
 | `dns_text.json` | `normalize_dns_value`, `expected_ip_error`, `_check_ip_match`, `dns.name.from_text`/`to_text`, `dns.ipv6.inet_ntoa`, UTF-8 decode errors | |
 | `suppression_fetch.json` (S5b) | `_fetch_payload` on an httpx `MockTransport` | payload or failure, requests |

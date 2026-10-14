@@ -11,6 +11,7 @@ pub mod dns;
 pub mod http;
 pub mod json_metrics;
 pub mod mail;
+pub mod ping;
 pub mod smtp;
 pub mod tcp;
 

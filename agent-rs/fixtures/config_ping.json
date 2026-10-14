@@ -1,0 +1,884 @@
+{
+ "cases": [
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "   "
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "-f"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "host name"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "host\tname"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "host",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"host\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "\u00a0host"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "host",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"host\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "host\u2028"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "host",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"host\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "host\u001c"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "nas.local",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"nas.local\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": " nas.local "
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "router.example.test",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"router.example.test\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "https://router.example.test:8443/status"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "router.example",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"router.example\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "HTTPS://Router.Example/"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "2001:db8::1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"2001:db8::1\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "https://[2001:db8::1]:443/"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "fe80::1%25en0",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"fe80::1%25en0\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "https://[fe80::1%25en0]/"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "https://[::1"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "https://"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "https://user@/x"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "x://-host/"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "spaced",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"spaced\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "x:// spaced/"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "2001:db8::1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"2001:db8::1\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "[2001:db8::1]"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "[ ]"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "[-x]"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "[]"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "[2001:db8::1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"[2001:db8::1\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "[2001:db8::1"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "fe80::1%en0",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"fe80::1%en0\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "fe80::1%en0"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "192.0.2.1%x",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1%x\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1%x"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "-"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "a\u3000b"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "host": "gateway.example.test",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"gateway.example.test\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "gateway.example.test"
+  },
+  {
+   "data_json": "{\"host\": \"192.0.2.5\"}",
+   "outcome": {
+    "host": "192.0.2.5",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.5\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "ignored.example.test"
+  },
+  {
+   "data_json": "{\"host\": \" nas \"}",
+   "outcome": {
+    "host": "nas",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"nas\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"host\": \"\"}",
+   "outcome": {
+    "host": "fallback.example",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"fallback.example\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "fallback.example"
+  },
+  {
+   "data_json": "{\"host\": \"   \"}",
+   "outcome": {
+    "host": "fallback.example",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"fallback.example\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "fallback.example"
+  },
+  {
+   "data_json": "{\"host\": null}",
+   "outcome": {
+    "host": "fallback.example",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"fallback.example\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "fallback.example"
+  },
+  {
+   "data_json": "{\"host\": 42}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"host must be a string\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"host\": true}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"host must be a string\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"host\": [\"a\"]}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"host must be a string\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"host\": {}}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"host must be a string\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"host\": \"-x\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"a host name or IP address is required (set check.url or data.host)\"}"
+   },
+   "url": "fallback.example"
+  },
+  {
+   "data_json": "{\"host\": \"https://h.example/\"}",
+   "outcome": {
+    "host": "h.example",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"h.example\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"host\": \"[2001:db8::2]\"}",
+   "outcome": {
+    "host": "2001:db8::2",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"2001:db8::2\", \"timeout\": 5.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"timeout\": 0}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be greater than 0 and at most 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 0.0001}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 0.0001, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": -1}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be greater than 0 and at most 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": -0.0}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be greater than 0 and at most 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 60}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 60.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 60.0001}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be greater than 0 and at most 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 61}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be greater than 0 and at most 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"2\"}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 2.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \" 2.5 \"}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 2.5, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"1_0\"}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 10.0, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"1__0\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"soon\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"inf\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"-Infinity\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"nan\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"1e400\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"0x10\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": NaN}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": Infinity}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": true}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": false}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": null}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": [1]}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": {}}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": -1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 1.5}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 1.5, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 1e-320}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 1e-320, \"count\": 3, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 0}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be between 1 and 20\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 1}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 1, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 20}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 20, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 21}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be between 1 and 20\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 1.5}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be a whole number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 2.0}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 2, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": \"4\"}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 4, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": \"4.0\"}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 4, \"interval\": 1.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": \"4.5\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be a whole number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 1e300}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be between 1 and 20\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": -0.0}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be between 1 and 20\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": -1}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be between 1 and 20\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": true}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": \"inf\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 999999999999999999999999999999}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be between 1 and 20\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 1.5, \"host\": 42}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be a whole number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 3, \"host\": 42, \"timeout\": \"x\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"host must be a string\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"x\", \"interval\": \"y\"}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be a number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": \"y\", \"host\": 1}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"host must be a string\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": 99, \"count\": 99, \"interval\": 99}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"timeout must be greater than 0 and at most 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"count\": 99, \"interval\": 99}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"count must be between 1 and 20\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": -1}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"interval must be between 0 and 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": -0.0}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 3, \"interval\": -0.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": 0}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 3, \"interval\": 0.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": 60}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 3, \"interval\": 60.0}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": 60.5}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"interval must be between 0 and 60 seconds\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": \"0.25\"}",
+   "outcome": {
+    "host": "192.0.2.1",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"192.0.2.1\", \"timeout\": 5.0, \"count\": 3, \"interval\": 0.25}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"interval\": Infinity}",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"interval must be a finite number\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "{\"timeout\": \"2\", \"count\": \"4\", \"interval\": 0, \"host\": \" nas \"}",
+   "outcome": {
+    "host": "nas",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"nas\", \"timeout\": 2.0, \"count\": 4, \"interval\": 0.0}"
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"timeout\": 2, \"count\": 4, \"interval\": 0.5, \"extra\": [1]}",
+   "outcome": {
+    "host": "nas",
+    "kind": "ready",
+    "result_json": "{\"error_type\": \"dns_error\", \"error_msg\": \"stop\", \"host\": \"nas\", \"timeout\": 2.0, \"count\": 4, \"interval\": 0.5}"
+   },
+   "url": "nas"
+  },
+  {
+   "data_json": "[]",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"check data must be an object\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "\"x\"",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"check data must be an object\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "5",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"check data must be an object\"}"
+   },
+   "url": "192.0.2.1"
+  },
+  {
+   "data_json": "true",
+   "outcome": {
+    "kind": "configuration_error",
+    "result_json": "{\"error_type\": \"configuration_error\", \"error_msg\": \"check data must be an object\"}"
+   },
+   "url": "192.0.2.1"
+  }
+ ]
+}

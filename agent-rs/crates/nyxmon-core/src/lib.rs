@@ -16,6 +16,7 @@ pub mod lease;
 pub mod log;
 pub mod metrics_eval;
 pub mod model;
+pub mod ping_text;
 pub mod policy;
 pub mod pyjson;
 pub mod pyurl;

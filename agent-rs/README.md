@@ -27,6 +27,10 @@ The binary only answers `--version`.
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
 ticket integration, and the logging/shadow notifier.
 
+Slice S6 part 3 adds the `ping` executor (`nyxmon_checks::ping`): the
+system `ping` binary as a subprocess per attempt, with the command line,
+output parsers and statistics in `nyxmon_core::ping_text`.
+
 ## Layout
 
 ```
@@ -164,6 +168,15 @@ Current fixtures:
   `nyxmon-core` replays them against `site::Observer` with the same fakes.
   `site_replay/coverage.json` fails generation unless the corpus executes
   every line of the observer's pure methods and rendering helpers.
+- `config_ping.json`, `ping_text.json`, `ping_unicode.json` (`gen_ping.py`):
+  the ping configuration and target host; `build_ping_command`,
+  `parse_rtt_ms`, `_error_detail`, `is_permission_failure`, the packet and
+  RTT statistics (Python's compensated `sum`), the output decoding and
+  scripted executor runs (stub process runner, resolver and sleep) that
+  `nyxmon_checks::ping` replays; and the `re`/`str` character classes the
+  hand-written matchers of the four ping regexes follow (`\w` is embedded,
+  `\s`, the `IGNORECASE` letter classes and `splitlines` separators are
+  checked in tests).
 - `unicode_props.json`: `str.isdigit()`, `str.lower()` (with the final-sigma
   properties) and the NFKC delimiter check of `urlsplit`, embedded by
   `nyxmon_core::pyjson` (`py_isdigit`, `py_lower`) so they follow the
