@@ -34,6 +34,8 @@ rustls-native-certs = "0.8"
 tokio = "1"
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
 rcgen = "0.14"
+rusqlite = { version = "0.40", features = ["bundled"] }
+tempfile = "3"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -96,9 +96,10 @@ rs-lint:
 rs-fmt:
     cd agent-rs && cargo fmt --all
 
-# Regenerate the shared fixtures from the Python implementation
+# Regenerate the shared fixtures and the schema contract from the Python implementation
 rs-fixtures:
     uv run python agent-rs/fixtures/generate.py
+    uv run python agent-rs/fixtures/generate_schema.py
 
 # Release build of the Rust agent for this host
 rs-build:

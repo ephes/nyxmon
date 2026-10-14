@@ -15,7 +15,10 @@ delivery markers, all pure functions in `nyxmon-core`; slice S4 (site
 observer core): the site connectivity observer as a pure state machine
 (`nyxmon_core::site::Observer`: path and phase machines, payload codec and
 restore, ongoing alert, summaries, recovery recheck, message rendering) whose
-I/O goes through the `SitePorts` trait. The binary only answers `--version`.
+I/O goes through the `SitePorts` trait; slice S2 (in progress): the SQLite
+store (`nyxmon-store`: DB actor, claims and holds) and the schema contract;
+result persistence, incidents, the cleaner batch and the agent lock follow.
+The binary only answers `--version`.
 
 ## Layout
 
@@ -29,14 +32,16 @@ agent-rs/
   crates/
     nyxmon-core/        pure logic (no I/O): pyjson, env readers, domain types,
                         alerting (policy, site, suppression, decision, lease)
-    nyxmon-store/       SQLite store (S2)
+    nyxmon-store/       SQLite store: DB actor, all SQL, schema contract
     nyxmon-checks/      executors (S5-S7); TLS helpers (S1)
     nyxmon-notify/      Telegram, OpsGate, logging notifier (S8)
     nyxmon-agent/       the binary (S9+)
   fixtures/
     generate.py         writes the fixtures from the Python code
     gen_*.py            per-slice fixture builders loaded by generate.py
+    generate_schema.py  writes schema/ from `manage.py migrate`
     *.json              generated fixtures (do not edit by hand)
+    schema/             the Django schema contract (generated)
 ```
 
 ## Requirements
@@ -115,6 +120,22 @@ Current fixtures:
   `site_replay/coverage.json` fails generation unless the corpus executes
   every line of the observer's pure methods and rendering helpers.
 
+## Schema contract
+
+Django migrations own the schema (PLAN.md section 2). The Rust agent runs no
+DDL: at startup it checks that every table and column it uses exists and that
+`nyxboard.0013_site_connectivity_state` (`MIN_NYXBOARD_MIGRATION`) is
+recorded, and refuses to start otherwise (`nyxmon_store::check_schema` is the
+core of `--check-schema`). `fixtures/generate_schema.py` migrates a temporary
+database with the test settings and writes `fixtures/schema/schema.sql` (DDL
+plus `django_migrations` rows; every store test builds its database from it)
+and `fixtures/schema/agent_tables.json` (the agent tables' columns and the
+minimum migration). `tests/unit/test_agent_rs_schema_contract.py` fails when a
+migration changes them: run `just rs-fixtures`, then update
+`nyxmon-store/src/schema.rs` (and PLAN.md 2.2) if the agent tables changed.
+Never add DDL to the Python agent; a new required column raises
+`MIN_NYXBOARD_MIGRATION` and is a breaking agent release.
+
 ## Conventions for later slices
 
 - JSON values are `nyxmon_core::PyJson`, never `serde_json::Value`: it keeps
@@ -145,3 +166,12 @@ Current fixtures:
 - TLS goes through `nyxmon_checks::tls` (rustls with the `ring` provider,
   system roots, TLS 1.2+); `tls::server_name` IDNA-encodes Unicode hosts
   like Python.
+- Database access goes through `nyxmon_store::Store`, a cloneable handle to
+  the one read-write connection on its own thread. Each method is one
+  transaction (writes `BEGIN IMMEDIATE`); a sent operation completes even if
+  the caller is cancelled. Where Python reads `time.time()` or
+  `check_batch_size()` inside a repository method, the Rust method takes
+  `now`/`batch_size` arguments. `StoreError::ActorDied` is fatal (exit 1).
+- A `health_check.data` value that cannot be decoded reads as `PyJson::Null`
+  (`nyxmon_store::data_is_undecodable`; valid `null` reads as `{}`, D-11).
+  The runner reports such a check as `configuration_error` (D-8).

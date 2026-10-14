@@ -249,6 +249,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fails on drift). `just test`, `just lint` and `just typecheck` now also run
   the Rust checks, and CI gains a `rust` job. Nothing deploys the Rust agent
   yet; the Python agent is unchanged.
+- Rust agent store (`nyxmon-store`, slice S2 of `agent-rs/PLAN.md`): the
+  SQLite actor with the check claim, stale reclaim, release and hold
+  operations of the Python repository, and the schema contract. The Rust agent runs no DDL;
+  it verifies the Django-migrated schema instead. `agent-rs/fixtures/schema/`
+  holds the migrated schema the Rust tests run against, and
+  `tests/unit/test_agent_rs_schema_contract.py` fails when a migration changes
+  it (`just rs-fixtures` regenerates it). Rule from now on: no new DDL in the
+  Python agent; schema changes are Django migrations.
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but

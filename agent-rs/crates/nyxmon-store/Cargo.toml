@@ -10,6 +10,13 @@ publish.workspace = true
 
 [dependencies]
 nyxmon-core.workspace = true
+rusqlite.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["sync", "rt", "macros", "time"] }
 
 [lints]
 workspace = true
