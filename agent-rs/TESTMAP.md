@@ -137,6 +137,24 @@ another.
 | `test_tcp_executor.py` executor tests (plain, connection error, retries, implicit TLS, cert expiry, SNI, STARTTLS upgrade) | `nyxmon-checks` TCP executor fake-server tests | pending part 2 |
 | `test_ping_executor.py` | `ping_text.json`, fake `ping` scripts | pending part 3 |
 
+## S5a — HTTP family (http, json-http, json-metrics)
+
+S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
+(suppression fetch and DNS).
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `HttpCheckConfig.from_dict` + `validate` (`test_http_executor.py::test_invalid_config_returns_configuration_error`, `::test_malformed_config_returns_configuration_error`; `test_config_numeric_contracts.py` HTTP rows: durations, integers, bounds, zero delay) | `config_http.json` `cases` (`nyxmon-core/src/config/tests.rs`) | done |
+| `JsonMetricsCheckConfig.from_dict` + `validate` (`test_json_metrics_config.py`, incl. `TestMaxBodyBytes`; `int()`/`float()` coercions, `TypeError`/`AttributeError` paths) | `config_json_metrics.json` `cases` | done |
+| `_resolve_path`, `_evaluate`, `_bounded_actual`, `_build_failure_summary` (`test_json_metrics_executor.py::test_path_missing_counts_as_failure`, `::test_bracket_array_path_is_supported`, `::test_missing_path_fails_for_every_operator`, `::test_present_path_still_passes`, `::test_present_null_that_fails_has_no_missing_reason`, `::test_large_actual_is_truncated`, `::test_small_actual_is_kept_as_is`) | `metrics_eval.json` (`nyxmon-core/src/metrics_eval/tests.rs`) | done |
+| `HttpCheckExecutor.execute` result shapes and retries (`test_http_executor.py`: success, redirect contract incl. retries and drift, 502 retry, exhausted retries, 404 no retry, non-2xx, timeout and request-error retries) | `config_http.json` `executor_cases` (Python executor on an httpx `MockTransport`) replayed against a fake server (`nyxmon-checks/src/http/tests.rs`); key order, requests and retry delays compared | done |
+| `test_http_executor.py::test_body_is_never_read_and_the_stream_is_closed` | `http/tests.rs::the_final_body_is_never_read` | done |
+| `JsonMetricsExecutor.execute` (`test_json_metrics_executor.py`: thresholds, severities, HTTP error, invalid config, JSON error, timeout retries, declared/streamed/decompressed body caps, error body not read) | `config_json_metrics.json` `executor_cases` replayed against a fake server (`json_metrics/tests.rs`), plus `::a_body_without_declared_length_is_capped_while_streaming`, `::an_error_response_body_is_not_read`, `::transport_errors_are_request_errors_and_retried` | done |
+| httpx URL parsing (`_urlparse.urlparse`, `URL.raw_path`, credentials, IPv6 scopes, `idna.encode` IDNA 2008 incl. CONTEXTJ/CONTEXTO and the Bidi Rule) and redirect resolution (`_redirect_url`, `URL.join`/`urljoin`) | `httpx_url.json` (`nyxmon-checks/src/httpx_url/tests.rs`) on `nyxmon_checks::idna2008` (`idna2008_tables.json`) | done |
+| httpx redirects (`_send_handling_redirects`, `_redirect_headers`, 20-redirect limit, redirect bodies read under the read timeout), URL credentials (`_build_request_auth`), default headers and User-Agent, batch cookie jar, `Cookie` order and path matching, per-read timeouts, timeouts beyond float range, anyio Happy Eyeballs | `http_client/tests.rs` (one fake-server test per rule), `http/tests.rs::a_stalled_redirect_body_times_out`, `::the_timeout_bounds_each_read_not_the_whole_request`, `::an_invalid_location_fails_even_when_redirects_are_not_followed`, `::url_errors_follow_the_httpx_classes`, `json_metrics/tests.rs::a_timeout_beyond_float_range_is_an_unexpected_error` | done |
+| httpx `Content-Encoding` decoders (`GZipDecoder` incl. header CRC, `DeflateDecoder` with raw fallback, `MultiDecoder`, unknown encodings) | `decode/tests.rs` and the gzip/deflate `executor_cases` | done |
+| Retry delays (`anyio.sleep`) | recorded per fixture case (`Sleeper::recording`); `http/tests.rs::retry_delays_wait_on_the_tokio_clock` checks the real sleeper on a paused clock | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -147,7 +165,7 @@ another.
 | `tests/unit/test_site_dependency.py` | `site_dependency.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_holds.py` (snapshot) | `site_snapshot.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
-| `tests/unit/test_http_executor.py`, `test_json_metrics_executor.py`, `test_json_metrics_config.py`, `test_dns_*.py`, `test_config_numeric_contracts.py` | `config_*.json`, `metrics_eval.json`, fake-server tests | S5 | pending |
+| `tests/unit/test_dns_*.py`, `test_config_numeric_contracts.py` (DNS rows), `test_notification_suppression.py` (fetch: redirects, caps, compression refusal) | `config_dns.json`, `dns_text.json`, fake DNS responder, suppression fake-server tests | S5b | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | in progress |
 | `tests/unit/test_smtp_executor.py`, `test_imap_*.py`, `test_mail_tls_verify.py` (executors) | `smtp_text.json`, `config_imap.json`, fake servers | S7 | pending |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |

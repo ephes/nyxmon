@@ -1,0 +1,8256 @@
+{
+ "cases": [
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": null,
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": [],
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": "x",
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": 5,
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": {},
+   "outcome": {
+    "error": "url is required"
+   }
+  },
+  {
+   "data": {
+    "url": ""
+   },
+   "outcome": {
+    "error": "url is required"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": null
+   },
+   "outcome": {
+    "error": "url is required"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": 0
+   },
+   "outcome": {
+    "error": "url is required"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": 5
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": 5
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": [
+     "x"
+    ]
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": [
+      "x"
+     ]
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": true
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": true
+    }
+   }
+  },
+  {
+   "data": {
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "checks must contain at least one entry"
+   }
+  },
+  {
+   "data": {
+    "checks": [],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "checks must contain at least one entry"
+   }
+  },
+  {
+   "data": {
+    "checks": {},
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "checks must contain at least one entry"
+   }
+  },
+  {
+   "data": {
+    "checks": {
+     "a": 1
+    },
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": {
+    "checks": "abc",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": {
+    "checks": 5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": 1.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": true,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     null
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ]
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     "x"
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     5
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "AttributeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {}
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "op must be one of {'!=', '<', '<=', '==', '>', '>='}"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     },
+     {}
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "op must be one of {'!=', '<', '<=', '==', '>', '>='}"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<"
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "severity must be one of {'critical', 'warning'}"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "severity": "info"
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "severity must be one of {'critical', 'warning'}"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": [
+       "<"
+      ],
+      "severity": "x"
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": {},
+      "severity": "x"
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "severity": [
+       "x"
+      ]
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "=",
+      "severity": "x"
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "op must be one of {'!=', '<', '<=', '==', '>', '>='}"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": 1,
+      "severity": "warning"
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "op must be one of {'!=', '<', '<=', '==', '>', '>='}"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "severity": "critical"
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "check.path is required"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "check.path is required"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": null,
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": null,
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": 5,
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": 5,
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": [],
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": [],
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$",
+      "severity": "critical",
+      "value": [
+       1
+      ]
+     },
+     {
+      "op": "<=",
+      "path": "$",
+      "severity": "critical",
+      "value": [
+       1
+      ]
+     },
+     {
+      "op": ">",
+      "path": "$",
+      "severity": "critical",
+      "value": [
+       1
+      ]
+     },
+     {
+      "op": ">=",
+      "path": "$",
+      "severity": "critical",
+      "value": [
+       1
+      ]
+     },
+     {
+      "op": "==",
+      "path": "$",
+      "severity": "critical",
+      "value": [
+       1
+      ]
+     },
+     {
+      "op": "!=",
+      "path": "$",
+      "severity": "critical",
+      "value": [
+       1
+      ]
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$",
+       "severity": "critical",
+       "value": [
+        1
+       ]
+      },
+      {
+       "op": "<=",
+       "path": "$",
+       "severity": "critical",
+       "value": [
+        1
+       ]
+      },
+      {
+       "op": ">",
+       "path": "$",
+       "severity": "critical",
+       "value": [
+        1
+       ]
+      },
+      {
+       "op": ">=",
+       "path": "$",
+       "severity": "critical",
+       "value": [
+        1
+       ]
+      },
+      {
+       "op": "==",
+       "path": "$",
+       "severity": "critical",
+       "value": [
+        1
+       ]
+      },
+      {
+       "op": "!=",
+       "path": "$",
+       "severity": "critical",
+       "value": [
+        1
+       ]
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "severity": "warning"
+     }
+    ],
+    "timeout": 0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "auth": {
+     "password": "p",
+     "username": "u"
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": {
+      "password": "p",
+      "username": "u"
+     },
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "auth": {
+     "username": "u"
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "auth": {
+     "password": "p"
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "auth": {},
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "auth": {
+     "password": null,
+     "username": 1
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": {
+      "password": null,
+      "username": 1
+     },
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "auth": [
+     "username",
+     "password"
+    ],
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": [
+      "username",
+      "password"
+     ],
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "auth": [
+     "username"
+    ],
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "auth": [],
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "auth": "usernamepassword",
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": "usernamepassword",
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "auth": "username",
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "auth": "",
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "auth": 5,
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "auth": 0,
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "auth": true,
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "auth": false,
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "auth": 1.5,
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "auth": null,
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": -0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": -0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": -0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": -0.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": -0.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 0.25,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 0.25,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 0.25,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0.25,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 0.25,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 0.25,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 1.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 1.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 1.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 1.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 1.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 1.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 1.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 1.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 1.9,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 1.9,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 1.9,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 1.9,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 1.9,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 1.9,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 100,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 100.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 100,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 100,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 100,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 100.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 100,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 100,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 101,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 101.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 101,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 101,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 101,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 101.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 101,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 101,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 200.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 200.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 200.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 200,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 200.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 200.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 200.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 300,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 300.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 300,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 300,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 300,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 300.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 300,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 300,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 300.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 300.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 300.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 300,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 300.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 300.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 300.0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 300.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 300.5,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 300.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 300,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 300.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 300.5,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 300.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 301,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 301.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 301,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 301,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 301,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 301.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 301,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 301,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 599,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 599.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 599,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 599,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 599,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 599.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 599,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 599,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 600,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 600.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 600,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 600,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 600,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 600.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 600,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 600,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": -1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": -1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "retries must be zero or positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": -1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "retry_delay must be zero or positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": -1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": -0.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": -0.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": -0.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "retry_delay must be zero or positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": -0.5,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": true,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 1.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": true,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": true,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 1.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": true,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": false,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": false,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 0,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": false,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": false,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 5,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 5.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "junk",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "junk",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: 'junk'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "junk",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "could not convert string to float: 'junk'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "junk",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": null,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": null,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": null,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": null,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": [],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": [],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": [],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": [],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": {},
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": {},
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": {},
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": {},
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": [
+     1
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": [
+     1
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": [
+     1
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": [
+     1
+    ],
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 9223372036854775808,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 9.223372036854776e+18,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 9223372036854775808,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 9223372036854775808,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 9223372036854775808,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 9.223372036854776e+18,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 9223372036854775808,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 9223372036854775808,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": Infinity,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "OverflowError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": Infinity,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "OverflowError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": Infinity,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": -Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": -Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "OverflowError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": -Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "retry_delay must be zero or positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": -Infinity,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": NaN,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": NaN,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": NaN,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "cannot convert float NaN to integer"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": NaN,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": NaN,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": NaN,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "2",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "2",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 2,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "2",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "2",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": " 3 ",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": " 3 ",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 3,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": " 3 ",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 3.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": " 3 ",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "1_0",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "1_0",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 10,
+     "retry_delay": 2.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "1_0",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 10.0,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "1_0",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "2.5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "2.5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: '2.5'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "2.5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": 2.5,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "2.5",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "abc",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "abc",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: 'abc'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "abc",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "could not convert string to float: 'abc'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "abc",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "nan",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "nan",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: 'nan'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "nan",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": NaN,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "nan",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "inf",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "inf",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: 'inf'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "inf",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": Infinity,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "inf",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "1e400",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "1e400",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: '1e400'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "1e400",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "ok": {
+     "auth": null,
+     "checks": [
+      {
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning",
+       "value": 1
+      }
+     ],
+     "max_body_bytes": 1048576,
+     "retries": 1,
+     "retry_delay": Infinity,
+     "timeout": 10.0,
+     "url": "http://metrics.test/m"
+    }
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "1e400",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "timeout": "",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: ''"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": "",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "could not convert string to float: ''"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "auth": {},
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "x",
+    "retries": "x",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "auth must include username and password"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": "x",
+    "retries": "x",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be a whole number of bytes"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": "x",
+    "retry_delay": "x",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "invalid literal for int() with base 10: 'x'"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": null,
+    "retry_delay": "x",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": null,
+    "timeout": "x",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": -1,
+    "timeout": "x",
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "exception": "TypeError"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": -1,
+    "timeout": 0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "timeout must be positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retries": -1,
+    "retry_delay": -1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "retries must be zero or positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 0,
+    "retry_delay": -1,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "retry_delay must be zero or positive"
+   }
+  },
+  {
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "max_body_bytes": 0,
+    "url": "http://metrics.test/m"
+   },
+   "outcome": {
+    "error": "max_body_bytes must be positive"
+   }
+  }
+ ],
+ "executor_cases": [
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "warning",
+      "value": 2
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>",
+     "error_msg": "1 warning: $.queue",
+     "error_type": "threshold_failed",
+     "failures": [
+      {
+       "actual": 3,
+       "expected": 2,
+       "op": "<",
+       "path": "$.queue",
+       "severity": "warning"
+      }
+     ]
+    },
+    "failure_keys": [
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ]
+    ],
+    "keys": [
+     "error_type",
+     "error_msg",
+     "failures",
+     "duration_ms"
+    ],
+    "status": "warning"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 2
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>",
+     "error_msg": "1 critical: $.queue",
+     "error_type": "threshold_failed",
+     "failures": [
+      {
+       "actual": 3,
+       "expected": 2,
+       "op": "<",
+       "path": "$.queue",
+       "severity": "critical"
+      }
+     ]
+    },
+    "failure_keys": [
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ]
+    ],
+    "keys": [
+     "error_type",
+     "error_msg",
+     "failures",
+     "duration_ms"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": ">",
+      "path": "$.queue",
+      "severity": "warning",
+      "value": 5
+     },
+     {
+      "op": "!=",
+      "path": "$.state",
+      "severity": "critical",
+      "value": "ok"
+     },
+     {
+      "op": "==",
+      "path": "$.missing",
+      "severity": "critical",
+      "value": null
+     },
+     {
+      "op": "==",
+      "path": "$.items[2].x",
+      "severity": "warning",
+      "value": 6
+     },
+     {
+      "op": ">=",
+      "path": "$.items.1",
+      "severity": "critical",
+      "value": 2
+     },
+     {
+      "op": "==",
+      "path": "items[9]",
+      "severity": "warning",
+      "value": 1
+     },
+     {
+      "op": "<",
+      "path": "$.state",
+      "severity": "critical",
+      "value": 1
+     },
+     {
+      "op": "==",
+      "path": "$",
+      "severity": "warning",
+      "value": null
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>",
+     "error_msg": "3 critical: $.state, $.missing, $.state; 4 warning: $.queue, $.items[2].x, items[9], $",
+     "error_type": "threshold_failed",
+     "failures": [
+      {
+       "actual": 3,
+       "expected": 5,
+       "op": ">",
+       "path": "$.queue",
+       "severity": "warning"
+      },
+      {
+       "actual": "ok",
+       "expected": "ok",
+       "op": "!=",
+       "path": "$.state",
+       "severity": "critical"
+      },
+      {
+       "actual": null,
+       "expected": null,
+       "op": "==",
+       "path": "$.missing",
+       "reason": "path_missing",
+       "severity": "critical"
+      },
+      {
+       "actual": 5,
+       "expected": 6,
+       "op": "==",
+       "path": "$.items[2].x",
+       "severity": "warning"
+      },
+      {
+       "actual": null,
+       "expected": 1,
+       "op": "==",
+       "path": "items[9]",
+       "reason": "path_missing",
+       "severity": "warning"
+      },
+      {
+       "actual": "ok",
+       "expected": 1,
+       "op": "<",
+       "path": "$.state",
+       "severity": "critical"
+      },
+      {
+       "actual": {
+        "items": [
+         1,
+         2,
+         {
+          "x": 5
+         }
+        ],
+        "queue": 3,
+        "state": "ok"
+       },
+       "expected": null,
+       "op": "==",
+       "path": "$",
+       "severity": "warning"
+      }
+     ]
+    },
+    "failure_keys": [
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ],
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ],
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "reason",
+      "severity"
+     ],
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ],
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "reason",
+      "severity"
+     ],
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ],
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ]
+    ],
+    "keys": [
+     "error_type",
+     "error_msg",
+     "failures",
+     "duration_ms"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "==",
+      "path": "$",
+      "severity": "critical",
+      "value": []
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>",
+     "error_msg": "1 critical: $",
+     "error_type": "threshold_failed",
+     "failures": [
+      {
+       "actual": "[\"vvvvvvvvvvvvvvvvvvvv0\", \"vvvvvvvvvvvvvvvvvvvv1\", \"vvvvvvvvvvvvvvvvvvvv2\", \"vvvvvvvvvvvvvvvvvvvv3\", \"vvvvvvvvvvvvvvvvvvvv4\", \"vvvvvvvvvvvvvvvvvvvv5\", \"vvvvvvvvvvvvvvvvvvvv6\", \"vvvvvvvvvvvvvvvvvvvv7\",\u2026",
+       "actual_truncated": true,
+       "expected": [],
+       "op": "==",
+       "path": "$",
+       "severity": "critical"
+      }
+     ]
+    },
+    "failure_keys": [
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity",
+      "actual_truncated"
+     ]
+    ],
+    "keys": [
+     "error_type",
+     "error_msg",
+     "failures",
+     "duration_ms"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "5b22767676767676767676767676767676767676767630222c2022767676767676767676767676767676767676767631222c2022767676767676767676767676767676767676767632222c2022767676767676767676767676767676767676767633222c2022767676767676767676767676767676767676767634222c2022767676767676767676767676767676767676767635222c2022767676767676767676767676767676767676767636222c2022767676767676767676767676767676767676767637222c2022767676767676767676767676767676767676767638222c2022767676767676767676767676767676767676767639222c202276767676767676767676767676767676767676763130222c202276767676767676767676767676767676767676763131222c202276767676767676767676767676767676767676763132222c202276767676767676767676767676767676767676763133222c202276767676767676767676767676767676767676763134222c202276767676767676767676767676767676767676763135222c202276767676767676767676767676767676767676763136222c202276767676767676767676767676767676767676763137222c202276767676767676767676767676767676767676763138222c202276767676767676767676767676767676767676763139222c202276767676767676767676767676767676767676763230222c202276767676767676767676767676767676767676763231222c202276767676767676767676767676767676767676763232222c202276767676767676767676767676767676767676763233222c202276767676767676767676767676767676767676763234222c202276767676767676767676767676767676767676763235222c202276767676767676767676767676767676767676763236222c202276767676767676767676767676767676767676763237222c202276767676767676767676767676767676767676763238222c202276767676767676767676767676767676767676763239225d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "==",
+      "path": "$.a",
+      "severity": "warning",
+      "value": null
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a206e756c6c7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "!=",
+      "path": "$.a",
+      "severity": "warning",
+      "value": null
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>",
+     "error_msg": "1 warning: $.a",
+     "error_type": "threshold_failed",
+     "failures": [
+      {
+       "actual": null,
+       "expected": null,
+       "op": "!=",
+       "path": "$.a",
+       "severity": "warning"
+      }
+     ]
+    },
+    "failure_keys": [
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ]
+    ],
+    "keys": [
+     "error_type",
+     "error_msg",
+     "failures",
+     "duration_ms"
+    ],
+    "status": "warning"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a206e756c6c7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>",
+     "error_msg": "1 warning: $.a",
+     "error_type": "threshold_failed",
+     "failures": [
+      {
+       "actual": NaN,
+       "expected": 1,
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning"
+      }
+     ]
+    },
+    "failure_keys": [
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ]
+    ],
+    "keys": [
+     "error_type",
+     "error_msg",
+     "failures",
+     "duration_ms"
+    ],
+    "status": "warning"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a204e614e7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>",
+     "error_msg": "1 warning: $.a",
+     "error_type": "threshold_failed",
+     "failures": [
+      {
+       "actual": 123456789012345678901234567890,
+       "expected": 1,
+       "op": "<",
+       "path": "$.a",
+       "severity": "warning"
+      }
+     ]
+    },
+    "failure_keys": [
+     [
+      "path",
+      "op",
+      "expected",
+      "actual",
+      "severity"
+     ]
+    ],
+    "keys": [
+     "error_type",
+     "error_msg",
+     "failures",
+     "duration_ms"
+    ],
+    "status": "warning"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a203132333435363738393031323334353637383930313233343536373839307d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": null,
+      "severity": "critical",
+      "value": 10
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "exception": "TypeError"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": 5,
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "exception": "TypeError"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": null,
+      "severity": "critical",
+      "value": 10
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "error_msg": "HTTP 599",
+     "error_type": "http_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 500
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 500
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "error_msg": "HTTP 502",
+     "error_type": "http_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 502
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retries": 0,
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "HTTP 503",
+     "error_type": "http_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 503
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retries": 3,
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "HTTP 404",
+     "error_type": "http_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 404
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retries": "2",
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5,
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 500
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 500
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/next"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "Expecting value: line 1 column 1 (char 0)",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 304
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "Expecting value: line 1 column 1 (char 0)",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "6e6f74206a736f6e",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "Expecting value: line 1 column 1 (char 0)",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "Extra data: line 1 column 10 (char 9)",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a20317d2078",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "efbbbf7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "fffe7b0022007100750065007500650022003a00200033002c00200022007300740061007400650022003a00200022006f006b0022002c00200022006900740065006d00730022003a0020005b0031002c00200032002c0020007b002200780022003a00200035007d005d007d00",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "fffefd",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "5b31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131315d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "max_body_bytes": 10,
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "response body of 54 bytes exceeds the 10 byte limit",
+     "error_type": "body_too_large"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "max_body_bytes": 54,
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "max_body_bytes": 10,
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "response body of 0099 bytes exceeds the 10 byte limit",
+     "error_type": "body_too_large"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [
+       [
+        "Content-Length",
+        "0099"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "max_body_bytes": 69,
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "1f8b08000000000002ffab562a2c4d2d4d55b25230d651502a2e492c01b195f2b39580dccc92d4dc622037da5047c14847a15aa902c831ad8dad05008e53787f36000000",
+      "headers": [
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "1f8b08000000000002ffab562a2c4d2d4d55b25230d651502a2e492c01b195f2b39580dccc92d4dc622037da5047c14847a15aa902c831ad8dad05008e53787f36000000",
+      "headers": [
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "789cab562a2c4d2d4d55b25230d651502a2e492c01b195f2b39580dccc92d4dc622037da5047c14847a15aa902c831ad8dad0500aab80f1a",
+      "headers": [
+       [
+        "Content-Encoding",
+        "deflate"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "ab562a2c4d2d4d55b25230d651502a2e492c01b195f2b39580dccc92d4dc622037da5047c14847a15aa902c831ad8dad0500",
+      "headers": [
+       [
+        "Content-Encoding",
+        "deflate"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "1f8b08000000000002ff013800c7ff789cab562a2c4d2d4d55b25230d651502a2e492c01b195f2b39580dccc92d4dc622037da5047c14847a15aa902c831ad8dad0500aab80f1a4484c33c38000000",
+      "headers": [
+       [
+        "Content-Encoding",
+        "deflate, gzip"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [
+       [
+        "Content-Encoding",
+        "br"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [
+       [
+        "Content-Encoding",
+        "Identity"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "Expecting value: line 1 column 1 (char 0)",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "1f8b080067617262616765",
+      "headers": [
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "timeout": true
+    },
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "timeout"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "timeout": true
+    },
+    {
+     "timeout": true
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "request_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "disconnect": true
+    },
+    {
+     "disconnect": true
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "auth": {
+     "password": "s\u00e9cret",
+     "username": "user"
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": "Basic dXNlcjpzw6ljcmV0",
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "auth": {
+     "password": "pw",
+     "username": "user"
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": "Basic dXNlcjpwdw==",
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": "Basic dXNlcjpwdw==",
+     "cookie": null,
+     "path": "/next"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "",
+      "headers": [
+       [
+        "Location",
+        "/next"
+       ]
+      ],
+      "status": 302
+     }
+    },
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "auth": {
+     "password": "pw",
+     "username": 1
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "auth": {
+     "password": null,
+     "username": "u"
+    },
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "auth": [
+     "username",
+     "password"
+    ],
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "auth": "username:password",
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": 5
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": "5",
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "exception": "TypeError"
+   },
+   "requests": [],
+   "steps": [],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b227175657565223a20332c20227374617465223a20226f6b222c20226974656d73223a205b312c20322c207b2278223a20357d5d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "duration_ms": "<duration>"
+    },
+    "keys": [
+     "duration_ms"
+    ],
+    "status": "ok"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "1f8b08020000000000ff90c9ab562a2c4d2d4d55b25230d651502a2e492c01b195f2b39580dccc92d4dc622037da5047c14847a15aa902c831ad8dad05008e53787f36000000",
+      "headers": [
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [
+    0.5
+   ],
+   "outcome": {
+    "data": {
+     "error_msg": "HTTP 599",
+     "error_type": "http_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    },
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "1f8b08020000000000ff6f36ab562a2c4d2d4d55b25230d651502a2e492c01b195f2b39580dccc92d4dc622037da5047c14847a15aa902c831ad8dad05008e53787f36000000",
+      "headers": [
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retries": null,
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "exception": "TypeError"
+   },
+   "requests": [],
+   "steps": [],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.queue",
+      "severity": "critical",
+      "value": 10
+     },
+     {
+      "op": "==",
+      "path": "$.state",
+      "severity": "warning",
+      "value": "ok"
+     }
+    ],
+    "retries": "abc",
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "invalid literal for int() with base 10: 'abc'",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [],
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "checks must contain at least one entry",
+     "error_type": "configuration_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [],
+   "steps": [],
+   "url": "http://metrics.test/m"
+  }
+ ]
+}

@@ -44,6 +44,9 @@ url = "2"
 webpki-roots = "1"
 rand = "0.10"
 regex = "1"
+cookie_store = { version = "0.22", default-features = false, features = ["preserve_order"] }
+flate2 = "1"
+base64 = "0.22"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

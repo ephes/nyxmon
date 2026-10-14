@@ -10,6 +10,17 @@ publish.workspace = true
 
 [dependencies]
 nyxmon-core.workspace = true
+base64.workspace = true
+flate2.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+cookie_store.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+tokio-rustls.workspace = true
+url.workspace = true
+webpki-roots.workspace = true
 idna.workspace = true
 unicode-normalization.workspace = true
 rustls.workspace = true
@@ -20,8 +31,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 rcgen.workspace = true
-tokio = { workspace = true, features = ["rt", "macros", "net", "io-util", "test-util"] }
-tokio-rustls.workspace = true
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time", "test-util"] }
 
 [lints]
 workspace = true

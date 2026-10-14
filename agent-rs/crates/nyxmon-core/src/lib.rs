@@ -14,6 +14,7 @@ mod fixture;
 pub mod incident;
 pub mod lease;
 pub mod log;
+pub mod metrics_eval;
 pub mod model;
 pub mod policy;
 pub mod pyjson;

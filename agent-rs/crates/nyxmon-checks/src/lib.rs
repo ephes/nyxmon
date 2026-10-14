@@ -1,12 +1,21 @@
 //! Check executors of the nyxmon agent and their network helpers.
 //!
-//! S1 provides the shared TLS helpers ([`tls`]); slices S5-S7 add the
-//! executors (PLAN.md sections 5.5-5.7, 5.12-5.14) and the registry.
+//! S1 provides the shared TLS helpers ([`tls`]); S5 the HTTP family
+//! ([`http`], [`json_metrics`] on [`http_client`] and [`decode`]); S6-S7 add
+//! the other executors (PLAN.md sections 5.5-5.7, 5.12-5.14).
 
+pub mod ctx;
+pub mod decode;
 pub mod happy_eyeballs;
+pub mod http;
+pub mod http_client;
+pub mod httpx_url;
 pub mod idna2008;
+pub mod json_metrics;
 pub mod pyidna;
 pub mod pyos;
 pub mod starttls;
 pub mod tcp;
+#[cfg(test)]
+mod testutil;
 pub mod tls;
