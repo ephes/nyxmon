@@ -19,6 +19,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   include them. After changing agent behaviour in `src/nyxmon` or adding a
   Django migration, run `just rs-fixtures` (the fixture drift and schema
   contract tests fail otherwise). Never add DDL to the Python agent.
+  `just rs-parity` runs the Python and the Rust agent side by side on fake
+  servers and fails on any unmasked difference (CI job `parity`).
 
 ## Production Deployment
 - Build and publish package: `uv build && uv publish`
