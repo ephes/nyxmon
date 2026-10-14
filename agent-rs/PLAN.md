@@ -935,8 +935,12 @@ behaviour is pinned by a Python-generated fixture (section 7.2).
   (`Database file not found: …`), on schema failure, on lock contention, and on
   any fatal startup error (`Error running monitoring services`); exit 0 after a
   signal-initiated shutdown.
-- Order: parse → logging → DB exists → open store → schema verification →
-  agent lock → notifier selection (`Telegram notifications enabled`) → site
+- Order: parse → logging → (`--check-schema`: verify read-only and exit) →
+  refuse `--shadow` with `--enable-telegram` → DB exists → agent lock (taken
+  before the database is touched, like `cli.py:start_agent`, which locks
+  before `Initializing monitoring services with database: …`) → open store →
+  schema verification (the report is logged at INFO with the journal mode, or
+  at ERROR with exit 1) → notifier selection (`Telegram notifications enabled`) → site
   config (`site connectivity observation is <mode>` when not off) →
   `validate_check_types` (logs only: `No checks found …`, or warnings listing
   unregistered types, or `Validated <n> check(s) - all types registered: …`) →
@@ -945,6 +949,21 @@ behaviour is pinned by a Python-generated fixture (section 7.2).
   observer, cleaner → `Monitoring started with <n>s check interval`.
 - No HTTP library request logging at INFO (`setup_logging` silences httpx);
   reqwest/hyper/rustls targets are set to WARN.
+- Implementation (S9b): `nyxmon-agent/src/{cli,app,startup,logging}.rs`.
+  argparse `type=int` is reproduced with Python `int()` parsing (values
+  beyond 64 bits are a usage error, exit 2 like any argparse error; the
+  usage text differs, P2). `Database file not found: <path>` renders the
+  path like `str(pathlib.Path(...))`. Exceptions that Python logs with a
+  traceback (`Error running monitoring services`, the constructor
+  `ValueError` of `--batch-size 0`, an `OverflowError` from the notifier
+  environment) are logged as the message followed by `<Class>: <text>` on
+  the next line (P2). Every log target that does not start with `nyxmon`
+  (hyper, rustls, …) is capped at WARNING. The set reprs of
+  `validate_check_types` are rendered sorted (P2, 1.3). A dead DB actor
+  (`StoreError::ActorDied` on a claim) ends the collector and the process
+  exits 1 after the shutdown path ran. The binary runs on a multi-thread
+  tokio runtime (2 workers, 32 blocking threads); `shutdown_background`
+  keeps a resolver call blocked in `getaddrinfo` from delaying the exit.
 
 ### 5.2 Notification policy (`notification_policy.py`) — fixture
 
@@ -1300,6 +1319,12 @@ treat only `Failed` as undelivered; a send that panics/errors is `Failed`.
 Names: `Nyxmon collector (stale check leases)`,
 `Nyxmon collector (execution paused)`; error types
 `stale_processing_lease_batch`, `collector_execution_paused`.
+
+Implemented in S9 (`nyxmon-agent/src/collector.rs`): the loop (claim with
+`check_batch_size()`, run the batch as a task, record each result through
+the result handler, sleep `--interval`) and the shutdown below; steps 1–5
+and the batch deadline of step 7 are S10. A claim failure is logged as
+`check collector iteration failed` and the loop continues.
 
 **Shutdown** (`_async_start` + `shutdown_deadline` + `request_stop`):
 

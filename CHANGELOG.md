@@ -265,6 +265,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/unit/test_agent_rs_schema_contract.py` fails when a migration changes
   it (`just rs-fixtures` regenerates it). Rule from now on: no new DDL in the
   Python agent; schema changes are Django migrations.
+- Rust agent runtime core (slice S9 of `agent-rs/PLAN.md`): the
+  `nyxmon-agent` binary now runs with the `start-agent` flags plus
+  `--check-schema` (read-only schema verification, exit 0/1) and `--shadow`
+  (logging notifier with machine-readable lines, refused together with
+  `--enable-telegram`): executor registry and batch runner, result handling
+  (maintenance suppression, notification decision, persistence, alert and
+  acknowledgement), the results cleaner, the claim/execute/sleep collector
+  loop and SIGTERM/SIGINT shutdown with the grace period and lease release.
+  Stale-lease recovery, collector incidents and site connectivity follow in
+  later slices; nothing deploys the Rust agent yet.
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but
