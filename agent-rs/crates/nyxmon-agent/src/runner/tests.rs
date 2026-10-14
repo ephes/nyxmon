@@ -426,3 +426,57 @@ async fn dropping_the_batch_cancels_the_running_checks() {
         .await
         .unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_result_finishing_after_the_cutoff_is_not_handed_over() {
+    // Check 2 is inside a poll that cannot be interrupted when the intake
+    // stop arrives and finishes 100 ms later; abort cannot stop it.
+    let stop = Arc::new(IntakeStop::default());
+    let first_receiving = Arc::new(Flag::new());
+    let executors = executors({
+        let stop = stop.clone();
+        let first_receiving = first_receiving.clone();
+        move |check| {
+            let stop = stop.clone();
+            let first_receiving = first_receiving.clone();
+            Box::pin(async move {
+                if check.check_id == 2 {
+                    first_receiving.wait().await;
+                    while !stop.requested.is_set() {
+                        std::thread::sleep(Duration::from_millis(1));
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+                Ok(ok(check.check_id))
+            })
+        }
+    });
+    let received = Arc::new(Mutex::new(Vec::new()));
+    let receive = {
+        let received = received.clone();
+        let stop = stop.clone();
+        move |check: Check, _result: CheckResult| {
+            let received = received.clone();
+            let stop = stop.clone();
+            let first_receiving = first_receiving.clone();
+            async move {
+                received.lock().unwrap().push(check.check_id);
+                if check.check_id == 1 {
+                    first_receiving.set();
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                    stop.requested.set();
+                    // Still handling while check 2 finishes after the cutoff.
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+                }
+            }
+        }
+    };
+    tokio::time::timeout(
+        Duration::from_secs(5),
+        run_batch(&executors, vec![check(1), check(2)], Some(&stop), receive),
+    )
+    .await
+    .unwrap();
+    assert_eq!(*received.lock().unwrap(), [1]);
+    assert!(stop.drained.is_set());
+}

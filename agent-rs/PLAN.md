@@ -1341,7 +1341,10 @@ column cannot be decoded (`nyxmon_store::data_is_undecodable`) becomes
 valid JSON"}` (D-8) before its executor runs. An intake stop is watched while
 a result is being handled, as in Python: it aborts the running checks at
 once, the results that had already finished are still handed over, then
-`drained` is set. One `BatchCtx` (one HTTP session) is created per batch;
+`drained` is set. Because an abort cannot interrupt a poll that is already
+running, every check task checks a per-batch cutoff flag (set together with
+the abort) as it finishes and discards a result that completed after it;
+executor panics are caught inside the task so they pass the same gate. One `BatchCtx` (one HTTP session) is created per batch;
 Python creates its client only for batches with HTTP-family checks, which is
 not observable because the session opens no connection until used.
 

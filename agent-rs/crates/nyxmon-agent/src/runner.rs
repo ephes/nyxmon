@@ -7,8 +7,11 @@
 //! `drained` (`IntakeStop`, PLAN.md 5.8).
 
 use std::collections::HashMap;
-use std::pin::pin;
+use std::panic::AssertUnwindSafe;
+use std::pin::{Pin, pin};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::task::{Context, Poll};
 
 use nyxmon_checks::ctx::BatchCtx;
 use nyxmon_checks::registry::{Executors, unknown_check_type_message};
@@ -94,6 +97,42 @@ async fn run_one(executors: Arc<dyn Executors>, check: Check, batch: Arc<BatchCt
     }
 }
 
+/// Turns a panic while polling the inner future into `Err(())`, so a
+/// panicking executor still yields a result inside its task.
+struct CatchUnwind<F>(Pin<Box<F>>);
+
+impl<F: Future> Future for CatchUnwind<F> {
+    type Output = Result<F::Output, ()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let inner = self.0.as_mut();
+        match std::panic::catch_unwind(AssertUnwindSafe(|| inner.poll(cx))) {
+            Ok(Poll::Ready(output)) => Poll::Ready(Ok(output)),
+            Ok(Poll::Pending) => Poll::Pending,
+            Err(_) => Poll::Ready(Err(())),
+        }
+    }
+}
+
+/// One check task: its result, or `None` when it finished after the intake
+/// stop's cutoff. `abort_all` cannot interrupt a poll that is already
+/// running, so the cutoff is checked by the task itself as it finishes.
+async fn run_gated(
+    executors: Arc<dyn Executors>,
+    check: Check,
+    batch: Arc<BatchCtx>,
+    cutoff: Arc<AtomicBool>,
+) -> Option<CheckResult> {
+    let result = match CatchUnwind(Box::pin(run_one(executors, check.clone(), batch))).await {
+        Ok(result) => result,
+        Err(()) => {
+            log_executor_exception(&check, "panic");
+            executor_exception_result(&check, "panic")
+        }
+    };
+    (!cutoff.load(Ordering::SeqCst)).then_some(result)
+}
+
 /// Run one batch (`_async_run_batch`) and hand every result to `receive`
 /// with its claimed check, one at a time.
 ///
@@ -110,12 +149,23 @@ pub async fn run_batch<F, Fut>(
 {
     // One shared HTTP session per batch (`httpx.AsyncClient` of the batch).
     let batch = Arc::new(BatchCtx::new());
+    let cutoff = Arc::new(AtomicBool::new(false));
     let mut running = JoinSet::new();
     let mut claimed: HashMap<tokio::task::Id, Check> = HashMap::new();
     for check in checks {
-        let handle = running.spawn(run_one(executors.clone(), check.clone(), batch.clone()));
+        let handle = running.spawn(run_gated(
+            executors.clone(),
+            check.clone(),
+            batch.clone(),
+            cutoff.clone(),
+        ));
         claimed.insert(handle.id(), check);
     }
+    // The intake stop: results finishing from now on are discarded.
+    let stop_intake = |running: &mut JoinSet<Option<CheckResult>>| {
+        cutoff.store(true, Ordering::SeqCst);
+        running.abort_all();
+    };
     let requested = intake_stop.map(|stop| &stop.requested);
     let mut stopped = false;
     loop {
@@ -129,7 +179,7 @@ pub async fn run_batch<F, Fut>(
             tokio::select! {
                 biased;
                 () = wait_for(requested) => {
-                    running.abort_all();
+                    stop_intake(&mut running);
                     stopped = true;
                     continue;
                 }
@@ -139,7 +189,7 @@ pub async fn run_batch<F, Fut>(
                 },
             }
         };
-        let Some((check, result)) = finished(&mut claimed, joined) else {
+        let Some((check, result)) = finished(&mut claimed, joined, stopped) else {
             continue;
         };
         let handled = receive(check, result);
@@ -154,7 +204,7 @@ pub async fn run_batch<F, Fut>(
             biased;
             () = &mut handled => {}
             () = wait_for(requested) => {
-                running.abort_all();
+                stop_intake(&mut running);
                 stopped = true;
                 handled.await;
             }
@@ -168,14 +218,20 @@ pub async fn run_batch<F, Fut>(
 }
 
 /// The claimed check and result of a finished task; `None` for a task the
-/// intake stop cancelled.
+/// intake stop cancelled or that finished after its cutoff.
 fn finished(
     claimed: &mut HashMap<tokio::task::Id, Check>,
-    joined: Result<(tokio::task::Id, CheckResult), JoinError>,
+    joined: Result<(tokio::task::Id, Option<CheckResult>), JoinError>,
+    stopped: bool,
 ) -> Option<(Check, CheckResult)> {
     match joined {
-        Ok((id, result)) => claimed.remove(&id).map(|check| (check, result)),
-        Err(err) if err.is_panic() => {
+        Ok((id, result)) => {
+            let check = claimed.remove(&id)?;
+            result.map(|result| (check, result))
+        }
+        // Executor panics are caught inside the task; this is a panic of the
+        // task itself, which cannot be placed relative to the cutoff.
+        Err(err) if err.is_panic() && !stopped => {
             let check = claimed.remove(&err.id())?;
             log_executor_exception(&check, "panic");
             let result = executor_exception_result(&check, "panic");
