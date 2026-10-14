@@ -103,6 +103,17 @@ Current fixtures:
 - `idna_tables.json`: the Unicode 3.2 stringprep tables of Python's
   `nameprep`, embedded by `nyxmon_checks::pyidna` so the IDNA 2003 encoding
   is Python's.
+- `config_tcp.json`: the TCP check configuration (`TcpCheckConfig.from_dict`
+  + `validate`), the target host (`urlparse(url).hostname`), `str()` of
+  non-string hosts, `ip_address(int)` and anyio's IDNA 2008 encoding of
+  hosts (`nyxmon_core::config::tcp`, `nyxmon_checks::idna2008`).
+- `idna2008_tables.json`: the data behind `idna.encode(host, uts46=True)`:
+  the `idna` package's UTS 46 table, code point classes, joining types and
+  scripts, and CPython's bidirectional classes, marks and virama class,
+  embedded by `nyxmon_checks::idna2008`.
+- `starttls_text.json`: the STARTTLS classification helpers and patterns,
+  and scripted dialogues (received chunks, sent bytes, outcome) replayed
+  through `nyxmon_checks::starttls`.
 - `unicode_nonprintable.json`: the code points `str.isprintable()` rejects.
   `nyxmon-core` embeds it, so `repr(str)` escapes exactly what the oracle's
   Unicode database (15.1 for CPython 3.13) escapes.
@@ -122,6 +133,10 @@ Current fixtures:
   `nyxmon-core` replays them against `site::Observer` with the same fakes.
   `site_replay/coverage.json` fails generation unless the corpus executes
   every line of the observer's pure methods and rendering helpers.
+- `unicode_props.json`: `str.isdigit()`, `str.lower()` (with the final-sigma
+  properties) and the NFKC delimiter check of `urlsplit`, embedded by
+  `nyxmon_core::pyjson` (`py_isdigit`, `py_lower`) so they follow the
+  oracle's Unicode version.
 
 ## Schema contract
 
@@ -183,6 +198,10 @@ Never add DDL to the Python agent; a new required column raises
   `OverflowError`), which the caller handles like any result-handling
   error. `TelegramNotifier::new` takes the `notifier_env` reading plus
   `NotifierSettings` (clock, nonce, log sink, Telegram endpoint for tests).
+- Check configurations live in `nyxmon_core::config` and return a
+  `ConfigOutcome` (`Ok`, `ConfigError(message)` for Python's `ValueError`,
+  `PyException(class)` for exceptions that escape the executor and become
+  `executor_exception`).
 - TLS goes through `nyxmon_checks::tls` (rustls with the `ring` provider,
   system roots, TLS 1.2+); `tls::server_name` IDNA-encodes Unicode hosts
   like Python.

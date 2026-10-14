@@ -1197,22 +1197,35 @@ exit 1).
 
 ### 5.12 TCP (`tcp_executor.py`)
 
-- Host: `data.host`, else `urlparse(url).hostname`, else the raw url.
-- Connect: Happy Eyeballs like `anyio.connect_tcp` (getaddrinfo with
-  `SOCK_STREAM`; order: the first IPv6 address, then the first IPv4 address
-  found after it, then the rest in resolver order; start the next attempt
-  after 250 ms or as soon as the previous one failed; first success wins;
-  several failures → `OSError("All connection attempts failed")`, a single
-  failure → that error) bounded by `connect_timeout`;
-  `connect_time_ms` from a monotonic clock, truncated.
-- TLS: SNI/verification name = `sni or host`; IP literals verify IP SANs
-  without SNI; `verify=false` uses a no-verification rustls verifier;
+- Host: `data.host` when truthy (any JSON type; not validated by Python),
+  else `urlparse(url).hostname` (CPython 3.13 `urlsplit` rules, lowercased;
+  its `ValueError` escapes the executor), else the raw url — fixture
+  (`config_tcp.json`).
+- Connect: Happy Eyeballs like `anyio.connect_tcp` (`ip_address(host)`
+  connects directly, also for an integer host; otherwise getaddrinfo of
+  `str(host)` with `SOCK_STREAM`, a non-ASCII name IDNA-encoded by anyio's
+  `idna2008_resolve` = `idna.encode(host, uts46=True)`; order: the first IPv6
+  address, then the first IPv4 address found after it, then the rest in
+  resolver order; start the next attempt after 250 ms or as soon as the
+  previous one failed; first success wins; when no attempt connects the
+  error is always `OSError("All connection attempts failed")`, also for a
+  single address; a resolver failure is the `socket.gaierror`
+  `"[Errno N] <gai_strerror>"`; an IDNA error escapes as `unexpected_error`)
+  bounded by `connect_timeout`; `connect_time_ms` from a monotonic clock,
+  truncated.
+- TLS: SNI/verification name = `sni or host`, IDNA-encoded by anyio's
+  `idna2008_resolve` (IDNA 2008, not the IDNA 2003 of Python's `ssl` that
+  the mail checks use); IP literals verify IP SANs without SNI;
+  `verify=false` uses a no-verification rustls verifier;
   `tls_handshake_timeout` bounds the handshake; the STARTTLS dialogue is
-  bounded by the same timeout. Dialogues (`generic`, `smtp`, `imap`, `sieve`)
-  byte-exact (EHLO name `nyxmon.invalid`, IMAP tag `a1`, line cap 4096 bytes,
-  dialogue cap 64 KiB, response truncation 500 chars, regexes, generic
-  positive-response heuristic, pending-bytes check after the reply) — the
-  classification helpers are fixture-tested, the dialogues fake-server tested.
+  bounded separately by the same timeout. Dialogues (`generic`, `smtp`,
+  `imap`, `sieve`) byte-exact (EHLO name `nyxmon.invalid`, IMAP tag `a1`,
+  line cap 4096 bytes, dialogue cap 64 KiB, response truncation 500 chars,
+  regexes, generic positive-response heuristic, pending-bytes check after
+  the reply) — the classification helpers and scripted dialogues (the
+  received chunks replayed through both implementations) are
+  fixture-tested (`starttls_text.json`), the dialogues also fake-server
+  tested.
 - Certificate expiry from the peer leaf certificate even when not verifying:
   `floor((notAfter - now) / 86400)`; missing certificate → `cert_missing`.
 

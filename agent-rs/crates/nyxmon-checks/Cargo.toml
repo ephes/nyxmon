@@ -14,11 +14,13 @@ idna.workspace = true
 unicode-normalization.workspace = true
 rustls.workspace = true
 rustls-native-certs.workspace = true
+regex.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "time"] }
 tracing.workspace = true
 
 [dev-dependencies]
 rcgen.workspace = true
-tokio = { workspace = true, features = ["rt", "macros", "net", "io-util"] }
+tokio = { workspace = true, features = ["rt", "macros", "net", "io-util", "test-util"] }
 tokio-rustls.workspace = true
 
 [lints]

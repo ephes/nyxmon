@@ -43,6 +43,7 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 url = "2"
 webpki-roots = "1"
 rand = "0.10"
+regex = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

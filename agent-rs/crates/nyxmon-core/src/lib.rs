@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 mod alerting_tests;
+pub mod config;
 pub mod decision;
 pub mod env;
 #[cfg(test)]
@@ -16,6 +17,7 @@ pub mod log;
 pub mod model;
 pub mod policy;
 pub mod pyjson;
+pub mod pyurl;
 pub mod site;
 pub mod suppression;
 

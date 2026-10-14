@@ -23,6 +23,35 @@ pub fn char_len(text: &str) -> usize {
     text.chars().count()
 }
 
+/// Parse a generated `[[start, end], ...]` code point range list.
+pub(super) fn ranges_of(value: Option<&PyJson>) -> Vec<(u32, u32)> {
+    value
+        .and_then(|ranges| ranges.as_list())
+        .expect("the Unicode table has ranges")
+        .iter()
+        .map(|range| {
+            let bound = |index: usize| {
+                range
+                    .as_list()
+                    .and_then(|r| r.get(index))
+                    .and_then(|v| v.as_i64())
+            };
+            let (start, end) = (bound(0), bound(1));
+            let as_code = |v: Option<i64>| {
+                v.and_then(|v| u32::try_from(v).ok())
+                    .expect("code point range bounds are integers")
+            };
+            (as_code(start), as_code(end))
+        })
+        .collect()
+}
+
+pub(super) fn in_ranges(ranges: &[(u32, u32)], c: char) -> bool {
+    let code = c as u32;
+    let index = ranges.partition_point(|&(start, _)| start <= code);
+    index > 0 && ranges[index - 1].1 >= code
+}
+
 /// Code point ranges that are not printable for the oracle CPython, generated
 /// by `fixtures/generate.py` from `str.isprintable()`, so `repr` follows
 /// CPython's Unicode database version rather than a Rust crate's.
@@ -33,35 +62,13 @@ fn nonprintable_ranges() -> &'static [(u32, u32)] {
             "../../../../fixtures/unicode_nonprintable.json"
         ))
         .expect("the generated Unicode table is valid JSON");
-        table
-            .get("ranges")
-            .and_then(|ranges| ranges.as_list())
-            .expect("the Unicode table has ranges")
-            .iter()
-            .map(|range| {
-                let bound = |index: usize| {
-                    range
-                        .as_list()
-                        .and_then(|r| r.get(index))
-                        .and_then(|v| v.as_i64())
-                };
-                let (start, end) = (bound(0), bound(1));
-                let as_code = |v: Option<i64>| {
-                    v.and_then(|v| u32::try_from(v).ok())
-                        .expect("code point range bounds are integers")
-                };
-                (as_code(start), as_code(end))
-            })
-            .collect()
+        ranges_of(table.get("ranges"))
     })
 }
 
 /// `str.isprintable()` for one character (`Py_UNICODE_ISPRINTABLE`).
 fn is_printable(c: char) -> bool {
-    let code = c as u32;
-    let ranges = nonprintable_ranges();
-    let index = ranges.partition_point(|&(start, _)| start <= code);
-    index == 0 || ranges[index - 1].1 < code
+    !in_ranges(nonprintable_ranges(), c)
 }
 
 /// `repr(text)` for a `str`.

@@ -2188,6 +2188,772 @@ def _run_http_scenario(spec: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+# ------------------------------------------------------------- tcp (S6)
+
+
+def _run_async(func: Callable[[], Any]) -> Any:
+    import anyio
+
+    return anyio.run(func)
+
+
+#: (check.data as JSON text, check.url) pairs for the TCP executor's pre-I/O
+#: steps: ``TcpCheckConfig.from_dict`` + ``validate`` and ``_resolve_host``.
+TCP_CONFIG_CORPUS: list[tuple[str, str]] = [
+    ('{"port": 443}', "example.com"),
+    ('{"port": 443}', ""),
+    ('{"port": 443}', "https://Example.COM:8443/path"),
+    ('{"port": 443}', "HTTPS://[2001:DB8::1]:443/"),
+    ('{"port": 443}', "https://[fe80::1%25En0]/"),
+    ('{"port": 443}', "https://[::1"),
+    ('{"port": 443}', "https://::1]/"),
+    ('{"port": 443}', "https://[1.2.3.4]/"),
+    ('{"port": 443}', "https://[v1.x]/"),
+    ('{"port": 443}', "https://[vz.x]/"),
+    ('{"port": 443}', "https://a[::1]/"),
+    ('{"port": 443}', "https://[::1]x/"),
+    ('{"port": 443}', "https://user:pw@Host.example:99/x"),
+    ('{"port": 443}', "https://@/x"),
+    ('{"port": 443}', "https:///x"),
+    ('{"port": 443}', "//host.example/x"),
+    ('{"port": 443}', "host.example:443"),
+    ('{"port": 443}', "Host.Example"),
+    ('{"port": 443}', "1http://host/"),
+    ('{"port": 443}', "a_b://host/"),
+    ('{"port": 443}', " \t https://h\tost.example/"),
+    ('{"port": 443}', "https://h\u2100st/"),
+    ('{"port": 443}', "https://h\u00e9st.example/"),
+    ('{"port": 443}', "https://\u2160.example/"),
+    ('{"port": 443}', "https://host.example?x#y"),
+    ('{"port": 443}', "https://host.example#frag/x"),
+    ('{"port": 443}', "mailto:user@example.com"),
+    ('{"port": 443}', "https://:80/"),
+    ('{"port": 443}', "https://h\u0130st.example/"),
+    ('{"port": 443}', "smtp://mail.example.com:25"),
+    ('{"port": 443}', "https://\ua7cb\u00c4.example/"),
+    ('{"port": 443}', "https://\u03a3\u0391\u03a3.gr/"),
+    ('{"port": 443}', "https://\u03a3.\u0391\u03a3'.gr/"),
+    ('{"port": 443}', "https://\u212a.example/"),
+    ('{"port": 443}', "https://h\uff0fst/"),
+    ('{"port": 443}', "https://h\ufe6bst/"),
+    ('{"port": 443}', "https://user\uff20h@host/"),
+    ('{"port": 25, "host": "mail.example.com"}', "ignored.example"),
+    ('{"port": 25, "host": ""}', "fallback.example"),
+    ('{"port": 25, "host": null}', "https://fallback.example/"),
+    ('{"port": 25, "host": 0}', "fallback.example"),
+    ('{"port": 25, "host": 5}', ""),
+    ('{"port": 25, "host": true}', ""),
+    ('{"port": 25, "host": 1.5}', ""),
+    ('{"port": 25, "host": ["a"]}', ""),
+    ('{"port": 25, "host": {"a": 1}}', ""),
+    ('{"port": 25, "host": []}', "fallback.example"),
+    ("{}", "example.com"),
+    ('{"host": "x"}', "example.com"),
+    ('{"port": true}', "example.com"),
+    ('{"port": 0}', "example.com"),
+    ('{"port": 65536}', "example.com"),
+    ('{"port": 65535}', "example.com"),
+    ('{"port": 1}', "example.com"),
+    ('{"port": 443.0}', "example.com"),
+    ('{"port": "443"}', "example.com"),
+    ('{"port": null}', "example.com"),
+    ('{"port": 100000000000000000000000}', "example.com"),
+    ('{"port": 443, "retries": -1}', "example.com"),
+    ('{"port": 443, "retries": 100}', "example.com"),
+    ('{"port": 443, "retries": 101}', "example.com"),
+    ('{"port": 443, "retries": 1.0}', "example.com"),
+    ('{"port": 443, "retries": false}', "example.com"),
+    ('{"port": 443, "min_cert_days": 36500}', "example.com"),
+    ('{"port": 443, "min_cert_days": 36501}', "example.com"),
+    ('{"port": 443, "min_cert_days": -1}', "example.com"),
+    ('{"port": 443, "verify": 1}', "example.com"),
+    ('{"port": 443, "verify": null}', "example.com"),
+    ('{"port": 443, "verify": false}', "example.com"),
+    ('{"port": 443, "check_cert_expiry": "yes"}', "example.com"),
+    ('{"port": 443, "starttls_read_greeting": 0}', "example.com"),
+    ('{"port": 443, "connect_timeout": 0}', "example.com"),
+    ('{"port": 443, "connect_timeout": 0.0}', "example.com"),
+    ('{"port": 443, "connect_timeout": -1}', "example.com"),
+    ('{"port": 443, "connect_timeout": 300}', "example.com"),
+    ('{"port": 443, "connect_timeout": 300.0000001}', "example.com"),
+    ('{"port": 443, "connect_timeout": 0.001}', "example.com"),
+    ('{"port": 443, "connect_timeout": NaN}', "example.com"),
+    ('{"port": 443, "connect_timeout": Infinity}', "example.com"),
+    ('{"port": 443, "connect_timeout": "10"}', "example.com"),
+    ('{"port": 443, "connect_timeout": true}', "example.com"),
+    ('{"port": 443, "connect_timeout": null}', "example.com"),
+    ('{"port": 443, "connect_timeout": 1000000000000000000000000}', "example.com"),
+    ('{"port": 443, "tls_handshake_timeout": 0}', "example.com"),
+    ('{"port": 443, "tls_handshake_timeout": 2.5}', "example.com"),
+    ('{"port": 443, "retry_delay": 0}', "example.com"),
+    ('{"port": 443, "retry_delay": -0.0}', "example.com"),
+    ('{"port": 443, "retry_delay": -1}', "example.com"),
+    ('{"port": 443, "retry_delay": 301}', "example.com"),
+    ('{"port": 443, "retry_delay": 2}', "example.com"),
+    ('{"port": 443, "tls_mode": "implicit"}', "example.com"),
+    ('{"port": 443, "tls_mode": "IMPLICIT"}', "example.com"),
+    ('{"port": 443, "tls_mode": null}', "example.com"),
+    ('{"port": 443, "tls_mode": 1}', "example.com"),
+    ('{"port": 443, "tls_mode": ["none"]}', "example.com"),
+    ('{"port": 443, "tls_mode": {"a": 1}}', "example.com"),
+    ('{"port": 25, "tls_mode": "starttls"}', "example.com"),
+    ('{"port": 25, "tls_mode": "starttls", "starttls_command": ""}', "example.com"),
+    ('{"port": 25, "tls_mode": "starttls", "starttls_command": null}', "example.com"),
+    ('{"port": 25, "tls_mode": "starttls", "starttls_command": 0}', "example.com"),
+    ('{"port": 25, "tls_mode": "starttls", "starttls_command": 5}', "example.com"),
+    ('{"port": 25, "tls_mode": "starttls", "starttls_command": ["x"]}', "example.com"),
+    (
+        '{"port": 25, "tls_mode": "starttls", "starttls_command": "", "starttls_protocol": "smtp"}',
+        "example.com",
+    ),
+    ('{"port": 25, "tls_mode": "none", "starttls_command": ""}', "example.com"),
+    (
+        '{"port": 25, "tls_mode": "starttls", "starttls_protocol": "smtp"}',
+        "example.com",
+    ),
+    (
+        '{"port": 143, "tls_mode": "starttls", "starttls_protocol": "imap"}',
+        "example.com",
+    ),
+    (
+        '{"port": 4190, "tls_mode": "starttls", "starttls_protocol": "sieve"}',
+        "example.com",
+    ),
+    (
+        '{"port": 25, "tls_mode": "starttls", "starttls_protocol": "pop3"}',
+        "example.com",
+    ),
+    (
+        '{"port": 25, "tls_mode": "starttls", "starttls_protocol": "SMTP"}',
+        "example.com",
+    ),
+    ('{"port": 25, "starttls_protocol": "pop3"}', "example.com"),
+    ('{"port": 25, "starttls_protocol": ""}', "example.com"),
+    ('{"port": 25, "starttls_protocol": 0}', "example.com"),
+    ('{"port": 25, "starttls_protocol": false}', "example.com"),
+    ('{"port": 25, "starttls_protocol": []}', "example.com"),
+    ('{"port": 25, "starttls_protocol": 1}', "example.com"),
+    ('{"port": 25, "starttls_protocol": ["smtp"]}', "example.com"),
+    ('{"port": 25, "sni": "override.example"}', "example.com"),
+    ('{"port": 25, "sni": 5}', "example.com"),
+    (
+        '{"port": 443, "host": "h.example", "tls_mode": "implicit", "connect_timeout": 2,'
+        ' "tls_handshake_timeout": 3.5, "retries": 3, "retry_delay": 0.5,'
+        ' "check_cert_expiry": true, "min_cert_days": 30, "sni": "s.example",'
+        ' "starttls_command": "STARTTLS\\r\\n", "starttls_protocol": "generic",'
+        ' "starttls_read_greeting": true, "verify": false}',
+        "",
+    ),
+    ('{"port": 443, "port": 80}', "example.com"),
+    ('{"verify": 1, "port": 0, "connect_timeout": 0, "tls_mode": "x"}', "example.com"),
+    ('{"port": 0, "connect_timeout": 0, "tls_mode": "x"}', "example.com"),
+    ('{"port": 1, "connect_timeout": 0, "tls_mode": "x"}', "example.com"),
+    ('{"port": 1, "tls_mode": "x", "starttls_protocol": "x"}', "example.com"),
+    ("[]", "example.com"),
+    ('["port"]', "example.com"),
+    ('["x", "port"]', "example.com"),
+    ("[1]", "example.com"),
+    ('"port"', "example.com"),
+    ('"no-p-o-r-t"', "example.com"),
+    ('"airport"', "example.com"),
+    ("5", "example.com"),
+    ("1.5", "example.com"),
+    ("true", "example.com"),
+    ("false", "example.com"),
+]
+
+
+def _tcp_pre_io(data_json: str, url: str) -> dict[str, Any]:
+    """Run ``TcpCheckExecutor.execute`` up to the first network step."""
+    from nyxmon.adapters.runner.executors.tcp_executor import TcpCheckExecutor
+    from nyxmon.domain import Check, CheckType
+
+    captured: dict[str, Any] = {}
+
+    async def fake_attempt(self: Any, host: Any, config: Any) -> dict[str, Any]:
+        captured["host"] = host
+        captured["config"] = config
+        return {}
+
+    check = Check(
+        check_id=1,
+        service_id=1,
+        name="tcp",
+        check_type=CheckType.TCP,
+        url=url,
+        data=json.loads(data_json),
+    )
+    with mock.patch.object(TcpCheckExecutor, "_attempt_once", fake_attempt):
+        try:
+            result = _run_async(lambda: TcpCheckExecutor().execute(check))
+        except Exception as exc:  # noqa: BLE001 - the runner's executor_exception
+            return {"kind": "exception", "class": type(exc).__name__}
+    if not captured:
+        return {
+            "kind": result.data["error_type"],
+            "error_msg": result.data["error_msg"],
+            "data_keys": list(result.data),
+        }
+    config = captured["config"]
+    return {
+        "kind": "ready",
+        "target": captured["host"],
+        "attempts": result.data["attempts"],
+        "config": {
+            "port": config.port,
+            "host": config.host,
+            "tls_mode": config.tls_mode,
+            "connect_timeout": float(config.connect_timeout),
+            "tls_handshake_timeout": float(config.tls_handshake_timeout),
+            "retries": config.retries,
+            "retry_delay": float(config.retry_delay),
+            "check_cert_expiry": config.check_cert_expiry,
+            "min_cert_days": config.min_cert_days,
+            "sni": config.sni,
+            "starttls_command": config.starttls_command,
+            "starttls_protocol": config.starttls_protocol,
+            "starttls_read_greeting": config.starttls_read_greeting,
+            "verify": config.verify,
+        },
+    }
+
+
+def _py_str(value: Any) -> str:
+    return str(value)
+
+
+def build_config_tcp() -> dict[str, Any]:
+    """TCP check configuration, target host and the ``str()`` of odd hosts."""
+    cases = [
+        {"data_json": data_json, "url": url, "outcome": _tcp_pre_io(data_json, url)}
+        for data_json, url in TCP_CONFIG_CORPUS
+    ]
+    # ``f"{host}"`` of the non-string hosts a config can carry (error messages
+    # and the name ``anyio.connect_tcp`` resolves).
+    str_values = [
+        5,
+        -7,
+        10**30,
+        True,
+        False,
+        1.5,
+        1e16,
+        1e-7,
+        float("inf"),
+        float("nan"),
+        -0.0,
+        ["a", 1, None, True, 2.5, {"k": "it's"}],
+        {"a": [1, {"b": None}], "c": "q\"uo'te", "d": "\u00e9\x00\U0001f600\u200b"},
+        [],
+        {},
+    ]
+    strs = [{"value_json": json.dumps(v), "str": _py_str(v)} for v in str_values]
+    # ``ipaddress.ip_address(remote_host)`` in ``anyio.connect_tcp`` for int hosts.
+    import ipaddress
+
+    ip_ints = []
+    for value in [0, 5, 2**32 - 1, 2**32, 2**128 - 1, 2**128, -1, True, False]:
+        try:
+            literal: str | None = ipaddress.ip_address(value).compressed
+        except ValueError:
+            literal = None
+        ip_ints.append({"value_json": json.dumps(value), "literal": literal})
+    # ``anyio``'s ``idna2008_resolve``: the name ``connect_tcp`` resolves and
+    # the server name ``TLSStream.wrap`` sends.
+    from anyio._core._sockets import idna2008_resolve
+
+    idna2008 = []
+    contexto_hosts = [
+        "l\u00b7l.\u00fc.example",
+        "a\u00b7l.\u00fc.example",
+        "l\u00b7.\u00fc.example",
+        "\u0375\u03b1\u00fc.example",
+        "\u0375a\u00fc.example",
+        "\u03b1\u0375.example",
+        "\u05d0\u05f3.il",
+        "a\u05f3\u00fc.il",
+        "\u05f4.il",
+        "\u30ab\u30fb.jp",
+        "\u30fb\u00fc.jp",
+        "\u4e2d\u30fb.jp",
+        "\u0661\u0662.eg",
+        "\u0661\u06f2.eg",
+        "\u06f1\u06f2.ir",
+        "\u0628\u200c\u0628.ir",
+        "\u0915\u094d\u200d.in",
+        "a\u200db\u00fc.example",
+        "B\u00fc_x.example",
+        "b\u00fc.a b.example",
+        "b\u00fc.-a.example",
+        "b\u00fc.ab--c.example",
+        "XN--BCHER-KVA.b\u00fc.example",
+        "xn--.b\u00fc.example",
+        "b\u00fc." + "c" * 250,
+        "b\u00fc.example..",
+        "\u0644\u0627\u0661.\u00fc.example",
+        "\u0627\u0661a.example",
+        "1.\u05d0\u05d1.example",
+        "\U000105c0.example",
+        "a\U000105c0\u00fc.example",
+        "\ua7cb\u00fc.example",
+        "\u00fc\uff0eexample\u3002com",
+        "\u00fc\u3002",
+        "\u00fc.",
+        ".\u00fc",
+        "\u00fc..",
+        "\u00fc.xn--bcher-kva.example",
+        "\u00fc.xn--bcher-KVA.example",
+        "\u00fc.xn--zzzzzzzzz.example",
+        "\u00fc.xn--a-.example",
+        "\u00fc.ab_c.example",
+        "\u00fc.A\u0301.example",
+        "\u00fc.\u212b.example",
+        "\u00fc\u00ad\u200b.example",
+        "\u00df.example",
+        "\u03c2\u03a3.gr",
+        "\u0915\u094d\u200c\u0937.in",
+        "\u0628\u200c.ir",
+        "\u0644\u0661\u06f1.ir",
+        "\u05d0\u0300.il",
+        "\u05d0a.il",
+        "\u0661\u05d0.il",
+        "\u00fc" + "a" * 70 + ".example",
+        "\u00fc." + "a" * 60 + "." + "b" * 60 + "." + "c" * 60 + "." + "d" * 60,
+        "\u2488.example",
+        "\u00fc.\u3002.example",
+        "\uff21\uff22\u00fc.example",
+    ]
+    for host in IDNA_HOSTS + contexto_hosts + _random_idna_hosts(400):
+        try:
+            ascii_name: str | None = idna2008_resolve(host).decode("ascii")
+        except UnicodeError:
+            ascii_name = None
+        idna2008.append({"host": host, "ascii": ascii_name})
+    return {
+        "cases": cases,
+        "idna2008": idna2008,
+        "ip_from_int": ip_ints,
+        "str_values": strs,
+    }
+
+
+class _FakeSocketStream:
+    """Replays scripted ``receive`` chunks and records what is sent."""
+
+    def __init__(self, chunks: list[bytes], end: str) -> None:
+        self.chunks = list(chunks)
+        self.end = end
+        self.sent: list[bytes] = []
+
+    async def send(self, data: bytes) -> None:
+        self.sent.append(bytes(data))
+
+    async def receive(self, max_bytes: int = 65536) -> bytes:
+        import anyio
+
+        if not self.chunks:
+            if self.end == "reset":
+                raise ConnectionResetError(54, "Connection reset by peer")
+            raise anyio.EndOfStream
+        chunk = self.chunks.pop(0)
+        if len(chunk) > max_bytes:
+            self.chunks.insert(0, chunk[max_bytes:])
+            chunk = chunk[:max_bytes]
+        return chunk
+
+
+SMTP_EHLO_OK = b"250-mail.test\r\n250-PIPELINING\r\n250 STARTTLS\r\n"
+
+#: (protocol, read_greeting, starttls_command JSON, received chunks, end).
+STARTTLS_DIALOGUES: list[tuple[str, bool, str, list[bytes], str]] = [
+    ("generic", False, '"STARTTLS\\r\\n"', [b"220 go ahead\r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"+OK begin\r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"OK"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"  \r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"454 TLS not available\r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"220-multi\r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"2.0.0 fine"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"* BAD nope\r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"\xff\xfe2\xc3\xa9 ok\r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"\xc2\xb2\xc2\xb2 no\r\n"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"x" * 600], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [b"\xe2\x84\xaa"], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [], "eof"),
+    ("generic", False, '"STARTTLS\\r\\n"', [], "reset"),
+    ("generic", False, '"STLS\\r\\n"', [b"x" * 5000], "eof"),
+    ("generic", False, '"S\\u00e9\\r\\n"', [b"220 ok\r\n"], "eof"),
+    ("generic", False, "5", [b"220 ok\r\n"], "eof"),
+    ("generic", True, '"STARTTLS\\r\\n"', [b"220 hi\r\n", b"220 go\r\n"], "eof"),
+    ("generic", True, '"STARTTLS\\r\\n"', [b"220 hi\r\n220 go\r\n"], "eof"),
+    ("generic", True, '"STARTTLS\\r\\n"', [b"220 h", b"i\r\n", b"500 no\r\n"], "eof"),
+    ("generic", True, '"STARTTLS\\r\\n"', [b"220 hi"], "eof"),
+    ("generic", True, '"STARTTLS\\r\\n"', [b"x" * 4096], "eof"),
+    ("generic", True, '"STARTTLS\\r\\n"', [b"x" * 4095 + b"\n", b"220 go\r\n"], "eof"),
+    ("generic", True, '"STARTTLS\\r\\n"', [b"x" * 4096 + b"\n"], "eof"),
+    ("smtp", False, '""', [b"220 mail ready\r\n", SMTP_EHLO_OK, b"220 go\r\n"], "eof"),
+    (
+        "smtp",
+        False,
+        '""',
+        [
+            b"220-mail.test ESMTP\r\n220 mail.test ready\r\n",
+            SMTP_EHLO_OK,
+            b"220 2.0.0 Ready\r\n",
+        ],
+        "eof",
+    ),
+    ("smtp", False, '""', [b"220 mail\n", b"250 ok\n", b"220 go\n"], "eof"),
+    ("smtp", False, '""', [b"220 mail\r\r\n", b"250 ok\r\n", b"220 go\r\n"], "eof"),
+    ("smtp", False, '""', [b"220", b"\r\n250\r\n220\r\n"], "eof"),
+    (
+        "smtp",
+        False,
+        '""',
+        [b"220 mail\r\n", SMTP_EHLO_OK, b"220 go\r\n250 extra\r\n"],
+        "eof",
+    ),
+    ("smtp", False, '""', [b"220 mail\r\n", SMTP_EHLO_OK, b"220 go\r\nX"], "eof"),
+    ("smtp", False, '""', [b"554 5.3.2 service unavailable\r\n"], "eof"),
+    ("smtp", False, '""', [b"220 mail\r\n", b"550 5.7.1 go away\r\n"], "eof"),
+    (
+        "smtp",
+        False,
+        '""',
+        [b"220 mail\r\n", SMTP_EHLO_OK, b"454 4.7.0 TLS not available\r\n"],
+        "eof",
+    ),
+    (
+        "smtp",
+        False,
+        '""',
+        [b"220 mail\r\n", SMTP_EHLO_OK, b"220-go\r\n220 now\r\n"],
+        "eof",
+    ),
+    ("smtp", False, '""', [b"22 short\r\n"], "eof"),
+    ("smtp", False, '""', [b"220\r\n", b"250\r\n", b"220\r\n"], "eof"),
+    ("smtp", False, '""', [b"220x mail\r\n"], "eof"),
+    ("smtp", False, '""', [b"2a0 mail\r\n"], "eof"),
+    ("smtp", False, '""', [b"\xc2\xb2\xc2\xb2\xc2\xb2-a\r\n", b"220 b\r\n"], "eof"),
+    ("smtp", False, '""', [b"\xd9\xa2\xd9\xa2\xd9\xa0 arabic\r\n"], "eof"),
+    ("smtp", False, '""', [b"220 \xff\xfe mail\r\n", b"551 \xc3\xa9\r\n"], "eof"),
+    ("smtp", False, '""', [b"220-mail.test partial greeting\r\n"], "eof"),
+    ("smtp", False, '""', [b"220 mail\r\n"], "reset"),
+    ("smtp", False, '""', [b"220 " + b"x" * 8192 + b"\r\n"], "eof"),
+    ("smtp", False, '""', [b"220-" + b"y" * 1000 + b"\r\n"] * 70, "eof"),
+    ("smtp", False, '""', [b"220-" + b"z" * 600 + b"\r\n", b"500 no\r\n"], "eof"),
+    (
+        "imap",
+        False,
+        '""',
+        [b"* OK [CAPABILITY IMAP4rev1 STARTTLS] ready\r\n", b"a1 OK Begin TLS now\r\n"],
+        "eof",
+    ),
+    (
+        "imap",
+        False,
+        '""',
+        [b"* OK ready\r\n", b"* CAPABILITY IMAP4rev1\r\na1 OK Begin TLS now\r\n"],
+        "eof",
+    ),
+    ("imap", False, '""', [b"* ok\r\n", b"A1 ok done\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK[x]\r\n", b"a1 OK[y]\r\n"], "eof"),
+    ("imap", False, '""', [b"* OKAY\r\n"], "eof"),
+    ("imap", False, '""', [b"* PREAUTH hi\r\n"], "eof"),
+    ("imap", False, '""', [b"* BYE too many connections\r\n"], "eof"),
+    (
+        "imap",
+        False,
+        '""',
+        [b"* OK ready\r\n", b"a1 BAD ok, but no STARTTLS here\r\n"],
+        "eof",
+    ),
+    (
+        "imap",
+        False,
+        '""',
+        [b"* OK ready\r\n", b"a1 NO STARTTLS unavailable\r\n"],
+        "eof",
+    ),
+    ("imap", False, '""', [b"* OK ready\r\n", b"* BYE shutting down\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"* bye[x]\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"a2 OK wrong tag\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"a1 OKAY\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"a1 OK\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"a1 o\xe2\x84\xaa\r\n"], "eof"),
+    ("imap", False, '""', [b"* O\xe2\x84\xaa ready\r\n", b"a1 OK\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"*  odd\r\n", b"a1 OK\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"*\r\n"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n", b"a1 OK go\r\n\x16\x03"], "eof"),
+    ("imap", False, '""', [b"* OK ready\r\n"], "eof"),
+    (
+        "sieve",
+        False,
+        '""',
+        [
+            b'"IMPLEMENTATION" "Pigeonhole"\r\n"STARTTLS"\r\nOK "ready."\r\n',
+            b'OK "Begin TLS."\r\n',
+        ],
+        "eof",
+    ),
+    ("sieve", False, '""', [b"ok\r\n", b"Ok (x)\r\n"], "eof"),
+    ("sieve", False, '""', [b"OK(x)\r\n", b"OK\r\n"], "eof"),
+    ("sieve", False, '""', [b"OKAY\r\n", b"BYE now\r\n"], "eof"),
+    ("sieve", False, '""', [b'BYE "too many connections"\r\n'], "eof"),
+    ("sieve", False, '""', [b"OK ready\r\n", b'NO "TLS unavailable"\r\n'], "eof"),
+    ("sieve", False, '""', [b"OK ready\r\n", b"NOPE\r\n", b"no\r\n"], "eof"),
+    ("sieve", False, '""', [b"OK ready\r\n", b"BYE\r\n"], "eof"),
+    ("sieve", False, '""', [b"OK ready\r\n"], "eof"),
+]
+
+
+def _dialogue_case(
+    protocol: str, read_greeting: bool, command_json: str, chunks: list[bytes], end: str
+) -> dict[str, Any]:
+    from nyxmon.adapters.runner.executors.tcp_executor import (
+        TcpCheckError,
+        TcpCheckExecutor,
+    )
+    from nyxmon.domain.tcp_config import TcpCheckConfig
+
+    config = TcpCheckConfig(
+        port=1,
+        tls_mode="starttls",
+        starttls_protocol=protocol,
+        starttls_command=json.loads(command_json),
+        starttls_read_greeting=read_greeting,
+    )
+    stream = _FakeSocketStream(chunks, end)
+    outcome: dict[str, Any]
+    try:
+        _run_async(
+            lambda: TcpCheckExecutor()._send_starttls_command(stream, config)  # type: ignore[arg-type]
+        )
+        outcome = {"kind": "ok"}
+    except TcpCheckError as exc:
+        outcome = {
+            "kind": "error",
+            "error_type": exc.error_type,
+            "message": exc.message,
+            "retryable": exc.retryable,
+            "data": exc.data,
+        }
+    except Exception as exc:  # noqa: BLE001 - becomes unexpected_error
+        outcome = {"kind": "exception", **_error(exc)}
+    return {
+        "protocol": protocol,
+        "read_greeting": read_greeting,
+        "command_json": command_json,
+        "chunks": [chunk.hex() for chunk in chunks],
+        "end": end,
+        "sent": [data.hex() for data in stream.sent],
+        "outcome": outcome,
+    }
+
+
+def build_starttls_text() -> dict[str, Any]:
+    """STARTTLS classification helpers, patterns and scripted dialogues."""
+    from nyxmon.adapters.runner.executors import tcp_executor as tcp
+
+    executor = tcp.TcpCheckExecutor()
+    responses = [
+        "",
+        "220 ready",
+        "220",
+        "2",
+        "250-ok",
+        "454 no",
+        "554 5.3.2 no",
+        "+OK begin",
+        "OK",
+        "ok",
+        "Okay then",
+        "* BAD book",
+        "BAD",
+        "x220 ok",
+        "2.0.0 ready",
+        "go ahead",
+        "\u00b2\u00b2\u00b2 superscript",
+        "\u0662\u0662\u0660 arabic",
+        "\u0662abc",
+        "O\u212a",
+        "\u212a",
+        "\u0130 2",
+        " 220",
+        "220  x",
+        "abc 220",
+        "\u00b9",
+    ]
+    positive = [
+        {"text": text, "positive": executor._is_positive_starttls_response(text)}
+        for text in responses
+    ]
+    truncate = [
+        {"text": text, "truncated": tcp._truncate(text)}
+        for text in ["", "a" * 500, "a" * 501, "\u00e9" * 499 + "\U0001f600" * 3]
+    ]
+    pattern_lines = [
+        "* OK",
+        "* OK ready",
+        "* OK[CAPABILITY]",
+        "* ok",
+        "* OKAY",
+        "* OK\r",
+        "* O\u212a",
+        "*  OK",
+        " * OK",
+        "* BYE",
+        "* bye now",
+        "* BYE[x]",
+        "* BYEBYE",
+        "a1 OK",
+        "A1 ok done",
+        "a1 NO x",
+        "a1 BAD[y]",
+        "a1 OKAY",
+        "a1  OK",
+        "a1 o\u212a",
+        "a2 OK",
+        "OK",
+        "OK (x)",
+        "OK(x)",
+        "OK ready",
+        "Ok",
+        "NO",
+        "no thanks",
+        "BYE",
+        "BYEBYE",
+        "OKAY",
+        "",
+        "\u017f",
+    ]
+    patterns: dict[str, Any] = {}
+    for name, regex in [
+        ("imap_ok_greeting", tcp._IMAP_OK_GREETING),
+        ("imap_untagged_bye", tcp._IMAP_UNTAGGED_BYE),
+        ("imap_tagged", tcp._IMAP_TAGGED),
+        ("sieve_response", tcp._SIEVE_RESPONSE),
+    ]:
+        rows = []
+        for line in pattern_lines:
+            match = regex.match(line)
+            rows.append(
+                {
+                    "line": line,
+                    "match": match is not None,
+                    "group": match.group(1) if match and regex.groups else None,
+                }
+            )
+        patterns[name] = rows
+    dialogues = [_dialogue_case(*case) for case in STARTTLS_DIALOGUES]
+    return {
+        "positive": positive,
+        "truncate": truncate,
+        "patterns": patterns,
+        "dialogues": dialogues,
+    }
+
+
+def build_idna2008_tables() -> dict[str, Any]:
+    """The data behind ``idna.encode(host, uts46=True)``.
+
+    ``nyxmon_checks::idna2008`` embeds it so the encoding follows the ``idna``
+    package's own tables (UTS 46 mapping, IDNA 2008 code point classes,
+    joining types, scripts) and the oracle's ``unicodedata`` (bidirectional
+    classes, combining marks, virama combining class) rather than a Rust
+    crate's Unicode version.
+    """
+    import unicodedata
+
+    import idna
+    from idna import idnadata
+    from idna.uts46data import uts46data
+
+    def ranges(encoded: tuple[int, ...]) -> list[list[int]]:
+        return [[value >> 32, (value & 0xFFFFFFFF) - 1] for value in encoded]
+
+    bidi: list[list[Any]] = []
+    for code in range(0x110000):
+        direction = unicodedata.bidirectional(chr(code))
+        if bidi and bidi[-1][2] == direction and bidi[-1][1] == code - 1:
+            bidi[-1][1] = code
+        else:
+            bidi.append([code, code, direction])
+    return {
+        "idna_version": idna.__version__,
+        "idna_unicode_version": idnadata.__version__,
+        "unidata_version": unicodedata.unidata_version,
+        "uts46": [list(row) + ([None] if len(row) == 2 else []) for row in uts46data],
+        "classes": {
+            name: ranges(values) for name, values in idnadata.codepoint_classes.items()
+        },
+        "scripts": {name: ranges(values) for name, values in idnadata.scripts.items()},
+        "joining_types": sorted(
+            [code, chr(kind)] for code, kind in idnadata.joining_types().items()
+        ),
+        "bidi": bidi,
+        "marks": _code_ranges(lambda c: unicodedata.category(c).startswith("M")),
+        "virama": _code_ranges(lambda c: unicodedata.combining(c) == 9),
+    }
+
+
+def _code_ranges(predicate: Callable[[str], bool]) -> list[list[int]]:
+    """``[start, end]`` ranges of the code points for which ``predicate`` holds."""
+    ranges: list[list[int]] = []
+    for code in range(0x110000):
+        if not predicate(chr(code)):
+            continue
+        if ranges and ranges[-1][1] == code - 1:
+            ranges[-1][1] = code
+        else:
+            ranges.append([code, code])
+    return ranges
+
+
+def build_unicode_props() -> dict[str, Any]:
+    """``str`` properties of the oracle's Unicode database.
+
+    ``nyxmon_core`` embeds them so ``str.isdigit()``, ``str.lower()`` and
+    ``urlsplit``'s NFKC netloc check follow CPython rather than the Unicode
+    version of the Rust standard library or a crate:
+
+    - ``digits``: ``str.isdigit()``;
+    - ``lower``: ``c.lower()`` where it differs from ``c`` (U+03A3 is
+      context-dependent and handled with ``cased``/``case_ignorable``);
+    - ``cased``/``case_ignorable``: the properties CPython's final-sigma rule
+      reads, derived from ``str.lower()`` itself;
+    - ``nfkc_url_delimiters``: code points whose NFKC form contains one of
+      ``/?#@:`` (``urllib.parse._checknetloc``).
+    """
+    import unicodedata
+
+    def final_sigma_after(prefix: str) -> bool:
+        return (prefix + "\u03a3").lower()[-1] == "\u03c2"
+
+    lower = [
+        [code, chr(code).lower()]
+        for code in range(0x110000)
+        if code != 0x3A3 and chr(code).lower() != chr(code)
+    ]
+    case_ignorable = _code_ranges(
+        lambda c: final_sigma_after("a" + c) and not final_sigma_after("1" + c)
+    )
+    cased = _code_ranges(lambda c: final_sigma_after("1" + c))
+    delimiters = [
+        code
+        for code in range(0x110000)
+        if chr(code) not in "/?#@:"
+        and any(d in unicodedata.normalize("NFKC", chr(code)) for d in "/?#@:")
+    ]
+    return {
+        "unidata_version": unicodedata.unidata_version,
+        "digits": _code_ranges(str.isdigit),
+        "lower": lower,
+        "cased": cased,
+        "case_ignorable": case_ignorable,
+        "nfkc_url_delimiters": delimiters,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 
@@ -2204,16 +2970,20 @@ def _slice_generators(module_name: str) -> dict[str, Callable[[], Mapping[str, A
 
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
+    "config_tcp.json": build_config_tcp,
     "env.json": build_env,
     "idna.json": build_idna,
+    "idna2008_tables.json": build_idna2008_tables,
     "idna_tables.json": build_idna_tables,
     "opsgate.json": build_opsgate,
     "pyjson.json": build_pyjson,
     "telegram.json": build_telegram,
+    "starttls_text.json": build_starttls_text,
     "unicode_nonprintable.json": build_unicode_nonprintable,
     **_slice_generators("gen_alerting"),
     **_slice_generators("gen_site"),
     "unicode_untrusted.json": build_unicode_untrusted,
+    "unicode_props.json": build_unicode_props,
 }
 
 

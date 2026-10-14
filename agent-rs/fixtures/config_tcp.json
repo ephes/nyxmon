@@ -1,0 +1,4516 @@
+{
+ "cases": [
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "host is required (set check.url or data.host)",
+    "kind": "configuration_error"
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "https://Example.COM:8443/path"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "2001:db8::1"
+   },
+   "url": "HTTPS://[2001:DB8::1]:443/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "fe80::1%25En0"
+   },
+   "url": "https://[fe80::1%25En0]/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://[::1"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://::1]/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://[1.2.3.4]/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "v1.x"
+   },
+   "url": "https://[v1.x]/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://[vz.x]/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://a[::1]/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://[::1]x/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "host.example"
+   },
+   "url": "https://user:pw@Host.example:99/x"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "https://@/x"
+   },
+   "url": "https://@/x"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "https:///x"
+   },
+   "url": "https:///x"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "host.example"
+   },
+   "url": "//host.example/x"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "host.example:443"
+   },
+   "url": "host.example:443"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "Host.Example"
+   },
+   "url": "Host.Example"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "1http://host/"
+   },
+   "url": "1http://host/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "a_b://host/"
+   },
+   "url": "a_b://host/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "host.example"
+   },
+   "url": " \t https://h\tost.example/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://h\u2100st/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "h\u00e9st.example"
+   },
+   "url": "https://h\u00e9st.example/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "\u2170.example"
+   },
+   "url": "https://\u2160.example/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "host.example"
+   },
+   "url": "https://host.example?x#y"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "host.example"
+   },
+   "url": "https://host.example#frag/x"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "mailto:user@example.com"
+   },
+   "url": "mailto:user@example.com"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "https://:80/"
+   },
+   "url": "https://:80/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "hi\u0307st.example"
+   },
+   "url": "https://h\u0130st.example/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "mail.example.com"
+   },
+   "url": "smtp://mail.example.com:25"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "\ua7cb\u00e4.example"
+   },
+   "url": "https://\ua7cb\u00c4.example/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "\u03c3\u03b1\u03c3.gr"
+   },
+   "url": "https://\u03a3\u0391\u03a3.gr/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "\u03c3.\u03b1\u03c3'.gr"
+   },
+   "url": "https://\u03a3.\u0391\u03a3'.gr/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "k.example"
+   },
+   "url": "https://\u212a.example/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://h\uff0fst/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://h\ufe6bst/"
+  },
+  {
+   "data_json": "{\"port\": 443}",
+   "outcome": {
+    "class": "ValueError",
+    "kind": "exception"
+   },
+   "url": "https://user\uff20h@host/"
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": \"mail.example.com\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": "mail.example.com",
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "mail.example.com"
+   },
+   "url": "ignored.example"
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": \"\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": "",
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "fallback.example"
+   },
+   "url": "fallback.example"
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": null}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "fallback.example"
+   },
+   "url": "https://fallback.example/"
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": 0}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": 0,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "fallback.example"
+   },
+   "url": "fallback.example"
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": 5}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": 5,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": 5
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": true}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": true,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": true
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": 1.5}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": 1.5,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": 1.5
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": [\"a\"]}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": [
+      "a"
+     ],
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": [
+     "a"
+    ]
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": {\"a\": 1}}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": {
+      "a": 1
+     },
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": {
+     "a": 1
+    }
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"port\": 25, \"host\": []}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": [],
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "fallback.example"
+   },
+   "url": "fallback.example"
+  },
+  {
+   "data_json": "{}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port is required",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"host\": \"x\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port is required",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": true}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 65536}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 65535}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 65535,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 1}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 1,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443.0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": \"443\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": null}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 100000000000000000000000}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retries\": -1}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "retries must be an integer between 0 and 100",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retries\": 100}",
+   "outcome": {
+    "attempts": 101,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 100,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retries\": 101}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "retries must be an integer between 0 and 100",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retries\": 1.0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "retries must be an integer between 0 and 100",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retries\": false}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "retries must be an integer between 0 and 100",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"min_cert_days\": 36500}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 36500,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"min_cert_days\": 36501}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "min_cert_days must be an integer between 0 and 36500",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"min_cert_days\": -1}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "min_cert_days must be an integer between 0 and 36500",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"verify\": 1}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "verify must be a boolean",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"verify\": null}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "verify must be a boolean",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"verify\": false}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": false
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"check_cert_expiry\": \"yes\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "check_cert_expiry must be a boolean",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"starttls_read_greeting\": 0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_read_greeting must be a boolean",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": 0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": 0.0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": -1}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": 300}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 300.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": 300.0000001}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": 0.001}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 0.001,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": NaN}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": Infinity}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": \"10\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": true}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": null}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"connect_timeout\": 1000000000000000000000000}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_handshake_timeout\": 0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "tls_handshake_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_handshake_timeout\": 2.5}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 2.5,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retry_delay\": 0}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retry_delay\": -0.0}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": -0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retry_delay\": -1}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "retry_delay must be a finite number between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retry_delay\": 301}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "retry_delay must be a finite number between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"retry_delay\": 2}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 2.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_mode\": \"implicit\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 443,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "implicit",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_mode\": \"IMPLICIT\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "tls_mode must be one of ['implicit', 'none', 'starttls']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_mode\": null}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "tls_mode must be one of ['implicit', 'none', 'starttls']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_mode\": 1}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "tls_mode must be one of ['implicit', 'none', 'starttls']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_mode\": [\"none\"]}",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"tls_mode\": {\"a\": 1}}",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "starttls",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_command\": \"\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_command is required for starttls mode",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_command\": null}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_command is required for starttls mode",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_command\": 0}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_command is required for starttls mode",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_command\": 5}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": 5,
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "starttls",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_command\": [\"x\"]}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": [
+      "x"
+     ],
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "starttls",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_command\": \"\", \"starttls_protocol\": \"smtp\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "",
+     "starttls_protocol": "smtp",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "starttls",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"none\", \"starttls_command\": \"\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_protocol\": \"smtp\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "smtp",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "starttls",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 143, \"tls_mode\": \"starttls\", \"starttls_protocol\": \"imap\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 143,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "imap",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "starttls",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 4190, \"tls_mode\": \"starttls\", \"starttls_protocol\": \"sieve\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 4190,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "sieve",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "starttls",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_protocol\": \"pop3\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_protocol must be one of ['generic', 'imap', 'sieve', 'smtp']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"tls_mode\": \"starttls\", \"starttls_protocol\": \"SMTP\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_protocol must be one of ['generic', 'imap', 'sieve', 'smtp']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"starttls_protocol\": \"pop3\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_protocol must be one of ['generic', 'imap', 'sieve', 'smtp']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"starttls_protocol\": \"\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"starttls_protocol\": 0}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"starttls_protocol\": false}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"starttls_protocol\": []}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"starttls_protocol\": 1}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_protocol must be one of ['generic', 'imap', 'sieve', 'smtp']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"starttls_protocol\": [\"smtp\"]}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "starttls_protocol must be one of ['generic', 'imap', 'sieve', 'smtp']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"sni\": \"override.example\"}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": "override.example",
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 25, \"sni\": 5}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 25,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": 5,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 443, \"host\": \"h.example\", \"tls_mode\": \"implicit\", \"connect_timeout\": 2, \"tls_handshake_timeout\": 3.5, \"retries\": 3, \"retry_delay\": 0.5, \"check_cert_expiry\": true, \"min_cert_days\": 30, \"sni\": \"s.example\", \"starttls_command\": \"STARTTLS\\r\\n\", \"starttls_protocol\": \"generic\", \"starttls_read_greeting\": true, \"verify\": false}",
+   "outcome": {
+    "attempts": 4,
+    "config": {
+     "check_cert_expiry": true,
+     "connect_timeout": 2.0,
+     "host": "h.example",
+     "min_cert_days": 30,
+     "port": 443,
+     "retries": 3,
+     "retry_delay": 0.5,
+     "sni": "s.example",
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": true,
+     "tls_handshake_timeout": 3.5,
+     "tls_mode": "implicit",
+     "verify": false
+    },
+    "kind": "ready",
+    "target": "h.example"
+   },
+   "url": ""
+  },
+  {
+   "data_json": "{\"port\": 443, \"port\": 80}",
+   "outcome": {
+    "attempts": 2,
+    "config": {
+     "check_cert_expiry": false,
+     "connect_timeout": 10.0,
+     "host": null,
+     "min_cert_days": 14,
+     "port": 80,
+     "retries": 1,
+     "retry_delay": 0.0,
+     "sni": null,
+     "starttls_command": "STARTTLS\r\n",
+     "starttls_protocol": "generic",
+     "starttls_read_greeting": false,
+     "tls_handshake_timeout": 10.0,
+     "tls_mode": "none",
+     "verify": true
+    },
+    "kind": "ready",
+    "target": "example.com"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"verify\": 1, \"port\": 0, \"connect_timeout\": 0, \"tls_mode\": \"x\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "verify must be a boolean",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 0, \"connect_timeout\": 0, \"tls_mode\": \"x\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port must be an integer between 1 and 65535",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 1, \"connect_timeout\": 0, \"tls_mode\": \"x\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "connect_timeout must be a finite number greater than zero and between 0 and 300 seconds",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "{\"port\": 1, \"tls_mode\": \"x\", \"starttls_protocol\": \"x\"}",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "tls_mode must be one of ['implicit', 'none', 'starttls']",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "[]",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port is required",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "[\"port\"]",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "[\"x\", \"port\"]",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "[1]",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port is required",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "\"port\"",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "\"no-p-o-r-t\"",
+   "outcome": {
+    "data_keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "error_msg": "port is required",
+    "kind": "configuration_error"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "\"airport\"",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "5",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "1.5",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "true",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  },
+  {
+   "data_json": "false",
+   "outcome": {
+    "class": "TypeError",
+    "kind": "exception"
+   },
+   "url": "example.com"
+  }
+ ],
+ "idna2008": [
+  {
+   "ascii": "example.com",
+   "host": "example.com"
+  },
+  {
+   "ascii": "Example.COM",
+   "host": "Example.COM"
+  },
+  {
+   "ascii": "127.0.0.1",
+   "host": "127.0.0.1"
+  },
+  {
+   "ascii": "xn--bcher-kva.example",
+   "host": "xn--bcher-kva.example"
+  },
+  {
+   "ascii": "xn--bcher-kva.example",
+   "host": "b\u00fccher.example"
+  },
+  {
+   "ascii": "xn--bcher-kva.example",
+   "host": "B\u00dcCHER.example"
+  },
+  {
+   "ascii": "www.xn--bcher-kva.de",
+   "host": "WWW.B\u00fccher.DE"
+  },
+  {
+   "ascii": "home.xn--wersdrfer-47a.de",
+   "host": "home.wersd\u00f6rfer.de"
+  },
+  {
+   "ascii": "xn--strae-oqa.de",
+   "host": "stra\u00dfe.de"
+  },
+  {
+   "ascii": "xn--kxa6ajbbmh.gr",
+   "host": "\u03c3\u03af\u03c3\u03c5\u03c6\u03bf\u03c2.gr"
+  },
+  {
+   "ascii": "xn--wgv71a119e.jp",
+   "host": "\u65e5\u672c\u8a9e\u3002jp"
+  },
+  {
+   "ascii": "example.com",
+   "host": "\uff45\uff58\uff41\uff4d\uff50\uff4c\uff45\uff0e\uff43\uff4f\uff4d"
+  },
+  {
+   "ascii": "xn--bcher-kva.example.",
+   "host": "b\u00fccher.example."
+  },
+  {
+   "ascii": "xn--caf-dma.com",
+   "host": "caf\u00e9.com"
+  },
+  {
+   "ascii": null,
+   "host": "\u2603.net"
+  },
+  {
+   "ascii": null,
+   "host": "a\u200db\u00fc.example"
+  },
+  {
+   "ascii": "xn--bcher-kva.de",
+   "host": "b\u00fc\u00adcher.de"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc..example"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fcxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.example"
+  },
+  {
+   "ascii": "xn--mnchen-3ya.de",
+   "host": "M\u00dcNCHEN.de"
+  },
+  {
+   "ascii": "xn--fa-hia.de",
+   "host": "fa\u1e9e.de"
+  },
+  {
+   "ascii": null,
+   "host": "a\u1806b.de"
+  },
+  {
+   "ascii": "xn--4dbc.il",
+   "host": "\u05d0\u05d1.il"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0a\u05d1.il"
+  },
+  {
+   "ascii": null,
+   "host": "a\u05d0.il"
+  },
+  {
+   "ascii": null,
+   "host": "xn--b\u00fc.de"
+  },
+  {
+   "ascii": "iv.example",
+   "host": "\u2163.example"
+  },
+  {
+   "ascii": "hpa.example",
+   "host": "\u3371.example"
+  },
+  {
+   "ascii": "xn--snl.example",
+   "host": "\ud87e\udc68.example"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc\ud83e\udee9.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0301b\u00fc.example"
+  },
+  {
+   "ascii": "xn--9ca2b.example",
+   "host": "e\u0301\u00fc.example"
+  },
+  {
+   "ascii": "xn--a-4cb8o.de",
+   "host": "a\u0350\u0316.de"
+  },
+  {
+   "ascii": "xn--a-4cb8o.de",
+   "host": "a\u0316\u0350.de"
+  },
+  {
+   "ascii": "xn--1ca7c52gwg.de",
+   "host": "\u00fca\u0301\u0316\u0350.de"
+  },
+  {
+   "ascii": "xn--e-xbb0v.de",
+   "host": "e\u0350\u0301.de"
+  },
+  {
+   "ascii": "xn--lsan803s.de",
+   "host": "a\u0308\u0301\u0323.de"
+  },
+  {
+   "ascii": "xn--tda5768f.kr",
+   "host": "\u1100\u1161\u11a8\u00fc.kr"
+  },
+  {
+   "ascii": "xn--p39a.kr",
+   "host": "\uac00\u11a8.kr"
+  },
+  {
+   "ascii": "xn--11b2f.in",
+   "host": "\u0915\u093c.in"
+  },
+  {
+   "ascii": null,
+   "host": "\u09c7\u09be.in"
+  },
+  {
+   "ascii": null,
+   "host": "\ud834\udd5e\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "a\u00a0b\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "a\udb40\udc01\u00fc.example"
+  },
+  {
+   "ascii": "",
+   "host": ""
+  },
+  {
+   "ascii": "a..b",
+   "host": "a..b"
+  },
+  {
+   "ascii": "a.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "host": "a.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  {
+   "ascii": "xn--istanbul-o0e.tr",
+   "host": "\u0130stanbul.tr"
+  },
+  {
+   "ascii": "xn--ll-0ea.xn--tda.example",
+   "host": "l\u00b7l.\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "a\u00b7l.\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "l\u00b7.\u00fc.example"
+  },
+  {
+   "ascii": "xn--tda97jff.example",
+   "host": "\u0375\u03b1\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0375a\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u03b1\u0375.example"
+  },
+  {
+   "ascii": "xn--4db4e.il",
+   "host": "\u05d0\u05f3.il"
+  },
+  {
+   "ascii": null,
+   "host": "a\u05f3\u00fc.il"
+  },
+  {
+   "ascii": null,
+   "host": "\u05f4.il"
+  },
+  {
+   "ascii": "xn--lckyi.jp",
+   "host": "\u30ab\u30fb.jp"
+  },
+  {
+   "ascii": null,
+   "host": "\u30fb\u00fc.jp"
+  },
+  {
+   "ascii": "xn--vekv29f.jp",
+   "host": "\u4e2d\u30fb.jp"
+  },
+  {
+   "ascii": null,
+   "host": "\u0661\u0662.eg"
+  },
+  {
+   "ascii": null,
+   "host": "\u0661\u06f2.eg"
+  },
+  {
+   "ascii": "xn--embc.ir",
+   "host": "\u06f1\u06f2.ir"
+  },
+  {
+   "ascii": "xn--ngba799q.ir",
+   "host": "\u0628\u200c\u0628.ir"
+  },
+  {
+   "ascii": "xn--11b6iy14e.in",
+   "host": "\u0915\u094d\u200d.in"
+  },
+  {
+   "ascii": null,
+   "host": "a\u200db\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "B\u00fc_x.example"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc.a b.example"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc.-a.example"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc.ab--c.example"
+  },
+  {
+   "ascii": "xn--bcher-kva.xn--b-eha.example",
+   "host": "XN--BCHER-KVA.b\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "xn--.b\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc.cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  {
+   "ascii": null,
+   "host": "b\u00fc.example.."
+  },
+  {
+   "ascii": "xn--mgb1d8d.xn--tda.example",
+   "host": "\u0644\u0627\u0661.\u00fc.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u0661a.example"
+  },
+  {
+   "ascii": "1.xn--4dbc.example",
+   "host": "1.\u05d0\u05d1.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud801\uddc0.example"
+  },
+  {
+   "ascii": null,
+   "host": "a\ud801\uddc0\u00fc.example"
+  },
+  {
+   "ascii": "xn--tda33e.example",
+   "host": "\ua7cb\u00fc.example"
+  },
+  {
+   "ascii": "xn--tda.example.com",
+   "host": "\u00fc\uff0eexample\u3002com"
+  },
+  {
+   "ascii": "xn--tda.",
+   "host": "\u00fc\u3002"
+  },
+  {
+   "ascii": "xn--tda.",
+   "host": "\u00fc."
+  },
+  {
+   "ascii": null,
+   "host": ".\u00fc"
+  },
+  {
+   "ascii": null,
+   "host": "\u00fc.."
+  },
+  {
+   "ascii": "xn--tda.xn--bcher-kva.example",
+   "host": "\u00fc.xn--bcher-kva.example"
+  },
+  {
+   "ascii": "xn--tda.xn--bcher-kva.example",
+   "host": "\u00fc.xn--bcher-KVA.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00fc.xn--zzzzzzzzz.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00fc.xn--a-.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00fc.ab_c.example"
+  },
+  {
+   "ascii": "xn--tda.xn--1ca.example",
+   "host": "\u00fc.A\u0301.example"
+  },
+  {
+   "ascii": "xn--tda.xn--5ca.example",
+   "host": "\u00fc.\u212b.example"
+  },
+  {
+   "ascii": "xn--tda.example",
+   "host": "\u00fc\u00ad\u200b.example"
+  },
+  {
+   "ascii": "xn--zca.example",
+   "host": "\u00df.example"
+  },
+  {
+   "ascii": "xn--3xac.gr",
+   "host": "\u03c2\u03a3.gr"
+  },
+  {
+   "ascii": "xn--11b2ezcs70k.in",
+   "host": "\u0915\u094d\u200c\u0937.in"
+  },
+  {
+   "ascii": null,
+   "host": "\u0628\u200c.ir"
+  },
+  {
+   "ascii": null,
+   "host": "\u0644\u0661\u06f1.ir"
+  },
+  {
+   "ascii": "xn--ksa35l.il",
+   "host": "\u05d0\u0300.il"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0a.il"
+  },
+  {
+   "ascii": null,
+   "host": "\u0661\u05d0.il"
+  },
+  {
+   "ascii": null,
+   "host": "\u00fcaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example"
+  },
+  {
+   "ascii": "xn--tda.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+   "host": "\u00fc.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  {
+   "ascii": null,
+   "host": "\u2488.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00fc.\u3002.example"
+  },
+  {
+   "ascii": "xn--ab-yka.example",
+   "host": "\uff21\uff22\u00fc.example"
+  },
+  {
+   "ascii": "m.example",
+   "host": "m.example"
+  },
+  {
+   "ascii": null,
+   "host": "zvt\uff2e\ud834\udd5e.example"
+  },
+  {
+   "ascii": "xn--dd-nnf0422n.example",
+   "host": "d\ua66fd\u0915\u00ad.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc6p\u1166\u014c\u0315\u0670.example"
+  },
+  {
+   "ascii": "xn--q-ggb.example",
+   "host": "\uff31\u0350.example"
+  },
+  {
+   "ascii": "xn--vea.example",
+   "host": "\u0120.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff39\u05b0\ud834\udd5e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1164\u0483\u0cc6\u1dc0\u093c.example"
+  },
+  {
+   "ascii": "xn--sef-7ua686c.example",
+   "host": "\uff33\u0137\uff25f\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "e\u0670\u1164.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff27\u20d0s\u110b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1165.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff2b\ua66f\u1109\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dc0.example"
+  },
+  {
+   "ascii": "xn--snl.example",
+   "host": "\ud87e\udc68.example"
+  },
+  {
+   "ascii": "xn--iv-qra.example",
+   "host": "\u2163\u014a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1106r\uff2a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud834\udd5eg\u0153\u0f73\u3371.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\u0317\u2163\u093c\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05b0\u030ef\uff31.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0335\uff22t\u0118.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u093c\uff22\uff27\u0305\u1806\u00ad.example"
+  },
+  {
+   "ascii": "xn--r-sma.example",
+   "host": "\u015b\uff32.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0915\u116e\u0348.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud834\udd5e\u030f.example"
+  },
+  {
+   "ascii": "xn--n-1ga.example",
+   "host": "n\u00d6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff36\u0670\u032a\u116d\u1169b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1111\u200d\u031f\u0670\uff30\u0308.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff2e\u1806.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00f3u\u031d\u0483\u1102.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\u0644.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0337\u0131.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73\u1111\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00d6\u200c\u05ea\uff24\u0627.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0105\u110d\u0670\u1101\u015c\u0cd5.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc6\u0f73\u1107\u011c\u0316.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0101\u0915\u05d0\uff25\u0324\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\ud834\udd5e\u093c\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0160\u1dff\u05d0\u0341.example"
+  },
+  {
+   "ascii": "xn--veb6jv730c.example",
+   "host": "\u05ea\u0627\ua66f.example"
+  },
+  {
+   "ascii": "xn--4db.example",
+   "host": "\u05d0.example"
+  },
+  {
+   "ascii": "xn--f-2eb0780b.example",
+   "host": "\uff26\u0338\ud87e\udc68.example"
+  },
+  {
+   "ascii": null,
+   "host": "g\u1174\u0644\ud83d\ude00ni.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u033a\u1ab0\u05b0\u0344\u011e\uff31.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0353\u031f\u116e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0324\u1101\u00e7.example"
+  },
+  {
+   "ascii": null,
+   "host": "c\ud83d\ude00.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00\u0113.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0149\u0cc6\u1172\ufb01\u0337\u064b.example"
+  },
+  {
+   "ascii": "v.example",
+   "host": "\uff36.example"
+  },
+  {
+   "ascii": "xn--y-ffb517b.example",
+   "host": "y\u093c\u00ad\u033e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0316\uff28\u1110\u0165\uff2f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0316\u1806t\u012c\u05b0\u200c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00\uff29.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09c7.example"
+  },
+  {
+   "ascii": "xn--1ea7h79ctyyfa564t.example",
+   "host": "\u015a\u031e\u1dff\u0f73\u0127.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u033f\uff36\u0f73a\u0cc2.example"
+  },
+  {
+   "ascii": "xn--tfa040d.example",
+   "host": "\u0141\u0cd5.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff2f\u11a8\u00db\u011d\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73\uff39\u05b0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud87e\udc68\u116b\uff21.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u033d\u09c7.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0307x\u064bj.example"
+  },
+  {
+   "ascii": "u.example",
+   "host": "u.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0483s.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u064b\u1166\u05b0\ud83e\udee9\ud834\udd5e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u2163\uff21\u1169.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff38\u20d0u\u093c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cd5\ua66f\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1168\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1164\ud83d\ude00\u0cc6\u0644\u20d0\u0321.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1111.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud834\udd5e\ud83d\ude00.example"
+  },
+  {
+   "ascii": "y.example",
+   "host": "y.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\ufb01.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09c7\u11a8q.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1806.example"
+  },
+  {
+   "ascii": "d.example",
+   "host": "\uff24.example"
+  },
+  {
+   "ascii": "n.example",
+   "host": "n.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1166\u09be\ufb01\u1dff\u064b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ua66fs.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0\ua66f\u0cc6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0915\u05d0\u1ab0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0350\u1e9e.example"
+  },
+  {
+   "ascii": "xn--zfa62go05b.example",
+   "host": "\u0148\u0310\u1ab0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200d\u031e.example"
+  },
+  {
+   "ascii": "xn--g-lja.example",
+   "host": "\u0123g.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0336\uff23\u11a8\u0cc2\uff39.example"
+  },
+  {
+   "ascii": "f.example",
+   "host": "\uff26.example"
+  },
+  {
+   "ascii": "xn--fiq-x2a39r8f.example",
+   "host": "\ufb01\uff31\u031a\u033d\u017a.example"
+  },
+  {
+   "ascii": null,
+   "host": "x\u00d8\u110a.example"
+  },
+  {
+   "ascii": "xn--l-ggb424e.example",
+   "host": "\uff2c\u0cd5\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff37\u0339\u09be\ud83e\udee9g.example"
+  },
+  {
+   "ascii": "xn--hdak.example",
+   "host": "\u00f0\u00d5.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0644\u1e9e\u0644.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u0483\u1105.example"
+  },
+  {
+   "ascii": "j.example",
+   "host": "\uff2a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05b0\u1dff\ud87e\udc68\uff29.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dc0\u0172\u1dff\uff37\u036b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0338\u0670.example"
+  },
+  {
+   "ascii": "xn--6ca.example",
+   "host": "\u00c6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0347\u05ea\u09c7w.example"
+  },
+  {
+   "ascii": "p.example",
+   "host": "p.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116b\u00f5\u0342\u0627.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116e\u0cc6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff29\u3371\u0cc2\u0316\u1100\u05b0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff33\u1169\ua66f\u00dd\uff27.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u032d\u0350\u1806\u013d\u1806.example"
+  },
+  {
+   "ascii": "k.example",
+   "host": "\uff2b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200d\u20d0\u20d0\u2163.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1100\u3371t\u1164\ud83d\ude00z.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u110e.example"
+  },
+  {
+   "ascii": "fi.example",
+   "host": "\ufb01.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00\uff21j\u1e9e\u00e1.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be\u0106\u012b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc2.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0c.example"
+  },
+  {
+   "ascii": "xn--3ca032d.example",
+   "host": "\u00c3\u0cd5.example"
+  },
+  {
+   "ascii": "xn--piv-s0h.example",
+   "host": "\uff30\u2163\u09c7.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00\u2163\u0146\u011c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud834\udd5ex\ud83d\ude00p\u00ca.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u064b\uff37\u20d0\u116a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1104\u200c\u00ee\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0345i\u064b\ud83e\udee9.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1161\uff25.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u011f\u110f\uff26.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0\ud834\udd5e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u3371\u116f\u1806.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u064bt\u0118\u1170\u0cc6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1e9e\u00ad\u0138\u010d\u20d0\u0311.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1102\u036e\u013c\u1ab0\u0315\uff28.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1105\u0915\u3371\u0123y.example"
+  },
+  {
+   "ascii": "wt.example",
+   "host": "\uff37\uff34.example"
+  },
+  {
+   "ascii": "xn--lfa.example",
+   "host": "\u0139.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0\u1175\u0339\u09be.example"
+  },
+  {
+   "ascii": "xn--ev-7pa.example",
+   "host": "\u013a\uff25\uff36.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u030d\u0107m\ud87e\udc68\ud83d\ude00.example"
+  },
+  {
+   "ascii": "hpa.example",
+   "host": "\u3371.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0351\uff2e\u0139\u200c\uff2e\u11af.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0138\u0174\u0316\u0316\u1104.example"
+  },
+  {
+   "ascii": "xn--mgb.example",
+   "host": "\u0627.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff2a\u1162l\u093c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff27\uff26\u1100\u110f.example"
+  },
+  {
+   "ascii": "yl.example",
+   "host": "y\uff2c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0150\u1173.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\ud834\udd5e\uff2d\u00ad\u064b\u05d0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u035b\u05b0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dff\u0cc2\u0915\u11a8.example"
+  },
+  {
+   "ascii": null,
+   "host": "f\u110f\u0316\u0cd5\uff39.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1172i\u036b\u0316\ud834\udd5e\u1107.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u110a\u0627\u11af\u0106\u05d0.example"
+  },
+  {
+   "ascii": "xn--veb.example",
+   "host": "\u05ea.example"
+  },
+  {
+   "ascii": "xn--i-4cba6g44ff1m.example",
+   "host": "\uff29\u0316\u0316\u093c\u0483\u032d.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05ea\uff23r\uff27.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be\u1112\u1166.example"
+  },
+  {
+   "ascii": "xn--uda.example",
+   "host": "\u00dd.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83e\udee9x.example"
+  },
+  {
+   "ascii": null,
+   "host": "p\u0349\u05d0\u05b0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u017f\u110a\u00ad\u0319\u110e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dc0\u1e9eq\u0120\u0cc2.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0483.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0\u1e9e\u05d0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1108.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u030e\ua66f\uff37.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1170g\u0cc2\ud87e\udc68\u0cc2\u0176.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff32\ud83e\udee9.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1110r.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u011f\u05ea\u012e\u1166.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dff\u3371\ud83e\udee9\u0483\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0365\u0349\uff2a\u093c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0483\u00d2\ud83e\udee9t.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00df\ud834\udd5e\u200c\u3371\u0141\u0132.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dff\u1108p\u0123.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u2163\u11a8\u1171\u00ad\u09c7\u0369.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u015b\u0337\u0355\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc6l\u0350\uff2b\u064b\u05b0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u11a8\u05d0\uff32\u00c1\ua66f\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0591\u0303\u0367.example"
+  },
+  {
+   "ascii": "xn--zca.example",
+   "host": "\u1e9e.example"
+  },
+  {
+   "ascii": "xn--wda2ozd15e1h3c.example",
+   "host": "\u0176\u0316\u035b\u00ff\u0153\u034c.example"
+  },
+  {
+   "ascii": "ivgh.example",
+   "host": "\u2163gh.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1806t\ud834\udd5e\u00f4\u09c7\u0627.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ufb01\u1166\u0915\u09be\uff37\u0cd5.example"
+  },
+  {
+   "ascii": "cs.example",
+   "host": "c\uff33.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1111\u3371.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09c7\u116e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73\u200c\u0cd5\u031e.example"
+  },
+  {
+   "ascii": "xn--pea7h232g848j.example",
+   "host": "\u014f\u011b\u1dc0\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u032c\u00ad\u05d0\u0670\u11a8.example"
+  },
+  {
+   "ascii": null,
+   "host": "y\u030b\u0350\u20d0\u1ab0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u033f.example"
+  },
+  {
+   "ascii": "xn--lh-gia7tkqk0g.example",
+   "host": "\u0173\u0331\uff2c\u0117\u1e9eh.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0591i\u1105\uff2d\u0303b.example"
+  },
+  {
+   "ascii": "xn--6ta311a.example",
+   "host": "\u0915\u00ad\u0339.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff2b\u1162\u0361\ufb01\u0343\u013a.example"
+  },
+  {
+   "ascii": "xn--iv-9wb907jfa.example",
+   "host": "\u2163\u0f73\u0324.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0339\u1112u\u00e6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff2a\ud834\udd5e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1161\u0f73p.example"
+  },
+  {
+   "ascii": "xn--11b.example",
+   "host": "\u0915.example"
+  },
+  {
+   "ascii": "xn--tz-00b.example",
+   "host": "t\u0350\uff3a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116e\uff38\u0627\u00d5.example"
+  },
+  {
+   "ascii": "xn--q-5ka301by2dqy1a.example",
+   "host": "\uff31\u09c7\u1ab0\u0670\u013e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05b0\ud83d\ude00\ud83e\udee9\u1174.example"
+  },
+  {
+   "ascii": "xn--s-zxb.example",
+   "host": "s\u0483.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\u0158\uff2by\u0f73.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0306\u2163.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670\uff2b\uff30\u0317r\u00dd.example"
+  },
+  {
+   "ascii": "xn--v-pfa09pa794e.example",
+   "host": "\u1e9e\uff36\u0915\u0350\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1169\ud83e\udee9.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0349\u0483e\u09c7\uff21.example"
+  },
+  {
+   "ascii": null,
+   "host": "u\u0cd5\u0915\ud83e\udee9\u1106\u0483.example"
+  },
+  {
+   "ascii": null,
+   "host": "n\uff21\u0102\u1171\uff22.example"
+  },
+  {
+   "ascii": "xn--ec-pka.example",
+   "host": "\uff25c\u00f9.example"
+  },
+  {
+   "ascii": "xn--j-5hb269b.example",
+   "host": "\uff2a\u036e\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1110\u05d0\ud87e\udc68.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0483\uff24\u1163o\u010c\u05d0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff23\u116d\u1dffy\u1106\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff30\u00e9\u05ea\u0350\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0483\u064b\u1806.example"
+  },
+  {
+   "ascii": "xn--fi-dja.example",
+   "host": "\u00ca\ufb01.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u20d0\u035ag\ufb01\u200c\uff25.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00ad\u035d.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud834\udd5e\u0305\u1dff\u1806.example"
+  },
+  {
+   "ascii": "xn--q-iga162iea2292t.example",
+   "host": "\u1107\u1167\u0f73\u00cd\uff31.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be\u032b\u1169\u0168.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00d1\u0670\u1dff\u1164\u200c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1108\ud83d\ude00\u0361\u116f\uff39\u0cd5.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u036c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc2\uff33\u200c\u013d\u0316.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u032a\u11af.example"
+  },
+  {
+   "ascii": "xn--q-zxb.example",
+   "host": "\uff31\u0483.example"
+  },
+  {
+   "ascii": "xn--6sa586x.example",
+   "host": "\ud87e\udc68\u0316.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200d\u1e9e\u3371y.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1175.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1109\u036c\u3371ne.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff27\u05ea\u093c\u0329\u00cd\u032b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dff\u1102\u0cc6\u09c7\u0915\u0347.example"
+  },
+  {
+   "ascii": "xn--k-pdb64vlv9a.example",
+   "host": "k\u064b\u0320\u1dc0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be\uff35\ud834\udd5e\u0915.example"
+  },
+  {
+   "ascii": "xn--fwz-lie713g.example",
+   "host": "fw\u0cc2\uff3a\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u031e\u1dff\u3371\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0312n\u0627\u0cd5.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0344\u09be\u0151.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc2\u1806.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0342\u05b0\u00e9\uff25.example"
+  },
+  {
+   "ascii": null,
+   "host": "q\u1105\ud83e\udee9\u1161\u2163u.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00ed\u0317\u0364\u3371t\ud834\udd5e.example"
+  },
+  {
+   "ascii": "d.example",
+   "host": "d.example"
+  },
+  {
+   "ascii": null,
+   "host": "i\u1167.example"
+  },
+  {
+   "ascii": "xn--11b.example",
+   "host": "\u0915.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0110\u1173.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u030d\uff30\u093c\u1112.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00df\u1164\u3371\u034e\u093c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0360.example"
+  },
+  {
+   "ascii": "xn--vl-ypa03s.example",
+   "host": "\u0137\u0348v\uff2c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1101\u1ab0\u0316\u00ad\u0316p.example"
+  },
+  {
+   "ascii": null,
+   "host": "y\u0326\u11af\u0150\u116e.example"
+  },
+  {
+   "ascii": "xn--v-om3e.example",
+   "host": "\uff36\ua66f.example"
+  },
+  {
+   "ascii": "xn--j-mef.example",
+   "host": "j\u0cc2.example"
+  },
+  {
+   "ascii": "xn--tda8uo2k.example",
+   "host": "\u00fc\u0170\u064b.example"
+  },
+  {
+   "ascii": "xn--4db.example",
+   "host": "\u05d0.example"
+  },
+  {
+   "ascii": "xn--ur-mnf.example",
+   "host": "\uff35\u0915\uff32.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116e\u1ab0\uff36\uff25\u0347.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00d7\u2163\u05b0.example"
+  },
+  {
+   "ascii": "j.example",
+   "host": "j.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0591y\uff33\u1111\ud87e\udc68t.example"
+  },
+  {
+   "ascii": "xn--n-qfa90zlqc.example",
+   "host": "\uff2e\u0483\u0670\u1e9e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0627\u0127.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ua66f\u0325\u0cc2\u0f73.example"
+  },
+  {
+   "ascii": "s.example",
+   "host": "s.example"
+  },
+  {
+   "ascii": "xn--whpaf-iib704a.example",
+   "host": "\uff37\u017c\u3371\u0352\uff26.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1112g\u0cc2r.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u035c\u1168\uff2d.example"
+  },
+  {
+   "ascii": "i.example",
+   "host": "\uff29.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73.example"
+  },
+  {
+   "ascii": "xn--qda21j.example",
+   "host": "\u00f9\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff26\u200c\u1171\uff2d.example"
+  },
+  {
+   "ascii": null,
+   "host": "oyc\u1103\ud834\udd5e\u0308.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0340\uff30\u2163.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u064b\uff22\uff2c\u05ea\ud834\udd5e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u110b\u05ea\u014a\u116c\u0cc2.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u034c\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc6\u0147\u1806\uff23\u034c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0\u00da\u0627\u09be\u1104\u00cb.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff35\u0322\u031a\u1108\u031c\u3371.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0336.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u034d\u05ea.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05d0\u1105\u1173\ud83e\udee9\u0644s.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00d1s\u20d0\u0cc6.example"
+  },
+  {
+   "ascii": "xn--jb-10b.example",
+   "host": "\uff2a\uff22\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1166.example"
+  },
+  {
+   "ascii": "xn--goiv-j6a471a.example",
+   "host": "g\uff2f\u2163\u0160\u035f.example"
+  },
+  {
+   "ascii": "xn--f-bcb3101b.example",
+   "host": "\ud87e\udc68\u0308f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1e9e\u1163\u11a8\uff34.example"
+  },
+  {
+   "ascii": "xn--k-mna.example",
+   "host": "\uff2b\u0169.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0149\u00c7\u0cc6\u0140.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u11af\u05ea\u0319\u200d\u2163.example"
+  },
+  {
+   "ascii": null,
+   "host": "k\u110a\u016e.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff31\u0f73\u110f\u032b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0369\u0483\u200d\u013d\u0cc2\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1104\u1111u.example"
+  },
+  {
+   "ascii": "xn--4da83u.example",
+   "host": "\u0106\u0591.example"
+  },
+  {
+   "ascii": "xn--nfa26gnh.example",
+   "host": "\u013c\u0316\u036c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be\u0310.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dc0q\uff27.example"
+  },
+  {
+   "ascii": "xn--f-pga.example",
+   "host": "\uff26\u00d0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u11af\u1dc0\u20d0\u200c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u035f\u1110.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00\u0111\u1dc0.example"
+  },
+  {
+   "ascii": "xn--5ea66t.example",
+   "host": "\u012b\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cd5\u116e\u05d0\u016a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u05b0\uff33\uff35\uff21\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc2\u0483\u016c\u064b\u0644\u0368.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc6\u034d\uff30.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00d9\u012f\u0627\u0cc6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff31\u00ee\u1170.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff30\u116e\u0627\u0591\u0350\u110c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be\u1dc0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dffb.example"
+  },
+  {
+   "ascii": "xn--3sa98m.example",
+   "host": "\u0627\u0343.example"
+  },
+  {
+   "ascii": null,
+   "host": "e\u1171\u116f\ufb01\u0158\u3371.example"
+  },
+  {
+   "ascii": "xn--0sa9lo9dfh.example",
+   "host": "\u05d0\u0359\u0591\u0310.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u064b\u1170s\u05b0\u05ea\u0915.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1174\uff36.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff26\u116b\u0cc6\u00ad\u1169.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0354\u1109\ud87e\udc68.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1112.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83e\udee9\u00e3\uff2c\u0106.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116a\u1161\u1806\u010bf.example"
+  },
+  {
+   "ascii": "c.example",
+   "host": "c.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u093cw\u2163\u0350\uff24\u0cc2.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0350.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff28\u034b\u0316\u05d0\u015b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200c\u0483\u0316\u1ab0\u064b\uff39.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200d\ua66f\u0350\u1dc0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u035b\ud83d\ude00\ud83e\udee9\u1dff\u0644.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0354\u0315\u0344\u033a\u0326\u0305.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ua66f\u0483\ud83e\udee9\u00fd\u0174.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0316.example"
+  },
+  {
+   "ascii": "xn--zca46j65h.example",
+   "host": "\u1e9e\u0350\u093c.example"
+  },
+  {
+   "ascii": "xn--tqf2783f.example",
+   "host": "\u110e\u1164\u1ab0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u110c\u0483.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u09be\u1172\u1161\uff2f\u2163.example"
+  },
+  {
+   "ascii": "xn--cg-jsa.example",
+   "host": "\u0155cg.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0345\u1171\uff2d\u0591.example"
+  },
+  {
+   "ascii": null,
+   "host": "n\u3371\u1165\u0591\u1171\ud83d\ude00.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud834\udd5e\u0336\ud87e\udc68\uff33\u1163\u0146.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dc0\u016a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0334t\u200c\u0326.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00cd\u11af\u00ad.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1162\u05b0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cd5\u0591l\ud83e\udee9\u093c\u1110.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1105\u1107\u05eaq\uff22.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ud83d\ude00\u1109\u0367w\u0116v.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116b\u0627.example"
+  },
+  {
+   "ascii": "xn--fha.example",
+   "host": "\u0179\u00ad.example"
+  },
+  {
+   "ascii": null,
+   "host": "w\u1105\u1ab0\u1dff.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u116a.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0644\u09c7\u064b\u1174\u0168\uff2f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0670q\ufb01\u20d0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cd5\uff3a\u0360\u013d.example"
+  },
+  {
+   "ascii": "xn--11b.example",
+   "host": "\u0915.example"
+  },
+  {
+   "ascii": "xn--o-uef.example",
+   "host": "\uff2f\u00ad\u0cc6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u3371\uff2d\ud83e\udee9\u110e\uff2b.example"
+  },
+  {
+   "ascii": null,
+   "host": "f\u0f73\u11af\ua66f.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u00f2\u0644\u3371\ud83e\udee9.example"
+  },
+  {
+   "ascii": "xn--pd-mka147aupn.example",
+   "host": "\uff30d\u0483\u0cc2\u00f8.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u012d\u011e\u0170\u3371\u1e9e\u1172.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0f73\ud87e\udc68.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u110fv\u064b\uff35\u064b\u064b.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc2.example"
+  },
+  {
+   "ascii": "xn--fi-cpa289i.example",
+   "host": "\ufb01\u012e\u0cc6.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dff\ufb01\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0483\u1ab0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1ab0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0124\ud834\udd5e\u1ab0\ud83d\ude00.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ua66f\u1104.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0155\u0170\u110f\u200d.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u200d\ud87e\udc68\u0670.example"
+  },
+  {
+   "ascii": null,
+   "host": "i\u1164.example"
+  },
+  {
+   "ascii": null,
+   "host": "\ufb01\uff25\ufb01g\u116c\u0627.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u1dc0\u00d7\ufb01\u0644.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u0cc2\u200d\ud83e\udee9\u0361\u1806\u1dc0.example"
+  },
+  {
+   "ascii": null,
+   "host": "\uff31\u2163\u200c\u0342\u00ee.example"
+  },
+  {
+   "ascii": "iv.example",
+   "host": "\u2163.example"
+  },
+  {
+   "ascii": "xn--yda2i.example",
+   "host": "\u0101\u0136.example"
+  },
+  {
+   "ascii": "xn--11b25a.example",
+   "host": "\u0915\u09be.example"
+  },
+  {
+   "ascii": null,
+   "host": "\u20d0\ufb01i.example"
+  }
+ ],
+ "ip_from_int": [
+  {
+   "literal": "0.0.0.0",
+   "value_json": "0"
+  },
+  {
+   "literal": "0.0.0.5",
+   "value_json": "5"
+  },
+  {
+   "literal": "255.255.255.255",
+   "value_json": "4294967295"
+  },
+  {
+   "literal": "::1:0:0",
+   "value_json": "4294967296"
+  },
+  {
+   "literal": "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+   "value_json": "340282366920938463463374607431768211455"
+  },
+  {
+   "literal": null,
+   "value_json": "340282366920938463463374607431768211456"
+  },
+  {
+   "literal": null,
+   "value_json": "-1"
+  },
+  {
+   "literal": "0.0.0.1",
+   "value_json": "true"
+  },
+  {
+   "literal": "0.0.0.0",
+   "value_json": "false"
+  }
+ ],
+ "str_values": [
+  {
+   "str": "5",
+   "value_json": "5"
+  },
+  {
+   "str": "-7",
+   "value_json": "-7"
+  },
+  {
+   "str": "1000000000000000000000000000000",
+   "value_json": "1000000000000000000000000000000"
+  },
+  {
+   "str": "True",
+   "value_json": "true"
+  },
+  {
+   "str": "False",
+   "value_json": "false"
+  },
+  {
+   "str": "1.5",
+   "value_json": "1.5"
+  },
+  {
+   "str": "1e+16",
+   "value_json": "1e+16"
+  },
+  {
+   "str": "1e-07",
+   "value_json": "1e-07"
+  },
+  {
+   "str": "inf",
+   "value_json": "Infinity"
+  },
+  {
+   "str": "nan",
+   "value_json": "NaN"
+  },
+  {
+   "str": "-0.0",
+   "value_json": "-0.0"
+  },
+  {
+   "str": "['a', 1, None, True, 2.5, {'k': \"it's\"}]",
+   "value_json": "[\"a\", 1, null, true, 2.5, {\"k\": \"it's\"}]"
+  },
+  {
+   "str": "{'a': [1, {'b': None}], 'c': 'q\"uo\\'te', 'd': '\u00e9\\x00\ud83d\ude00\\u200b'}",
+   "value_json": "{\"a\": [1, {\"b\": null}], \"c\": \"q\\\"uo'te\", \"d\": \"\\u00e9\\u0000\\ud83d\\ude00\\u200b\"}"
+  },
+  {
+   "str": "[]",
+   "value_json": "[]"
+  },
+  {
+   "str": "{}",
+   "value_json": "{}"
+  }
+ ]
+}

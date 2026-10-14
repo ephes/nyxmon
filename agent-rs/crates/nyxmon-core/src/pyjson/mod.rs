@@ -13,15 +13,17 @@ mod cmp;
 mod dump;
 mod num;
 mod parse;
+mod props;
 mod repr;
 
-pub use cmp::{CmpOp, TypeError, json_kind, py_cmp, py_truthy};
+pub use cmp::{CmpOp, TypeError, json_kind, py_cmp, py_truthy, type_name as py_type_name};
 pub use dump::{DumpError, DumpOpts, dumps};
 pub use num::{
     PyNumError, bigint_to_i64_saturating, py_float, py_float_of_int, py_float_repr, py_format_g,
     py_int, py_int_of, py_round,
 };
 pub use parse::{LoadError, MAX_NESTING_DEPTH, loads, loads_bytes};
+pub use props::{nfkc_adds_url_delimiter, py_isdigit, py_lower};
 pub use repr::{char_len, py_bytes_repr, py_isspace, py_repr, py_str, py_str_repr, py_strip};
 
 use indexmap::IndexMap;
