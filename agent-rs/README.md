@@ -55,6 +55,11 @@ Slice S6 part 3 adds the `ping` executor (`nyxmon_checks::ping`): the
 system `ping` binary as a subprocess per attempt, with the command line,
 output parsers and statistics in `nyxmon_core::ping_text`.
 
+Slice S12 adds `nyxmon-agent run-check`, the process tests of PLAN.md 7.3
+(signals, SIGKILL and stale-lease reclaim, the cleaner), the offline parity
+harness against the Python agent (`just rs-parity`, CI job `parity`), the
+shadow-run tools and the operator documentation (`docs/agent-rs.md`).
+
 ## Layout
 
 ```
@@ -66,6 +71,9 @@ agent-rs/
   parity/
     run_parity.py       offline parity harness (Python vs Rust, `just rs-parity`)
     fakes.py            its scripted fake servers
+    shadow_prepare.py   shadow run (PLAN.md 9.1): database copy for the shadow agent
+    shadow_record.py    shadow run: records both databases over time
+    shadow_compare.py   shadow run: comparison report
   scripts/
     release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
   PLAN.md               the implementation plan and parity contract
@@ -150,6 +158,14 @@ fails the run; `--keep` keeps the databases and logs. The DNS check needs
 port 53 (CI allows it with `sysctl net.ipv4.ip_unprivileged_port_start=53`);
 without it the harness leaves that check out and says so. The `parity` job
 of `.github/workflows/ci.yml` runs it with `--require-dns`.
+
+## Shadow run tools
+
+`parity/shadow_prepare.py`, `shadow_record.py` and `shadow_compare.py`
+prepare the database copy for a shadow run on the production host, record
+both databases while the shadow agent runs, and report the differences
+(PLAN.md 9.1). They need only the host's `python3`; the procedure is in
+`docs/agent-rs.md` ("Shadow run"). Tests: `tests/unit/test_agent_rs_shadow.py`.
 
 ## Releases
 

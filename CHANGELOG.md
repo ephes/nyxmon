@@ -311,6 +311,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Python and the Rust agent run side by side on the same check corpus
   against scripted fake servers, and any difference in results, key order,
   notification state or alerts outside the documented masks fails the job.
+- Rust agent shadow-run tools and documentation: `agent-rs/parity/`
+  `shadow_prepare.py` (database copy for a shadow run), `shadow_record.py`
+  (records the production and the shadow database over time) and
+  `shadow_compare.py` (comparison report); new page `docs/agent-rs.md`
+  (architecture, schema contract, parity classes and divergences,
+  operations, shadow run, rollback), Rust sections in
+  `docs/configuration.md` and `docs/concurrency-overview.md`.
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but

@@ -45,6 +45,7 @@ json-metrics-check-examples
 Architecture
 async-check-runner
 concurrency-overview
+agent-rs
 ```
 
 ```{toctree}

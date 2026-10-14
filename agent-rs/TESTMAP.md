@@ -324,6 +324,7 @@ against a temporary database from the schema fixture and fake servers).
 | `tests/e2e/collector_e2e_test.py::test_agent_executes_checks`, `e2e_test.py` | `::the_agent_runs_checks_and_shuts_down_on_sigterm` (S9b) and the parity harness | done |
 | `tests/e2e/test_dns_checks.py` (mocked resolver through the message bus) | `dns/tests.rs` (S5b) and the parity harness's DNS checks against a fake nameserver | done |
 | offline parity harness (PLAN.md 7.4): the Python and the Rust agent on one corpus | `agent-rs/parity/run_parity.py` (`just rs-parity`, CI job `parity`); its parsers, masks and fake scripts: `tests/unit/test_agent_rs_parity.py` | done |
+| shadow run tooling (PLAN.md 9.1): copy preparation, recorder, comparison report | `tests/unit/test_agent_rs_shadow.py` (prepare on a schema-fixture database, recorder ticks, disagreements/key differences/alert counts with and without B0/stuck claims/cleaner findings) | done |
 | `run-check` (PLAN.md 7.4): read-only, no lock, no persistence, disabled checks run, `--imap-no-delete` | `::run_check_prints_one_result_without_writing_the_database`, `::run_check_leaves_an_untouched_database_unmodified`; `run_check.rs` unit tests; `nyxmon-store/tests/checks.rs::read_check_loads_one_row_read_only` | done |
 
 ## Later slices

@@ -1,0 +1,320 @@
+"""Shadow-run tooling of the Rust agent (agent-rs/parity, PLAN.md 9.1).
+
+``shadow_prepare.py`` makes the database copy, ``shadow_record.py`` records
+both databases over time, ``shadow_compare.py`` reports the differences.
+These tests run the three on databases built from the schema fixture.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import sqlite3
+import sys
+import time
+from pathlib import Path
+from types import ModuleType
+
+import pytest
+
+PARITY = Path(__file__).resolve().parents[2] / "agent-rs" / "parity"
+SCHEMA = (
+    Path(__file__).resolve().parents[2]
+    / "agent-rs"
+    / "fixtures"
+    / "schema"
+    / "schema.sql"
+)
+
+
+def _load(name: str) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(name, PARITY / f"{name}.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+prepare = _load("shadow_prepare")
+recorder = _load("shadow_record")
+compare = _load("shadow_compare")
+
+
+def _created(epoch: float) -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(epoch))
+
+
+def _production(path: Path, now: int) -> None:
+    connection = sqlite3.connect(path)
+    connection.executescript(SCHEMA.read_text())
+    connection.execute("INSERT INTO service (id, name) VALUES (1, 'svc')")
+    for check_id, check_type, status, started in (
+        (1, "http", "processing", now - 30),
+        (2, "smtp", "idle", 0),
+        (3, "imap", "idle", 0),
+        (4, "tcp", "idle", 0),
+        (5, "http", "idle", 0),
+    ):
+        connection.execute(
+            "INSERT INTO health_check (id, service_id, name, check_type, url, check_interval,"
+            " next_check_time, processing_started_at, status, disabled, data)"
+            " VALUES (?, 1, ?, ?, '', 60, ?, ?, ?, 0, '{}')",
+            (check_id, f"check {check_id}", check_type, now + 60, started, status),
+        )
+    connection.execute(
+        "INSERT INTO check_notification_state (check_id, failure_count, attempt_seq) VALUES (1, 2, 3)"
+    )
+    connection.execute(
+        "INSERT INTO collector_incident (incident_key, alert_count, payload)"
+        " VALUES ('collector:stale_processing_lease', 1, '{}')"
+    )
+    connection.execute(
+        "INSERT INTO check_result (health_check_id, status, data, created_at) VALUES (1, 'ok', '{}', ?)",
+        (_created(now - 7200),),
+    )
+    connection.commit()
+    connection.close()
+
+
+def test_prepare_copies_and_neutralises_the_copy(tmp_path, capsys):
+    now = int(time.time())
+    source, dest = tmp_path / "prod.sqlite3", tmp_path / "shadow" / "db.sqlite3"
+    dest.parent.mkdir()
+    _production(source, now)
+    before = source.read_bytes()
+
+    assert prepare.main(["--source", str(source), "--dest", str(dest)]) == 0
+    assert source.read_bytes() == before  # the source is only read
+    copy = sqlite3.connect(dest)
+    assert copy.execute(
+        "SELECT id FROM health_check WHERE disabled = 1 ORDER BY id"
+    ).fetchall() == [(2,), (3,)]
+    assert copy.execute(
+        "SELECT status, processing_started_at, next_check_time FROM health_check WHERE id = 1"
+    ).fetchone() == (
+        "idle",
+        0,
+        now + 60,
+    )
+    assert copy.execute("SELECT COUNT(*) FROM collector_incident").fetchone() == (0,)
+    assert copy.execute("SELECT COUNT(*) FROM check_result").fetchone() == (1,)
+    copy.close()
+    baseline = json.loads(Path(f"{dest}.baseline.json").read_text())
+    assert baseline["mail_checks_disabled"] == 2
+    assert baseline["claims_released"] == 1
+    assert baseline["incidents_deleted"] == 1
+    assert baseline["enabled_checks"] == {"http": 2, "tcp": 1}
+    assert baseline["baseline"][0]["attempt_seq"] == 3
+    assert (Path(f"{dest}.baseline.json").stat().st_mode & 0o777) == 0o600
+    assert f"T0={baseline['t0']} " in capsys.readouterr().out
+
+    # Never overwrites an existing copy.
+    assert prepare.main(["--source", str(source), "--dest", str(dest)]) == 1
+
+
+def _insert(path: Path, check_id: int, status: str, data: dict, created: float) -> None:
+    connection = sqlite3.connect(path)
+    connection.execute(
+        "INSERT INTO check_result (health_check_id, status, data, created_at) VALUES (?, ?, ?, ?)",
+        (check_id, status, json.dumps(data), _created(created)),
+    )
+    connection.commit()
+    connection.close()
+
+
+def _execute(path: Path, sql: str, *params: object) -> None:
+    connection = sqlite3.connect(path)
+    connection.execute(sql, params)
+    connection.commit()
+    connection.close()
+
+
+@pytest.fixture
+def recorded(tmp_path):
+    """Two ticks of a shadow run in which check 4 disagrees once."""
+    now = int(time.time())
+    prod, shadow = tmp_path / "prod.sqlite3", tmp_path / "shadow.sqlite3"
+    _production(prod, now)
+    assert prepare.main(["--source", str(prod), "--dest", str(shadow)]) == 0
+    # Production's claim is still running; the copy's was released. The
+    # shadow agent decides one alert for check 5 before the first tick.
+    _execute(
+        shadow,
+        "INSERT INTO check_notification_state (check_id, attempt_seq) VALUES (5, 1)",
+    )
+    t0 = now - 600
+    recorders = [
+        recorder.DatabaseRecorder("prod", prod, recorder.since_text(str(t0))),
+        recorder.DatabaseRecorder("shadow", shadow, recorder.since_text(str(t0))),
+    ]
+    out = tmp_path / "record.jsonl"
+    lines = [r.tick(now - 120) for r in recorders]
+
+    ok = {"duration_ms": 3}
+    refused = {"error_type": "connection_error", "error_msg": "refused", "host": "h"}
+    for path in (prod, shadow):
+        _insert(path, 4, "ok", ok, now - 100)
+        _insert(path, 5, "ok", ok, now - 100)
+    _insert(prod, 4, "ok", ok, now - 50)
+    _insert(shadow, 4, "error", refused, now - 48)
+    _insert(shadow, 5, "ok", {"duration_ms": 1, "extra": 1}, now - 40)
+    _insert(prod, 5, "ok", ok, now - 41)
+    _execute(
+        shadow,
+        "INSERT INTO check_notification_state (check_id, failure_count, attempt_seq) VALUES (4, 1, 1)",
+    )
+    lines += [r.tick(now) for r in recorders]
+    out.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    return out, t0, prod, shadow
+
+
+def test_recorder_writes_incremental_snapshots(recorded):
+    out, t0, _prod, _shadow = recorded
+    lines = [json.loads(line) for line in out.read_text().splitlines()]
+    first_prod, first_shadow, second_prod, second_shadow = lines
+    assert first_prod["checks"]["2"][0] == "smtp"
+    assert first_prod["results"] == []  # the 2-hour-old row is before T0
+    assert first_prod["states"][0][:2] == [1, 2]
+    assert [row[1] for row in first_prod["leases"]][:1] == ["processing"]
+    assert first_shadow["leases"][0][1] == "idle"
+    assert "checks" not in second_prod
+    assert [row[1:3] for row in second_shadow["results"]] == [
+        [4, "ok"],
+        [5, "ok"],
+        [4, "error"],
+        [5, "ok"],
+    ]
+    assert second_shadow["results"][2][4]["error_type"] == "connection_error"
+    assert second_prod["states"] == []  # unchanged rows are not repeated
+    assert [row[0] for row in second_shadow["states"]] == [4]
+    assert second_prod["retention"]["count"] == 5  # one row from before T0
+
+
+def test_compare_reports_disagreements_keys_alerts_and_claims(
+    recorded, tmp_path, capsys
+):
+    out, t0, prod, shadow = recorded
+    report_path = tmp_path / "report.json"
+    log = tmp_path / "shadow.log"
+    log.write_text(
+        "2026-10-15 10:00:00,000 - nyxmon.adapters.notification - ERROR - "
+        "notification check_id=4 status=error error_type=connection_error\n"
+    )
+    code = compare.main(
+        [
+            "--record",
+            str(out),
+            "--since",
+            str(t0),
+            "--json",
+            str(report_path),
+            "--shadow-log",
+            str(log),
+            "--lease-seconds",
+            "10",
+            "--prod-db",
+            str(prod),
+            "--shadow-db",
+            str(shadow),
+            "--fail-on-findings",
+        ]
+    )
+    assert code == 1
+    report = json.loads(report_path.read_text())
+    # Mail checks are disabled in the copy and never compared.
+    assert sorted(report["checks"]) == ["1", "4", "5"]
+    check4 = report["checks"]["4"]
+    assert check4["outcomes"] == {
+        "prod": {"ok/": 2},
+        "shadow": {"ok/": 1, "error/connection_error": 1},
+    }
+    assert len(check4["disagreements"]) == 1
+    assert check4["disagreements"][0]["shadow"][1:] == ["error", "connection_error"]
+    assert check4["disagreements"][0]["prod"][1:] == ["ok", ""]
+    assert check4["disagreements"][0]["apart_seconds"] == 2
+    assert check4["alerts"] == {
+        "prod": 0,
+        "shadow": 1,
+        "prod_times": [],
+        "shadow_times": [check4["alerts"]["shadow_times"][0]],
+        "shadow_log": 1,
+    }
+    assert report["checks"]["5"]["key_differences"] == [
+        {"outcome": "ok/", "only_prod": [], "only_shadow": [["duration_ms", "extra"]]}
+    ]
+    # Production's claim (30 s old, lease 10 s) is reported as stuck.
+    assert [entry["check_id"] for entry in report["stuck_claims"]["prod"]] == [1]
+    assert report["stuck_claims"]["shadow"] == []
+    assert report["cross_check"]["prod"]["stuck_claims"][0][0] == 1
+    findings = "\n".join(report["findings"])
+    assert "check 4 (tcp): 1 status/error-type disagreement(s)" in findings
+    assert "check 4 (tcp): 0 production vs 1 shadow alert(s)" in findings
+    assert "check 5 (http): data keys differ for 1 outcome(s)" in findings
+    assert "prod: 1 claim(s) stayed in processing beyond 10 s" in findings
+    assert "## Findings to explain" in capsys.readouterr().out
+
+
+def test_compare_flags_a_cleaner_that_deleted_nothing(tmp_path):
+    since = 1_000_000
+    day = 86400
+    lines = []
+    for index, ts in enumerate((since, since + day + 7200)):
+        for name in ("prod", "shadow"):
+            line = {
+                "ts": ts,
+                "db": name,
+                "results": [],
+                "states": [],
+                "incidents": [],
+                "leases": [[1, "idle", 0, 0, 0]],
+                "retention": {
+                    "count": 5,
+                    "min_created_at": _created(since - day),
+                    "min_id": 1,
+                },
+            }
+            if index == 0:
+                line["checks"] = {"1": ["http", "c", 60]}
+            lines.append(line)
+    record = tmp_path / "record.jsonl"
+    record.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    report = tmp_path / "report.json"
+    assert (
+        compare.main(
+            ["--record", str(record), "--since", str(since), "--json", str(report)]
+        )
+        == 0
+    )
+    findings = json.loads(report.read_text())["findings"]
+    assert any("oldest result was" in finding for finding in findings)
+    assert any("did not advance" in finding for finding in findings)
+
+
+def test_alert_counts_start_from_the_baseline(recorded, tmp_path):
+    out, t0, _prod, shadow = recorded
+    without, with_b0 = tmp_path / "without.json", tmp_path / "with.json"
+    assert (
+        compare.main(["--record", str(out), "--since", str(t0), "--json", str(without)])
+        == 0
+    )
+    baseline = f"{shadow}.baseline.json"
+    assert (
+        compare.main(
+            [
+                "--record",
+                str(out),
+                "--since",
+                str(t0),
+                "--baseline",
+                baseline,
+                "--json",
+                str(with_b0),
+            ]
+        )
+        == 0
+    )
+    # The first tick already saw attempt_seq 1; only B0 (0 for check 5) counts it.
+    assert json.loads(without.read_text())["checks"]["5"]["alerts"]["shadow"] == 0
+    assert json.loads(with_b0.read_text())["checks"]["5"]["alerts"]["shadow"] == 1
+    assert json.loads(with_b0.read_text())["checks"]["5"]["alerts"]["prod"] == 0

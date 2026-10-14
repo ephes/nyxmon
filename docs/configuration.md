@@ -871,6 +871,30 @@ run) has its own lock. The file may stay behind after the agent exits; it is
 not a stale lock (the kernel drops `flock` locks with the process), so never
 delete it to "unlock" a database.
 
+## Operations: the Rust agent
+
+The Rust port of the agent, `nyxmon-agent` (`agent-rs/`, see
+{doc}`agent-rs`), reads the same command-line flags and the same environment
+variables as `start-agent`, with the same defaults, bounds and fallbacks:
+everything on this page applies to both implementations. It takes the same
+agent lock. In addition it offers:
+
+- `nyxmon-agent --db PATH --check-schema`: verify the database schema
+  against what the agent needs, read-only and without the lock; exit 0 or 1.
+  The Rust agent never creates or alters tables: run `manage.py migrate`
+  first.
+- `nyxmon-agent --db PATH --shadow`: a shadow run on a copy of the
+  database. Alerts become one log line each
+  (`notification check_id=<id> status=<s> error_type=<t>`); `TELEGRAM_*` and
+  `OPSGATE_*` are ignored and `--enable-telegram` is refused.
+- `nyxmon-agent run-check --db PATH --check-id N [--imap-no-delete]`: run one
+  check from a read-only database and print the result as one JSON line,
+  without lock, result row or notification.
+- `nyxmon-agent --version`: version and git commit.
+
+Proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`) are
+not honoured by the Rust agent; the production unit sets none.
+
 ## Operations: graceful monitor shutdown
 
 `start-agent` handles SIGTERM (including systemd restarts) and SIGINT by stopping
