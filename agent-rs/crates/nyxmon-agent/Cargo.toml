@@ -23,13 +23,13 @@ nyxmon-notify.workspace = true
 chrono.workspace = true
 clap.workspace = true
 num-bigint.workspace = true
-tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { workspace = true, features = ["macros", "net", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 tracing.workspace = true
 
 [dev-dependencies]
 rusqlite.workspace = true
 tempfile.workspace = true
-tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time", "test-util"] }
+tokio = { workspace = true, features = ["macros", "net", "rt", "rt-multi-thread", "signal", "sync", "time", "test-util"] }
 
 [lints]
 workspace = true

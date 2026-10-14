@@ -297,3 +297,107 @@ fn sigterm_during_an_in_flight_check_releases_the_claim_without_a_result() {
         0
     );
 }
+
+/// The persisted `site:connectivity` payload, if the row exists.
+fn site_payload(db: &Path) -> Option<String> {
+    Connection::open(db)
+        .unwrap()
+        .query_row(
+            "SELECT payload FROM collector_incident WHERE incident_key = 'site:connectivity'",
+            [],
+            |row| row.get(0),
+        )
+        .ok()
+}
+
+#[test]
+fn the_site_observer_probes_local_targets_and_persists_each_round() {
+    // PLAN.md 6, S11: `observe` mode against local probe targets. IPv4 is a
+    // refused port, so the path goes `failing` in the first round and `down`
+    // in the second; the DNS name resolves; IPv6 is unobserved.
+    let db = migrated_db();
+    add_http_check(
+        &db.path,
+        1,
+        &fake_server(true),
+        r#"{"site_dependency": {"requires": ["ipv6"]}}"#,
+    );
+    let path = db.path.to_str().unwrap();
+    let child = agent(&["--db", path, "--interval", "1", "--shadow"])
+        .env("NYXMON_SITE_CONNECTIVITY_MODE", "observe")
+        .env("NYXMON_SITE_PROBE_INTERVAL_SECONDS", "15")
+        .env("NYXMON_SITE_PROBE_TIMEOUT_SECONDS", "1")
+        .env("NYXMON_SITE_PROBE_IPV4_TARGETS", "127.0.0.1:1")
+        .env("NYXMON_SITE_PROBE_IPV6_TARGETS", "")
+        .env("NYXMON_SITE_PROBE_DNS_NAMES", "localhost")
+        .spawn()
+        .unwrap();
+    wait_until("the first round", || {
+        site_payload(&db.path).is_some_and(|payload| payload.contains(r#""state": "failing""#))
+    });
+    let first = site_payload(&db.path).unwrap();
+    assert!(
+        first.starts_with(
+            r#"{"incident_type": "site_connectivity", "version": 1, "phase": "idle", "incident_id": 0, "observed_at": "#
+        ),
+        "{first}"
+    );
+    assert!(
+        first.contains(
+            r#""ipv4": {"state": "failing", "down_since": 0, "recovered_at": 0, "release_at": 0, "last_release_at": 0}"#
+        ),
+        "{first}"
+    );
+    assert!(first.contains(r#""dns": {"state": "up""#), "{first}");
+    assert!(!first.contains("ipv6"), "{first}");
+    wait_until("the second round", || {
+        site_payload(&db.path).is_some_and(|payload| payload.contains(r#""phase": "active""#))
+    });
+    let second = site_payload(&db.path).unwrap();
+    assert!(second.contains(r#""ipv4": {"state": "down""#), "{second}");
+    assert!(second.contains(r#""dns": {"state": "up""#), "{second}");
+
+    let output = terminate(child);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(0), "{stderr}");
+    for line in [
+        " - nyxmon.bootstrap - INFO - site connectivity observation is observe\n",
+        " - nyxmon.adapters.site_connectivity - WARNING - check_id=1 requires the unobserved \
+         path(s) ipv6",
+        " - nyxmon.adapters.site_connectivity - INFO - site connectivity incident ",
+    ] {
+        assert!(stderr.contains(line), "missing {line:?} in {stderr}");
+    }
+    // PLAN.md 5.1: the mode line comes after the schema report and before
+    // the check type validation.
+    let position = |text: &str| stderr.find(text).unwrap_or(usize::MAX);
+    assert!(position("journal_mode=") < position("site connectivity observation is"));
+    assert!(
+        position("site connectivity observation is")
+            < position("Validated 1 check(s) - all types registered")
+    );
+}
+
+#[test]
+fn site_connectivity_off_starts_no_observer() {
+    let db = migrated_db();
+    add_http_check(
+        &db.path,
+        1,
+        &fake_server(true),
+        r#"{"site_dependency": "internet"}"#,
+    );
+    let path = db.path.to_str().unwrap();
+    let child = agent(&["--db", path, "--interval", "1", "--shadow"])
+        .env("NYXMON_SITE_CONNECTIVITY_MODE", "off")
+        .spawn()
+        .unwrap();
+    wait_until("a result", || {
+        query::<i64>(&db.path, "SELECT COUNT(*) FROM check_result") >= 1
+    });
+    let output = terminate(child);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(0), "{stderr}");
+    assert!(!stderr.contains("site connectivity"), "{stderr}");
+    assert!(site_payload(&db.path).is_none());
+}

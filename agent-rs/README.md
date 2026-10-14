@@ -35,8 +35,16 @@ Python log format. Slice S9b adds the collector loop (claim, execute, sleep)
 with the shutdown grace period, intake stop and lease release, the CLI
 (`start-agent` flags plus `--check-schema` and `--shadow`), startup
 validation and signal handling: the binary runs. Stale-lease recovery and
-collector incidents (S10) and site connectivity (S11) are still missing, so
-it is not a production replacement yet.
+collector incidents (S10) are still missing, so it is not a production
+replacement yet.
+
+Slice S11 adds the site connectivity runtime (`nyxmon_agent::site`): the
+default probe runner (TCP connects to address literals, `getaddrinfo` for
+DNS names), the observer task with its ports on the store and the process
+notifier, the snapshot channel the result handler reads, and the
+unobserved-requirement warning. With `NYXMON_SITE_CONNECTIVITY_MODE` set to
+`observe` or `enforce` the binary now runs the observer like the Python
+agent.
 
 Slice S6 part 3 adds the `ping` executor (`nyxmon_checks::ping`): the
 system `ping` binary as a subprocess per attempt, with the command line,
@@ -291,12 +299,14 @@ Never add DDL to the Python agent; a new required column raises
   `Env::from_map` in tests); its warn-once state lives as long as the `Env`.
   Unbounded integers are returned exactly as `BigInt` (see the `env`
   module documentation).
-- The site observer is I/O-free: the driver (S11) implements
-  `nyxmon_core::site::SitePorts` (clock, probe round, the
-  `site:connectivity` row, scheduler queries, notifier, snapshot publication,
-  log lines) and calls `Observer::restore`/`Observer::run_once`; an `Err`
-  from either is the Python exception a malformed persisted value raises,
-  which the loop logs as `site connectivity round failed`.
+- The site observer is I/O-free: `nyxmon_agent::site::SiteRuntime`
+  implements `nyxmon_core::site::SitePorts` (clock, probe round, the
+  `site:connectivity` row, scheduler queries, notifier, snapshot publication
+  into a `tokio::sync::watch` channel, log lines) and calls
+  `Observer::restore`/`Observer::run_once`; an `Err` from `run_once` is the
+  Python exception a malformed persisted value raises, which the loop logs
+  as `site connectivity round failed`; one from the startup restore ends
+  the observer (D-19). Tests inject a `ProbeRunner` and a manual clock.
 - Notifiers implement `nyxmon_notify::Notifier`
   (`notify_check_failed -> Result<Delivery, NotifyRaised>`); only
   `Delivery::Failed` is a delivery failure, and `NotifyRaised` stands for a
@@ -351,8 +361,8 @@ Never add DDL to the Python agent; a new required column raises
   results of PLAN.md 1.6. Results reach `nyxmon_agent::results::
   ResultHandler::receive` one at a time; the handler is generic over
   `ResultStore` so tests can inject conflicts and failures, and takes an
-  injectable clock, suppression fetch and `SiteState` (S11 supplies the
-  observer's snapshot; `NullSiteState` until then).
+  injectable clock, suppression fetch and `SiteState` (the observer's
+  `ObserverSiteState` when the mode is not off, else `NullSiteState`).
 - Runtime log lines use `tracing` with the Python logger name as target;
   `nyxmon_agent::logging::capture()` collects them in tests (current-thread
   runtime).

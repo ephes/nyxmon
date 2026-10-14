@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use nyxmon_checks::registry::{Executors, Registry};
-use nyxmon_core::env::{Env, notifier_env};
+use nyxmon_core::env::{Env, SiteMode, notifier_env, site_env_config};
 use nyxmon_core::log::{TracingSink, WarnOnce};
 use nyxmon_notify::Notifier;
 use nyxmon_notify::logging::LoggingNotifier;
@@ -17,8 +17,10 @@ use tokio::signal::unix::{SignalKind, signal};
 use crate::cleaner::{Cleaner, DEFAULT_MAX_BATCHES_PER_CYCLE};
 use crate::cli::{Args, py_path_str};
 use crate::collector::Collector;
-use crate::results::ResultHandler;
+use crate::results::{ResultHandler, system_clock};
+use crate::site::SiteRuntime;
 use crate::startup::validate_check_types;
+use crate::sync::Flag;
 
 macro_rules! cli_error {
     ($($arg:tt)*) => { tracing::error!(target: "nyxmon.entrypoints.cli", $($arg)*) };
@@ -142,6 +144,25 @@ async fn run_monitoring_services(args: &Args, db_path: &Path) -> ExitCode {
         }
     };
 
+    // `bootstrap`: the observer exists only when the mode is not off; its
+    // warn-once state is the result handler's.
+    let warnings = Arc::new(WarnOnce::new(Arc::new(TracingSink)));
+    let site_config = site_env_config(&env);
+    let site = if site_config.mode == SiteMode::Off {
+        None
+    } else {
+        let mode = site_config.mode.as_str();
+        let runtime = SiteRuntime::new(
+            site_config,
+            warnings.clone(),
+            store.clone(),
+            Some(notifier.clone()),
+            system_clock(),
+        );
+        tracing::info!(target: "nyxmon.bootstrap", "site connectivity observation is {mode}");
+        Some(runtime)
+    };
+
     let executors: Arc<dyn Executors> = Arc::new(Registry::new());
     match store.list_checks().await {
         Ok(checks) => validate_check_types(&checks, executors.registered_types()),
@@ -158,13 +179,11 @@ async fn run_monitoring_services(args: &Args, db_path: &Path) -> ExitCode {
         (Err(err), _) | (_, Err(err)) => return fatal(err),
     };
 
-    let warnings = Arc::new(WarnOnce::new(Arc::new(TracingSink)));
-    let handler = Arc::new(ResultHandler::new(
-        store.clone(),
-        notifier,
-        env.clone(),
-        warnings,
-    ));
+    let mut handler = ResultHandler::new(store.clone(), notifier, env.clone(), warnings);
+    if let Some(site) = &site {
+        handler = handler.with_site_state(site.state());
+    }
+    let handler = Arc::new(handler);
     let collector = Arc::new(Collector::new(
         store,
         handler,
@@ -173,12 +192,15 @@ async fn run_monitoring_services(args: &Args, db_path: &Path) -> ExitCode {
         args.interval,
     ));
     let mut collecting = tokio::spawn(collector.clone().run());
+    // A second task beside the collector: probing never blocks collection.
+    let site_stop = Arc::new(Flag::new());
+    let observing = site.map(|site| tokio::spawn(site.run(site_stop.clone())));
     let cleaning = cleaner.map(|cleaner| tokio::spawn(async move { cleaner.run().await }));
     cli_info!("Monitoring started with {}s check interval", args.interval);
 
     let ended = tokio::select! {
-        _ = sigterm.recv() => received(15, &collector),
-        _ = sigint.recv() => received(2, &collector),
+        _ = sigterm.recv() => received(15, &collector, &site_stop),
+        _ = sigint.recv() => received(2, &collector, &site_stop),
         _ = &mut collecting => true,
     };
     if let Some(cleaning) = cleaning {
@@ -188,14 +210,19 @@ async fn run_monitoring_services(args: &Args, db_path: &Path) -> ExitCode {
     if !ended {
         let _ = collecting.await;
     }
+    // Python cancels the observer with the portal once the collector is done.
+    if let Some(observing) = observing {
+        observing.abort();
+    }
     if collector.failed() {
         return fatal("the database thread is gone");
     }
     ExitCode::SUCCESS
 }
 
-fn received(signum: i32, collector: &Collector) -> bool {
+fn received(signum: i32, collector: &Collector, site_stop: &Flag) -> bool {
     cli_info!("Received signal {signum}, shutting down...");
     collector.request_stop();
+    site_stop.set();
     false
 }

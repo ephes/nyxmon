@@ -38,7 +38,7 @@ built by `fixtures/gen_alerting.py`.
 | `notification_policy.py:resolve_notification_policy` (per-check overrides, `warning_*` preference, bool/float/out-of-range rejection, warn once per `(check_id, key)`, non-object policy and data); `test_notification_reminders.py::test_per_check_policy_overrides_threshold_and_reminder`, `::test_malformed_per_check_policy_falls_back_to_global_default`, `::test_warning_results_use_the_warning_reminder_cadence` (policy part) | `policy_matches_python` against `policy.json` | done |
 | `handlers.py:_should_notify_check_result`: every branch of PLAN.md 5.3 (OK clear, force, `collector_internal`, suppression streak reset, holds incl. exhaustion and `held_since` re-arm, observe-mode annotation, delivery retry, immediate cooldown, threshold and reminder); decision parts of `test_notification_dampening.py`, `test_notification_reminders.py`, `test_notification_delivery_retry.py`, `test_notification_suppression.py::test_suppressed_result_breaks_failure_notification_streak`, `::test_a_suppressed_sample_does_not_re_arm_the_hold_budget`, `::test_a_hold_still_wins_over_a_due_delivery_retry` | `decision_matches_python` against `decision.json`; the generator fails unless the corpus executes every line of the Python function | done (handler loop, persistence and send: S9) |
 | `site_dependency.py:resolve_site_dependency`, `SiteDependency.path_names`; `test_site_dependency.py` (all) | `site_dependency_matches_python` against `site_dependency.json` | done |
-| `site_connectivity.py:warn_unobserved_requirements`; `test_site_connectivity_holds.py::test_a_requirement_on_an_unobserved_path_never_holds_and_warns_once` (warning part) | `site_dependency_matches_python` (`unobserved`) | done (startup wiring: S11) |
+| `site_connectivity.py:warn_unobserved_requirements`; `test_site_connectivity_holds.py::test_a_requirement_on_an_unobserved_path_never_holds_and_warns_once` (warning part) | `site_dependency_matches_python` (`unobserved`) | done (startup wiring: S11, done) |
 | `SiteConnectivitySnapshot` `hold_reason`, `observed_reason`, `dependency_recovered`, `dependency_usable` (any-of groups, unobserved members, watermarks, stale snapshot, claim 0); snapshot parts of `test_site_connectivity_holds.py` | `site_snapshot_matches_python` against `site_snapshot.json` | done (observer runtime: S4/S11) |
 | `notification_suppression.py` `_lookup`, `_rule_matches`, `_finite_seconds`, `_int_or_none`, `_timeout_seconds`, `_build_auth`, `notification_suppression_details` with a stubbed fetch; `test_notification_suppression.py` rule/freshness tests (`test_suppression_active_*`, `test_stale_payload_never_suppresses`, `test_suppression_fails_open_*`, `test_hostile_freshness_values_fail_open_without_raising`, `test_active_if_rule_*`, `test_suppression_ignores_malformed_active_if`, `test_suppression_clamps_timeout`) | `suppression_rules_match_python` against `suppression_rules.json`; `list_indexes_accept_ascii_digits_only` (D-6), `suppression_ignores_a_non_object_data_column` (D-11) | done (fetch: S5; handler merge: S9) |
 | `repr()`/`str()` of JSON values in warnings and suppression details | `suppression_rules_match_python` (`value_text`) | done |
@@ -63,7 +63,8 @@ the probed targets, the snapshot and the raised exception.
 | `::test_recheck_reads_the_in_flight_count_before_the_held_set`, `::test_recheck_stays_pending_while_a_pre_release_claim_is_in_flight`, `::test_recheck_skips_checks_blocked_by_another_requirement`, `::test_recheck_filters_disabled_and_already_due_checks`, `::test_a_failed_reschedule_is_retried_next_round`, `::test_observe_mode_does_not_reschedule_anything`, `::test_off_mode_does_nothing`, `::test_resolve_site_dependency_accepts_a_held_row` | `recheck.json` | done |
 | `::test_observer_reports_its_unobserved_paths`; `build_payload` lists observed paths only | `replay_tests.rs::off_mode_observer_has_unobserved_paths_only_without_targets` | done |
 | `_iso`, `_duration`, `_as_int` | `render.rs` unit tests and every replay message | done |
-| `::test_run_restores_then_loops_until_stopped`, `::test_run_logs_and_continues_when_a_round_raises`, `::test_run_returns_immediately_when_the_feature_is_off`, `::test_default_probe_runner_reports_a_refused_connection`, `::test_held_checks_are_counted_without_the_blocking_portal`, `::test_a_scheduler_without_the_async_counter_still_works`, `::test_lifecycle_against_the_real_in_memory_store` | — | pending S11 (loop, probe runner, store wiring) |
+| `::test_run_restores_then_loops_until_stopped`, `::test_run_logs_and_continues_when_a_round_raises`, `::test_run_returns_immediately_when_the_feature_is_off`, `::test_default_probe_runner_reports_a_refused_connection`, `::test_held_checks_are_counted_without_the_blocking_portal`, `::test_lifecycle_against_the_real_in_memory_store` | see the S11 section | done (S11) |
+| `::test_a_scheduler_without_the_async_counter_still_works` | — | n/a (the Rust store has one async `count_held_checks`; there is no blocking portal) |
 
 ## S2 — store
 
@@ -255,6 +256,27 @@ No Python agent behaviour is ported; the release checks are new.
 | deterministic archive (binary 0755 + LICENSE 0644 at the root) and `sha256sum` line | `test_agent_rs_release_checks.py::test_archive_is_deterministic_and_holds_binary_and_license`, `::test_cli_pack_writes_archive_and_sha256sum_line` | done |
 | workflow runs every check | `test_agent_rs_release_checks.py::test_release_workflow_runs_every_check` | done |
 
+## S11 — site observer runtime
+
+Runtime tests in `crates/nyxmon-agent/src/site/tests.rs`, the holds in
+`site/holds_tests.rs` (the observer runtime over the SQLite store from the
+schema fixture, its snapshot injected into the result handler, a manual
+clock and scripted probes), the binary in `tests/binary.rs`.
+
+| Python test / function | Rust counterpart | Status |
+| --- | --- | --- |
+| `test_site_connectivity_observer.py::test_run_restores_then_loops_until_stopped`, `::test_run_logs_and_continues_when_a_round_raises`, `::test_run_returns_immediately_when_the_feature_is_off` | `site/tests.rs::run_restores_then_loops_until_stopped` (paused tokio clock), `::run_logs_and_continues_when_a_round_raises` (a persisted summary whose `attempt_at` raises), `::run_returns_immediately_when_the_feature_is_off`; D-19: `::a_restore_that_raises_stops_the_observer_with_a_log_line` | done |
+| `::test_default_probe_runner_reports_a_refused_connection`; `DefaultProbeRunner` (TCP connect, `getaddrinfo`, timeout, DEBUG line) | `site/tests.rs::default_probe_runner_reports_a_refused_connection`, `::a_tcp_probe_is_bounded_by_the_per_target_timeout` | done |
+| `_probe_round` (concurrency, round budget, raising probe) | `site/tests.rs::unfinished_targets_count_as_failed_after_the_round_budget` | done |
+| `::test_lifecycle_against_the_real_in_memory_store`, `::test_held_checks_are_counted_without_the_blocking_portal` | `site/tests.rs::lifecycle_against_the_real_store` (SQLite store; held checks counted for the summary) | done |
+| `collector.py:site_incident_notifier`, `build_incident_notification`, `_result_status`; `_send` without a notifier | `site/tests.rs::site_messages_go_through_the_process_notifier_as_the_synthetic_row`, `incident_notification.rs::the_synthetic_pair_matches_python` | done |
+| `SiteStateProvider` / `handlers.py:_site_config` (snapshot and hold bounds of the observer) | `site/tests.rs::the_handler_reads_every_published_snapshot` | done |
+| `collector.py:_warn_unobserved_site_requirements` | `site/tests.rs::unobserved_requirements_are_reported_once_per_check`, `holds_tests.rs::a_requirement_on_an_unobserved_path_never_holds_and_warns_once` | done |
+| `test_site_connectivity_holds.py` (all except the conflict fallback): short reconnect, single failing target, long outage, flap during the grace, IPv6-only/DNS/IPv4-only outages, unobserved requirement, malformed dependency, local failure with delivery retry, recovered local failure, retry knob at zero, sample measured before the release, held samples and the threshold, staggered recheck, stale snapshot, `max_hold`, observe mode, mode off, the three restarts, stale claim | `site/holds_tests.rs` (one test per Python test, same names) | done |
+| `test_site_connectivity_holds.py::test_null_site_state_never_holds` | `NullSiteState` in `results.rs`; `holds_tests.rs::mode_off_starts_no_observer_and_writes_no_metadata` | done |
+| `test_site_connectivity_holds.py::test_the_conflict_fallback_marks_the_hold_with_the_completion`, `::test_the_conflict_fallback_passes_no_marker_for_an_unheld_sample` | `results/tests.rs::the_contention_fallback_keeps_the_hold_marker`, `::contention_never_discards_the_result` (S9a) | done |
+| `bootstrap.py` observer wiring, `site connectivity observation is <mode>`, startup order | `tests/binary.rs::the_site_observer_probes_local_targets_and_persists_each_round` (observe mode, local probe targets, payload after each round), `::site_connectivity_off_starts_no_observer` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -268,7 +290,7 @@ No Python agent behaviour is ported; the release checks are new.
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | done |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
 | `tests/unit/test_collector_recovery.py`, `test_collector_incidents.py` | `nyxmon-agent` collector tests, `lease.json`, `incident_payloads.json` | S10 | pending |
-| `tests/unit/test_site_connectivity_holds.py`, `test_site_connectivity_observer.py` (runtime) | `nyxmon-agent` site tests | S11 | pending |
+| `tests/unit/test_site_connectivity_holds.py`, `test_site_connectivity_observer.py` (runtime) | `nyxmon-agent` site tests (section S11 above) | S11 | done |
 | `tests/e2e/test_graceful_shutdown.py`, `collector_e2e_test.py`, `cleaner_e2e_test.py`, `e2e_test.py`, `test_dns_checks.py` | process e2e (`crates/nyxmon-agent/tests/`) and parity harness | S12 | pending |
 | `tests/unit/repositories/in_memory_*` | — | — | n/a (in-memory store is not ported, PLAN.md 1.2) |
 | `tests/unit/test_check_management_cli.py`, `models_test.py` (Django-side helpers) | — | — | n/a (`add-check`/`show-checks` are not ported) |

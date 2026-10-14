@@ -7,6 +7,9 @@
 //! - [`cleaner`]: the results cleaner;
 //! - [`logging`]: the Python log format;
 //! - [`collector`]: the claim/execute/sleep loop and its shutdown;
+//! - [`site`]: the site connectivity observer runtime (probes, store and
+//!   notifier wiring, the snapshot the result handler reads);
+//! - [`incident_notification`]: the synthetic row of collector-scoped alerts;
 //! - [`cli`], [`app`], [`startup`]: the command line, startup order and
 //!   signal handling of the binary.
 
@@ -14,9 +17,11 @@ pub mod app;
 pub mod cleaner;
 pub mod cli;
 pub mod collector;
+pub mod incident_notification;
 pub mod logging;
 pub mod results;
 pub mod runner;
+pub mod site;
 pub mod startup;
 pub mod sync;
 #[cfg(test)]
