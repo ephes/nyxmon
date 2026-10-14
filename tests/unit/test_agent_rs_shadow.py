@@ -197,10 +197,12 @@ def test_compare_reports_disagreements_keys_alerts_and_claims(
     out, t0, prod, shadow = recorded
     report_path = tmp_path / "report.json"
     log = tmp_path / "shadow.log"
-    log.write_text(
-        "2026-10-15 10:00:00,000 - nyxmon.adapters.notification - ERROR - "
-        "notification check_id=4 status=error error_type=connection_error\n"
+    alert = (
+        " macmini nyxmon-agent[1]: 2026-10-15 10:00:00,000 - nyxmon.adapters.notification"
+        " - ERROR - notification check_id=4 status=error error_type=connection_error\n"
     )
+    # `journalctl -o short-unix`: only lines inside the recorded window count.
+    log.write_text(f"{t0 - 3600}.5{alert}{time.time() - 30:.6f}{alert}")
     code = compare.main(
         [
             "--record",
@@ -253,6 +255,112 @@ def test_compare_reports_disagreements_keys_alerts_and_claims(
     assert "check 5 (http): data keys differ for 1 outcome(s)" in findings
     assert "prod: 1 claim(s) stayed in processing beyond 10 s" in findings
     assert "## Findings to explain" in capsys.readouterr().out
+
+
+def _synthetic(tmp_path, ticks, retention, units=None, results=None):
+    """A record with one http check and the given retention samples."""
+    lines = []
+    for index, (ts, sample) in enumerate(zip(ticks, retention)):
+        for name in ("prod", "shadow"):
+            line = {
+                "ts": ts,
+                "db": name,
+                "results": (results or {}).get((index, name), []),
+                "states": [],
+                "incidents": [],
+                "leases": [[1, "idle", 0, 0, 0]],
+                "retention": sample,
+            }
+            if index == 0:
+                line["checks"] = {"1": ["http", "c", 60]}
+            lines.append(line)
+        if units is not None:
+            lines.append({"ts": ts, "units": units[index]})
+    record = tmp_path / "record.jsonl"
+    record.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    return record
+
+
+def _findings(tmp_path, record, since, *extra):
+    report = tmp_path / "report.json"
+    args = ["--record", str(record), "--since", str(since), "--json", str(report)]
+    assert compare.main([*args, *extra]) == 0
+    return json.loads(report.read_text())["findings"]
+
+
+def test_a_24_hour_window_still_checks_the_cleaner(tmp_path):
+    # PLAN.md 9.1 phase A lasts 24 h: the cleaner must be verified within it.
+    since, day = 1_000_000, 86400
+    stale = {"count": 5, "min_created_at": _created(since - 2 * day), "min_id": 1}
+    record = _synthetic(tmp_path, [since, since + 7200, since + day], [stale] * 3)
+    findings = _findings(tmp_path, record, since)
+    assert any("shadow: oldest result was 72.0 h old" in f for f in findings)
+    assert any("shadow: min(check_result.id) did not advance" in f for f in findings)
+
+    healthy = [
+        {"count": 5, "min_created_at": _created(ts - day), "min_id": 1 + index}
+        for index, ts in enumerate([since, since + 7200, since + day])
+    ]
+    record = _synthetic(tmp_path, [since, since + 7200, since + day], healthy)
+    findings = _findings(tmp_path, record, since)
+    assert not [f for f in findings if "oldest result" in f or "advance" in f]
+
+
+def test_a_short_recording_reports_the_cleaner_unverified(tmp_path):
+    since = 1_000_000
+    sample = {"count": 1, "min_created_at": _created(since), "min_id": 1}
+    record = _synthetic(tmp_path, [since, since + 60], [sample] * 2)
+    findings = _findings(tmp_path, record, since)
+    assert any("cleaner not verified" in f for f in findings)
+
+
+def test_missing_production_samples_and_stopped_units_are_findings(tmp_path):
+    since = 1_000_000
+    sample = {"count": 1, "min_created_at": _created(since), "min_id": 1}
+    result = [[10, 1, "ok", _created(since + 30), {"duration_ms": 1}]]
+    running = {
+        "ActiveState": "active",
+        "MainPID": "42",
+        "MemoryCurrent": "1000",
+        "MemoryPeak": "2000",
+        "NRestarts": "0",
+    }
+    failed = {"ActiveState": "failed", "MainPID": "0", "NRestarts": "0"}
+    record = _synthetic(
+        tmp_path,
+        [since, since + 60],
+        [sample] * 2,
+        units=[{"nyxmon-agent-shadow": running}, {"nyxmon-agent-shadow": failed}],
+        results={(1, "shadow"): result},
+    )
+    findings = _findings(tmp_path, record, since)
+    assert "check 1 (http): no production result in the window" in findings
+    assert any(
+        f.startswith("unit nyxmon-agent-shadow: not running in 1 of 2 sample(s)")
+        for f in findings
+    )
+
+    # A unit without memory samples cannot pass the PLAN.md 4.4 budgets.
+    record = _synthetic(
+        tmp_path,
+        [since],
+        [sample],
+        units=[{"nyxmon-agent-shadow": {"ActiveState": "active", "MainPID": "42"}}],
+    )
+    findings = _findings(tmp_path, record, since)
+    assert any("memory not measured" in f for f in findings)
+    record = _synthetic(tmp_path, [since], [sample])
+    assert any("not sampled" in f for f in _findings(tmp_path, record, since))
+
+
+def test_untimed_journal_lines_are_flagged(tmp_path):
+    since = 1_000_000
+    sample = {"count": 1, "min_created_at": _created(since), "min_id": 1}
+    record = _synthetic(tmp_path, [since, since + 60], [sample] * 2)
+    log = tmp_path / "shadow.log"
+    log.write_text("notification check_id=1 status=error error_type=x\n")
+    findings = _findings(tmp_path, record, since, "--shadow-log", str(log))
+    assert any("without a Unix timestamp" in f for f in findings)
 
 
 def test_compare_flags_a_cleaner_that_deleted_nothing(tmp_path):
@@ -318,3 +426,24 @@ def test_alert_counts_start_from_the_baseline(recorded, tmp_path):
     assert json.loads(without.read_text())["checks"]["5"]["alerts"]["shadow"] == 0
     assert json.loads(with_b0.read_text())["checks"]["5"]["alerts"]["shadow"] == 1
     assert json.loads(with_b0.read_text())["checks"]["5"]["alerts"]["prod"] == 0
+
+
+def test_a_failed_tick_loses_nothing(tmp_path):
+    now = int(time.time())
+    prod = tmp_path / "prod.sqlite3"
+    _production(prod, now)
+    db = recorder.DatabaseRecorder("prod", prod, recorder.since_text(str(now - 600)))
+    assert "error" not in db.tick(now - 60)
+    _insert(prod, 4, "ok", {"duration_ms": 1}, now - 30)
+    _execute(
+        prod, "UPDATE check_notification_state SET attempt_seq = 4 WHERE check_id = 1"
+    )
+    # The incident table cannot be read in this tick (after results and
+    # states were read); the tick fails as a whole.
+    _execute(prod, "ALTER TABLE collector_incident RENAME TO collector_incident_moved")
+    failed = db.tick(now - 20)
+    assert "error" in failed and "results" not in failed
+    _execute(prod, "ALTER TABLE collector_incident_moved RENAME TO collector_incident")
+    retried = db.tick(now)
+    assert [row[1] for row in retried["results"]] == [4]
+    assert [row[0] for row in retried["states"]] == [1]

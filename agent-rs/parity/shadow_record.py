@@ -93,8 +93,15 @@ class DatabaseRecorder:
         try:
             # One read transaction: every section is the same snapshot.
             connection.execute("BEGIN")
-            line.update(self._read(connection))
+            out, cursor = self._read(connection)
             connection.execute("COMMIT")
+            # The cursors move only once the whole tick was read, so a
+            # failed tick is recorded again in full by the next one.
+            self.last_result_id = cursor["last_result_id"]
+            self.states = cursor["states"]
+            self.incidents = cursor["incidents"]
+            self.first = False
+            line.update(out)
         except sqlite3.Error as exc:
             line = {
                 "ts": round(now, 3),
@@ -105,7 +112,10 @@ class DatabaseRecorder:
             connection.close()
         return line
 
-    def _read(self, connection: sqlite3.Connection) -> dict[str, Any]:
+    def _read(
+        self, connection: sqlite3.Connection
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """The tick's sections and the cursors to keep if it succeeds."""
         out: dict[str, Any] = {}
         if self.first:
             out["checks"] = {
@@ -136,9 +146,9 @@ class DatabaseRecorder:
         out["results"] = results
         newest = connection.execute("SELECT MAX(id) FROM check_result").fetchone()[0]
         if self.last_result_id is None:
-            self.last_result_id = max([newest or 0] + [row[0] for row in rows])
-        elif rows:
-            self.last_result_id = rows[-1][0]
+            last_result_id = max([newest or 0] + [row[0] for row in rows])
+        else:
+            last_result_id = rows[-1][0] if rows else self.last_result_id
 
         states = {
             row[0]: list(row)
@@ -150,7 +160,6 @@ class DatabaseRecorder:
             row for key, row in sorted(states.items()) if self.states.get(key) != row
         ]
         out["states_deleted"] = sorted(set(self.states) - set(states))
-        self.states = states
 
         incidents = {
             row[0]: list(row)
@@ -164,7 +173,6 @@ class DatabaseRecorder:
             if self.incidents.get(key) != row
         ]
         out["incidents_deleted"] = sorted(set(self.incidents) - set(incidents))
-        self.incidents = incidents
 
         out["leases"] = [
             list(row)
@@ -177,8 +185,12 @@ class DatabaseRecorder:
             "SELECT COUNT(*), MIN(created_at), MIN(id) FROM check_result"
         ).fetchone()
         out["retention"] = {"count": count, "min_created_at": oldest, "min_id": lowest}
-        self.first = False
-        return out
+        cursor = {
+            "last_result_id": last_result_id,
+            "states": states,
+            "incidents": incidents,
+        }
+        return out, cursor
 
 
 def unit_properties(unit: str) -> dict[str, str]:

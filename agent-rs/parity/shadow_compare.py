@@ -15,8 +15,8 @@ check that is not a mail check (``smtp``/``imap`` are disabled in the copy):
   number of notification decisions, PLAN.md 9.1; ``attempt_seq(T0)`` from
   the baseline B0 of ``shadow_prepare.py`` with ``--baseline``, else the
   first recorded tick) and the ticks at which it rose; with ``--shadow-log``
-  also the ``notification check_id=...`` lines of the shadow agent's
-  journal;
+  (``journalctl -o short-unix``) also the ``notification check_id=...``
+  lines of the shadow agent's journal inside the recorded window;
 - ``stale_processing_lease`` results (none expected in the shadow database);
 - claims stuck in ``processing`` longer than ``--lease-seconds`` in any
   recorded lease snapshot;
@@ -223,15 +223,33 @@ def load_baseline(path: Path | None) -> dict[int, int] | None:
     }
 
 
-def shadow_alerts(log: Path | None) -> Counter[int] | None:
+def shadow_alerts(
+    log: Path | None, start: float, end: float
+) -> tuple[Counter[int], int] | None:
+    """Alert lines per check in the shadow journal between ``start`` and
+    ``end``, and the number of alert lines without a Unix timestamp.
+
+    The journal export must be ``journalctl -o short-unix`` (each line starts
+    with the epoch), so lines outside the recorded window are left out.
+    """
     if log is None:
         return None
     counts: Counter[int] = Counter()
+    untimed = 0
     for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
         match = SHADOW_ALERT.search(line)
-        if match:
+        if not match:
+            continue
+        stamp = line.split(" ", 1)[0]
+        try:
+            moment = float(stamp)
+        except ValueError:
+            untimed += 1
             counts[int(match.group(1))] += 1
-    return counts
+            continue
+        if start <= moment <= end:
+            counts[int(match.group(1))] += 1
+    return counts, untimed
 
 
 def stuck_claims(database: Database, lease_seconds: float) -> list[dict[str, Any]]:
@@ -249,6 +267,14 @@ def stuck_claims(database: Database, lease_seconds: float) -> list[dict[str, Any
 def retention_findings(
     database: Database, since: float, retention: float, cleanup: float
 ) -> tuple[list[str], dict[str, Any]]:
+    """The cleaner of ``database`` over the recorded window.
+
+    The copy inherits production's history, which a working cleaner keeps
+    within ``retention + cleanup`` seconds; from one cleanup interval after
+    T0 on (the copy's own cleaner has run by then) every tick must show its
+    oldest result within that age, and over two cleanup intervals or more
+    ``min(id)`` must advance.
+    """
     findings: list[str] = []
     summary: dict[str, Any] = {}
     if not database.retention:
@@ -256,19 +282,28 @@ def retention_findings(
     first, last = database.retention[0], database.retention[-1]
     summary = {"first": first[1], "last": last[1]}
     bound = retention + cleanup
-    checked = [(ts, sample) for ts, sample in database.retention if ts >= since + bound]
+    checked = [
+        (ts, sample) for ts, sample in database.retention if ts >= since + cleanup
+    ]
     worst = 0.0
     for ts, sample in checked:
         if sample.get("min_created_at"):
             worst = max(worst, ts - epoch(sample["min_created_at"]))
     summary["checked_ticks"] = len(checked)
     summary["oldest_age_seconds"] = round(worst)
-    if checked and worst > bound:
+    if not checked:
+        findings.append(
+            f"{database.name}: cleaner not verified, the recording ends before one "
+            f"cleanup interval ({cleanup / 3600:.1f} h) after T0"
+        )
+    elif worst > bound:
         findings.append(
             f"{database.name}: oldest result was {worst / 3600:.1f} h old, above retention plus one "
             f"cleanup interval ({bound / 3600:.1f} h)"
         )
-    if checked and (first[1].get("min_id") or 0) >= (last[1].get("min_id") or 0):
+    if last[0] - since >= 2 * cleanup and (first[1].get("min_id") or 0) >= (
+        last[1].get("min_id") or 0
+    ):
         findings.append(
             f"{database.name}: min(check_result.id) did not advance (cleaner deleted nothing)"
         )
@@ -297,7 +332,17 @@ def unit_summary(samples: list[tuple[float, dict[str, str]]]) -> dict[str, Any]:
     pids = {
         p.get("MainPID") for _, p in samples if p.get("MainPID") not in (None, "", "0")
     }
-    summary: dict[str, Any] = {"samples": len(samples), "main_pids": sorted(pids)}
+    states = Counter(p.get("ActiveState", "") for _, p in samples)
+    summary: dict[str, Any] = {
+        "samples": len(samples),
+        "main_pids": sorted(pids),
+        "states": dict(states),
+        "not_running": sum(
+            1
+            for _, p in samples
+            if p.get("ActiveState") != "active" or p.get("MainPID") in (None, "", "0")
+        ),
+    }
     if memory:
         summary["memory_current_max"] = max(memory)
         summary["memory_current_median"] = sorted(memory)[len(memory) // 2]
@@ -354,10 +399,18 @@ def compare(args: argparse.Namespace) -> dict[str, Any]:
     databases, units = load(args.record, since)
     prod, shadow = databases["prod"], databases["shadow"]
     checks = compared_checks(prod, shadow)
-    log_alerts = shadow_alerts(args.shadow_log)
+    ticks = [ts for ts, _ in shadow.retention]
+    window_end = max(ticks) if ticks else since
+    parsed_log = shadow_alerts(args.shadow_log, since, window_end)
+    log_alerts = None if parsed_log is None else parsed_log[0]
     baseline = load_baseline(args.baseline)
     report: dict[str, Any] = {"since": utc(since), "checks": {}, "findings": []}
     findings: list[str] = report["findings"]
+    if parsed_log is not None and parsed_log[1]:
+        findings.append(
+            f"shadow log: {parsed_log[1]} alert line(s) without a Unix timestamp "
+            "(export with journalctl -o short-unix), counted regardless of the window"
+        )
     for name, database in databases.items():
         if database.errors:
             findings.append(
@@ -407,10 +460,11 @@ def compare(args: argparse.Namespace) -> dict[str, Any]:
             findings.append(
                 f"check {check_id} ({check_type}): {len(disagreements)} status/error-type disagreement(s)"
             )
-        if not s_samples:
-            findings.append(
-                f"check {check_id} ({check_type}): no shadow result in the window"
-            )
+        for name, samples in (("production", p_samples), ("shadow", s_samples)):
+            if not samples:
+                findings.append(
+                    f"check {check_id} ({check_type}): no {name} result in the window"
+                )
 
         key_sets: dict[str, dict[str, set[tuple[str, ...]]]] = {}
         for name, samples in (("prod", p_samples), ("shadow", s_samples)):
@@ -493,8 +547,23 @@ def compare(args: argparse.Namespace) -> dict[str, Any]:
     for unit, summary in report["units"].items():
         if summary.get("restarts"):
             findings.append(f"unit {unit}: restarted {summary['restarts']} time(s)")
-    if args.shadow_unit in report["units"]:
+        if summary["not_running"]:
+            findings.append(
+                f"unit {unit}: not running in {summary['not_running']} of "
+                f"{summary['samples']} sample(s) ({summary['states']})"
+            )
+        if len(summary["main_pids"]) > 1:
+            findings.append(f"unit {unit}: main PID changed {summary['main_pids']}")
+    if args.shadow_unit not in report["units"]:
+        findings.append(
+            f"unit {args.shadow_unit}: not sampled (run shadow_record.py with --unit)"
+        )
+    else:
         summary = report["units"][args.shadow_unit]
+        if "memory_current_median" not in summary or "memory_peak" not in summary:
+            findings.append(
+                f"unit {args.shadow_unit}: memory not measured (PLAN.md 4.4 budgets unchecked)"
+            )
         if summary.get("memory_current_median", 0) > RSS_BUDGET:
             findings.append(
                 f"unit {args.shadow_unit}: median memory above the 20 MiB budget (PLAN.md 4.4)"

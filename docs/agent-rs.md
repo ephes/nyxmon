@@ -211,7 +211,8 @@ install -o nyxmon -g nyxmon -m 0600 shadow_prepare.py shadow_record.py \
 4. **Compare** after the window (24 h for phase A):
 
    ```bash
-   journalctl -u nyxmon-agent-shadow -o cat > /var/lib/nyxmon-shadow/shadow.log
+   journalctl -u nyxmon-agent-shadow --since @<T0> -o short-unix \
+       > /var/lib/nyxmon-shadow/shadow.log
    sudo -u nyxmon python3 /var/lib/nyxmon-shadow/tools/shadow_compare.py \
        --record /var/lib/nyxmon-shadow/record.jsonl --since <T0> \
        --baseline /var/lib/nyxmon-shadow/db.sqlite3.baseline.json \
@@ -221,7 +222,10 @@ install -o nyxmon -g nyxmon -m 0600 shadow_prepare.py shadow_record.py \
        --json /var/lib/nyxmon-shadow/report.json
    ```
 
-   The report lists per check the outcomes of both agents, every shadow
+   Export the journal before the transient unit is stopped; `short-unix`
+   timestamps let the comparison count only the alert lines inside the
+   recorded window (earlier runs of the same unit name are left out). The
+   report lists per check the outcomes of both agents, every shadow
    sample whose status or error type differs from the nearest production
    sample (with both timestamps, so a changed endpoint explains it), data
    key lists that occur in only one database, the number of notification
