@@ -23,7 +23,6 @@ and the httpx-compatible HTTP client; slice S5b part 1: the
 maintenance-suppression fetch, and the DNS check's configuration, text
 helpers and wire format; S5b part 2: the `dns` executor on an own stub
 resolver that follows dnspython.
-The binary only answers `--version`.
 
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
 ticket integration, and the logging/shadow notifier.
@@ -32,8 +31,12 @@ Slice S9a adds the agent runtime library (`nyxmon-agent`): the executor
 registry (`nyxmon_checks::registry`), the batch runner with the shutdown
 intake stop, the result handler (`add_check_result`: suppression, decision,
 persistence, notification, acknowledgement), the results cleaner and the
-Python log format. The collector loop, the CLI and the shutdown
-orchestration follow in S9b.
+Python log format. Slice S9b adds the collector loop (claim, execute, sleep)
+with the shutdown grace period, intake stop and lease release, the CLI
+(`start-agent` flags plus `--check-schema` and `--shadow`), startup
+validation and signal handling: the binary runs. Stale-lease recovery and
+collector incidents (S10) and site connectivity (S11) are still missing, so
+it is not a production replacement yet.
 
 Slice S6 part 3 adds the `ping` executor (`nyxmon_checks::ping`): the
 system `ping` binary as a subprocess per attempt, with the command line,

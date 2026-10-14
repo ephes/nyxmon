@@ -21,6 +21,7 @@ nyxmon-store.workspace = true
 nyxmon-checks.workspace = true
 nyxmon-notify.workspace = true
 chrono.workspace = true
+clap.workspace = true
 num-bigint.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 tracing.workspace = true

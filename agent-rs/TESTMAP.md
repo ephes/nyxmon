@@ -228,6 +228,21 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `cleaner_test.py` (`TestCleanupCycle`, constructor limits, `_async_start` loop) | `cleaner/tests.rs` (fake pruner + SQLite backlog); session deletion: `nyxmon-store/tests/cleaner.rs` (S2) | done (thread/portal plumbing tests are n/a) |
 | `cli.py:setup_logging` format and level names | `logging.rs` tests (the stderr format is wired with the CLI in S9b) | done |
 
+## S9b — collector loop, CLI, startup, shutdown
+
+| Python test / function | Rust counterpart | Status |
+| --- | --- | --- |
+| `collector.py:_collect_once` claim/execute part, `_async_start` loop | `collector/tests.rs::due_checks_are_claimed_executed_and_recorded_and_idle_shutdown_is_prompt`, `::a_claim_failure_is_logged_and_the_loop_continues` | done (stale recovery, lease, deadline, incidents: S10) |
+| `test_shutdown_claims.py::test_repeated_start_is_idempotent_and_idle_shutdown_is_prompt` | `collector/tests.rs::due_checks_are_claimed_executed_and_recorded_and_idle_shutdown_is_prompt` (one `run` per collector; there is no restartable thread) | done |
+| `test_shutdown_claims.py::test_failed_lease_release_does_not_hang_shutdown` | `collector/tests.rs::a_failed_lease_release_is_logged_and_does_not_hang_shutdown` | done |
+| `test_shutdown_claims.py::test_release_claims_preserves_other_claims_and_alert_state` | store part: S2; late result after release: `results/tests.rs::a_superseded_result_cannot_alert_or_change_state` | done |
+| `test_shutdown_claims.py::test_shutdown_grace_configuration` | `env.json` (S1) | done |
+| `test_shutdown_claims.py::test_collector_rejects_start_without_bus` | — | n/a (the collector is constructed with its store and handler) |
+| `test_shutdown_claims.py::test_shutdown_during_stale_recovery_keeps_results_and_alert` | — | S10 |
+| `shutdown_deadline` (grace, intake stop, flush window, D-3 abort) and `test_shutdown_flush.py::test_result_queued_behind_slow_alert_is_recorded_at_shutdown` | `collector/tests.rs::shutdown_releases_an_in_flight_claim_without_a_result`, `::a_result_finishing_within_the_grace_is_recorded_promptly`, `::a_result_queued_behind_a_slow_alert_is_recorded_at_shutdown`, `::results_not_recorded_within_the_flush_window_are_given_up` | done |
+| `test_startup_validation.py` | `startup.rs` tests (set reprs sorted, P2) | done |
+| `cli.py:start_agent` flags, defaults, exit codes; `test_cli_logging.py` | `cli.rs` tests; `tests/binary.rs` (missing DB, old schema, `--check-schema`, usage errors, `--shadow` with `--enable-telegram`, `--batch-size 0`, `--version`, lock contention, a run against a fake HTTP server with SIGTERM, SIGTERM during an in-flight check releases the claim); library targets capped at WARNING: `logging.rs` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -240,7 +255,6 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | done |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
-| `tests/unit/test_shutdown_claims.py`, `test_shutdown_flush.py` (collector part), `test_startup_validation.py`, `test_cli_logging.py` | `nyxmon-agent` collector, CLI and startup tests | S9b | pending |
 | `tests/unit/test_collector_recovery.py`, `test_collector_incidents.py` | `nyxmon-agent` collector tests, `lease.json`, `incident_payloads.json` | S10 | pending |
 | `tests/unit/test_site_connectivity_holds.py`, `test_site_connectivity_observer.py` (runtime) | `nyxmon-agent` site tests | S11 | pending |
 | `tests/e2e/test_graceful_shutdown.py`, `collector_e2e_test.py`, `cleaner_e2e_test.py`, `e2e_test.py`, `test_dns_checks.py` | process e2e (`crates/nyxmon-agent/tests/`) and parity harness | S12 | pending |
