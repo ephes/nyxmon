@@ -28,6 +28,7 @@ rustls-native-certs.workspace = true
 regex.workspace = true
 tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "time"] }
 tracing.workspace = true
+x509-parser.workspace = true
 
 [dev-dependencies]
 rcgen.workspace = true
