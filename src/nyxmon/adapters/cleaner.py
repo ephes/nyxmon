@@ -56,7 +56,8 @@ async def running_cleaner(bus):
     try:
         yield
     finally:
-        bus.handle(StopCleaner())
+        # Shutdown must not share the executing batch's mutable bus queue.
+        bus.command_handlers[StopCleaner](StopCleaner())
         # Optional: wait a bit for cleaner to shut down cleanly
         await anyio.sleep(0.1)
 

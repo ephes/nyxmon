@@ -373,7 +373,11 @@ def _should_notify_check_result(
 
 
 def execute_checks(
-    cmd: commands.ExecuteChecks, runner: CheckRunner, uow: UnitOfWork
+    cmd: commands.ExecuteChecks,
+    runner: CheckRunner,
+    uow: UnitOfWork,
+    notifier: Notifier,
+    site_state: SiteStateProvider | None = None,
 ) -> None:
     """Execute all pending checks."""
     check_by_check_id = {check.check_id: check for check in cmd.checks}
@@ -383,7 +387,13 @@ def execute_checks(
         check.schedule_next_check()  # Schedule the next check after a result is received
         check_result = CheckResult(check=check, result=result)
         inner_cmd = AddCheckResult(check_result=check_result)
-        uow.add_command(inner_cmd)  # add command to the unit of work
+        # Persist each finished check while other checks may still be running.
+        try:
+            add_check_result(inner_cmd, uow, notifier, site_state)
+        except Exception:
+            # Keep sibling executions running even if persistence or an
+            # external notification fails for this completed sample.
+            logger.exception("result handling failed for check_id=%s", result.check_id)
 
     runner.run_all(cmd.checks, result_received)
 

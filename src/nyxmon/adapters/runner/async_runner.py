@@ -3,7 +3,7 @@ import logging
 from anyio import to_thread
 
 from anyio.from_thread import BlockingPortalProvider
-from typing import Iterable, Callable, Set, Optional
+from typing import Iterable, Callable, Set, Optional, Awaitable
 
 import httpx
 
@@ -66,16 +66,30 @@ class AsyncCheckRunner(CheckRunner):
     def run_all(self, checks: Iterable[Check], result_received: Callable) -> None:
         """Run all checks."""
 
-        async def run_checks(result_received_callback: Callable) -> None:
-            async for result in self._async_run_all(checks):
-                # Process the result in a worker thread
-                await to_thread.run_sync(result_received_callback, result)
+        async def receive(result: Result) -> None:
+            await to_thread.run_sync(result_received, result)
 
-        # Run the async function in the portal
         with self.portal_provider as portal:
-            portal.call(run_checks, result_received)
+            portal.call(self._async_run_batch, checks, receive)
 
     async def _async_run_all(self, checks: Iterable[Check]):
+        """Collect a complete batch for callers using the iterator helper.
+
+        Production uses the callback path to persist results immediately.
+        Yield only after the task group closes, preserving cancel-scope nesting.
+        """
+        results: list[Result] = []
+
+        async def receive(result: Result) -> None:
+            results.append(result)
+
+        await self._async_run_batch(checks, receive)
+        for result in results:
+            yield result
+
+    async def _async_run_batch(
+        self, checks: Iterable[Check], receive: Callable[[Result], Awaitable[None]]
+    ) -> None:
         send_channel: anyio.abc.ObjectSendStream[Result]
         receive_channel: anyio.abc.ObjectReceiveStream[Result]
         send_channel, receive_channel = anyio.create_memory_object_stream(
@@ -103,22 +117,27 @@ class AsyncCheckRunner(CheckRunner):
                 # Register executors with batch context
                 self._register_executors(http_client)
 
+                async def produce_results() -> None:
+                    async with anyio.create_task_group() as checks_group:
+                        for check in checks_list:
+                            checks_group.start_soon(self._run_one, check, send_channel)
+                    await send_channel.aclose()
+
+                # Consume results as they arrive, so one slow check cannot
+                # keep completed samples unpersisted until shutdown cancels it.
                 async with anyio.create_task_group() as tg:
-                    for check in checks_list:
-                        tg.start_soon(self._run_one, check, send_channel)
-
-                # task group finishes -> all _run_one are done
-                await send_channel.aclose()
+                    tg.start_soon(produce_results)
+                    async for result in receive_channel:
+                        await receive(result)
             finally:
-                # Clean up executors
-                await self.executor_registry.aclose_all()
-
-                # Close HTTP client if we created it
-                if http_client is not None:
-                    await http_client.aclose()
-
-            async for result in receive_channel:
-                yield result
+                # Cancellation must not skip async resource cleanup. Bound it
+                # too, since a custom executor may itself hang while closing.
+                with anyio.move_on_after(1, shield=True):
+                    try:
+                        await self.executor_registry.aclose_all()
+                    finally:
+                        if http_client is not None:
+                            await http_client.aclose()
 
     def _scan_check_types(self, checks: list[Check]) -> Set[str]:
         """Scan checks to determine which check types are present.

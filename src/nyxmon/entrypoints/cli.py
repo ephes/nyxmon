@@ -1,6 +1,8 @@
 import argparse
 import logging
 import sys
+import signal
+from contextlib import AsyncExitStack
 from pathlib import Path
 
 import anyio
@@ -27,11 +29,6 @@ def setup_logging(log_level: str) -> None:
     # credential to journald on every notification request.
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-
-def signal_handler(agent, signum, frame):
-    logger.info(f"Received signal {signum}, shutting down...")
-    agent.stop()
 
 
 async def run_monitoring_services(
@@ -87,33 +84,18 @@ async def run_monitoring_services(
     uow = UnitOfWork(store=store)
     await validate_check_types(uow, runner)
 
-    if disable_cleaner:
-        # Only run the collector
-        async with running_collector(bus):
-            logger.info(f"Monitoring started with {check_interval}s check interval")
-            logger.info("Results cleaner is disabled")
-
-            # Wait forever until cancelled (e.g., by Ctrl+C)
-            try:
-                await anyio.sleep_forever()
-            except BaseException:
-                logger.info("Monitoring services shutting down...")
-                raise
-    else:
-        # Run both collector and cleaner
-        async with running_collector(bus), running_cleaner(bus):
-            logger.info("Monitoring services started:")
-            logger.info(f"- Check collector interval: {check_interval}s")
-            logger.info(
-                f"- Results cleaner interval: {cleanup_interval}s, retention: {retention_period}s"
-            )
-
-            # Wait forever until cancelled (e.g., by Ctrl+C)
-            try:
-                await anyio.sleep_forever()
-            except BaseException:
-                logger.info("Monitoring services shutting down...")
-                raise
+    # Register before starting background services so startup cannot leave a
+    # window where SIGTERM uses the OS default and strands newly claimed work.
+    with anyio.open_signal_receiver(signal.SIGTERM, signal.SIGINT) as signals:
+        async with AsyncExitStack() as stack:
+            await stack.enter_async_context(running_collector(bus))
+            if cleaner is not None:
+                await stack.enter_async_context(running_cleaner(bus))
+            logger.info("Monitoring started with %ss check interval", check_interval)
+            async for signum in signals:
+                logger.info("Received signal %s, shutting down...", signum)
+                collector.request_stop()
+                break
 
 
 def start_agent():
@@ -187,7 +169,7 @@ def start_agent():
                 enable_telegram=args.enable_telegram,
             )
 
-        # anyio automatically handles SIGINT and SIGTERM
+        # Signal reception is explicit in run_monitoring_services.
         anyio.run(main, backend_options={"loop_factory": uvloop.new_event_loop})
 
     except KeyboardInterrupt:

@@ -323,6 +323,10 @@ class CheckRepository(Protocol):
         """Release and return checks whose processing lease expired."""
         ...
 
+    async def release_claims_async(self, checks: List[Check]) -> int:
+        """Release only these owned claims, rescheduling without a result/alert."""
+        ...
+
     def get_notification_state(self, check_id: int) -> NotificationState:
         """Return the persisted alert cadence state for a check."""
         ...
