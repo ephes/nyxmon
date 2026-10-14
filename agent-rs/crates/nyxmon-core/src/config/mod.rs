@@ -9,6 +9,8 @@
 
 pub mod http;
 pub mod json_metrics;
+pub mod mail;
+pub mod smtp;
 pub mod tcp;
 
 use crate::pyjson::{PyDict, PyJson};

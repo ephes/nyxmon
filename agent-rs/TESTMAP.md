@@ -24,7 +24,7 @@ fails when a committed fixture no longer matches the Python code.
 | `test_site_connectivity_observer.py::test_from_env_defaults`, `::test_from_env_reads_every_knob`, `::test_from_env_empty_target_list_marks_a_path_unobserved`, `::test_from_env_invalid_values_warn_once_and_use_the_default` | `env.json` scenarios `site_config`; `env/tests.rs::default_site_config_matches_documented_defaults` | done |
 | `AsyncTelegramNotifier.__init__` environment (`TELEGRAM_*`, `OPSGATE_*`, `_parse_positive_int`, `_parse_bool`) | `env.json` scenarios `notifier_config` | done |
 | `domain/models.py` `Check.schedule_next_check`, `NotificationState.cleared/with_streak_reset/from_row` | `nyxmon-core/src/model.rs` tests | done |
-| `test_mail_tls_verify.py::test_imap_verify_false_uses_unverified_context_and_warns`, `::test_smtp_verify_false_uses_unverified_context_and_warns` (warning text, unverified context) | `nyxmon-checks/src/tls/tests.rs::mail_config_warns_only_without_verification`, `::unverified_config_accepts_any_chain_and_name` | done (executor wiring: S7) |
+| `test_mail_tls_verify.py::test_imap_verify_false_uses_unverified_context_and_warns`, `::test_smtp_verify_false_uses_unverified_context_and_warns` (warning text, unverified context) | `nyxmon-checks/src/tls/tests.rs::mail_config_warns_only_without_verification`, `::unverified_config_accepts_any_chain_and_name` | done (executor wiring: SMTP done in S7, IMAP pending) |
 | `ssl` `server_hostname` IDNA encoding (`str.encode("idna")`) | `tls/tests.rs::idna_encoding_matches_python` against `fixtures/idna.json` | done |
 | `test_mail_tls_verify.py::*_verifies_certificate_by_default` | `tls/tests.rs::verifying_config_*` (verification itself); executor wiring in S7 | done / pending S7 |
 
@@ -158,6 +158,21 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | httpx `Content-Encoding` decoders (`GZipDecoder` incl. header CRC, `DeflateDecoder` with raw fallback, `MultiDecoder`, unknown encodings) | `decode/tests.rs` and the gzip/deflate `executor_cases` | done |
 | Retry delays (`anyio.sleep`) | recorded per fixture case (`Sleeper::recording`); `http/tests.rs::retry_delays_wait_on_the_tokio_clock` checks the real sleeper on a paused clock | done |
 
+## S7 — SMTP (first part of S7; IMAP follows)
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `SmtpCheckConfig.from_dict` + `validate`, `_build_subject`, `_build_message` (incl. `test_smtp_executor.py::test_configuration_errors_surface`, `::test_invalid_numeric_config_does_not_send`, `::test_invalid_header_config_does_not_send`, `::test_message_build_errors_are_configuration_errors`, `::test_display_name_headers_send`; `test_mail_tls_verify.py::test_smtp_config_verify_defaults_true`, `::test_mail_configs_reject_non_boolean_verify` for SMTP) | `nyxmon-core/src/config/smtp/tests.rs::configuration_and_message_match_python` against `fixtures/config_smtp.json` (config, subject, Message-ID, envelope, flattened message) | done |
+| `_build_subject` | `config/smtp/tests.rs::subjects_match_python` against `fixtures/smtp_text.json` | done |
+| `_message_id_domain`, envelope (`getaddresses`, `smtplib.quoteaddr`) for plain addresses; other address forms are `configuration_error` (PLAN.md 1.5 D-14) | `config/smtp/tests.rs::configuration_and_message_match_python` (every corpus value Rust accepts), `::production_addresses_are_sent_as_configured`, `::unsupported_address_forms_are_configuration_errors`, `nyxmon-checks/src/smtp/tests.rs::unsupported_addresses_do_not_connect` | done (P3 for non-plain addresses) |
+| `test_smtp_executor.py::test_successful_send_returns_ok` | `nyxmon-checks/src/smtp/tests.rs::delivery_matches_the_smtplib_dialogue` (full wire transcript) | done |
+| `::test_retries_on_temporary_failure` | `smtp/tests.rs::temporary_greeting_is_retried_after_the_delay`, `::temporary_failures_stop_after_the_retries`, `::starttls_upgrades_and_repeats_ehlo` (454 retried) | done |
+| `::test_permanent_failure_does_not_retry` | `smtp/tests.rs::permanent_sender_refusal_resets_and_is_not_retried`, `::data_rejection_is_a_response_error` | done |
+| `::test_auth_error_surfaces_without_retry` | `smtp/tests.rs::authentication_tries_each_mechanism_in_smtplib_order` (CRAM-MD5, PLAIN, LOGIN) | done |
+| `::test_shutdown_preserves_delivery_outcome` | `smtp/tests.rs::quit_failures_after_data_keep_the_delivery`, `::partly_refused_recipients_report_the_first_refusal_after_delivery`, `::all_refused_recipients_report_the_python_dict`, `::temporary_greeting_is_retried_after_the_delay` | done |
+| `test_mail_tls_verify.py::test_smtp_implicit_tls_verifies_certificate_by_default`, `::test_smtp_starttls_verifies_certificate_by_default`, `::test_smtp_verify_false_uses_unverified_context_and_warns`, `::test_smtp_plain_mode_uses_no_tls`, `::test_smtp_certificate_failure_maps_to_tls_error`, `::test_smtp_executor_reports_tls_error_without_retry` | `smtp/tests.rs::implicit_tls_verifies_certificates_unless_disabled`, `::starttls_upgrades_and_repeats_ehlo`, `::delivery_matches_the_smtplib_dialogue` (plain, no warning) | done |
+| `smtplib` reply parsing, EHLO features, `_quote_periods`, AUTH challenge decoding, error mapping of `SmtplibClient._send_blocking` | `smtp/tests.rs::ehlo_features_follow_smtplib_parsing`, `::helpers_follow_python`, `::missing_extensions_are_smtp_errors`, `::socket_failures_map_like_the_python_except_chain` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -170,7 +185,7 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
 | `tests/unit/test_dns_*.py`, `test_config_numeric_contracts.py` (DNS rows), `test_notification_suppression.py` (fetch: redirects, caps, compression refusal) | `config_dns.json`, `dns_text.json`, fake DNS responder, suppression fake-server tests | S5b | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | in progress |
-| `tests/unit/test_smtp_executor.py`, `test_imap_*.py`, `test_mail_tls_verify.py` (executors) | `smtp_text.json`, `config_imap.json`, fake servers | S7 | pending |
+| `tests/unit/test_imap_*.py`, `test_mail_tls_verify.py` (IMAP executor) | `config_imap.json`, fake servers | S7 (IMAP part) | pending |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
 | `tests/unit/test_shutdown_claims.py`, `cleaner_test.py`, `test_startup_validation.py`, `test_runner_shutdown_stream.py`, `test_async_runner_refactor.py`, `test_executor_registry.py`, `test_cli_logging.py` | `nyxmon-agent` tests | S9 | pending |
 | `tests/unit/test_collector_recovery.py`, `test_collector_incidents.py` | `nyxmon-agent` collector tests, `lease.json`, `incident_payloads.json` | S10 | pending |

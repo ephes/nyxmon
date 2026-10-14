@@ -1,0 +1,124 @@
+{
+ "subjects": [
+  {
+   "now": 1760000000,
+   "prefix": "[nyxmon]",
+   "subject": "[nyxmon] 2025-10-09T08:53:20Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 0,
+   "prefix": "[nyxmon]",
+   "subject": "[nyxmon] 1970-01-01T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 951782400,
+   "prefix": "[nyxmon]",
+   "subject": "[nyxmon] 2000-02-29T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 4102444799,
+   "prefix": "[nyxmon]",
+   "subject": "[nyxmon] 2099-12-31T23:59:59Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 1760000000,
+   "prefix": "  pad  ",
+   "subject": "pad   2025-10-09T08:53:20Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 0,
+   "prefix": "  pad  ",
+   "subject": "pad   1970-01-01T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 951782400,
+   "prefix": "  pad  ",
+   "subject": "pad   2000-02-29T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 4102444799,
+   "prefix": "  pad  ",
+   "subject": "pad   2099-12-31T23:59:59Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 1760000000,
+   "prefix": "x",
+   "subject": "x 2025-10-09T08:53:20Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 0,
+   "prefix": "x",
+   "subject": "x 1970-01-01T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 951782400,
+   "prefix": "x",
+   "subject": "x 2000-02-29T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 4102444799,
+   "prefix": "x",
+   "subject": "x 2099-12-31T23:59:59Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 1760000000,
+   "prefix": "\u00e4\u00f6\u00fc",
+   "subject": "\u00e4\u00f6\u00fc 2025-10-09T08:53:20Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 0,
+   "prefix": "\u00e4\u00f6\u00fc",
+   "subject": "\u00e4\u00f6\u00fc 1970-01-01T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 951782400,
+   "prefix": "\u00e4\u00f6\u00fc",
+   "subject": "\u00e4\u00f6\u00fc 2000-02-29T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 4102444799,
+   "prefix": "\u00e4\u00f6\u00fc",
+   "subject": "\u00e4\u00f6\u00fc 2099-12-31T23:59:59Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 1760000000,
+   "prefix": "a\tb",
+   "subject": "a\tb 2025-10-09T08:53:20Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 0,
+   "prefix": "a\tb",
+   "subject": "a\tb 1970-01-01T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 951782400,
+   "prefix": "a\tb",
+   "subject": "a\tb 2000-02-29T00:00:00Z a1b2c3",
+   "token": "a1b2c3"
+  },
+  {
+   "now": 4102444799,
+   "prefix": "a\tb",
+   "subject": "a\tb 2099-12-31T23:59:59Z a1b2c3",
+   "token": "a1b2c3"
+  }
+ ]
+}
