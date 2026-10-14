@@ -318,6 +318,9 @@ Never add DDL to the Python agent; a new required column raises
 - Runtime log lines use `tracing` with the Python logger name as target;
   `nyxmon_agent::logging::capture()` collects them in tests (current-thread
   runtime).
-- The agent lock (`nyxmon_store::AgentLock`, `<db>.agent.lock`) is taken after
-  the schema verification and held for the lifetime of the process; the
-  Python agent takes the same `flock` (`src/nyxmon/agent_lock.py`).
+- The agent lock (`nyxmon_store::AgentLock`, `<db>.agent.lock`) is taken
+  right after the database file is found to exist, before the store is
+  opened and the schema verified (the order of `cli.py:start_agent`), and is
+  held for the lifetime of the process; the Python agent takes the same
+  `flock` (`src/nyxmon/agent_lock.py`). `--check-schema` opens the database
+  read-only and takes no lock.
