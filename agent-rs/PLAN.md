@@ -236,6 +236,11 @@ section 3.6); no other new variable is introduced by the port.
 - **D-12 Random values.** The SMTP correlation token and the OpsGate
   boundary nonce are random in both implementations; they are injected in
   fixtures and masked in parity comparisons (7.4).
+- **D-13 Notifier proxies.** The Telegram and OpsGate requests ignore
+  `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (httpx honours them through
+  `trust_env`). The notifiers use a small hyper HTTP/1.1 client so that
+  httpx's per-phase timeouts can be reproduced (5.11); the production unit
+  sets no proxy variable (checked on macmini 2026-10-14).
 
 ### 1.6 Result `data` shapes per check type (P1)
 
@@ -748,10 +753,15 @@ parallel with few merge conflicts.
 - `nyxmon-checks`: `trait Executor { async fn execute(&self, check: &Check, ctx: &BatchCtx) -> CheckResult }`,
   `BatchCtx` (per-batch HTTP clients, clock, sleep), `Registry` with the
   Python registration order.
-- `nyxmon-notify`: `trait Notifier { async fn notify_check_failed(&self, check: &Check, result: &CheckResult) -> Delivery }`
-  with `Delivery { Delivered, Failed, Unknown }` mirroring `True/False/None`
-  (`notification.py:Notifier.notify_check_failed`; only `Failed` counts as a
-  failure everywhere).
+- `nyxmon-notify`: `trait Notifier { fn notify_check_failed(&self, check: &Check, result: &CheckResult) -> NotifyFuture }`
+  (a boxed future of `Result<Delivery, NotifyRaised>`, so the trait is
+  object-safe) with `Delivery { Delivered, Failed, Unknown }` mirroring
+  `True/False/None` (`notification.py:Notifier.notify_check_failed`; only
+  `Failed` counts as a failure everywhere). `NotifyRaised` is the
+  `OverflowError` Python raises out of `_build_opsgate_ticket_payload` when
+  `OPSGATE_TICKET_EXPIRES_SECONDS` pushes the expiry beyond `datetime`'s
+  range; the result handler treats it like any exception from
+  `add_check_result`.
 
 ### 4.3 Crate choices
 
@@ -1152,7 +1162,11 @@ exit 1).
   `Name: Unnamed Check` when the name is empty.
 - POST form-encoded `chat_id`, `text`, `disable_notification`
   (`"true"`/`"false"` as httpx renders bools), `parse_mode=MarkdownV2`,
-  timeout 10 s (httpx semantics); 2xx → delivered; HTTP 400 whose body
+  timeout 10 s (httpx semantics: connect plus TLS handshake within 10 s,
+  then every single socket read and write within 10 s; reqwest's
+  `read_timeout` cannot express this for the response head, so the
+  notifiers use hyper's HTTP/1.1 client over a per-operation timeout
+  wrapper); 2xx → delivered; HTTP 400 whose body
   contains `can't parse entities` (lowercased) → resend once as
   `markdown_v2_to_plain_text` without `parse_mode`; other failures → `Failed`
   with the redacted log line; no token/chat → `Unknown` with warning.

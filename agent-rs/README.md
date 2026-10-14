@@ -20,6 +20,9 @@ store (`nyxmon-store`: DB actor, claims and holds) and the schema contract;
 result persistence, incidents, the cleaner batch and the agent lock follow.
 The binary only answers `--version`.
 
+Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
+ticket integration, and the logging/shadow notifier.
+
 ## Layout
 
 ```
@@ -34,7 +37,7 @@ agent-rs/
                         alerting (policy, site, suppression, decision, lease)
     nyxmon-store/       SQLite store: DB actor, all SQL, schema contract
     nyxmon-checks/      executors (S5-S7); TLS helpers (S1)
-    nyxmon-notify/      Telegram, OpsGate, logging notifier (S8)
+    nyxmon-notify/      Telegram, OpsGate, logging notifier (S8, done)
     nyxmon-agent/       the binary (S9+)
   fixtures/
     generate.py         writes the fixtures from the Python code
@@ -135,6 +138,16 @@ migration changes them: run `just rs-fixtures`, then update
 `nyxmon-store/src/schema.rs` (and PLAN.md 2.2) if the agent tables changed.
 Never add DDL to the Python agent; a new required column raises
 `MIN_NYXBOARD_MIGRATION` and is a breaking agent release.
+- `telegram.json` (S8): MarkdownV2 escaping and plain-text fallback, the
+  alert text, and whole `async_notify_check_failed` calls replayed against
+  scripted responses (`httpx.MockTransport`): request bodies, headers,
+  timeouts, outcome and log lines.
+- `opsgate.json` (S8): `sanitize_untrusted_data`, the remediation prompt,
+  `task_ref`, and the ticket payload as httpx encodes it (nonce and clock
+  injected).
+- `unicode_untrusted.json` (S8): the code points of the categories Cc, Cf,
+  Zl and Zp that the OpsGate sanitizer replaces by `?`; `nyxmon-notify`
+  embeds it.
 
 ## Conventions for later slices
 
@@ -163,6 +176,13 @@ Never add DDL to the Python agent; a new required column raises
   log lines) and calls `Observer::restore`/`Observer::run_once`; an `Err`
   from either is the Python exception a malformed persisted value raises,
   which the loop logs as `site connectivity round failed`.
+- Notifiers implement `nyxmon_notify::Notifier`
+  (`notify_check_failed -> Result<Delivery, NotifyRaised>`); only
+  `Delivery::Failed` is a delivery failure, and `NotifyRaised` stands for a
+  Python exception escaping the notifier (the OpsGate expiry
+  `OverflowError`), which the caller handles like any result-handling
+  error. `TelegramNotifier::new` takes the `notifier_env` reading plus
+  `NotifierSettings` (clock, nonce, log sink, Telegram endpoint for tests).
 - TLS goes through `nyxmon_checks::tls` (rustls with the `ring` provider,
   system roots, TLS 1.2+); `tls::server_name` IDNA-encodes Unicode hosts
   like Python.

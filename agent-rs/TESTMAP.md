@@ -82,6 +82,32 @@ Rust tests live in `crates/nyxmon-store/tests/` (databases built from
 | Busy timeout / `BEGIN IMMEDIATE` against another writer (PLAN.md 3.3, 7.1) | `concurrency.rs` | done |
 | Schema verification, `--check-schema` core (PLAN.md 2.2) | `schema.rs`; `tests/unit/test_agent_rs_schema_contract.py` (Python drift + simulated migrations) | done (CLI flag: S9) |
 
+## S8 — notifiers
+
+Fixtures `telegram.json` (MarkdownV2 helpers, the alert text with the OpsGate
+stubbed, and whole `async_notify_check_failed` calls replayed against
+`httpx.MockTransport`) and `opsgate.json` (sanitizer, prompt, task_ref, ticket
+payload as httpx encodes it, expiry incl. overflow), nonce and clock injected.
+Rust: `nyxmon-notify/src/tests/` (`fixtures.rs` pure parts, `http.rs` the
+scenarios against a local fake Telegram/OpsGate server).
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `test_telegram_markdown_escape.py::test_escape_markdown_v2_*`, `::test_markdown_v2_to_plain_text_restores_the_source_text` | `telegram.json` `escape`/`plain_text`/`link_url`/`truncate` (`fixtures.rs::markdown_helpers_match_python`) | done |
+| `test_telegram_markdown_escape.py::test_long_alert_fields_are_truncated`, `::test_alert_with_backslashes_is_valid_markdown_v2` | `telegram.json` `messages` (`fixtures.rs::alert_messages_match_python`) | done |
+| `test_telegram_markdown_escape.py::test_parse_error_is_resent_once_as_plain_text`, `::test_failed_plain_text_resend_reports_failure`, `::test_other_400_errors_are_not_resent` | `telegram.json` `http` scenarios (`http.rs::http_scenarios_match_python`) | done |
+| `test_telegram_notification.py::test_http_failure_log_redacts_bot_token`, `::test_http_failure_redacts_before_detail_truncation` | `http` scenarios "plain text resend fails", "redaction before truncation"; `http.rs::connection_failure_is_a_failed_send_without_the_token`, `::stalled_telegram_times_out` (transport errors, token absent from every line) | done |
+| `test_telegram_notification.py::test_async_send_reports_delivery`, `::test_async_send_reports_an_http_failure`, `::test_async_send_reports_a_transport_failure`, `::test_async_send_without_credentials_reports_no_attempt`, `::test_notify_check_failed_propagates_*` | `http` scenarios "delivered", "other 400 is not resent", "missing credentials"/"missing chat"/"empty token"; `http.rs::connection_failure_*`, `::broken_success_body_is_a_failed_send` | done |
+| `test_telegram_notification.py::test_notify_check_failed_without_a_portal_reports_no_attempt` | — | n/a (no anyio portal in Rust) |
+| `test_telegram_notification.py::test_opsgate_ticket_false_opens_no_ticket_even_with_warnings_enabled`, `test_opsgate_notification.py::test_hostile_opsgate_ticket_flag_cannot_suppress_ticket` | `messages` cases `opsgate_ticket=…`; `http` scenario "resolved internal alert opens no ticket" | done |
+| `test_opsgate_notification.py::test_create_opsgate_ticket_posts_expected_payload`, `::test_create_opsgate_ticket_disabled_without_submit_config` | `opsgate.json` `payloads` (`fixtures.rs::ticket_payloads_match_python`); `http` scenarios (body, bearer header, timeout) | done |
+| `test_opsgate_notification.py::test_notify_check_failed_includes_approval_link_when_ticket_created`, `::test_notify_check_failed_includes_duplicate_notice`, `::test_notify_check_failed_includes_ticket_error_notice` | `messages` ticket cases; `http` scenarios "ticket …", "duplicate ticket", "other conflict"; `http.rs::unreachable_opsgate_reports_a_ticket_error` | done |
+| `test_opsgate_notification.py::test_prompt_fences_hostile_result_data_as_untrusted`, `::test_prompt_truncates_each_untrusted_value`, `::test_prompt_keeps_long_trusted_check_url_intact` (incl. `fixtures/opsgate_prompt_injection.json`) | `opsgate.json` `prompts` (`fixtures.rs::prompts_and_task_refs_match_python`) | done |
+| `test_opsgate_notification.py::test_prompt_boundary_is_unpredictable` | `fixtures.rs::prompt_boundary_is_unpredictable` | done |
+| `test_opsgate_notification.py::test_sanitize_untrusted_data_bounds_containers` | `opsgate.json` `sanitize`/`sanitize_text` (`fixtures.rs::sanitize_matches_python`; non-JSON `repr` fallback unreachable for JSON values) | done |
+| `test_opsgate_notification.py::test_hostile_result_data_cannot_steer_ticket_permissions_or_identity`, `::test_internal_collector_alert_keeps_incident_key_task_ref` | `prompts`/`payloads` `task_ref`; `http` scenarios "hostile data …", "internal alert keys off its incident" | done |
+| `LoggingNotifier` (`--shadow` line) | `http.rs::logging_notifier_lines` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -104,7 +130,7 @@ Rust tests live in `crates/nyxmon-store/tests/` (databases built from
 | `tests/unit/test_http_executor.py`, `test_json_metrics_executor.py`, `test_json_metrics_config.py`, `test_dns_*.py`, `test_config_numeric_contracts.py` | `config_*.json`, `metrics_eval.json`, fake-server tests | S5 | pending |
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | `starttls_text.json`, `ping_text.json`, fake servers | S6 | pending |
 | `tests/unit/test_smtp_executor.py`, `test_imap_*.py`, `test_mail_tls_verify.py` (executors) | `smtp_text.json`, `config_imap.json`, fake servers | S7 | pending |
-| `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers | S8 | pending |
+| `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
 | `tests/unit/test_shutdown_claims.py`, `cleaner_test.py`, `test_startup_validation.py`, `test_runner_shutdown_stream.py`, `test_async_runner_refactor.py`, `test_executor_registry.py`, `test_cli_logging.py` | `nyxmon-agent` tests | S9 | pending |
 | `tests/unit/test_collector_recovery.py`, `test_collector_incidents.py` | `nyxmon-agent` collector tests, `lease.json`, `incident_payloads.json` | S10 | pending |
 | `tests/unit/test_site_connectivity_holds.py`, `test_site_connectivity_observer.py` (runtime) | `nyxmon-agent` site tests | S11 | pending |

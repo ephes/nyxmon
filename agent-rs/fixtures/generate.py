@@ -1327,6 +1327,867 @@ def build_unicode_nonprintable() -> dict[str, Any]:
     return {"unidata_version": unicodedata.unidata_version, "ranges": ranges}
 
 
+# --------------------------------------------------------------- notifiers
+# Slice S8 (PLAN.md 5.11): Telegram message, MarkdownV2 helpers, the OpsGate
+# ticket payload and prompt, and whole notify calls against scripted HTTP
+# responses (httpx.MockTransport), with the clock and the boundary nonce
+# injected.
+
+NOTIFIER_NONCE = "0123456789abcdef"
+#: 2025-10-14T12:00:00.123456Z
+NOTIFIER_NOW_MICROS = 1_760_443_200_123_456
+NOTIFIER_TOKEN = "123456:SECRET-bot_token~x"
+NOTIFIER_CATEGORIES = {"Cc", "Cf", "Zl", "Zp"}
+
+
+def build_unicode_untrusted() -> dict[str, Any]:
+    """Code point ranges ``_sanitize_untrusted_text`` replaces by ``?``.
+
+    The categories Cc, Cf, Zl and Zp of the oracle's Unicode database, so the
+    Rust sanitizer follows the oracle instead of a Rust crate's Unicode version.
+    """
+    import unicodedata
+
+    ranges: list[list[int]] = []
+    for code in range(0x110000):
+        if unicodedata.category(chr(code)) not in NOTIFIER_CATEGORIES:
+            continue
+        if ranges and ranges[-1][1] == code - 1:
+            ranges[-1][1] = code
+        else:
+            ranges.append([code, code])
+    return {
+        "categories": sorted(NOTIFIER_CATEGORIES),
+        "unidata_version": unicodedata.unidata_version,
+        "ranges": ranges,
+    }
+
+
+def _notifier_check(spec: Mapping[str, Any]) -> Any:
+    from nyxmon.domain.models import Check
+
+    return Check(
+        check_id=spec["check_id"],
+        service_id=spec["service_id"],
+        name=spec["name"],
+        check_type=spec["check_type"],
+        url=spec["url"],
+        data={},
+    )
+
+
+def _notifier_result(spec: Mapping[str, Any]) -> Any:
+    from nyxmon.domain.models import Result
+
+    return Result(
+        check_id=spec["check_id"], status=spec["status"], data=json.loads(spec["data"])
+    )
+
+
+def _check_spec(
+    check_id: int = 11,
+    name: str = "Disk Pressure",
+    check_type: str = "json-http",
+    url: str = "https://example.internal/health",
+    service_id: int = 22,
+) -> dict[str, Any]:
+    return {
+        "check_id": check_id,
+        "service_id": service_id,
+        "name": name,
+        "check_type": check_type,
+        "url": url,
+    }
+
+
+def _result_spec(
+    data: Any, status: str = "error", check_id: int = 11
+) -> dict[str, Any]:
+    return {"check_id": check_id, "status": status, "data": json.dumps(data)}
+
+
+def _injection_data() -> Any:
+    path = (
+        FIXTURES_DIR.parent.parent / "tests/unit/fixtures/opsgate_prompt_injection.json"
+    )
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@contextmanager
+def _notifier_clock(now_micros: int = NOTIFIER_NOW_MICROS) -> Iterator[None]:
+    from datetime import UTC, datetime, timedelta
+
+    from nyxmon.adapters import notification
+
+    fixed = datetime(1970, 1, 1, tzinfo=UTC) + timedelta(microseconds=now_micros)
+
+    class _FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> Any:  # type: ignore[override]
+            return fixed if tz is not None else fixed.replace(tzinfo=None)
+
+    with (
+        mock.patch.object(notification, "datetime", _FixedDatetime),
+        mock.patch.object(
+            notification.secrets, "token_hex", lambda nbytes=None: NOTIFIER_NONCE
+        ),
+    ):
+        yield
+
+
+@contextmanager
+def _notifier_logs() -> Iterator[list[list[str]]]:
+    records: list[list[str]] = []
+
+    class _Handler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append([record.levelname, record.getMessage()])
+
+    logger = logging.getLogger("nyxmon.adapters.notification")
+    handler = _Handler(level=logging.DEBUG)
+    previous = logger.level
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    try:
+        yield records
+    finally:
+        logger.removeHandler(handler)
+        logger.setLevel(previous)
+
+
+_ESCAPE_CORPUS = [
+    "",
+    "plain",
+    "trailing\\",
+    "C:\\path\\.",
+    "double \\\\ backslash",
+    "\\\\.",
+    "mixed_[a](b)*c*~d~`e` > #+-=|{}.!",
+    "_*[]()~`>#+-=|{}.!\\",
+    "https://example.test/a_b?x=1&y=(2)#frag",
+    "caf\u00e9 \U0001f600 \u202e\u200b",
+    "line\nbreak\ttab\r",
+    "Disk Pressure",
+    "<b>&amp;</b> 'quotes' \"double\"",
+]
+
+_PLAIN_TEXT_CORPUS = [
+    "",
+    "plain",
+    "*bold* _italic_ ~strike~ `code` |spoiler|",
+    "\\*not bold\\*",
+    "trailing\\",
+    "a\\\\b",
+    "[label](https://x.test/a_b\\)c)",
+    "[label](unterminated",
+    "]( at start",
+    "a](b) c",
+    "[[nested]](u)",
+    "[a](b\\\\)c)",
+    "x [y] z",
+    "]",
+    "](",
+    "[",
+    "\\",
+    "\U0001f534 *Check Failed \\(Critical\\)*\nName: a\\_b",
+    "\\[\\]\\(\\)",
+    "](\\)",
+    "a)b](c)d)e",
+]
+
+_TRUNCATE_CORPUS = [
+    ("", 0),
+    ("", 5),
+    ("abc", 0),
+    ("abc", 2),
+    ("abc", 3),
+    ("abc", 4),
+    ("\U0001f600" * 5, 3),
+    ("e\u0301" * 3, 4),
+    ("x" * 2001, 2000),
+    ("x" * 2000, 2000),
+]
+
+
+def _alert_data_cases() -> list[tuple[str, dict[str, Any], Any]]:
+    """(label, check spec, result data) for the message builder."""
+    big = 123456789012345678901234567890
+    return [
+        (
+            "basic",
+            _check_spec(),
+            {"error_msg": "Disk full", "error_type": "threshold", "status_code": 500},
+        ),
+        ("empty data", _check_spec(), {}),
+        ("empty name", _check_spec(name=""), {"error_msg": "x"}),
+        (
+            "status zero",
+            _check_spec(),
+            {"status_code": 0, "error_type": "", "error_msg": ""},
+        ),
+        (
+            "status string",
+            _check_spec(),
+            {"status_code": "503", "error_type": "http_error"},
+        ),
+        ("status empty list", _check_spec(), {"status_code": [], "error_type": None}),
+        ("status false", _check_spec(), {"status_code": False}),
+        ("status true", _check_spec(), {"status_code": True}),
+        ("status float", _check_spec(), {"status_code": 1e16, "error_type": 0.1}),
+        (
+            "status nan",
+            _check_spec(),
+            {"status_code": float("nan"), "error_msg": float("-inf")},
+        ),
+        ("status big", _check_spec(), {"status_code": big, "error_msg": -big}),
+        ("negative zero", _check_spec(), {"error_msg": -0.0, "status_code": 0.0}),
+        ("error_msg none", _check_spec(), {"error_msg": None, "error_type": "x"}),
+        (
+            "containers",
+            _check_spec(),
+            {
+                "error_msg": {"a": [1, 2.5, None, True, "it's"], "b": {}, "c": "q\"'"},
+                "error_type": ["x", {"y": 1}],
+                "status_code": {"k": "v"},
+            },
+        ),
+        ("container empty dict", _check_spec(), {"error_msg": {}, "status_code": {}}),
+        (
+            "repr escapes",
+            _check_spec(),
+            {"error_msg": ["tab\tnl\n\\ \x00 \u200b caf\u00e9 \U0001f600"]},
+        ),
+        (
+            "markdown chars",
+            _check_spec(name="db_[prod]*", url="https://x.test/a_b?q=(1)!"),
+            {
+                "error_msg": "C:\\path\\. failed > 5 #tag",
+                "error_type": "a-b.c",
+                "status_code": "4|2",
+            },
+        ),
+        (
+            "long fields",
+            _check_spec(name="N" * 250, url="https://x.test/" + "u" * 600),
+            {
+                "error_msg": "E" * 2500,
+                "error_type": "T" * 150,
+                "status_code": "S" * 150,
+            },
+        ),
+        ("long escaped", _check_spec(name="." * 201), {"error_msg": "." * 2001}),
+        (
+            "unicode",
+            _check_spec(name="Pr\u00fcfung \U0001f600"),
+            {"error_msg": "\u202edanger\u200b\n"},
+        ),
+        ("injection", _check_spec(), _injection_data()),
+    ]
+
+
+def _message_cases() -> list[dict[str, Any]]:
+    created = {"status": "created", "ticket_id": "T-1_a.b"}
+    tricky = {"status": "created", "ticket_id": "id)\\x"}
+    cases: list[dict[str, Any]] = []
+    for label, check, data in _alert_data_cases():
+        for status in ("error", "warning"):
+            cases.append(
+                {
+                    "label": f"{label} {status}",
+                    "check": check,
+                    "result": _result_spec(
+                        data, status=status, check_id=check["check_id"]
+                    ),
+                    "include_warnings": False,
+                    "ticket": None,
+                }
+            )
+    base_check = _check_spec()
+    base_data = {"error_msg": "Disk full", "error_type": "threshold"}
+    internal = _check_spec(check_id=0, name="Collector", check_type="internal", url="")
+    for ticket in (created, tricky, {"status": "duplicate"}, {"status": "error"}, None):
+        for status, include in (
+            ("error", False),
+            ("warning", False),
+            ("warning", True),
+        ):
+            cases.append(
+                {
+                    "label": f"ticket {ticket and ticket['status']} {status} include={include}",
+                    "check": base_check,
+                    "result": _result_spec(base_data, status=status),
+                    "include_warnings": include,
+                    "ticket": ticket,
+                }
+            )
+    for check in (
+        internal,
+        _check_spec(check_id=0),
+        _check_spec(check_type="internal"),
+    ):
+        for flag in (False, True, 0, None, "false"):
+            cases.append(
+                {
+                    "label": f"opsgate_ticket={flag!r} on {check['check_id']}/{check['check_type']}",
+                    "check": check,
+                    "result": _result_spec(
+                        {"error_msg": "x", "opsgate_ticket": flag},
+                        check_id=check["check_id"],
+                    ),
+                    "include_warnings": True,
+                    "ticket": created,
+                }
+            )
+    return cases
+
+
+def _build_message_case(case: Mapping[str, Any]) -> dict[str, Any]:
+    import asyncio
+
+    from nyxmon.adapters.notification import AsyncTelegramNotifier
+
+    env = {
+        "OPSGATE_APPROVAL_BASE_URL": "https://approve.example/base",
+        "OPSGATE_SUBMIT_INCLUDE_WARNINGS": "1" if case["include_warnings"] else "",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        notifier = AsyncTelegramNotifier(token="T", chat_id="C")
+    requested: list[bool] = []
+    sent: dict[str, Any] = {}
+
+    async def fake_ticket(check: Any, result: Any) -> Any:
+        requested.append(True)
+        return case["ticket"]
+
+    async def fake_send(text: str, high_priority: bool = False) -> bool:
+        sent.update(text=text, high_priority=high_priority)
+        return True
+
+    notifier._create_opsgate_ticket = fake_ticket  # type: ignore[method-assign]
+    notifier.async_send = fake_send  # type: ignore[method-assign]
+    asyncio.run(
+        notifier.async_notify_check_failed(
+            _notifier_check(case["check"]), _notifier_result(case["result"])
+        )
+    )
+    return {**case, "ticket_requested": bool(requested), **sent}
+
+
+def _sanitize_corpus() -> list[Any]:
+    many = list(range(30))
+    return [
+        None,
+        True,
+        0,
+        -1.5,
+        float("nan"),
+        123456789012345678901234567890,
+        "",
+        "plain",
+        "a" * 200,
+        "a" * 201,
+        "\u00e9" * 300,
+        "line\nbreak\r\ttab\x00\x7f\x85\u2028\u2029\u202e\u200b\ufeff\U000e0001\u00ad",
+        "\ue000 \U000f0000 \u0378 \U0001f600",
+        [],
+        {},
+        many,
+        list(range(25)),
+        list(range(26)),
+        {str(i): i for i in range(25)},
+        {str(i): i for i in range(28)},
+        {"[omitted]": "mine", **{f"k{i}": i for i in range(26)}},
+        {f"k{i}": i for i in range(24)} | {"[omitted]": "mine", "z": 1, "y": 2},
+        {"k" * 300: "v", "k" * 301: "w"},
+        {"a\nb": 1, "a?b": 2, "a\rb": 3},
+        {"nested": {"a": {"b": {"c": {"d": {"e": "deep"}}}}}},
+        [[[[["deep"]]]]],
+        [[[["three", 1, None]]]],
+        [[[[[]]]]],
+        {"l": [{"x": [1, {"y": 2}]}]},
+        {"f": [0.1, 1e16, -0.0, float("inf")], "b": [True, False, None]},
+        _injection_data(),
+        {"`backtick`": "```", "\u00e9": "\U0001f600"},
+    ]
+
+
+def _prompt_cases() -> list[dict[str, Any]]:
+    long_url = "https://example.internal/" + "segment/" * 60 + "health"
+    checks = [
+        _check_spec(),
+        _check_spec(name="", url=long_url),
+        _check_spec(
+            name="evil\nname\u202e",
+            url="https://x.test/\r\npath\u200b",
+            check_type="http",
+        ),
+        _check_spec(check_id=0, name="Collector", check_type="internal", url=""),
+        _check_spec(check_id=-5, name="Pr\u00fcfung \U0001f600 `x`", service_id=0),
+    ]
+    datas = [
+        {},
+        {"error_msg": "Disk full", "error_type": "threshold", "status_code": 500},
+        _injection_data(),
+        {"incident_key": "  stale-batch:7  "},
+        {"incident_key": "   "},
+        {"incident_key": 5},
+        {"incident_key": "site:connectivity", "opsgate_ticket": False},
+        {"f": float("nan"), "g": float("-inf"), "big": 2**70},
+        {"`": "`\u00e9\U0001f600\n"},
+    ]
+    cases = []
+    for check in checks:
+        for data in datas:
+            for status in ("error", "warning"):
+                cases.append(
+                    {
+                        "check": check,
+                        "result": _result_spec(
+                            data, status=status, check_id=check["check_id"]
+                        ),
+                    }
+                )
+    return cases
+
+
+def _payload_case(
+    case: Mapping[str, Any], expires: str | None, now_micros: int
+) -> dict[str, Any]:
+    import httpx
+
+    from nyxmon.adapters.notification import AsyncTelegramNotifier
+
+    env = {"OPSGATE_SUBMIT_BASE_URL": "https://opsgate.example"}
+    if expires is not None:
+        env["OPSGATE_TICKET_EXPIRES_SECONDS"] = expires
+    with mock.patch.dict(os.environ, env, clear=True), _notifier_clock(now_micros):
+        notifier = AsyncTelegramNotifier(token="T", chat_id="C")
+        check = _notifier_check(case["check"])
+        result = _notifier_result(case["result"])
+        out: dict[str, Any] = {
+            "check": case["check"],
+            "result": case["result"],
+            "expires_seconds": expires,
+            "now_micros": now_micros,
+            "task_ref": notifier._opsgate_task_ref(check, result),
+        }
+        try:
+            payload = notifier._build_opsgate_ticket_payload(check, result)
+        except OverflowError as exc:
+            return {**out, "raised": type(exc).__name__}
+    try:
+        body = httpx.Request("POST", "https://opsgate.example/", json=payload).content
+    except ValueError as exc:
+        return {**out, "encode_error": str(exc), "expires_at": payload["expires_at"]}
+    return {**out, "body": body.decode("utf-8")}
+
+
+def _expiry_cases() -> list[tuple[str | None, int]]:
+    from datetime import UTC, datetime
+
+    whole = NOTIFIER_NOW_MICROS - NOTIFIER_NOW_MICROS % 1_000_000
+    now_seconds = whole // 1_000_000
+    last = int(datetime(9999, 12, 31, 23, 59, 59, tzinfo=UTC).timestamp())
+    leap = int(datetime(2028, 2, 28, 23, 0, 0, tzinfo=UTC).timestamp()) * 1_000_000
+    return [
+        (None, NOTIFIER_NOW_MICROS),
+        ("60", NOTIFIER_NOW_MICROS),
+        ("60", whole),
+        ("1", whole + 999_999),
+        ("7200", leap),
+        ("86400", int(datetime(2027, 12, 31, 12, tzinfo=UTC).timestamp()) * 1_000_000),
+        ("100000000000", 0),
+        (str(last - now_seconds), NOTIFIER_NOW_MICROS),
+        (str(last - now_seconds + 1), NOTIFIER_NOW_MICROS),
+        (str(999_999_999 * 86400 + 86399), NOTIFIER_NOW_MICROS),
+        (str(1_000_000_000 * 86400), NOTIFIER_NOW_MICROS),
+        (str(2**31 * 86400), NOTIFIER_NOW_MICROS),
+        (str(10**30), NOTIFIER_NOW_MICROS),
+    ]
+
+
+def build_opsgate() -> dict[str, Any]:
+    from nyxmon.adapters.notification import (
+        AsyncTelegramNotifier,
+        _sanitize_untrusted_text,
+        sanitize_untrusted_data,
+    )
+
+    sanitize = [
+        {
+            "input": json.dumps(value),
+            "output": json.dumps(sanitize_untrusted_data(value)),
+        }
+        for value in _sanitize_corpus()
+    ]
+    texts = [
+        "",
+        "a\x00b\x1fc\x7fd\x9fe",
+        "\u2028\u2029\u202e\u200b\u200d\ufeff\u00ad\u0600\U000110bd\U000e007f",
+        "x" * 199,
+        "x" * 200,
+        "x" * 201,
+        "\U0001f600" * 250,
+    ]
+    sanitize_text = [
+        {
+            "input": text,
+            "max_chars": limit,
+            "output": _sanitize_untrusted_text(text, limit),
+        }
+        for text in texts
+        for limit in (None, 200, 0, 3)
+    ]
+    with mock.patch.dict(os.environ, {}, clear=True):
+        notifier = AsyncTelegramNotifier(token="T", chat_id="C")
+    prompts = []
+    with _notifier_clock():
+        for case in _prompt_cases():
+            check = _notifier_check(case["check"])
+            result = _notifier_result(case["result"])
+            prompts.append(
+                {
+                    **case,
+                    "task_ref": notifier._opsgate_task_ref(check, result),
+                    "prompt": notifier._build_opsgate_prompt(check, result),
+                }
+            )
+    payloads = [
+        _payload_case(case, "14400", NOTIFIER_NOW_MICROS)
+        for case in _prompt_cases()[::4]
+    ]
+    base = _prompt_cases()[1]
+    payloads += [_payload_case(base, expires, now) for expires, now in _expiry_cases()]
+    return {
+        "nonce": NOTIFIER_NONCE,
+        "sanitize": sanitize,
+        "sanitize_text": sanitize_text,
+        "prompts": prompts,
+        "payloads": payloads,
+    }
+
+
+def build_telegram() -> dict[str, Any]:
+    from nyxmon.adapters.notification import (
+        AsyncTelegramNotifier,
+        _truncate,
+        markdown_v2_to_plain_text,
+    )
+
+    escape = AsyncTelegramNotifier.escape_markdown_v2
+    plain_inputs = _PLAIN_TEXT_CORPUS + [escape(text) for text in _ESCAPE_CORPUS]
+    return {
+        "now_micros": NOTIFIER_NOW_MICROS,
+        "nonce": NOTIFIER_NONCE,
+        "token": NOTIFIER_TOKEN,
+        "escape": [{"input": t, "output": escape(t)} for t in _ESCAPE_CORPUS],
+        "plain_text": [
+            {"input": t, "output": markdown_v2_to_plain_text(t)} for t in plain_inputs
+        ],
+        "link_url": [
+            {"input": t, "output": AsyncTelegramNotifier._escape_markdown_link_url(t)}
+            for t in ("https://a.test/x", "https://a.test/x)y\\z", "", "))\\\\")
+        ],
+        "truncate": [
+            {"input": value, "max_chars": limit, "output": _truncate(value, limit)}
+            for value, limit in _TRUNCATE_CORPUS
+        ],
+        "messages": [_build_message_case(case) for case in _message_cases()],
+        "http": [_run_http_scenario(spec) for spec in _http_scenarios()],
+    }
+
+
+_TELEGRAM_OK = {"status": 200, "body": '{"ok":true,"result":{"message_id":1}}'}
+_TELEGRAM_PARSE_ERROR = {
+    "status": 400,
+    "body": '{"ok":false,"error_code":400,"description":"Bad Request: Can\'t parse '
+    "entities: Character '.' is reserved and must be escaped with the preceding '\\\\'\"}",
+}
+
+
+def _http_scenarios() -> list[dict[str, Any]]:
+    """Whole ``async_notify_check_failed`` calls against scripted responses.
+
+    ``telegram`` and ``opsgate`` are the scripted responses in request order.
+    The OpsGate approval base is always set explicitly, so the message text
+    does not depend on where the submit endpoint lives.
+    """
+    telegram_env = {"TELEGRAM_BOT_TOKEN": NOTIFIER_TOKEN, "TELEGRAM_CHAT_ID": "-100123"}
+    opsgate_env = {
+        **telegram_env,
+        "OPSGATE_SUBMIT_BASE_URL": "https://opsgate.example",
+        "OPSGATE_SUBMIT_TOKEN": "opsgate-secret",
+        "OPSGATE_APPROVAL_BASE_URL": "https://approve.example/",
+        "OPSGATE_SUBMIT_TIMEOUT_SECONDS": "7",
+    }
+    basic = {"error_msg": "Disk full", "error_type": "threshold", "status_code": 500}
+    check = _check_spec()
+    internal = _check_spec(check_id=0, name="", check_type="internal", url="")
+    token_body = "x" * 490 + NOTIFIER_TOKEN + "y" * 600
+
+    def scenario(label: str, env: dict[str, str], **kw: Any) -> dict[str, Any]:
+        return {
+            "label": label,
+            "env": env,
+            "check": kw.get("check", check),
+            "result": kw.get("result", _result_spec(basic)),
+            "telegram": kw.get("telegram", []),
+            "opsgate": kw.get("opsgate", []),
+        }
+
+    return [
+        scenario("delivered", telegram_env, telegram=[_TELEGRAM_OK]),
+        scenario(
+            "warning is silent",
+            telegram_env,
+            result=_result_spec(basic, status="warning"),
+            telegram=[{"status": 204, "body": ""}],
+        ),
+        scenario(
+            "form encoding",
+            {**telegram_env, "TELEGRAM_CHAT_ID": " -100 123 \u00e9&=+%~*"},
+            check=_check_spec(name="a b+c&d=e%f~g*h/i\u00e9\U0001f600"),
+            result=_result_spec({"error_msg": "x\ny\r\nz\t"}),
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "parse error resent as plain text",
+            telegram_env,
+            telegram=[_TELEGRAM_PARSE_ERROR, _TELEGRAM_OK],
+        ),
+        scenario(
+            "plain text resend fails",
+            telegram_env,
+            telegram=[
+                _TELEGRAM_PARSE_ERROR,
+                {"status": 500, "body": "oops " + NOTIFIER_TOKEN},
+            ],
+        ),
+        scenario(
+            "other 400 is not resent",
+            telegram_env,
+            telegram=[
+                {"status": 400, "body": '{"description":"Bad Request: chat not found"}'}
+            ],
+        ),
+        scenario(
+            "parse marker on a non-400 is not resent",
+            telegram_env,
+            telegram=[{"status": 500, "body": "can't parse entities"}],
+        ),
+        scenario(
+            "redaction before truncation",
+            telegram_env,
+            telegram=[{"status": 502, "body": token_body}],
+        ),
+        scenario(
+            "redirect is a failure",
+            telegram_env,
+            telegram=[
+                {"status": 302, "body": "", "location": "https://elsewhere.test/"}
+            ],
+        ),
+        scenario(
+            "informational body text",
+            telegram_env,
+            telegram=[{"status": 403, "body": "Forbidden \u00e9 \U0001f600"}],
+        ),
+        scenario("missing credentials", {}),
+        scenario("missing chat", {"TELEGRAM_BOT_TOKEN": NOTIFIER_TOKEN}),
+        scenario("empty token", {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": "1"}),
+        scenario(
+            "ticket without telegram credentials",
+            {k: v for k, v in opsgate_env.items() if not k.startswith("TELEGRAM")},
+            opsgate=[{"status": 201, "body": '{"id": "T-9"}'}],
+        ),
+        scenario(
+            "ticket created",
+            opsgate_env,
+            opsgate=[{"status": 201, "body": '{"id": " T-1_a.b ", "state": "open"}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket id needs link escaping",
+            opsgate_env,
+            opsgate=[{"status": 201, "body": '{"id": "id)\\\\x"}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket id is a number",
+            opsgate_env,
+            opsgate=[{"status": 201, "body": '{"id": 42}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket id is null",
+            opsgate_env,
+            opsgate=[{"status": 201, "body": '{"id": null}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket created without id",
+            opsgate_env,
+            opsgate=[{"status": 201, "body": '{"id": "  "}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket created with a non-JSON body",
+            opsgate_env,
+            opsgate=[{"status": 201, "body": "created"}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket created with a list body",
+            opsgate_env,
+            opsgate=[{"status": 201, "body": '[{"id": "x"}]'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "duplicate ticket",
+            opsgate_env,
+            opsgate=[{"status": 409, "body": '{"error": "duplicate_open_ticket"}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "other conflict",
+            opsgate_env,
+            opsgate=[
+                {"status": 409, "body": '{"error": "other", "n": [1, 2.5, null, true]}'}
+            ],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "server error with a list body",
+            opsgate_env,
+            opsgate=[{"status": 500, "body": "[1, 2]"}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket for a warning only when included",
+            opsgate_env,
+            result=_result_spec(basic, status="warning"),
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "ticket for an included warning",
+            {**opsgate_env, "OPSGATE_SUBMIT_INCLUDE_WARNINGS": "yes"},
+            result=_result_spec(basic, status="warning"),
+            opsgate=[{"status": 201, "body": '{"id": "W-1"}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "resolved internal alert opens no ticket",
+            {**opsgate_env, "OPSGATE_SUBMIT_INCLUDE_WARNINGS": "1"},
+            check=internal,
+            result=_result_spec(
+                {
+                    "error_msg": "resolved",
+                    "incident_key": "stale-batch",
+                    "opsgate_ticket": False,
+                },
+                check_id=0,
+            ),
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "internal alert keys off its incident",
+            opsgate_env,
+            check=internal,
+            result=_result_spec(
+                {"error_msg": "wedged", "incident_key": " execution-paused "},
+                check_id=0,
+            ),
+            opsgate=[{"status": 409, "body": '{"error": "duplicate_open_ticket"}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "hostile data cannot suppress or steer the ticket",
+            opsgate_env,
+            result=_result_spec(_injection_data()),
+            opsgate=[{"status": 201, "body": '{"id": "H-1"}'}],
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "non-finite data fails the ticket encoding",
+            opsgate_env,
+            result=_result_spec({"error_msg": "x", "value": float("nan")}),
+            telegram=[_TELEGRAM_OK],
+        ),
+        scenario(
+            "expiry overflow raises",
+            {**opsgate_env, "OPSGATE_TICKET_EXPIRES_SECONDS": "300000000000"},
+        ),
+        scenario(
+            "ticket and telegram both fail",
+            opsgate_env,
+            opsgate=[{"status": 503, "body": '{"detail": "down"}'}],
+            telegram=[_TELEGRAM_PARSE_ERROR, {"status": 429, "body": "slow down"}],
+        ),
+    ]
+
+
+def _run_http_scenario(spec: Mapping[str, Any]) -> dict[str, Any]:
+    import asyncio
+
+    import httpx
+
+    from nyxmon.adapters.notification import AsyncTelegramNotifier
+
+    queues = {"telegram": list(spec["telegram"]), "opsgate": list(spec["opsgate"])}
+    requests: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        kind = "telegram" if request.url.host == "api.telegram.org" else "opsgate"
+        headers = {
+            name: request.headers[name]
+            for name in ("accept", "authorization", "content-type", "user-agent")
+            if name in request.headers
+        }
+        requests.append(
+            {
+                "kind": kind,
+                "method": request.method,
+                "path": request.url.raw_path.decode("ascii"),
+                "headers": headers,
+                "body": request.content.decode("utf-8"),
+                "timeout": request.extensions.get("timeout"),
+            }
+        )
+        reply = queues[kind].pop(0)
+        headers_out = {"content-type": "application/json"}
+        if "location" in reply:
+            headers_out["location"] = reply["location"]
+        return httpx.Response(
+            reply["status"], content=reply["body"].encode("utf-8"), headers=headers_out
+        )
+
+    real_client = httpx.AsyncClient
+
+    def client_factory(*args: Any, **kwargs: Any) -> Any:
+        return real_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    out: dict[str, Any] = dict(spec)
+    with (
+        mock.patch.dict(os.environ, spec["env"], clear=True),
+        _notifier_clock(),
+        mock.patch.object(httpx, "AsyncClient", client_factory),
+        _notifier_logs() as logs,
+    ):
+        notifier = AsyncTelegramNotifier()
+        try:
+            out["delivered"] = asyncio.run(
+                notifier.async_notify_check_failed(
+                    _notifier_check(spec["check"]), _notifier_result(spec["result"])
+                )
+            )
+        except Exception as exc:  # the caller's "result handling failed" path
+            out["raised"] = type(exc).__name__
+    assert not queues["telegram"] and not queues["opsgate"], spec["label"]
+    out["requests"] = requests
+    out["logs"] = logs
+    return out
+
+
 # ------------------------------------------------------------------ driver
 
 
@@ -1346,10 +2207,13 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "env.json": build_env,
     "idna.json": build_idna,
     "idna_tables.json": build_idna_tables,
+    "opsgate.json": build_opsgate,
     "pyjson.json": build_pyjson,
+    "telegram.json": build_telegram,
     "unicode_nonprintable.json": build_unicode_nonprintable,
     **_slice_generators("gen_alerting"),
     **_slice_generators("gen_site"),
+    "unicode_untrusted.json": build_unicode_untrusted,
 }
 
 
