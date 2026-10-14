@@ -284,6 +284,15 @@ section 3.6); no other new variable is introduced by the port.
     ("practical" codec); Rust reports `configuration_error` "non-ASCII DNS
     names are not supported; use the IDNA (xn--) form"
     (`dns/wire/tests.rs::non_ascii_names_fail_closed`).
+  - malformed responses: Rust validates the message structure, names, the
+    rdata of A, AAAA, MX, TXT, CNAME, NS, PTR, SOA, the OPT placement and
+    the OPT option framing; dnspython also validates the rdata of every
+    other known type, rdata of classes other than IN by their own formats,
+    and the contents of known EDNS options. Rust accepts such a response
+    where dnspython rejects it (UDP: ignored, TCP: nameserver dropped).
+    No production nameserver sends malformed packets
+    (`dns/wire/tests.rs::compression_pointers_must_point_backwards`,
+    `::opt_options_must_fill_the_rdata`).
 
 ### 1.6 Result `data` shapes per check type (P1)
 

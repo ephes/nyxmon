@@ -515,6 +515,29 @@ fn rdata(reader: &mut Reader<'_>, rtype: u16, len: usize) -> Result<RData, FormE
     parsed
 }
 
+/// The OPT rdata: options framed as code, length and data, exactly filling
+/// the rdata (`dns.rdtypes.ANY.OPT.from_wire_parser`; the option contents
+/// are not interpreted).
+fn opt_options(reader: &mut Reader<'_>, len: usize) -> Result<(), FormError> {
+    let end = reader
+        .pos
+        .checked_add(len)
+        .filter(|e| *e <= reader.end)
+        .ok_or(FormError)?;
+    while reader.pos < end {
+        if end - reader.pos < 4 {
+            return Err(FormError);
+        }
+        reader.u16()?;
+        let option_len = usize::from(reader.u16()?);
+        if end - reader.pos < option_len {
+            return Err(FormError);
+        }
+        reader.take(option_len)?;
+    }
+    Ok(())
+}
+
 /// `dns.message.from_wire(wire)` for the parts the check uses.
 ///
 /// # Errors
@@ -571,7 +594,7 @@ pub fn parse_message(wire: &[u8]) -> Result<Message, Partial> {
                     if section != 2 || message.edns_flags.is_some() || !name.labels.is_empty() {
                         return Err(FormError);
                     }
-                    reader.take(len)?;
+                    opt_options(&mut reader, len)?;
                     message.edns_flags = Some(ttl);
                     message.edns_payload = class;
                     continue;

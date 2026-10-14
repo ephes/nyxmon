@@ -208,3 +208,26 @@ fn cname_chains_are_bounded() {
         ChainError::ChainTooLong
     );
 }
+
+#[test]
+fn opt_options_must_fill_the_rdata() {
+    let mut base = header(3, FLAG_QR, [1, 1, 0, 1]);
+    base.extend(question_wire());
+    base.extend([0xc0, 12, 0, 1, 0, 1, 0, 0, 1, 44, 0, 4, 192, 0, 2, 1]);
+    let opt = |rdata: &[u8]| {
+        let mut wire = base.clone();
+        wire.push(0);
+        wire.extend(41u16.to_be_bytes());
+        wire.extend(1232u16.to_be_bytes());
+        wire.extend(0u32.to_be_bytes());
+        wire.extend(u16::try_from(rdata.len()).unwrap().to_be_bytes());
+        wire.extend(rdata);
+        wire
+    };
+    assert!(parse_message(&opt(&[])).is_ok());
+    // One option: code 10 (cookie), length 2.
+    assert!(parse_message(&opt(&[0, 10, 0, 2, 1, 2])).is_ok());
+    // Truncated option header or data: dnspython raises FormError.
+    assert!(parse_message(&opt(&[0])).is_err());
+    assert!(parse_message(&opt(&[0, 10, 0, 3, 1, 2])).is_err());
+}
