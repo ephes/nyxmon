@@ -224,6 +224,20 @@ section 3.6); no other new variable is introduced by the port.
 - **D-9 TLS library.** rustls instead of OpenSSL: no TLS 1.0/1.1, no SHA-1
   signatures, no RSA keys under 2048 bits. All production TLS endpoints are
   own, current services; the shadow run (section 9) verifies them.
+  Server names: rustls represents only valid DNS names and IP addresses. A
+  TLS server name it cannot represent (a scoped IPv6 literal such as
+  `::1%lo0`, a trailing-dot IP such as `127.0.0.1.`, a name with `:`, a
+  space or a leading hyphen) is sent without SNI where OpenSSL would send
+  the raw name; with `verify=true` the TCP check fails closed as
+  `tls_error` ("TLS handshake failed: server name cannot be verified: not a
+  valid DNS name or IP address", retryable) before the handshake, even
+  when OpenSSL's `X509_check_host` could match a certificate carrying that
+  exact name. No hand-written OpenSSL host matching is attempted. No
+  production check uses such a name (the TCP checks target ordinary DNS
+  names on port 443). Pinned by `tcp/tests.rs`
+  (`names_rustls_cannot_send_still_connect_without_verification`,
+  `names_rustls_cannot_send_fail_verification`,
+  `a_scoped_ipv6_host_connects_and_uses_tls`).
 - **D-10 Agent lock file** `<db>.agent.lock` (section 3.6); also added to the
   Python agent.
 - **D-11 Non-object `health_check.data`.** Python maps NULL/empty to `{}` but
@@ -309,7 +323,8 @@ Runner-level (`adapters/runner/async_runner.py:_run_one`):
   `tls_timeout`, `tls_error` ("TLS handshake failed: …", retryable),
   `starttls_timeout`, `starttls_connection_closed` (retryable),
   `starttls_rejected`, `starttls_protocol_error`, `cert_missing`,
-  `cert_expiry` (not retryable), `unexpected_error` (`host, port, tls_mode, A`).
+  `cert_expiry` (not retryable), `unexpected_error` (`host, port, tls_mode, A`;
+  also when the TLS close fails, 5.12).
 
 **dns** (`executors/dns_executor.py`):
 
@@ -1223,7 +1238,12 @@ exit 1).
   truncated.
 - TLS: SNI/verification name = `sni or host`, IDNA-encoded by anyio's
   `idna2008_resolve` (IDNA 2008, not the IDNA 2003 of Python's `ssl` that
-  the mail checks use); IP literals verify IP SANs without SNI;
+  the mail checks use); IP literals verify IP SANs without SNI; an empty
+  name, a leading dot or a NUL fail like CPython's `ssl`; a name rustls
+  cannot represent (not a valid DNS name, e.g. a scoped IPv6 literal or
+  `127.0.0.1.`) is sent without SNI where OpenSSL would send the raw name
+  and, when verifying, fails closed as `tls_error` before the handshake
+  (P3, D-9);
   `verify=false` uses a no-verification rustls verifier;
   `tls_handshake_timeout` bounds the handshake; the STARTTLS dialogue is
   bounded separately by the same timeout. Dialogues (`generic`, `smtp`,
@@ -1236,6 +1256,16 @@ exit 1).
   tested.
 - Certificate expiry from the peer leaf certificate even when not verifying:
   `floor((notAfter - now) / 86400)`; missing certificate → `cert_missing`.
+- Closing (`finally: await current_stream.aclose()`): a TLS stream is closed
+  with anyio's standard TLS closing handshake — send `close_notify`, then
+  wait **without a time limit** for the peer's `close_notify`. A peer that
+  closes or resets the connection without one (`BrokenResourceError`,
+  `error_msg` `""`) or sends application data first (an IMAPS/SMTPS banner:
+  OpenSSL `APPLICATION_DATA_AFTER_CLOSE_NOTIFY`) makes the close raise, which
+  replaces the attempt's outcome (also `cert_expiry`/`cert_missing`) with
+  `unexpected_error`, not retried. Verified against Python with local TLS
+  servers; the production TCP checks (port 443 web servers) answer
+  `close_notify`. A plain TCP stream closes without effect.
 
 ### 5.13 Ping (`ping_executor.py`)
 

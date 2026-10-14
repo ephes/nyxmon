@@ -722,6 +722,7 @@ dependencies = [
  "unicode-normalization",
  "url",
  "webpki-roots",
+ "x509-parser",
 ]
 
 [[package]]
