@@ -120,8 +120,8 @@ scenarios against a local fake Telegram/OpsGate server).
 ## S6 — TCP + ping
 
 Part 1 (configuration, host and address handling, IDNA, STARTTLS dialogues),
-part 2 (TCP executor) and part 3 (ping) are reviewed and merged one after
-another.
+part 2 (TCP executor) and part 3 (ping, S6c) are reviewed and merged one
+after another.
 
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
@@ -138,7 +138,13 @@ another.
 | Result shapes and edge paths not covered by Python tests: retry counts and delays, `connect_timeout`/resolver messages, `tls_timeout`, verification with a trust store, `cert_days_remaining` rounding (negative days), non-string `sni`/`starttls_command`, non-encodable hosts, config errors and escaping exceptions | `tcp/tests.rs` | done |
 | D-9 server names rustls cannot represent (no SNI; `verify=true` fails closed, P3) | `tcp/tests.rs::names_rustls_cannot_send_still_connect_without_verification`, `::names_rustls_cannot_send_fail_verification`, `::a_scoped_ipv6_host_follows_the_platform_resolver` | done |
 | anyio TLS close (`TLSStream.aclose`: `close_notify` exchange; peer closing without it or sending data → `unexpected_error`) | `tcp/tests.rs::closing_without_close_notify_is_an_unexpected_error`, `::application_data_before_close_notify_is_an_unexpected_error` (behaviour probed against the Python executor) | done |
-| `test_ping_executor.py` | `ping_text.json`, fake `ping` scripts | pending part 3 |
+| `test_ping_executor.py::TestConfiguration` (numeric overflow, invalid values, defaults), `::TestResolution::test_target_extraction`, `::test_invalid_target_is_configuration_error` | `config_ping.json` (`nyxmon-core/src/config/ping/tests.rs`): `from_dict` + `validate` order and messages, `float()` coercions, `normalize_ping_target` (URLs, brackets, whitespace, leading `-`) | done |
+| `test_ping_executor.py::TestCommandsAndParsing` (`build_ping_command` per platform, `parse_rtt_ms` incl. localized/TTL/source fallbacks) | `ping_text.json` `commands`/`rtt` (`nyxmon-core/src/ping_text/tests.rs`); `_error_detail`, `is_permission_failure`, `_packet_stats`, RTT statistics with Python's compensated `sum`, output decoding; the `re`/`str` character classes in `ping_unicode.json` | done |
+| `test_ping_executor.py::TestSuccessAndLoss`, `::TestFailures` (all but `test_no_binary_found`), `::TestResolution` (hostname, DNS failure, empty resolution, DNS timeout) | `ping_text.json` `scenarios`: the Python executor with a stub runner, resolver and sleep, replayed by `nyxmon-checks/src/ping/tests.rs::scripted_runs_match_python` (result, key order, commands, process timeouts, resolver calls, sleeps) | done |
+| `test_ping_executor.py::test_run_process_kills_after_timeout`; `run_process` environment, stdin, signals, decoding, start errors (`[Errno N] ...: '<path>'`) | `ping/tests.rs::the_process_runner_*`, `::start_failures_map_to_the_python_os_errors` | done |
+| `test_ping_executor.py::test_no_binary_found`; `find_binary`/`shutil.which` | `ping/tests.rs::which_follows_shutil_which`, `::which_skips_entries_that_are_not_utf8` (P3 D-17) | done |
+| Fake `ping` binaries (PLAN.md 7.1: canned iputils output, permission text, a process beyond the timeout, name resolution) | `ping/tests.rs::a_fake_iputils_ping_reports_round_trip_times`, `::a_fake_ping_without_privilege_stops_at_once`, `::a_hanging_ping_is_killed_after_the_grace_period`, `::a_name_resolves_before_pinging`, `::resolver_errors_use_the_python_texts` | done |
+| `test_ping_executor.py::TestRegistration` (runner registry, startup validation), `::test_runtime_estimate_covers_worst_case` | registry: S9; runtime estimate: `lease.json` (S3) | S9 / done |
 
 ## S5a — HTTP family (http, json-http, json-metrics)
 
@@ -196,7 +202,7 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `tests/unit/test_site_connectivity_holds.py` (snapshot) | `site_snapshot.json` | S3 | pending |
 | `tests/unit/test_site_connectivity_observer.py` (state machine) | `site_replay/*.json` | S4 | pending |
 | `tests/unit/test_dns_executor.py`, `test_dns_source_ip.py`, executor parts of `test_dns_address_normalization.py` | `config_dns.json` `executor_cases`, fake DNS responder | S5b part 2 | pending |
-| `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | in progress |
+| `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | done |
 | `tests/unit/test_imap_*.py`, `test_mail_tls_verify.py` (IMAP executor) | `config_imap.json`, fake servers | S7 (IMAP part) | pending |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
 | `tests/unit/test_shutdown_claims.py`, `cleaner_test.py`, `test_startup_validation.py`, `test_runner_shutdown_stream.py`, `test_async_runner_refactor.py`, `test_executor_registry.py`, `test_cli_logging.py` | `nyxmon-agent` tests | S9 | pending |
