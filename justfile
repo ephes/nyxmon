@@ -92,6 +92,10 @@ rs-lint:
     cd agent-rs && cargo fmt --all --check
     cd agent-rs && cargo clippy --workspace --all-targets --locked -- -D warnings
 
+# Rust agent supply-chain check (licenses, advisories, sources; needs cargo-deny, see agent-rs/README.md)
+rs-deny:
+    cd agent-rs && cargo deny --locked check
+
 # Format the Rust agent
 rs-fmt:
     cd agent-rs && cargo fmt --all
@@ -111,6 +115,7 @@ rs-build-linux:
       -v "{{justfile_directory()}}/agent-rs:/work" -w /work \
       -v nyxmon-agent-rs-cargo-registry:/usr/local/cargo/registry \
       -e CARGO_TARGET_DIR=/work/target/docker-linux-amd64 \
+      -e NYXMON_AGENT_GIT_COMMIT="$(git -C "{{justfile_directory()}}" rev-parse HEAD)" \
       rust:1.99.0-bookworm \
       cargo build --release --locked --target x86_64-unknown-linux-gnu
 

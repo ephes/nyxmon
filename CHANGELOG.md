@@ -275,6 +275,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loop and SIGTERM/SIGINT shutdown with the grace period and lease release.
   Stale-lease recovery, collector incidents and site connectivity follow in
   later slices; nothing deploys the Rust agent yet.
+- Rust agent release pipeline (slice S13 of `agent-rs/PLAN.md`):
+  `.github/workflows/agent-rs-release.yml` builds `nyxmon-agent` on
+  ubuntu-22.04 for a tag `agent-rs-v<version>` (which must equal the crate
+  version), checks that it needs no glibc newer than 2.35 and links only
+  glibc/libgcc, and publishes a GitHub release with
+  `nyxmon-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` and its `.sha256`;
+  `workflow_dispatch` builds the same files as a workflow artifact.
+  `nyxmon-agent --version` now also prints the git commit. The CI `rust` job
+  runs `cargo deny` (licenses, advisories, sources; `just rs-deny`).
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but

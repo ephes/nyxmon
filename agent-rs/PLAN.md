@@ -1967,6 +1967,19 @@ difference (Q1).
   production host, slow, non-reproducible); local build + rsync as the main
   path (unreproducible artifacts, Docker emulation on an ARM laptop). Local
   builds remain available for development (`nyxmon_agent_rust_local_archive`).
+- Implementation (S13): `.github/workflows/agent-rs-release.yml` with the
+  checks in `agent-rs/scripts/release_checks.py` (stdlib Python, tested in
+  `tests/unit/test_agent_rs_release_checks.py`). The GLIBC floor check reads
+  `objdump -T` and `objdump -p` (symbol versions and version references) and
+  also requires the `NEEDED` libraries to be glibc/libgcc only. The archive
+  holds `nyxmon-agent` and `LICENSE` at its root (the role unpacks into
+  `<install_root>/<version>/`) and is deterministic (root-owned entries, commit
+  time as mtime, gzip header without name). `--version` prints
+  `nyxmon-agent <version> (<commit>)`; the commit comes from
+  `crates/nyxmon-agent/build.rs` (`NYXMON_AGENT_GIT_COMMIT`, else `git
+  rev-parse HEAD`, else `unknown`), and the smoke test requires the full
+  commit of the workflow run. The release build uses no cargo cache. R9's
+  `cargo deny check` runs in the CI `rust` job against `agent-rs/deny.toml`.
 
 ### 8.3 ops-library `nyxmon_deploy` role changes
 

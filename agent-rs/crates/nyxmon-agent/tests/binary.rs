@@ -159,11 +159,29 @@ fn usage_errors_and_conflicting_flags_are_refused() {
         ),
         "{stderr}"
     );
+}
+
+#[test]
+fn version_prints_the_package_version_and_the_git_commit() {
     let output = agent(&["--version"]).output().unwrap();
-    assert_eq!(
-        String::from_utf8_lossy(&output.stdout).trim(),
-        format!("nyxmon-agent {}", env!("CARGO_PKG_VERSION"))
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let line = stdout.strip_suffix('\n').expect("one line");
+    let rest = line
+        .strip_prefix(&format!("nyxmon-agent {} (", env!("CARGO_PKG_VERSION")))
+        .unwrap_or_else(|| panic!("unexpected --version output {line:?}"));
+    let commit = rest.strip_suffix(')').expect("closing parenthesis");
+    assert!(
+        commit == "unknown"
+            || ((7..=40).contains(&commit.len())
+                && commit
+                    .bytes()
+                    .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))),
+        "{commit:?}"
     );
+    // build.rs exports the same value to this test target.
+    assert_eq!(commit, env!("NYXMON_AGENT_GIT_COMMIT"));
 }
 
 #[test]
