@@ -10,6 +10,22 @@ publish.workspace = true
 
 [dependencies]
 nyxmon-core.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+bytes.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+rand.workspace = true
+rustls.workspace = true
+tokio = { workspace = true, features = ["rt", "net", "time", "io-util", "macros"] }
+tokio-rustls.workspace = true
+tracing.workspace = true
+url.workspace = true
+webpki-roots.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "net", "io-util", "time"] }
 
 [lints]
 workspace = true
