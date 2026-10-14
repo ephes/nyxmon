@@ -1980,6 +1980,29 @@ IMAP check's data before it runs. stdout is one line,
 Exit 0 when the check ran (whatever its status), 1 for a missing database,
 an old schema or an unknown check id, 2 for usage errors.
 
+Implementation of the harness (S12, `agent-rs/parity/run_parity.py` with
+the fake servers in `parity/fakes.py`; CI job `parity`): 18 checks (17
+enabled; 16 without the DNS check, see below) covering every check type,
+per-check policies (threshold 1, `warning_consecutive_failures`),
+maintenance suppression, redirects with `expected_location`, a timeout,
+TLS certificate expiry and handshake failures, a TLS server that closes
+without `close_notify`, SMTP refusals and a 4xx, IMAP found/empty/`NO`,
+ping through a fake `ping` on `PATH`, an unknown type, a configuration
+error and a disabled check; 6 samples per check at a 2 s interval, about
+15 s per run. Each agent has its own HTTP/TCP/SMTP/IMAP fakes; agent-specific
+ports and names are replaced by placeholders before comparing. The DNS
+check needs a nameserver on port 53 (neither agent can query another port),
+so one fake nameserver serves both agents and scripts by query name, which
+carries the agent label; CI lowers `net.ipv4.ip_unprivileged_port_start`
+and runs with `--require-dns`, locally the DNS check is left out with a
+notice when port 53 cannot be bound. Masks: keys `*_ms`, `*_at`,
+`created_at`, `latest_internaldate`, the SMTP `subject` and `token` (values
+only; key order is compared), and `error_msg` only for the
+`(check_type, error_type)` pairs whose message is `str(exc)` of a library
+exception (`P2_ERROR_MSG`). A fake server never resets a connection right
+after accepting it: whether a client then reports a failed connect or a
+failed handshake depends on scheduling, in Python as well.
+
 ### 7.5 CI and just recipes
 
 - `.github/workflows/ci.yml` gains a `rust` job (pinned action SHAs like the

@@ -105,6 +105,11 @@ rs-fixtures:
     uv run python agent-rs/fixtures/generate.py
     uv run python agent-rs/fixtures/generate_schema.py
 
+# Offline parity harness: Python and Rust agents on the same corpus and fake servers (agent-rs/PLAN.md 7.4)
+rs-parity *ARGS:
+    cd agent-rs && cargo build --locked
+    uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/nyxmon-agent {{ARGS}}
+
 # Release build of the Rust agent for this host
 rs-build:
     cd agent-rs && cargo build --release --locked

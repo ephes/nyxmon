@@ -63,6 +63,9 @@ agent-rs/
   Cargo.lock            committed; every build uses --locked
   rust-toolchain.toml   pinned toolchain (also the MSRV)
   deny.toml             cargo-deny policy (licenses, advisories, sources)
+  parity/
+    run_parity.py       offline parity harness (Python vs Rust, `just rs-parity`)
+    fakes.py            its scripted fake servers
   scripts/
     release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
   PLAN.md               the implementation plan and parity contract
@@ -104,6 +107,7 @@ From the repository root:
 | `just rs-lint` | `cargo fmt --all --check` and `cargo clippy --workspace --all-targets --locked -- -D warnings` |
 | `just rs-fmt` | format the workspace |
 | `just rs-fixtures` | regenerate `fixtures/*.json` from the Python code |
+| `just rs-parity` | build the binary and run the offline parity harness against the Python agent (see below) |
 | `just rs-build` | release build for the host (`agent-rs/target/release/nyxmon-agent`) |
 | `just rs-build-linux` | release build for macmini (`x86_64-unknown-linux-gnu`, glibc) in a pinned `rust:<ver>-bookworm` container; output under `agent-rs/target/docker-linux-amd64/` |
 | `just rs-deny` | `cargo deny --locked check` against `deny.toml` (licenses, advisories, sources); needs [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) on `PATH` |
@@ -132,6 +136,20 @@ JSON line, `{"check_id": N, "check_type": "...", "status": "...", "data":
 {...}}`, on stdout; logs go to stderr. `--imap-no-delete` keeps the matched
 messages of an IMAP check in the mailbox. Exit status 0 when the check ran,
 1 for a missing database, an old schema or an unknown id (PLAN.md 7.4).
+
+## Parity harness
+
+`just rs-parity` builds the binary and runs `parity/run_parity.py`: the
+Python `start-agent` and `nyxmon-agent --shadow` run at the same time on two
+copies of a database seeded with the same check corpus, each against its own
+scripted fake servers (`parity/fakes.py`, answering by request index per
+endpoint), and the first six results of every check, the notification
+state after each sample, the alerts per check and the collector incidents
+are compared. Any difference outside the documented masks (PLAN.md 7.4)
+fails the run; `--keep` keeps the databases and logs. The DNS check needs
+port 53 (CI allows it with `sysctl net.ipv4.ip_unprivileged_port_start=53`);
+without it the harness leaves that check out and says so. The `parity` job
+of `.github/workflows/ci.yml` runs it with `--require-dns`.
 
 ## Releases
 
