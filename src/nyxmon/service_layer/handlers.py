@@ -395,7 +395,7 @@ def execute_checks(
             # external notification fails for this completed sample.
             logger.exception("result handling failed for check_id=%s", result.check_id)
 
-    runner.run_all(cmd.checks, result_received)
+    runner.run_all(cmd.checks, result_received, intake_stop=cmd.intake_stop)
 
 
 def add_check(cmd: commands.AddCheck, uow: UnitOfWork) -> None:

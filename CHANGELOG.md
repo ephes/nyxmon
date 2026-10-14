@@ -89,6 +89,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or sending stale-lease alerts. Crash/SIGKILL lease recovery still alerts, and
   a shutdown during that recovery waits for its results and alert.
 
+- Record results that finish during the shutdown grace period even when they
+  are still queued behind a slow alert of another check. At the end of the
+  grace period the collector stops the checks still running and gives the
+  results that already finished up to 15 seconds to be recorded (with their
+  alerts) before it releases the remaining leases. Before, those results were
+  dropped and their leases released, so a failure could go unrecorded and
+  unalerted until the next check.
+
 - Order the five recent health-check samples by descending timestamp and id
   in the model fallback, matching the dashboard when timestamps tie.
 

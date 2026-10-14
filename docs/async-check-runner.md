@@ -100,6 +100,12 @@ logged without aborting siblings.
 - **HTTP Client Cleanup (NEW):** The HTTP client (if created) is explicitly closed in the `finally` block.
 - Task-group cancellation: if one `_run_one` raises, AnyIO cancels the others. Each executor must convert domain errors into `ResultStatus.ERROR` so failures are reported rather than propagated. Unexpected exceptions are wrapped in `BaseExceptionGroup` by AnyIO.
 - Channel closing: after all tasks complete, the producer closes the send channel to terminate the consumer loop cleanly.
+- Intake stop: `run_all` takes an optional `IntakeStop` (from `ExecuteChecks`).
+  When the collector sets `requested` at the end of the shutdown grace period,
+  the batch cancels its running checks and queues a marker behind the results
+  that already finished. The consumer handles those results, stops at the marker
+  and sets `drained`, without waiting for checks whose executor thread cannot be
+  interrupted.
 - Cleanup is shielded against cancellation and bounded to one second.
 - The shared portal remains available to the collector until shutdown; `run_all`
   returns after its batch task group and resource cleanup finish.

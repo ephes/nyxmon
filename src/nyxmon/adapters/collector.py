@@ -22,6 +22,7 @@ from ..domain import Auto
 from ..domain.commands import (
     AddCheckResult,
     ExecuteChecks,
+    IntakeStop,
     StartCollector,
     StopCollector,
 )
@@ -37,6 +38,9 @@ from ..service_layer import MessageBus
 logger = logging.getLogger(__name__)
 
 DEFAULT_SHUTDOWN_GRACE_SECONDS = 5
+# After the grace period, how long results that finished in time get to be
+# persisted (and alerted) before the remaining leases are released.
+SHUTDOWN_FLUSH_SECONDS = 15
 DEFAULT_PROCESSING_LEASE_SECONDS = 900
 RESULT_HANDLING_BUDGET_SECONDS = 60
 MAX_DERIVED_PROCESSING_LEASE_SECONDS = 3600
@@ -375,6 +379,7 @@ class AsyncCheckCollector(CheckCollector):
         self._running = False
         self._stop_requested = threading.Event()
         self._shutdown_done = threading.Event()
+        self._intake_stop = IntakeStop()
         self._active_batch_checks: list[Check] = []
         self._thread = Auto
         self._bus = Auto
@@ -1010,7 +1015,9 @@ class AsyncCheckCollector(CheckCollector):
 
             def run_batch() -> None:
                 try:
-                    self._bus.handle(ExecuteChecks(checks=checks))
+                    self._bus.handle(
+                        ExecuteChecks(checks=checks, intake_stop=self._intake_stop)
+                    )
                 finally:
                     batch_done.set()
 
@@ -1023,8 +1030,11 @@ class AsyncCheckCollector(CheckCollector):
             # A finished batch is no longer released at shutdown: a check whose
             # result could not be persisted keeps its lease and is reclaimed and
             # alerted after expiry like any other unrecorded execution. While
-            # the batch is still running, shutdown releases all of its claims.
-            self._active_batch_checks = []
+            # the batch is still running, shutdown releases all of its claims;
+            # so it does for a batch that only ended because shutdown stopped
+            # its intake and cancelled its unfinished checks.
+            if not self._intake_stop.requested.is_set():
+                self._active_batch_checks = []
             if cancel_scope.cancel_called:
                 self._abandoned_batch_done = batch_done
                 self._abandoned_batch_checks = checks
@@ -1053,6 +1063,20 @@ class AsyncCheckCollector(CheckCollector):
                         and not self._abandoned_batch_done.is_set()
                     ):
                         await anyio.sleep(shutdown_grace_seconds())
+                        # Stop executing checks, but record the results that
+                        # finished within the grace period before the leases
+                        # of the unfinished checks are released.
+                        self._intake_stop.requested.set()
+                        with anyio.move_on_after(SHUTDOWN_FLUSH_SECONDS):
+                            while not self._intake_stop.drained.is_set():
+                                await anyio.sleep(0.02)
+                        if not self._intake_stop.drained.is_set():
+                            logger.warning(
+                                "results that finished during the shutdown grace "
+                                "period were not all recorded within %ss; "
+                                "releasing the remaining leases",
+                                SHUTDOWN_FLUSH_SECONDS,
+                            )
                     tasks.cancel_scope.cancel()
 
                 tasks.start_soon(shutdown_deadline)
@@ -1095,6 +1119,7 @@ class AsyncCheckCollector(CheckCollector):
             raise ValueError("Message bus must be set before starting the collector")
         self._stop_requested.clear()
         self._shutdown_done.clear()
+        self._intake_stop = IntakeStop()
         thread = threading.Thread(
             target=self._start_in_thread,
             daemon=True,  # Make it a daemon thread so it doesn't block program exit

@@ -69,7 +69,8 @@ Telegram notifications read:
   use this path.
 - `NYXMON_SHUTDOWN_GRACE_SECONDS`: Time to allow in-flight checks and result
   handling to finish after SIGTERM/SIGINT (default `5`, range `0`–`30` seconds;
-  fractional values allowed). Invalid/non-finite values warn and use `5`.
+  fractional values allowed). Results that finished within it are then recorded
+  within up to 15 more seconds. Invalid/non-finite values warn and use `5`.
   See the graceful shutdown runbook below.
 - `NYXMON_PROCESSING_LEASE_SECONDS`: Maximum time a claimed check may remain in
   `processing` before it is reclaimed, recorded as a `stale_processing_lease`
@@ -876,7 +877,14 @@ delete it to "unlock" a database.
 new check claims, waiting up to `NYXMON_SHUTDOWN_GRACE_SECONDS` for the current
 batch, then releasing any remaining leases owned by that process. An already
 abandoned batch is included. Completed checks persist their results and normal
-notification state during the grace period. Unfinished checks return to `idle`
+notification state during the grace period. When the grace period ends, the
+checks still running are cancelled and every result that finished before that
+point is recorded first, in order and with its normal notification, even if it
+was still queued behind a slow alert of another check. Recording them gets up
+to 15 more seconds; a result still unrecorded then is dropped with the warning
+`results that finished during the shutdown grace period were not all recorded`
+and its check is released like an unfinished one (an alert still being sent at
+that point is cut off). Unfinished checks return to `idle`
 and are scheduled one normal check interval after release (at least one second),
 without a failure result, failure streak increment, or notification. Disabled
 checks stay disabled. Other collectors' claims are never released. A result that
@@ -889,9 +897,9 @@ shutdown is logged and falls back to expiry recovery.
 
 The ops-library `roles/nyxmon_deploy/templates/nyxmon-monitor.service.j2` template
 has no explicit `TimeoutStopSec`. Assume systemd's usual 90-second manager default;
-host overrides have not been inspected. Keep the grace period well below the
-unit's effective stop timeout, allowing time for SQLite persistence and component
-cleanup. The default is five seconds and the setting is capped at thirty seconds.
+host overrides have not been inspected. Keep the grace period plus the 15
+seconds for recording finished results well below the unit's effective stop
+timeout, allowing time for component cleanup. The default is five seconds and the setting is capped at thirty seconds.
 No deployment role change is required to use the default.
 
 On a normal stop, the journal reports the received signal and the process exits

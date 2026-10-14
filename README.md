@@ -205,9 +205,11 @@ and falls back to the global default rather than raising or silently disabling
 alerts. See `docs/configuration.md` for the ranges and resolution order.
 
 On SIGTERM/SIGINT, the monitor stops taking work and drains its current batch
-for up to `NYXMON_SHUTDOWN_GRACE_SECONDS` (default five seconds), then releases
-unfinished owned leases without a failure or alert and exits successfully. Checks
-that finish during the grace period record results normally. See the operations
+for up to `NYXMON_SHUTDOWN_GRACE_SECONDS` (default five seconds). Then it cancels
+the checks still running, records the results that finished in time (within up
+to 15 more seconds, including their alerts), releases unfinished owned leases
+without a failure or alert and exits successfully. Checks that finish during the
+grace period record results normally. See the operations
 runbook in `docs/configuration.md` for stop-timeout assumptions and crash recovery.
 
 The collector treats `processing` as a lease rather than a permanent state. A

@@ -4,7 +4,7 @@ from nyxmon.domain.commands import ExecuteChecks
 
 
 class DummyRunner:
-    def run_all(self, checks, callback):
+    def run_all(self, checks, callback, intake_stop=None):
         print("runner run_all called! ", checks)
         for check in checks:
             # Simulate running the check and calling the callback with a result

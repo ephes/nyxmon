@@ -91,9 +91,12 @@ When all `_run_one` tasks finish, the producer closes the send channel so the co
 
 - The CLI receives SIGTERM/SIGINT explicitly, stops new check claims, and exits
   its collector/cleaner contexts.
-- The collector allows active or abandoned batches a bounded grace period, then
-  releases remaining owned claims without failure results or alerts. Idle
-  shutdown skips the grace wait.
+- The collector allows active or abandoned batches a bounded grace period. It
+  then sets the batch's `IntakeStop`: the runner cancels the checks still
+  running, hands every result queued before that point to the result handler
+  and reports `drained` (bounded to 15 seconds). Only then are the remaining
+  owned claims released, without failure results or alerts. Idle shutdown
+  skips the grace wait.
 - The collector cancels remaining portal tasks after release. Uninterruptible
   executor threads are daemon threads and cannot hold process exit. Async
   executor/client cleanup is cancellation-shielded and bounded to one second.

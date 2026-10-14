@@ -1149,9 +1149,17 @@ Names: `Nyxmon collector (stale check leases)`,
 - SIGTERM/SIGINT → log `Received signal <n>, shutting down...` → request
   stop (no new claims).
 - If at that moment an active batch exists or an abandoned batch is still
-  running → wait up to `NYXMON_SHUTDOWN_GRACE_SECONDS` for it, then abort
-  (D-3); otherwise cancel immediately. A batch finishing within the grace is
-  persisted normally and cleared from the active set.
+  running → wait up to `NYXMON_SHUTDOWN_GRACE_SECONDS` for it; otherwise
+  cancel immediately. A batch finishing within the grace is persisted normally
+  and cleared from the active set.
+- When the grace ends with the batch still running, stop its intake
+  (`IntakeStop.requested`): cancel the checks still running, persist (with
+  normal notification) every result that finished before that point in order,
+  then report `drained` without waiting for uninterruptible executors. Wait at
+  most `SHUTDOWN_FLUSH_SECONDS` (15) for `drained`, else warn `results that
+  finished during the shutdown grace period were not all recorded within 15s;
+  releasing the remaining leases`; then abort (D-3). A batch that ended through
+  the intake stop keeps its claims in the active set for the release.
 - Stale recovery and the claim in progress complete before cancellation takes
   effect (Python shields them); everything else (sleeps, the paused-incident
   path, the observer, the cleaner) is cancelled at its next await.
