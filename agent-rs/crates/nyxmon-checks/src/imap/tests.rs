@@ -365,3 +365,66 @@ fn imaplib_quoting_and_parsing_helpers() {
         "[None, (b'h', b'l')]"
     );
 }
+
+/// A clock that runs 30 times faster than real time.
+struct FastClock {
+    inner: TestEnv,
+    start: std::time::Instant,
+}
+
+impl MailEnv for FastClock {
+    fn now(&self) -> f64 {
+        self.inner.now + self.start.elapsed().as_secs_f64() * 30.0
+    }
+
+    fn token(&self) -> String {
+        self.inner.token()
+    }
+
+    fn message_id(&self, domain: &str) -> String {
+        self.inner.message_id(domain)
+    }
+
+    async fn sleep(&self, delay: Duration) {
+        self.inner.sleep(delay).await;
+    }
+
+    async fn local_hostname(&self) -> String {
+        self.inner.local_hostname().await
+    }
+
+    fn log(&self) -> &dyn nyxmon_core::log::LogSink {
+        self.inner.log()
+    }
+}
+
+/// `search_recent` reads the clock after SEARCH returns: a slow SEARCH
+/// ages a message past `max_age_minutes`.
+#[tokio::test]
+async fn the_cutoff_is_taken_after_the_search() {
+    let env = FastClock {
+        inner: TestEnv::new(),
+        start: std::time::Instant::now(),
+    };
+    // 57 seconds old when the check starts; the SEARCH takes 0.3 s real
+    // time, about 9 s on the fast clock.
+    let date = "09-Oct-2025 08:52:24 +0000";
+    let mut script = vec![send(GREETING)];
+    script.extend(login_select());
+    script.extend([
+        Step::Recv,
+        Step::Pause(Duration::from_millis(300)),
+        send("* SEARCH 5\r\n"),
+        tagged("OK SEARCH completed"),
+        Step::Recv,
+        send(&format!("* 1 FETCH (UID 5 INTERNALDATE \"{date}\")\r\n")),
+        tagged("OK FETCH completed"),
+        Step::Recv,
+        tagged("OK LOGOUT completed"),
+    ]);
+    let server = ScriptServer::start(vec![script], false).await;
+    let extra = r#", "max_age_minutes": 1, "delete_after_check": false"#;
+    let result = execute(&check(server.port, extra), &env).await.unwrap();
+    assert_eq!(result.data["error_type"], PyJson::from("no_recent_message"));
+    server.transcripts().await;
+}

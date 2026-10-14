@@ -33,6 +33,8 @@ pub enum Step {
     RecvData,
     /// Switch the connection to TLS (server side of STARTTLS).
     StartTls,
+    /// Wait before the next step.
+    Pause(Duration),
     /// Close the connection.
     Close,
     /// Stop answering; keep the connection open until the client leaves.
@@ -158,6 +160,7 @@ async fn run_script(stream: Box<dyn Io>, script: Vec<Step>, acceptor: &TlsAccept
                     }
                 }
             }
+            Step::Pause(delay) => tokio::time::sleep(delay).await,
             Step::Close => return seen,
             Step::Stall => {
                 while read_line(&mut reader).await.is_some() {}

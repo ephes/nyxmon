@@ -754,7 +754,7 @@ async fn search_recent(
     imap: &mut Imap,
     subject: &PyJson,
     max_age_minutes: i64,
-    now: f64,
+    env: &impl MailEnv,
 ) -> Result<Vec<(String, i64)>, ImapExc> {
     let criterion = ascii(&format!("\"{}\"", py_str(subject)))?;
     let args = ["NOT", "DELETED", "HEADER", "SUBJECT"]
@@ -774,7 +774,11 @@ async fn search_recent(
         }
         _ => Vec::new(),
     };
-    let cutoff = now - (max_age_minutes * 60) as f64;
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    // `datetime.now()` is read after the SEARCH completed.
+    let cutoff = env.now() - (max_age_minutes * 60) as f64;
     let mut messages = Vec::new();
     for id in ids {
         let args = vec![ascii(&id)?, b"(INTERNALDATE)".to_vec()];
@@ -873,13 +877,8 @@ async fn session(
     config: &ImapConfig,
     env: &impl MailEnv,
 ) -> Result<(Vec<String>, i64), AttemptError> {
-    let mut messages = search_recent(
-        imap,
-        &config.search_subject,
-        config.max_age_minutes,
-        env.now(),
-    )
-    .await?;
+    let mut messages =
+        search_recent(imap, &config.search_subject, config.max_age_minutes, env).await?;
     if messages.is_empty() {
         return Err(AttemptError::NoRecent(format!(
             "No messages with subject '{}' within {} minutes",
