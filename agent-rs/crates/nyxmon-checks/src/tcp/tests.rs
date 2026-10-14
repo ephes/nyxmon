@@ -1065,7 +1065,7 @@ async fn ipv6_tls_server(pki: &Pki) -> Option<(u16, JoinHandle<()>)> {
 }
 
 #[tokio::test]
-async fn a_scoped_ipv6_host_connects_and_uses_tls() {
+async fn a_scoped_ipv6_host_follows_the_platform_resolver() {
     let host = format!("::1%{}", loopback_interface());
     let pki = pki();
     let Some((port, _server)) = ipv6_tls_server(&pki).await else {
@@ -1077,8 +1077,19 @@ async fn a_scoped_ipv6_host_connects_and_uses_tls() {
         .execute(&check(&data, &host))
         .await
         .unwrap();
-    assert_eq!(result.status, ResultStatus::Ok, "{:?}", result.data);
     assert_eq!(text(&result.data, "host"), host);
+    if cfg!(target_os = "linux") {
+        // glibc's getaddrinfo accepts a zone only on link-local addresses, so
+        // the attempt fails, as anyio's does there (checked with Python 3.13
+        // and anyio on Debian).
+        assert_eq!(text(&result.data, "error_type"), "connection_error");
+        assert_eq!(
+            text(&result.data, "error_msg"),
+            format!("Connection to {host}:{port} failed: All connection attempts failed")
+        );
+        return;
+    }
+    assert_eq!(result.status, ResultStatus::Ok, "{:?}", result.data);
 
     // Verified, it fails closed even with the exact name as a DNS SAN
     // (PLAN.md D-9).

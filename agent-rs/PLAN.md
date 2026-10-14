@@ -237,7 +237,7 @@ section 3.6); no other new variable is introduced by the port.
   names on port 443). Pinned by `tcp/tests.rs`
   (`names_rustls_cannot_send_still_connect_without_verification`,
   `names_rustls_cannot_send_fail_verification`,
-  `a_scoped_ipv6_host_connects_and_uses_tls`).
+  `a_scoped_ipv6_host_follows_the_platform_resolver`).
 - **D-10 Agent lock file** `<db>.agent.lock` (section 3.6); also added to the
   Python agent.
 - **D-11 Non-object `health_check.data`.** Python maps NULL/empty to `{}` but
@@ -1233,7 +1233,10 @@ exit 1).
   previous one failed; first success wins; when no attempt connects the
   error is always `OSError("All connection attempts failed")`, also for a
   single address; a resolver failure is the `socket.gaierror`
-  `"[Errno N] <gai_strerror>"`; an IDNA error escapes as `unexpected_error`)
+  `"[Errno N] <gai_strerror>"`; an IDNA error escapes as `unexpected_error`;
+  a scoped IPv6 literal goes through the platform `getaddrinfo`, which on
+  glibc accepts a zone only on link-local addresses, so `::1%lo` fails with
+  "All connection attempts failed" on Linux in both implementations)
   bounded by `connect_timeout`; `connect_time_ms` from a monotonic clock,
   truncated.
 - TLS: SNI/verification name = `sni or host`, IDNA-encoded by anyio's
