@@ -152,6 +152,7 @@ export NYXMON_NOTIFY_CONSECUTIVE_FAILURES=2
 export NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS=21600
 export NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS=86400
 export NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS=3600
+export NYXMON_SHUTDOWN_GRACE_SECONDS=5
 export NYXMON_PROCESSING_LEASE_SECONDS=900
 export NYXMON_CHECK_BATCH_SIZE=5
 export OPSGATE_TICKET_EXPIRES_SECONDS=14400
@@ -202,6 +203,12 @@ global default stays at two:
 Every key is optional; anything malformed or out of range is warned about once
 and falls back to the global default rather than raising or silently disabling
 alerts. See `docs/configuration.md` for the ranges and resolution order.
+
+On SIGTERM/SIGINT, the monitor stops taking work and drains its current batch
+for up to `NYXMON_SHUTDOWN_GRACE_SECONDS` (default five seconds), then releases
+unfinished owned leases without a failure or alert and exits successfully. Checks
+that finish during the grace period record results normally. See the operations
+runbook in `docs/configuration.md` for stop-timeout assumptions and crash recovery.
 
 The collector treats `processing` as a lease rather than a permanent state. A
 check still processing after `NYXMON_PROCESSING_LEASE_SECONDS` is released,

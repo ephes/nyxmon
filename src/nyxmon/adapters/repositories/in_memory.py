@@ -201,6 +201,26 @@ class InMemoryCheckRepository(CheckRepository):
                         break
             return reclaimed
 
+    async def release_claims_async(self, checks: List[Check]) -> int:
+        released = 0
+        with self.lock:
+            for claim in checks:
+                check = self.checks.get(claim.check_id)
+                if (
+                    check is not None
+                    and check.status == CheckStatus.PROCESSING
+                    and claim.claim_started_at > 0
+                    and check.processing_started_at == claim.claim_started_at
+                ):
+                    check.status = CheckStatus.IDLE
+                    check.processing_started_at = 0
+                    check.claim_started_at = 0
+                    check.next_check_time = int(time.time()) + max(
+                        1, check.check_interval
+                    )
+                    released += 1
+        return released
+
     def get_notification_state(self, check_id: int) -> NotificationState:
         with self.lock:
             return self.notification_states.get(check_id, NotificationState())

@@ -1,4 +1,3 @@
-import time
 import os
 import anyio
 import logging
@@ -37,6 +36,7 @@ from ..service_layer import MessageBus
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_SHUTDOWN_GRACE_SECONDS = 5
 DEFAULT_PROCESSING_LEASE_SECONDS = 900
 RESULT_HANDLING_BUDGET_SECONDS = 60
 MAX_DERIVED_PROCESSING_LEASE_SECONDS = 3600
@@ -88,6 +88,26 @@ def _processing_lease_seconds_from_value(value: str) -> int:
 def processing_lease_seconds() -> int:
     value = os.environ.get("NYXMON_PROCESSING_LEASE_SECONDS", "").strip()
     return _processing_lease_seconds_from_value(value)
+
+
+@lru_cache(maxsize=None)
+def _shutdown_grace_from_value(value: str) -> float:
+    if not value:
+        return DEFAULT_SHUTDOWN_GRACE_SECONDS
+    try:
+        parsed = float(value)
+        if math.isfinite(parsed) and 0 <= parsed <= 30:
+            return parsed
+    except ValueError:
+        pass
+    logger.warning("NYXMON_SHUTDOWN_GRACE_SECONDS must be between 0 and 30; using 5")
+    return DEFAULT_SHUTDOWN_GRACE_SECONDS
+
+
+def shutdown_grace_seconds() -> float:
+    return _shutdown_grace_from_value(
+        os.environ.get("NYXMON_SHUTDOWN_GRACE_SECONDS", "").strip()
+    )
 
 
 def estimated_check_runtime_seconds(
@@ -343,7 +363,8 @@ async def running_collector(bus):
     try:
         yield
     finally:
-        bus.handle(StopCollector())
+        # Shutdown must not share the executing batch's mutable bus queue.
+        bus.command_handlers[StopCollector](StopCollector())
         # Optional: wait a bit for collector to shut down cleanly
         await anyio.sleep(0.1)
 
@@ -352,6 +373,9 @@ class AsyncCheckCollector(CheckCollector):
     def __init__(self, *, interval: int = 1) -> None:
         self.interval = interval
         self._running = False
+        self._stop_requested = threading.Event()
+        self._shutdown_done = threading.Event()
+        self._active_batch_checks: list[Check] = []
         self._thread = Auto
         self._bus = Auto
         self._last_lease_warning: tuple[int, int] | None = None
@@ -866,6 +890,33 @@ class AsyncCheckCollector(CheckCollector):
         except Exception:
             logger.exception("failed to check site dependencies against the probes")
 
+    async def _recover_stale_leases(self, effective_lease: int) -> None:
+        """Reclaim expired leases, record their results and sync the incident."""
+        stale_checks: list[Check] = []
+        for round_number in range(MAX_STALE_RECLAIM_ROUNDS):
+            try:
+                batch = await self._bus.uow.store.checks.reclaim_stale_checks_async(
+                    effective_lease
+                )
+            except Exception:
+                logger.exception("processing-lease reclaim failed")
+                break
+            if not batch:
+                break
+            stale_checks.extend(batch)
+            if round_number == MAX_STALE_RECLAIM_ROUNDS - 1:
+                logger.warning(
+                    "reclaimed %s expired leases without draining the backlog; "
+                    "the remainder is handled by the next collector iteration",
+                    len(stale_checks),
+                )
+
+        recovered: list[Check] = []
+        for check in stale_checks:
+            if not check.disabled and await self._record_stale_check(check):
+                recovered.append(check)
+        await self._sync_stale_batch_incident(recovered)
+
     async def _collect_once(self) -> None:
         if not self._startup_incidents_reconciled:
             self._startup_incidents_reconciled = True
@@ -924,30 +975,11 @@ class AsyncCheckCollector(CheckCollector):
                 "processing-lease runtime estimation failed; using the last safe budget"
             )
         effective_lease = max(configured_lease, self._cached_required_lease)
-        stale_checks: list[Check] = []
-        for round_number in range(MAX_STALE_RECLAIM_ROUNDS):
-            try:
-                batch = await self._bus.uow.store.checks.reclaim_stale_checks_async(
-                    effective_lease
-                )
-            except Exception:
-                logger.exception("processing-lease reclaim failed")
-                break
-            if not batch:
-                break
-            stale_checks.extend(batch)
-            if round_number == MAX_STALE_RECLAIM_ROUNDS - 1:
-                logger.warning(
-                    "reclaimed %s expired leases without draining the backlog; "
-                    "the remainder is handled by the next collector iteration",
-                    len(stale_checks),
-                )
-
-        recovered: list[Check] = []
-        for check in stale_checks:
-            if not check.disabled and await self._record_stale_check(check):
-                recovered.append(check)
-        await self._sync_stale_batch_incident(recovered)
+        # Reclaiming commits before the stale results and the batch alert are
+        # written, so shutdown waits for recovery instead of cancelling it
+        # halfway and losing that crash evidence.
+        with anyio.CancelScope(shield=True):
+            await self._recover_stale_leases(effective_lease)
 
         if self._abandoned_batch_done is not None:
             if not self._abandoned_batch_done.is_set():
@@ -957,7 +989,15 @@ class AsyncCheckCollector(CheckCollector):
             self._abandoned_batch_checks = []
             await self._resolve_paused_batch_incident()
 
-        checks = await self._bus.uow.store.checks.list_due_checks_async()
+        if self._stop_requested.is_set():
+            return
+        # Capture every committed claim even if shutdown cancels this task
+        # while SQLite is returning the newly claimed rows.
+        with anyio.CancelScope(shield=True):
+            checks = await self._bus.uow.store.checks.list_due_checks_async()
+            self._active_batch_checks = checks
+        if self._stop_requested.is_set():
+            return
         logger.debug("due checks: %s", checks)
         if checks:
             # Abandon the wait after the effective lease so this collector can
@@ -980,6 +1020,11 @@ class AsyncCheckCollector(CheckCollector):
                     abandon_on_cancel=True,
                     limiter=self._batch_limiter,
                 )
+            # A finished batch is no longer released at shutdown: a check whose
+            # result could not be persisted keeps its lease and is reclaimed and
+            # alerted after expiry like any other unrecorded execution. While
+            # the batch is still running, shutdown releases all of its claims.
+            self._active_batch_checks = []
             if cancel_scope.cancel_called:
                 self._abandoned_batch_done = batch_done
                 self._abandoned_batch_checks = checks
@@ -997,14 +1042,59 @@ class AsyncCheckCollector(CheckCollector):
                 "Message bus is not set. Please set the message bus before starting the collector."
             )
         self._running = True
-        while self._running:
+        try:
+            async with anyio.create_task_group() as tasks:
+
+                async def shutdown_deadline() -> None:
+                    while not self._stop_requested.is_set():
+                        await anyio.sleep(0.02)
+                    if self._active_batch_checks or (
+                        self._abandoned_batch_done is not None
+                        and not self._abandoned_batch_done.is_set()
+                    ):
+                        await anyio.sleep(shutdown_grace_seconds())
+                    tasks.cancel_scope.cancel()
+
+                tasks.start_soon(shutdown_deadline)
+                while not self._stop_requested.is_set():
+                    try:
+                        await self._collect_once()
+                    except Exception:
+                        logger.exception("check collector iteration failed")
+                    if not self._stop_requested.is_set():
+                        await anyio.sleep(self.interval)
+                # A previously abandoned batch also gets the grace period.
+                while (
+                    self._abandoned_batch_done is not None
+                    and not self._abandoned_batch_done.is_set()
+                ):
+                    await anyio.sleep(0.02)
+                tasks.cancel_scope.cancel()
+        finally:
+            self._running = False
             try:
-                await self._collect_once()
+                if self._stop_requested.is_set():
+                    with anyio.CancelScope(shield=True):
+                        await self._bus.uow.store.checks.release_claims_async(
+                            self._active_batch_checks + self._abandoned_batch_checks
+                        )
             except Exception:
-                logger.exception("check collector iteration failed")
-            await anyio.sleep(self.interval)
+                # Unreleased leases fall back to expiry recovery and its alert.
+                logger.exception("failed to release check leases on shutdown")
+            finally:
+                self._shutdown_done.set()
 
     def start(self) -> None:
+        if (
+            self._thread is not Auto
+            and self._thread is not None
+            and self._thread.is_alive()
+        ):
+            return
+        if self._bus is Auto or self._bus is None:
+            raise ValueError("Message bus must be set before starting the collector")
+        self._stop_requested.clear()
+        self._shutdown_done.clear()
         thread = threading.Thread(
             target=self._start_in_thread,
             daemon=True,  # Make it a daemon thread so it doesn't block program exit
@@ -1022,24 +1112,30 @@ class AsyncCheckCollector(CheckCollector):
                 # block check collection, and there is exactly one of it per
                 # process.
                 portal.start_task_soon(self._site_observer.run)
-            # This thread will keep running as long as the portal is alive
-            # Add some way to join/exit this thread when needed
-            while self._running:
-                time.sleep(1)  # Keep thread alive but don't consume CPU
+            self._shutdown_done.wait()
+            # Cancel runner/observer/cleaner portal tasks too. Executor threads
+            # cannot be forcibly interrupted, but must not hold process exit.
+            portal.call(portal.stop, True)
+
+    def request_stop(self) -> None:
+        """Stop admitting work; the collector task owns draining and release."""
+        self._stop_requested.set()
 
     def stop(self):
-        if not self._running:
-            return
-
-        self._running = False
+        self.request_stop()
         if self._site_observer is not None:
             self._site_observer.stop()
-
-        # Wait for the thread to finish if it exists
-        if self._thread is not None and self._thread.is_alive():
-            self._thread.join(timeout=2.0)  # Wait up to 2 seconds
-
-        # Log or handle if thread didn't exit cleanly
-        if self._thread and self._thread.is_alive():
-            logger.warning("Warning: Collector thread didn't exit cleanly")
+        if self._thread is not Auto and self._thread is not None:
+            # No fixed timeout: the collector task bounds batch draining by the
+            # grace period, but an in-progress stale-lease recovery must finish
+            # (its reclaim is already committed). The service manager's stop
+            # timeout remains the backstop for a genuinely hung process.
+            while not self._shutdown_done.wait(timeout=0.1):
+                if not self._thread.is_alive():
+                    raise RuntimeError(
+                        "collector thread exited without releasing claims"
+                    )
+            # Portal cleanup can remain blocked inside an uninterruptible
+            # executor. Its daemon threads must not extend the grace period.
+            self._thread.join(timeout=0.1)
         logger.debug("check collector stopped!")

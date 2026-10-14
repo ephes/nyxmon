@@ -51,7 +51,7 @@ Because the collector and cleaner trigger commands from their own threads, the m
 
 Whenever async code needs to invoke a synchronous function without blocking the event loop, it calls `await anyio.to_thread.run_sync(...)`. Examples:
 
-- `AsyncCheckRunner` delivering results via `result_received_callback`.
+- `AsyncCheckRunner` delivering results via `result_received`.
 - Repository adapters executing SQLite operations synchronously.
 - Collector dispatching `bus.handle` while its async loop continues.
 
@@ -61,12 +61,12 @@ AnyIO manages a shared thread pool (backed by `concurrent.futures.ThreadPoolExec
 
 `AsyncCheckRunner` uses a memory object stream to decouple producers and consumers:
 
-1. `_async_run_all` creates `(send_channel, receive_channel)` with `anyio.create_memory_object_stream(max_buffer_size=100)`.
+1. `_async_run_batch` creates `(send_channel, receive_channel)` with `anyio.create_memory_object_stream(max_buffer_size=100)`.
 2. Each `_run_one` coroutine runs concurrently in the portal loop and pushes a `Result` onto `send_channel`.
-3. The outer loop inside `_async_run_all` iterates over `receive_channel`, yielding results back to `run_checks` as they arrive.
-4. `run_checks` forwards each result to the synchronous callback via `to_thread.run_sync`, allowing the event loop to continue scheduling other checks while the callback persists data.
+3. The consumer inside `_async_run_batch` iterates over `receive_channel` and awaits the result callback as samples arrive, within the same task group.
+4. The result callback forwards each result to the synchronous callback via `to_thread.run_sync`, allowing the event loop to continue scheduling other checks while the callback persists data.
 
-When all `_run_one` tasks finish, `_async_run_all` closes the send channel so the consumer terminates cleanly.
+When all `_run_one` tasks finish, the producer closes the send channel so the consumer terminates cleanly.
 
 ## 7. Concurrency Summary
 
@@ -82,15 +82,22 @@ When all `_run_one` tasks finish, `_async_run_all` closes the send channel so th
 
 1. Collector finds due checks → uses thread pool to call `bus.handle(ExecuteChecks)`.
 2. `execute_checks` handler (running on that worker thread) collects the checks and invokes `runner.run_all`.
-3. `run_all` enters the portal and launches `_async_run_all` on the portal loop.
+3. `run_all` enters the portal and launches `_async_run_batch` on the portal loop.
 4. Each `_run_one` executes the appropriate executor; when it produces a `Result` it sends it through the channel.
-5. `run_checks` receives each result and hands it back to the handler via `to_thread.run_sync`. The handler thread processes the callback (stores result, schedules next run) and returns.
-6. Once all results are processed, control unwinds: the portal exits, the handler finishes, and the collector loop resumes polling.
+5. The consumer receives each result and hands it back to the handler via `to_thread.run_sync`. The handler thread processes the callback (stores result, schedules next run) and returns.
+6. Once all results are processed, the batch task group and its bounded resource cleanup finish, the handler returns, and the collector loop resumes polling. The shared portal stays available to the collector.
 
 ## 9. Shutdown
 
-- Exiting the CLI loop (Ctrl+C) cancels the main uvloop tasks; context managers (`running_collector`, `running_cleaner`) signal the worker threads to stop.
-- The portal is closed automatically when the provider is garbage collected or explicitly disposed.
-- Any pending tasks on the portal thread are cancelled; executors must handle cancellation gracefully.
-
-This model allows NyxMon to keep synchronous domain/state management while performing network I/O concurrently, using AnyIO primitives to cross the sync/async boundary safely.
+- The CLI receives SIGTERM/SIGINT explicitly, stops new check claims, and exits
+  its collector/cleaner contexts.
+- The collector allows active or abandoned batches a bounded grace period, then
+  releases remaining owned claims without failure results or alerts. Idle
+  shutdown skips the grace wait.
+- The collector cancels remaining portal tasks after release. Uninterruptible
+  executor threads are daemon threads and cannot hold process exit. Async
+  executor/client cleanup is cancellation-shielded and bounded to one second.
+- Stale-lease recovery (reclaim, its results and the batch alert) is shielded
+  from shutdown cancellation, so a stop during recovery waits for it.
+- See the operations runbook in `configuration.md` for the grace setting and
+  the systemd timeout assumption.

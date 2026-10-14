@@ -395,6 +395,30 @@ class SqliteCheckRepository(CheckRepository):
             await db.commit()
             return [row_to_check(row) for row in rows]
 
+    async def release_claims_async(self, checks: List[Check]) -> int:
+        if not checks:
+            return 0
+        released = 0
+        async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
+            await self._ensure_schema(db)
+            for claim in checks:
+                cursor = await db.execute(
+                    """UPDATE health_check
+                       SET status = 'idle', processing_started_at = 0,
+                           next_check_time = ? + MAX(1, check_interval)
+                       WHERE id = ? AND status = 'processing'
+                         AND processing_started_at = ? AND ? > 0""",
+                    (
+                        int(current_epoch()),
+                        claim.check_id,
+                        claim.claim_started_at,
+                        claim.claim_started_at,
+                    ),
+                )
+                released += cursor.rowcount
+            await db.commit()
+        return released
+
     def get_notification_state(self, check_id: int) -> NotificationState:
         if self._portal_provider is None:
             raise RuntimeError("portal provider is required for notification state")

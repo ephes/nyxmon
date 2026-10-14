@@ -2,7 +2,7 @@
 
 This note documents how `src/nyxmon/adapters/runner/async_runner.py` bridges NyxMon's synchronous message bus with the asynchronous check executors. It complements the high-level architecture description and is intended as an implementation-level guide.
 
-**Last Updated:** 2025-09-30 - Refactored to remove legacy fallback, add conditional HTTP client creation, and implement executor cleanup.
+**Last Updated:** 2026-10-14 - Stream and persist each result independently; keep task groups inside async functions and bound cancellation cleanup.
 
 ## 1. Entry Point: `CheckRunner.run_all`
 
@@ -11,32 +11,38 @@ This note documents how `src/nyxmon/adapters/runner/async_runner.py` bridges Nyx
 
 ## 2. Using a Portal to Enter the Async World
 
-`run_all` defines an async helper `run_checks` that awaits `_async_run_all`. To execute this coroutine from synchronous code, it:
+`run_all` passes an async result callback to `_async_run_batch`. To execute this coroutine from synchronous code, it:
 
 - enters the portal context (`with self.portal_provider as portal:`);
-- calls `portal.call(run_checks, result_received)` which blocks until the coroutine finishes.
+- calls `portal.call(self._async_run_batch, checks, receive)` which blocks until the coroutine finishes.
 
 The portal ensures all asynchronous work happens on a dedicated AnyIO loop while the caller remains synchronous.
 
-## 3. `_async_run_all`: Fan Out Work and Gather Results
+## 3. `_async_run_batch`: Fan Out Work and Gather Results
 
 ```
-_async_run_all
+_async_run_batch
 │
 ├─ create memory object stream → (send_channel, receive_channel)
 ├─ pre-scan checks to determine required resources
 │   └─ conditionally create httpx.AsyncClient (only if HTTP/JSON-HTTP checks present)
 ├─ register per-check-type executors
-├─ start an AnyIO task group
-│   └─ for each check → `tg.start_soon(self._run_one, check, send_channel)`
-├─ clean up executors and HTTP client (in finally block)
-└─ read from `receive_channel` and yield results up the stack
+├─ start a producer task that runs each check concurrently and closes send_channel
+├─ read from receive_channel concurrently and await each result callback immediately
+└─ clean up executors and HTTP client (in finally block)
 ```
 
 Key details:
 
 - **Resource Scoping (NEW):** The HTTP client is only created when the batch contains HTTP or JSON-HTTP checks. DNS-only batches avoid the overhead entirely.
-- The memory channels decouple producers (`_run_one`) from the consumer (`run_checks`).
+- The task group stays inside one async function; no async generator yields
+  across its cancel scope. The private `_async_run_all` iterator helper collects
+  the full batch before yielding for callers that need an iterator.
+- The service handler persists each result as it arrives, including its normal
+  notification handling, so a slow sibling cannot strand a finished sample during
+  graceful shutdown. A persistence or notification exception is logged per sample
+  and does not abort sibling executions.
+- The memory channels decouple producers (`_run_one`) from the consumer (`_async_run_batch`).
 - Executors are registered per batch and can optionally receive shared resources (e.g. the HTTP client).
 - **Cleanup Guarantee (NEW):** The `finally` block ensures executors and the HTTP client are properly closed, even if errors occur during execution.
 
@@ -81,19 +87,22 @@ Each task group member executes `_run_one(check, send_channel)`:
 
 ## 6. Returning to the Synchronous Callback
 
-Back in `run_checks`, the async generator from `_async_run_all` yields each `Result`. For every item, `run_checks` uses `anyio.to_thread.run_sync(result_received_callback, result)` to invoke the synchronous `result_received` function without blocking the event loop. That callback usually:
-
-- stores the result via the unit of work,
-- schedules the next check execution time,
-- enqueues follow-up commands (e.g. `AddCheckResult`).
+`_async_run_batch` awaits the result callback for each sample as soon as it
+arrives. The callback uses `anyio.to_thread.run_sync(result_received, result)`
+to invoke the synchronous service handler without blocking the event loop. That
+handler schedules the next check and calls the ordinary `AddCheckResult` handler
+to persist the sample and apply notification policy. A per-sample exception is
+logged without aborting siblings.
 
 ## 7. Resource Cleanup and Ordering Guarantees
 
-- **Executor Cleanup (NEW):** The `finally` block in `_async_run_all` calls `executor_registry.aclose_all()` to close all instantiated executors, ensuring resources are released even if execution fails.
+- **Executor Cleanup (NEW):** The `finally` block in `_async_run_batch` calls `executor_registry.aclose_all()` to close all instantiated executors, ensuring resources are released even if execution fails.
 - **HTTP Client Cleanup (NEW):** The HTTP client (if created) is explicitly closed in the `finally` block.
 - Task-group cancellation: if one `_run_one` raises, AnyIO cancels the others. Each executor must convert domain errors into `ResultStatus.ERROR` so failures are reported rather than propagated. Unexpected exceptions are wrapped in `BaseExceptionGroup` by AnyIO.
-- Channel closing: after all tasks complete, `_async_run_all` closes the send channel to terminate the consumer loop cleanly.
-- The outer portal context ensures the event loop is closed before `run_all` returns to the message bus.
+- Channel closing: after all tasks complete, the producer closes the send channel to terminate the consumer loop cleanly.
+- Cleanup is shielded against cancellation and bounded to one second.
+- The shared portal remains available to the collector until shutdown; `run_all`
+  returns after its batch task group and resource cleanup finish.
 
 ## 8. Opportunities for Future Refinement
 

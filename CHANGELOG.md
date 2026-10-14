@@ -84,6 +84,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Gracefully drain monitor checks on SIGTERM/SIGINT for a configurable five-second
+  grace period, then release remaining owned leases without recording failures
+  or sending stale-lease alerts. Crash/SIGKILL lease recovery still alerts, and
+  a shutdown during that recovery waits for its results and alert.
+
 - Order the five recent health-check samples by descending timestamp and id
   in the model fallback, matching the dashboard when timestamps tie.
 
