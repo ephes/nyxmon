@@ -3,7 +3,7 @@ import logging
 from anyio import to_thread
 
 from anyio.from_thread import BlockingPortalProvider
-from typing import Iterable, Callable, Set, Optional, Awaitable
+from typing import Iterable, Callable, Set, Optional, Awaitable, cast
 
 import httpx
 
@@ -17,8 +17,14 @@ from .executors.smtp_executor import SmtpCheckExecutor
 from .executors.tcp_executor import TcpCheckExecutor
 from .executors.ping_executor import PingCheckExecutor
 from ...domain import Check, Result, CheckType, ResultStatus
+from ...domain.commands import IntakeStop
 
 logger = logging.getLogger(__name__)
+
+# How often a running batch looks for a shutdown intake stop.
+INTAKE_STOP_POLL_SECONDS = 0.02
+# Queued behind every result that finished before an intake stop.
+_INTAKE_STOPPED = object()
 
 
 class AsyncCheckRunner(CheckRunner):
@@ -63,14 +69,19 @@ class AsyncCheckRunner(CheckRunner):
         ping_executor = PingCheckExecutor()
         self.executor_registry.register(CheckType.PING, ping_executor)
 
-    def run_all(self, checks: Iterable[Check], result_received: Callable) -> None:
+    def run_all(
+        self,
+        checks: Iterable[Check],
+        result_received: Callable,
+        intake_stop: IntakeStop | None = None,
+    ) -> None:
         """Run all checks."""
 
         async def receive(result: Result) -> None:
             await to_thread.run_sync(result_received, result)
 
         with self.portal_provider as portal:
-            portal.call(self._async_run_batch, checks, receive)
+            portal.call(self._async_run_batch, checks, receive, intake_stop)
 
     async def _async_run_all(self, checks: Iterable[Check]):
         """Collect a complete batch for callers using the iterator helper.
@@ -88,10 +99,13 @@ class AsyncCheckRunner(CheckRunner):
             yield result
 
     async def _async_run_batch(
-        self, checks: Iterable[Check], receive: Callable[[Result], Awaitable[None]]
+        self,
+        checks: Iterable[Check],
+        receive: Callable[[Result], Awaitable[None]],
+        intake_stop: IntakeStop | None = None,
     ) -> None:
-        send_channel: anyio.abc.ObjectSendStream[Result]
-        receive_channel: anyio.abc.ObjectReceiveStream[Result]
+        send_channel: anyio.abc.ObjectSendStream[Result | object]
+        receive_channel: anyio.abc.ObjectReceiveStream[Result | object]
         send_channel, receive_channel = anyio.create_memory_object_stream(
             max_buffer_size=100
         )
@@ -117,18 +131,47 @@ class AsyncCheckRunner(CheckRunner):
                 # Register executors with batch context
                 self._register_executors(http_client)
 
+                checks_scope = anyio.CancelScope()
+                watch_scope = anyio.CancelScope()
+
                 async def produce_results() -> None:
-                    async with anyio.create_task_group() as checks_group:
-                        for check in checks_list:
-                            checks_group.start_soon(self._run_one, check, send_channel)
+                    with checks_scope:
+                        async with anyio.create_task_group() as checks_group:
+                            for check in checks_list:
+                                checks_group.start_soon(
+                                    self._run_one, check, send_channel
+                                )
                     await send_channel.aclose()
+
+                async def stop_intake_when_requested(stop: IntakeStop) -> None:
+                    with watch_scope:
+                        while not stop.requested.is_set():
+                            await anyio.sleep(INTAKE_STOP_POLL_SECONDS)
+                        checks_scope.cancel()
+                        # Results that finished before the request are ahead
+                        # of the marker in the queue; later ones are dropped
+                        # and their claims released by the collector.
+                        try:
+                            await send_channel.send(_INTAKE_STOPPED)
+                        except anyio.ClosedResourceError:
+                            pass  # every check finished, nothing to stop
 
                 # Consume results as they arrive, so one slow check cannot
                 # keep completed samples unpersisted until shutdown cancels it.
                 async with anyio.create_task_group() as tg:
                     tg.start_soon(produce_results)
+                    if intake_stop is not None:
+                        tg.start_soon(stop_intake_when_requested, intake_stop)
                     async for result in receive_channel:
-                        await receive(result)
+                        if result is _INTAKE_STOPPED:
+                            break
+                        await receive(cast(Result, result))
+                    watch_scope.cancel()
+                    if intake_stop is not None and intake_stop.requested.is_set():
+                        # Checks cancelled at the intake stop may still be
+                        # unwinding (an executor thread cannot be interrupted),
+                        # so report the hand-over before waiting for them.
+                        intake_stop.drained.set()
             finally:
                 # Cancellation must not skip async resource cleanup. Bound it
                 # too, since a custom executor may itself hang while closing.
