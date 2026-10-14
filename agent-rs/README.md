@@ -155,6 +155,13 @@ Current fixtures:
   over a corpus of plain and non-plain addresses (PLAN.md 1.5 D-14).
 - `smtp_text.json`: `_build_subject`. Mail fixture builders live in
   `fixtures/gen_mail.py`.
+- `config_imap.json`: `ImapCheckConfig.from_dict` + `validate` over a data
+  corpus. `imap_text.json`: `_normalize_host`, the UID match and
+  INTERNALDATE conversion of `_fetch_internaldate`, and the `SEARCH` result
+  split. `imap_dialogues.json`: the real IMAP executor (`imaplib`) against
+  scripted servers on 127.0.0.1 (script, result, retry delays, wire
+  transcript without the random tag), which the Rust tests replay against
+  the same scripts.
 - `unicode_nonprintable.json`: the code points `str.isprintable()` rejects.
   `nyxmon-core` embeds it, so `repr(str)` escapes exactly what the oracle's
   Unicode database (15.1 for CPython 3.13) escapes.

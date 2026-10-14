@@ -22,12 +22,19 @@ use crate::tls::crypto_provider;
 pub enum Step {
     /// Write these bytes.
     Send(String),
+    /// Write these raw bytes.
+    Bytes(Vec<u8>),
+    /// Write `<tag> <text>\r\n` with the tag (first word) of the last
+    /// line received (IMAP tagged completion).
+    Tagged(Vec<u8>),
     /// Read one line and record it (without the line ending).
     Recv,
     /// Read a DATA body up to the `.` line and record it as one entry.
     RecvData,
     /// Switch the connection to TLS (server side of STARTTLS).
     StartTls,
+    /// Wait before the next step.
+    Pause(Duration),
     /// Close the connection.
     Close,
     /// Stop answering; keep the connection open until the client leaves.
@@ -36,6 +43,10 @@ pub enum Step {
 
 pub fn send(text: &str) -> Step {
     Step::Send(text.to_owned())
+}
+
+pub fn tagged(text: &str) -> Step {
+    Step::Tagged(text.as_bytes().to_vec())
 }
 
 trait Io: AsyncRead + AsyncWrite + Unpin + Send {}
@@ -105,14 +116,26 @@ impl ScriptServer {
 
 async fn run_script(stream: Box<dyn Io>, script: Vec<Step>, acceptor: &TlsAcceptor) -> Vec<String> {
     let mut reader = BufReader::new(stream);
-    let mut seen = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
     for step in script {
-        match step {
-            Step::Send(text) => {
-                if reader.get_mut().write_all(text.as_bytes()).await.is_err() {
-                    return seen;
-                }
+        let output = match &step {
+            Step::Send(text) => Some(text.as_bytes().to_vec()),
+            Step::Bytes(bytes) => Some(bytes.clone()),
+            Step::Tagged(text) => {
+                let last = seen.last().map_or("", String::as_str);
+                let tag = last.split(' ').next().unwrap_or_default();
+                Some([tag.as_bytes(), b" ", text, b"\r\n"].concat())
             }
+            _ => None,
+        };
+        if let Some(bytes) = output {
+            if reader.get_mut().write_all(&bytes).await.is_err() {
+                return seen;
+            }
+            continue;
+        }
+        match step {
+            Step::Send(_) | Step::Bytes(_) | Step::Tagged(_) => {}
             Step::Recv => match read_line(&mut reader).await {
                 Some(line) => seen.push(line),
                 None => return seen,
@@ -137,6 +160,7 @@ async fn run_script(stream: Box<dyn Io>, script: Vec<Step>, acceptor: &TlsAccept
                     }
                 }
             }
+            Step::Pause(delay) => tokio::time::sleep(delay).await,
             Step::Close => return seen,
             Step::Stall => {
                 while read_line(&mut reader).await.is_some() {}

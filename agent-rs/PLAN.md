@@ -312,6 +312,23 @@ section 3.6); no other new variable is introduced by the port.
   `/usr/bin`, `/usr/sbin` fallbacks still apply. Pinned by
   `ping/tests.rs::which_skips_entries_that_are_not_utf8`.
 
+- **D-18 IMAP exotic inputs.** A truthy `host` that is a JSON list or
+  object is a `configuration_error` ("host is not supported by the Rust
+  agent: not a string"); Python accepts it and fails later in ways that
+  depend on its contents. An INTERNALDATE whose UTC year leaves 1..=9999 is
+  `unexpected_error` "year <y> is out of range" as on glibc (Python on
+  macOS fails `mktime` before 1900 instead). When `Internaldate2tuple`
+  raises (a month name that is not English, year 0) the
+  `parsedate_to_datetime` fallback is assumed to fail ('Invalid date value
+  or format "<line>"', or the `UnicodeDecodeError` text), as it does for
+  FETCH response lines (`N (UID ... INTERNALDATE "...")`); a line it could
+  parse would give Python a date instead. A literal size beyond `usize` is
+  not treated as a literal. No production server sends such values: the 2
+  production IMAP checks (2026-10-14) use a string host, implicit TLS, a
+  plain `password`, ASCII subjects and Dovecot, whose dialogue the
+  `imap_dialogues.json` fixture models. Pinned by `config/imap/tests.rs`
+  (`configuration_matches_python`, `out_of_range_dates_are_errors`).
+
 ### 1.6 Result `data` shapes per check type (P1)
 
 Order of keys as written. `[x]` = present only under the stated condition.
@@ -845,7 +862,7 @@ parallel with few merge conflicts.
 | certificate expiry | `x509-parser` (notAfter only) | `tcp_executor.py:_cert_days_remaining` |
 | DNS checks | own stub resolver on tokio UDP/TCP sockets (`nyxmon-checks/src/dns.rs`, `dns/wire.rs`; S5b) | replaces dnspython: its resolution loop (lifetime, backoff, nameserver dropping, TCP fallback), response matching and record texts are reproduced directly, which a resolver library would hide (section 5.6) |
 | system resolution (probes, ping, happy eyeballs, HTTP clients) | libc `getaddrinfo` via `tokio::net::lookup_host` | same resolver semantics as Python (see 8.1) |
-| IMAP | `async-imap` (tokio feature) | STARTTLS done by hand on the raw stream |
+| IMAP | hand-rolled `imaplib.IMAP4` emulation (≈ 900 lines, S7b) | `async-imap` cannot reproduce the error texts the dashboard shows (`command: UID => socket error: EOF`, `UID command error: BAD [b'...']`, `select failed: NO [...]`), imaplib's response store or its quoting; see 5.14 |
 | SMTP | hand-rolled (≈ 400 lines) | `lettre` lacks smtplib's error taxonomy, CRAM-MD5 and the recipient-refused semantics; see 5.7 |
 | SQLite | `rusqlite` (`bundled`) | section 3.2 |
 | CLI | `clap` (derive) | |
@@ -1453,8 +1470,10 @@ exit 1).
 
 ### 5.14 IMAP (`imap_executor.py`)
 
-- Host: `data.host or url`, scheme stripped via `urlparse(...).hostname`.
-- Session: TCP connect with `timeout`; `implicit` → TLS; `starttls` →
+- Host: `data.host`, scheme stripped via `urlparse(...).hostname` when it
+  contains `://` (`urlparse`'s `ValueError` → `unexpected_error`).
+- Session: TCP connect with `timeout` (`socket.create_connection`, one
+  socket timeout per operation); `implicit` → TLS first; `starttls` →
   require `STARTTLS` capability (imaplib `IMAP4.starttls` raises
   `abort("TLS not supported by server")`), and a non-OK reply raises
   `error("Couldn't establish TLS session")` — both are plain `imaplib` errors
@@ -1462,23 +1481,48 @@ exit 1).
   `ImapTransientError("STARTTLS failed")` branch is unreachable with imaplib
   and is not reproduced as a reachable path; `none` → plain. Every protocol
   step bounded by `timeout` (timeout → `unexpected_error` "timed out").
+  The TLS context (and the verify=false warning) is built per attempt, for
+  `implicit` before connecting and for `starttls` after the greeting.
 - Response handling as imaplib: a `BAD` completion raises
   `"<CMD> command error: BAD [<py repr of data>]"` → `unexpected_error`;
-  a `NO` completion returns to `_run_checked` → `execution_error`.
+  a `NO` completion returns to `_run_checked` → `execution_error`; errors
+  while waiting for a completion are prefixed `command: <CMD> => `
+  (`socket error: EOF`, an untagged `BYE` text, `unexpected response: b'...'`).
 - `LOGIN username password` uses `password` only — `password_secret` is not
   used for login (Python passes `config.password`, `None` when only the secret
-  is set, which fails with `unexpected_error`). A rejected login raises
-  `IMAP4.error(dat[-1])` → `unexpected_error` with the Python bytes repr of
-  the server text (e.g. `b'[AUTHENTICATIONFAILED] Authentication failed.'`).
-  Parity kept; Q3.
+  is set, which fails with `unexpected_error` "'NoneType' object has no
+  attribute 'replace'" before LOGIN is sent). Parity kept; Q3 (owner
+  decision). A rejected login raises `IMAP4.error(dat[-1].decode('UTF-8',
+  'replace'))` → `unexpected_error` with the server text as a `str` (CPython
+  3.13.16, e.g. `[AUTHENTICATIONFAILED] Authentication failed.`), not a
+  bytes repr.
 - `SELECT folder`; `UID SEARCH NOT DELETED HEADER SUBJECT "<subject>"`; per
-  UID `UID FETCH <uid> (INTERNALDATE)` taking only the response with that UID;
-  skip older than `max_age_minutes`; sort ascending; when
-  `delete_after_check`: `UID STORE <uids> +FLAGS \Deleted`, then `CAPABILITY`,
-  `UID EXPUNGE <uids>` only with `UIDPLUS`; `LOGOUT` best effort.
+  UID `UID FETCH <uid> (INTERNALDATE)` taking only the first response line
+  whose `\bUID (\d+)\b` is that UID; skip older than `max_age_minutes`; sort
+  ascending (stable); when `delete_after_check`: `UID STORE <uids> +FLAGS
+  (\Deleted)`, then `CAPABILITY`, `UID EXPUNGE <uids>` only with `UIDPLUS`;
+  `LOGOUT` best effort, also after a failed search/delete (not after a failed
+  LOGIN/SELECT, which happen in `__aenter__`).
 - Non-OK command → `execution_error` "<method> failed: <TYP> <py repr of
-  data>"; TLS errors → `tls_error`; no match → `no_recent_message`
-  (retried); retries only for transient/no-recent, with `retry_delay`.
+  data>"; TLS errors → `tls_error` (rustls texts, D-9); no match →
+  `no_recent_message` (retried); retries only for no-recent, with
+  `retry_delay`.
+- Implementation notes (S7b): `nyxmon-checks/src/imap.rs` follows
+  `imaplib.IMAP4` of CPython 3.13.16 step by step: tag prefix `Int2AP`, the
+  tagged/untagged/continuation parser with literals, `_paren_depth` and blank
+  line skipping, the untagged-response store (`OK`/`NO`/`BAD` cleared per
+  command, response codes such as `CAPABILITY`, `READ-ONLY`), command states,
+  `_check_bye`, `_astring`/`_quote` with ASCII encoding (`UnicodeEncodeError`
+  text for non-ASCII values) and the NUL/CR/LF check, `_MAXLINE`. Python
+  exceptions for non-string `username`/`password`/`folder` and numeric
+  hosts are reproduced (`expected string or bytes-like object, got 'int'`,
+  ...). `nyxmon-core/src/config/imap.rs` holds the configuration, host
+  normalisation (`pyurl`), UID match, `Internaldate2tuple` + conversion and
+  the `SEARCH` split. Pinned by `config_imap.json`, `imap_text.json` and
+  `imap_dialogues.json`, the last being 46 dialogues of the real Python
+  executor against scripted servers (Dovecot- and Gmail-like sessions,
+  every error path above) replayed byte for byte by the Rust tests; TLS
+  paths are Rust-only fake-server tests. Divergences: D-18.
 
 ---
 
@@ -2128,7 +2172,7 @@ reviewed by spot checks.
 | S4 | Site observer core | pure observer (6.1, 6.3–6.9), payload codec, restore, rendering; replay fixtures | S3 | S2, S5–S8 |
 | S5 | HTTP family + DNS | http/json-http, json-metrics (incl. its pure evaluation `metrics_eval.rs`), the shared redirect/decoding/cookie layer, suppression fetch (payload only; rule evaluation is S3, joined in S9), DNS executor; configs + fixtures; fake servers | S1 | S2–S4, S6–S8 |
 | S6 | TCP + ping | happy eyeballs, TLS/STARTTLS dialogues, cert expiry, ping subprocess/parsers; fixtures; fake servers | S1 | S2–S5, S7, S8 |
-| S7 | SMTP + IMAP | hand-rolled SMTP client, async-imap session incl. STARTTLS; configs; fake servers | S1 | S2–S6, S8 |
+| S7 | SMTP + IMAP | hand-rolled SMTP client, hand-rolled `imaplib` emulation incl. STARTTLS (5.14); configs; fake servers | S1 | S2–S6, S8 |
 | S8 | Notifiers | Telegram (escape, fallback, redaction), OpsGate (payload, prompt, sanitize), logging/shadow notifier; fixtures; fake servers | S1 | S2–S7 |
 | S9 | Agent runtime core | CLI/logging/startup (1.7, 5.1), runner, result handler (5.3), basic collector loop (claim/execute/sleep), cleaner, signals and graceful shutdown with release (5.8 shutdown part), `--shadow` | S2, S3, S5–S8 | — |
 | S10 | Collector reliability | stale reclaim + results + stale-batch incident, lease estimation wiring, batch deadline/abandon/paused incident, incident delivery retry/ack, restart reconciliation | S9 | S11, S13 |

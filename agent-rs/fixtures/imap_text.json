@@ -1,0 +1,247 @@
+{
+ "hosts": [
+  {
+   "host": "imap.example.com",
+   "normalized": "imap.example.com"
+  },
+  {
+   "host": "IMAP.Example.COM",
+   "normalized": "IMAP.Example.COM"
+  },
+  {
+   "host": "imaps://Mail.Example.com:993",
+   "normalized": "mail.example.com"
+  },
+  {
+   "host": "imap://user:pw@mail.example.com/INBOX",
+   "normalized": "mail.example.com"
+  },
+  {
+   "host": "imap://[::1]:993",
+   "normalized": "::1"
+  },
+  {
+   "host": "imap://[FE80::1%eth0]/",
+   "normalized": "fe80::1%eth0"
+  },
+  {
+   "error": "An IPv4 address cannot be in brackets",
+   "host": "imap://[127.0.0.1]"
+  },
+  {
+   "error": "Invalid IPv6 URL",
+   "host": "imap://[::1"
+  },
+  {
+   "error": "Invalid IPv6 URL",
+   "host": "imap://::1]"
+  },
+  {
+   "error": "Invalid IPv6 URL",
+   "host": "imap://x[::1]"
+  },
+  {
+   "host": "imap://",
+   "normalized": "imap://"
+  },
+  {
+   "host": "imap:///path",
+   "normalized": "imap:///path"
+  },
+  {
+   "host": "1imap://host",
+   "normalized": "1imap://host"
+  },
+  {
+   "host": "  imap://host",
+   "normalized": "host"
+  },
+  {
+   "host": "imap://ho\tst",
+   "normalized": "host"
+  },
+  {
+   "host": "x://host?q#f",
+   "normalized": "host"
+  },
+  {
+   "host": "://host",
+   "normalized": "://host"
+  },
+  {
+   "host": "imap://host:abc",
+   "normalized": "host"
+  },
+  {
+   "host": "imap://@host",
+   "normalized": "host"
+  },
+  {
+   "host": "a://b://c",
+   "normalized": "b"
+  }
+ ],
+ "internaldates": [
+  {
+   "iso": "2026-10-14T10:00:00+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0200\")"
+  },
+  {
+   "iso": "2026-10-14T13:30:00+00:00",
+   "line": "1 (INTERNALDATE \"14-Oct-2026 12:00:00 -0130\" UID 20)"
+  },
+  {
+   "iso": "2026-10-04T01:02:03+00:00",
+   "line": "1 (UID 20 INTERNALDATE \" 4-Oct-2026 01:02:03 +0000\")"
+  },
+  {
+   "iso": "2024-03-01T11:59:59+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"29-Feb-2024 23:59:59 -1200\")"
+  },
+  {
+   "iso": "1970-01-01T00:00:00+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"01-Jan-1970 00:00:00 +0000\")"
+  },
+  {
+   "iso": "1969-12-31T23:59:59+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"31-Dec-1969 23:59:59 +0000\")"
+  },
+  {
+   "iso": "2026-03-11T00:01:39+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"39-Feb-2026 99:99:99 +9999\")"
+  },
+  {
+   "iso": "2025-12-31T01:02:03+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"00-Jan-2026 01:02:03 +0000\")"
+  },
+  {
+   "iso": null,
+   "line": "1 (UID 20 INTERNALDATE \"04-oct-2026 01:02:03 +0000\")"
+  },
+  {
+   "error": "Invalid date value or format \"1 (UID 20 INTERNALDATE \"04-Foo-2026 01:02:03 +0000\")\"",
+   "line": "1 (UID 20 INTERNALDATE \"04-Foo-2026 01:02:03 +0000\")"
+  },
+  {
+   "error": "'utf-8' codec can't decode byte 0xff in position 53: invalid start byte",
+   "line": "1 (UID 20 INTERNALDATE \"04-Foo-2026 01:02:03 +0000\") \u00ff"
+  },
+  {
+   "iso": null,
+   "line": "1 (UID 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0200)"
+  },
+  {
+   "iso": null,
+   "line": "1 (UID 20 INTERNALDATE \"14-Oct-2026 12:00 +0200\")"
+  },
+  {
+   "iso": "2026-10-14T12:00:00+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"bad\" INTERNALDATE \"14-Oct-2026 12:00:00 +0000\")"
+  },
+  {
+   "iso": "2026-10-14T12:00:00+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0000\" INTERNALDATE \"bad\")"
+  },
+  {
+   "iso": "2026-10-15T12:00:00+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0000\" INTERNALDATE \"15-Oct-2026 12:00:00 +0000\")"
+  },
+  {
+   "iso": null,
+   "line": "1 (UID 20 FLAGS (\\Seen))"
+  },
+  {
+   "iso": "2026-10-14T12:00:00+00:00",
+   "line": "1 (uid 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0000\")"
+  },
+  {
+   "iso": null,
+   "line": "1 (UID 200 INTERNALDATE \"14-Oct-2026 12:00:00 +0000\")"
+  },
+  {
+   "iso": null,
+   "line": "1 (UID 20x INTERNALDATE \"14-Oct-2026 12:00:00 +0000\")"
+  },
+  {
+   "iso": "2026-10-14T12:00:00+00:00",
+   "line": "1 (XUID 20 UID 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0000\")"
+  },
+  {
+   "iso": null,
+   "line": "1 (UID 21 UID 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0000\")"
+  },
+  {
+   "iso": "2026-10-14T12:00:00+00:00",
+   "line": "1 (UID 20 INTERNALDATE \"14-Oct-2026 12:00:00 +0000\") \u00ff"
+  }
+ ],
+ "searches": [
+  {
+   "data": "",
+   "ids": []
+  },
+  {
+   "data": "20",
+   "ids": [
+    "20"
+   ]
+  },
+  {
+   "data": "20 30  40",
+   "ids": [
+    "20",
+    "30",
+    "40"
+   ]
+  },
+  {
+   "data": " 7\t8 ",
+   "ids": [
+    "7",
+    "8"
+   ]
+  },
+  {
+   "data": "20\u001c30",
+   "ids": [
+    "20",
+    "30"
+   ]
+  },
+  {
+   "data": "\u00c3\u00a4 5",
+   "ids": [
+    "\u00e4",
+    "5"
+   ]
+  },
+  {
+   "data": "5 \u00ff",
+   "error": "'utf-8' codec can't decode byte 0xff in position 2: invalid start byte"
+  },
+  {
+   "data": "5 \u00e2\u0082",
+   "error": "'utf-8' codec can't decode bytes in position 2-3: unexpected end of data"
+  },
+  {
+   "data": "5 \u00e2(\u00a1",
+   "error": "'utf-8' codec can't decode byte 0xe2 in position 2: invalid continuation byte"
+  },
+  {
+   "data": "5 \u00c0\u00af",
+   "error": "'utf-8' codec can't decode byte 0xc0 in position 2: invalid start byte"
+  },
+  {
+   "data": "5 \u00ed\u00a0\u0080",
+   "error": "'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte"
+  },
+  {
+   "data": "5 \u00f4\u0090\u0080\u0080",
+   "error": "'utf-8' codec can't decode byte 0xf4 in position 2: invalid continuation byte"
+  },
+  {
+   "data": "5 \u00f0\u009f\u0098",
+   "error": "'utf-8' codec can't decode bytes in position 2-4: unexpected end of data"
+  }
+ ]
+}

@@ -14,6 +14,7 @@ pub mod http;
 pub mod http_client;
 pub mod httpx_url;
 pub mod idna2008;
+pub mod imap;
 pub mod json_metrics;
 pub mod mail;
 pub mod net;
