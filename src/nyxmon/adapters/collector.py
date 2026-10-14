@@ -1020,9 +1020,10 @@ class AsyncCheckCollector(CheckCollector):
                     abandon_on_cancel=True,
                     limiter=self._batch_limiter,
                 )
-            # A check whose result could not be persisted keeps its lease on
-            # purpose: like any other unrecorded execution it is reclaimed and
-            # alerted after expiry, and shutdown does not hide that failure.
+            # A finished batch is no longer released at shutdown: a check whose
+            # result could not be persisted keeps its lease and is reclaimed and
+            # alerted after expiry like any other unrecorded execution. While
+            # the batch is still running, shutdown releases all of its claims.
             self._active_batch_checks = []
             if cancel_scope.cancel_called:
                 self._abandoned_batch_done = batch_done

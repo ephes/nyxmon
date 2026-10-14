@@ -865,11 +865,13 @@ abandoned batch is included. Completed checks persist their results and normal
 notification state during the grace period. Unfinished checks return to `idle`
 and are scheduled one normal check interval after release (at least one second),
 without a failure result, failure streak increment, or notification. Disabled
-checks stay disabled. Other collectors' claims are never released. A check that
-finished but whose result could not be persisted keeps its lease, so it is
-reclaimed and alerted after expiry like any other unrecorded execution; a
-failure to release leases at shutdown is logged and falls back to the same
-expiry recovery.
+checks stay disabled. Other collectors' claims are never released. A result that
+could not be persisted is logged as `result handling failed for check_id=…`.
+If its batch had already finished, the check keeps its lease and is reclaimed
+and alerted after expiry like any other unrecorded execution; if shutdown
+interrupts that batch, the check's lease is released with the rest of the
+batch, so the log line is the only trace. A failure to release leases at
+shutdown is logged and falls back to expiry recovery.
 
 The ops-library `roles/nyxmon_deploy/templates/nyxmon-monitor.service.j2` template
 has no explicit `TimeoutStopSec`. Assume systemd's usual 90-second manager default;
