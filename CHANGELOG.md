@@ -300,6 +300,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   until it ends, and reports both as the deduplicated collector incidents
   `collector:stale_processing_lease` and `collector:execution_paused` with
   delivery retry, acknowledgement and restart reconciliation.
+- Rust agent `run-check` and process tests (slice S12 of
+  `agent-rs/PLAN.md`): `nyxmon-agent run-check --db PATH --check-id N
+  [--imap-no-delete]` executes one check from a read-only database and
+  prints the result as one JSON line, without lock, result row or
+  notification. Process tests now cover SIGINT, a result finishing within
+  the shutdown grace, prompt idle shutdown, SIGKILL followed by stale-lease
+  reclaim with exactly one batch alert, and the cleaner.
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but

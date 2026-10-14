@@ -308,6 +308,23 @@ All in `crates/nyxmon-agent/src/collector/reliability_tests.rs` unless noted
 | `test_collector_incident_delivery_ack.py` | store-level, see S2 (`incidents.rs`) | done |
 | `shutdown_deadline` / `_async_start` with an abandoned batch | `::shutdown_gives_an_abandoned_batch_the_grace_then_releases_its_claims`, `::an_abandoned_batch_finishing_within_the_grace_is_recorded` | done |
 
+## S12 — process e2e, run-check, parity harness
+
+Process tests in `crates/nyxmon-agent/tests/binary.rs` (the built binary
+against a temporary database from the schema fixture and fake servers).
+
+| Python test / function | Rust counterpart | Status |
+| --- | --- | --- |
+| `tests/e2e/test_graceful_shutdown.py::test_signal_releases_unfinished_claim_without_alert` (SIGTERM, SIGINT) | `::sigterm_during_an_in_flight_check_releases_the_claim_without_a_result` (S9b), `::sigint_during_an_in_flight_check_releases_the_claim_without_a_result` | done |
+| `::test_result_finishing_during_grace_is_recorded` | `::a_result_finishing_within_the_grace_is_recorded` | done |
+| `::test_hard_kill_still_reclaims_and_alerts` | `::sigkill_leaves_the_claim_and_the_next_start_reclaims_it_after_the_lease` (a second start within the lease leaves the claim; after the lease: one `stale_processing_lease` result, the incident, exactly one `stale_processing_lease_batch` alert in the `--shadow` machine line) | done |
+| `::test_finished_check_persists_while_another_check_stays_in_flight`, `::test_uninterruptible_executor_does_not_hold_process_exit` | `runner/tests.rs`, `collector/tests.rs` (S9a/S9b: intake stop, abandoned batch); `shutdown_background` in `app.rs` | done |
+| idle shutdown is prompt (PLAN.md 7.3) | `::an_idle_agent_shuts_down_promptly` | done |
+| `tests/e2e/cleaner_e2e_test.py::test_cleaner_integration` | `::the_cleaner_deletes_expired_results_and_sessions`; batch draining and the cap: `cleaner/tests.rs` (S9a) | done |
+| `tests/e2e/collector_e2e_test.py::test_agent_executes_checks`, `e2e_test.py` | `::the_agent_runs_checks_and_shuts_down_on_sigterm` (S9b) and the parity harness | done |
+| `tests/e2e/test_dns_checks.py` (mocked resolver through the message bus) | `dns/tests.rs` (S5b) and the parity harness's DNS checks against a fake nameserver | done |
+| `run-check` (PLAN.md 7.4): read-only, no lock, no persistence, disabled checks run, `--imap-no-delete` | `::run_check_prints_one_result_without_writing_the_database`, `::run_check_leaves_an_untouched_database_unmodified`; `run_check.rs` unit tests; `nyxmon-store/tests/checks.rs::read_check_loads_one_row_read_only` | done |
+
 ## Later slices
 
 | Python test file | Rust counterpart | Slice | Status |
@@ -321,7 +338,7 @@ All in `crates/nyxmon-agent/src/collector/reliability_tests.rs` unless noted
 | `tests/unit/test_tcp_executor.py`, `test_tcp_config.py`, `test_ping_executor.py` | see the S6 section above | S6 | done |
 | `tests/unit/test_telegram_notification.py`, `test_telegram_markdown_escape.py`, `test_opsgate_notification.py` | `telegram.json`, `opsgate.json`, fake servers (section S8 above) | S8 | done |
 | `tests/unit/test_site_connectivity_holds.py`, `test_site_connectivity_observer.py` (runtime) | `nyxmon-agent` site tests (section S11 above) | S11 | done |
-| `tests/e2e/test_graceful_shutdown.py`, `collector_e2e_test.py`, `cleaner_e2e_test.py`, `e2e_test.py`, `test_dns_checks.py` | process e2e (`crates/nyxmon-agent/tests/`) and parity harness | S12 | pending |
+| `tests/e2e/test_graceful_shutdown.py`, `collector_e2e_test.py`, `cleaner_e2e_test.py`, `e2e_test.py`, `test_dns_checks.py` | process e2e (`crates/nyxmon-agent/tests/`) and parity harness (S12 section above) | S12 | done |
 | `tests/unit/repositories/in_memory_*` | — | — | n/a (in-memory store is not ported, PLAN.md 1.2) |
 | `tests/unit/test_check_management_cli.py`, `models_test.py` (Django-side helpers) | — | — | n/a (`add-check`/`show-checks` are not ported) |
 | `tests/dashboard/*`, `test_production_*.py` | — | — | n/a (Django dashboard, unchanged) |
