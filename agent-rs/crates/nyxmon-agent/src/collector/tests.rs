@@ -15,11 +15,11 @@ use super::*;
 use crate::logging;
 use crate::testutil::{ManualClock, ScriptedNotifier, TestDb, check, env, handler};
 
-const T0: i64 = 1_700_000_000;
+pub(super) const T0: i64 = 1_700_000_000;
 
-type Behaviour = dyn Fn(Check) -> ExecFuture + Send + Sync;
+pub(super) type Behaviour = dyn Fn(Check) -> ExecFuture + Send + Sync;
 
-struct FakeExecutors(Box<Behaviour>);
+pub(super) struct FakeExecutors(pub(super) Box<Behaviour>);
 
 impl Executors for FakeExecutors {
     fn registered_types(&self) -> &[&'static str] {
@@ -31,17 +31,17 @@ impl Executors for FakeExecutors {
     }
 }
 
-fn result(check: &Check, status: ResultStatus) -> CheckResult {
+pub(super) fn result(check: &Check, status: ResultStatus) -> CheckResult {
     CheckResult::new(check.check_id, status, PyDict::new())
 }
 
-struct Setup {
-    db: TestDb,
-    clock: ManualClock,
+pub(super) struct Setup {
+    pub(super) db: TestDb,
+    pub(super) clock: ManualClock,
 }
 
 impl Setup {
-    fn new(checks: &[i64]) -> Setup {
+    pub(super) fn new(checks: &[i64]) -> Setup {
         let db = TestDb::new();
         for check_id in checks {
             db.insert(&check(*check_id));
@@ -52,7 +52,7 @@ impl Setup {
         }
     }
 
-    fn collector(
+    pub(super) fn collector(
         &self,
         vars: &[(&str, &str)],
         notifier: Arc<dyn Notifier>,
@@ -61,26 +61,37 @@ impl Setup {
         self.collector_on(self.db.store(), vars, notifier, behaviour)
     }
 
-    fn collector_on(
+    pub(super) fn collector_on(
         &self,
         store: Store,
         vars: &[(&str, &str)],
         notifier: Arc<dyn Notifier>,
         behaviour: impl Fn(Check) -> ExecFuture + Send + Sync + 'static,
     ) -> Arc<Collector> {
-        let handler = Arc::new(handler(self.db.store(), notifier, vars, &self.clock));
+        Arc::new(self.build(store, vars, notifier, behaviour))
+    }
+
+    /// A collector on `store` (a fresh process when it is a new store).
+    pub(super) fn build(
+        &self,
+        store: Store,
+        vars: &[(&str, &str)],
+        notifier: Arc<dyn Notifier>,
+        behaviour: impl Fn(Check) -> ExecFuture + Send + Sync + 'static,
+    ) -> Collector {
+        let handler = Arc::new(handler(store.clone(), notifier, vars, &self.clock));
         let (env, _) = env(vars);
-        Arc::new(Collector::new(
+        Collector::new(
             store,
             handler,
             Arc::new(FakeExecutors(Box::new(behaviour))),
             env,
             3600,
-        ))
+        )
     }
 }
 
-async fn until(condition: impl Fn() -> bool) {
+pub(super) async fn until(condition: impl Fn() -> bool) {
     tokio::time::timeout(Duration::from_secs(5), async {
         while !condition() {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -90,7 +101,10 @@ async fn until(condition: impl Fn() -> bool) {
     .expect("condition not reached");
 }
 
-async fn stop_and_join(collector: &Arc<Collector>, run: tokio::task::JoinHandle<()>) -> Duration {
+pub(super) async fn stop_and_join(
+    collector: &Arc<Collector>,
+    run: tokio::task::JoinHandle<()>,
+) -> Duration {
     let started = Instant::now();
     collector.request_stop();
     tokio::time::timeout(Duration::from_secs(10), run)

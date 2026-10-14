@@ -211,6 +211,16 @@ impl<S: ResultStore> ResultHandler<S> {
         &self.store
     }
 
+    /// The process notifier (also used for collector incidents).
+    pub fn notifier(&self) -> &Arc<dyn Notifier> {
+        &self.notifier
+    }
+
+    /// The process-wide warn-once state.
+    pub fn warnings(&self) -> &Arc<WarnOnce> {
+        &self.warnings
+    }
+
     /// `int(time.time())` of this handler.
     pub fn now(&self) -> i64 {
         (self.clock)()

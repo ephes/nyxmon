@@ -34,9 +34,14 @@ persistence, notification, acknowledgement), the results cleaner and the
 Python log format. Slice S9b adds the collector loop (claim, execute, sleep)
 with the shutdown grace period, intake stop and lease release, the CLI
 (`start-agent` flags plus `--check-schema` and `--shadow`), startup
-validation and signal handling: the binary runs. Stale-lease recovery and
-collector incidents (S10) are still missing, so it is not a production
-replacement yet.
+validation and signal handling: the binary runs.
+
+Slice S10 adds collector reliability: restart reconciliation, the
+runtime-derived processing lease, stale-lease reclaim with
+collector-internal results, the batch deadline that abandons a wedged batch
+and pauses execution, and the two collector incidents
+(`collector:stale_processing_lease`, `collector:execution_paused`) with
+delivery retry and acknowledgement.
 
 Slice S11 adds the site connectivity runtime (`nyxmon_agent::site`): the
 default probe runner (TCP connects to address literals, `getaddrinfo` for

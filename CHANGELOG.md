@@ -273,8 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (maintenance suppression, notification decision, persistence, alert and
   acknowledgement), the results cleaner, the claim/execute/sleep collector
   loop and SIGTERM/SIGINT shutdown with the grace period and lease release.
-  Stale-lease recovery and collector incidents follow in a later slice;
-  nothing deploys the Rust agent yet.
+  Nothing deploys the Rust agent yet.
 - Rust agent release pipeline (slice S13 of `agent-rs/PLAN.md`):
   `.github/workflows/agent-rs-release.yml` builds `nyxmon-agent` on
   ubuntu-22.04 for a tag `agent-rs-v<version>` (which must equal the crate
@@ -293,6 +292,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   handler, and the startup warning about requirements on unobserved paths.
   The mode is logged at startup (`site connectivity observation is
   <mode>`); with the mode off (the default) nothing changes.
+- Rust agent collector reliability (slice S10 of `agent-rs/PLAN.md`): the
+  `nyxmon-agent` collector now recovers expired processing leases like the
+  Python agent (a collector-internal `stale_processing_lease` result per
+  check, never a per-check page), extends the lease to the estimated check
+  runtime, abandons a batch that misses its deadline and pauses execution
+  until it ends, and reports both as the deduplicated collector incidents
+  `collector:stale_processing_lease` and `collector:execution_paused` with
+  delivery retry, acknowledgement and restart reconciliation.
 - GitHub Actions CI (`.github/workflows/ci.yml`) runs the pre-commit Ruff
   hooks, mypy, pytest and the vitest suite on every push and pull request.
 - Ping checks now run. The `ping` check type was selectable in NyxBoard but

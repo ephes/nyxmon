@@ -343,6 +343,21 @@ section 3.6); no other new variable is introduced by the port.
   persisted lifecycle failed` with the exception class. Pinned by
   `site/tests.rs::a_restore_that_raises_stops_the_observer_with_a_log_line`.
 
+- **D-20 Processing leases outside SQLite's range.** When
+  `NYXMON_PROCESSING_LEASE_SECONDS` is so large that `now - lease` leaves
+  the signed 64-bit range, Python's reclaim raises `OverflowError` while
+  binding it; Rust logs the same `processing-lease reclaim failed` line
+  with that exception text and skips the reclaim. A lease beyond
+  `i64::MAX` whose `now - lease` still fits reclaims what `i64::MAX` does
+  (nothing realistic). A lease beyond the float range (over 308 digits)
+  makes Python's `configured / 2` raise on every refresh ("runtime
+  estimation failed"); Rust refreshes every 30 s without that line. The
+  batch deadline saturates instead of overflowing. A check whose `data`
+  column cannot be decoded (D-8) makes Python's `list_async` raise during
+  lease estimation (the cached budget is kept); Rust estimates that check
+  with the defaults. Production uses the default lease and decodable data.
+  Pinned by `collector/reliability_tests.rs::a_lease_sqlite_cannot_bind_fails_the_reclaim`.
+
 ### 1.6 Result `data` shapes per check type (P1)
 
 Order of keys as written. `[x]` = present only under the stated condition.
@@ -1331,11 +1346,20 @@ Names: `Nyxmon collector (stale check leases)`,
 
 Implemented in S9 (`nyxmon-agent/src/collector.rs`): the loop (claim with
 `check_batch_size()`, run the batch as a task, record each result through
-the result handler, sleep `--interval`) and the shutdown below; steps 1–5
-and the batch deadline of step 7 are S10, except the unobserved-site
-warning of step 1, which the observer task emits when it starts (S11,
-6.13). A claim failure is logged as `check collector iteration failed` and
-the loop continues.
+the result handler, sleep `--interval`) and the shutdown below. A claim
+failure is logged as `check collector iteration failed` and the loop
+continues. S10 adds steps 1 (restart reconciliation; the unobserved-site
+warning is emitted by the site observer task when it starts, S11, 6.13),
+2–5 and the step-7 deadline: the pure payload/message helpers are
+`nyxmon_core::collector_incident` (fixture `collector_incidents.json`), the
+incident state machine is `collector/incidents.rs`. Stale results go
+through `ResultHandler::add_check_result(.., false)` on the handler's
+clock; the abandoned batch is its own field (task, done flag, claims) and
+shutdown waits for it, aborts it (D-3) and releases its claims with the
+active ones. A store error `ActorDied` in the reclaim, the estimate or a
+stale result is fatal like a failed claim. The interval sleep is not
+interrupted by a stop request (as in Python), so a shutdown with an
+abandoned batch always runs the grace and flush windows.
 
 **Shutdown** (`_async_start` + `shutdown_deadline` + `request_stop`):
 
