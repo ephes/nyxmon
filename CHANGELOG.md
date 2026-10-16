@@ -476,6 +476,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the observer's recovery recheck) nor cancels an unacknowledged send.
 
 ### Changed
+- Production (macmini) runs the Rust agent `nyxmon-agent` 0.1.0 instead of
+  `start-agent` since 2026-10-16 (slice S16 of `agent-rs/PLAN.md`), after a
+  shadow run, a controlled test alert and a rollback drill. The Python agent
+  stays in the repository and on the host as the rollback target. PLAN.md 4.4
+  now states the memory budget as cgroup and anonymous memory: 0.1.0 uses
+  about 12 MB cgroup memory (`ps` RSS about 21 MiB, half of it the
+  file-backed binary).
 - `start-agent` takes an exclusive lock on `<db path>.agent.lock` (created
   with mode 0600 next to the database) before touching the database and holds
   it until it exits. A second agent on the same database, Python or the Rust
