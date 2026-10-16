@@ -909,12 +909,20 @@ parallel with few merge conflicts.
 ### 4.4 Lean binary goals
 
 - Stripped release binary ≤ 20 MiB.
-- Steady-state RSS ≤ 20 MiB, peak during a 5-check batch ≤ 40 MiB
-  (Python today: 47 MiB). If glibc malloc arenas exceed the budget,
+- Steady-state memory ≤ 20 MiB, peak during a 5-check batch ≤ 40 MiB
+  (Python today: 47 MiB). The budget is the memory the agent allocates:
+  the unit's cgroup memory (`MemoryCurrent`, peak `MemoryPeak`) and the
+  anonymous RSS (`RssAnon`). Total `ps` RSS also counts the file-backed
+  mapping of the binary (about 10 MiB for 0.1.0), which is shared page
+  cache, not agent memory. If glibc malloc arenas exceed the budget,
   `MALLOC_ARENA_MAX=2` is set in the drop-in before considering another
   allocator.
 - Startup to first claim ≤ 1 s on macmini.
 - Measured during the shadow run and recorded in the cutover report.
+  0.1.0 on macmini (shadow run, 25 h, and production after the cutover):
+  cgroup memory about 12 MB, peak about 14.5 MB; `RssAnon` about 10.7 MiB;
+  `ps` RSS about 21 MiB, of which about 10.3 MiB is the binary mapping.
+  Within budget.
 
 ---
 

@@ -2,9 +2,11 @@
 
 A Rust port of the nyxmon monitoring agent (`start-agent`). The contract is
 [`PLAN.md`](PLAN.md); the Python agent in `src/nyxmon` stays the reference
-implementation and the rollback target. **Nothing deploys this code yet**:
-rsync and git deploys ship `src/` only, and the ops-library role ignores
-`agent-rs/` until slice S14.
+implementation and the rollback target. **Production (macmini) runs this
+agent since 2026-10-16** (release `agent-rs-v0.1.0`, slice S16): the
+ops-library `nyxmon_deploy` role installs a pinned release binary and selects
+it with `nyxmon_agent_impl: rust` (PLAN.md 8). rsync and git deploys still
+ship `src/` only; `agent-rs/` reaches the host only as a release.
 
 Status: slice S1 (foundations): workspace, CI, recipes, the `pyjson`
 module, the fixture pipeline, the environment readers, the domain types and
@@ -59,6 +61,11 @@ Slice S12 adds `nyxmon-agent run-check`, the process tests of PLAN.md 7.3
 (signals, SIGKILL and stale-lease reclaim, the cleaner), the offline parity
 harness against the Python agent (`just rs-parity`, CI job `parity`), the
 shadow-run tools and the operator documentation (`docs/agent-rs.md`).
+
+Slices S13 to S16 released and rolled out the binary: the release pipeline
+(S13), the deployment role switch and the install on macmini (S14), the
+shadow run on macmini (S15) and the production cutover with a controlled
+test alert and a rollback drill (S16, 2026-10-16).
 
 ## Layout
 

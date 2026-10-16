@@ -13,10 +13,13 @@ The contract is `agent-rs/PLAN.md`; build, test and release commands are in
 contributors.
 
 ```{note}
-Nothing deploys the Rust agent until the ops-library `nyxmon_deploy` role is
-switched to it (`nyxmon_agent_impl: rust`, PLAN.md 8.3). Before the switch
-the binary is validated by the process tests, the offline parity harness and
-a shadow run on the production host (below).
+Production runs the Rust agent since 2026-10-16: the ops-library
+`nyxmon_deploy` role selects it with `nyxmon_agent_impl: rust` (PLAN.md 8.3)
+and macmini runs release `agent-rs-v0.1.0`. Before the switch the binary was
+validated by the process tests, the offline parity harness and a shadow run
+on the production host (below). The Python agent stays installed as the
+rollback target; the owner decides on its retirement after the soak
+(PLAN.md 9.4).
 ```
 
 ## Architecture
@@ -261,6 +264,17 @@ variables, PLAN.md 8.3-8.5). Rolling back is flipping the variable to
 `systemctl daemon-reload` and restart the unit. Nothing in the database
 depends on which agent wrote it, and the lock makes sure the two never run
 on the production database at once.
+
+The cutover on 2026-10-16 was verified as in PLAN.md 9.3: every enabled check
+had a new result within its interval, the status distribution matched the
+hour before, no claim got stuck, one controlled failing check sent exactly
+one Telegram message and opened one OpsGate ticket, and a rollback drill
+(Rust to Python and back, two deploys) showed each agent continuing on the
+database the other left. Memory against the budget of PLAN.md 4.4: cgroup
+memory about 12 MB (peak 14.4 MB) and anonymous RSS about 10.7 MiB; `ps`
+reports about 21 MiB RSS, of which about 10.3 MiB is the file-backed mapping
+of the binary. The ops-control runbook `docs/NYXMON_RUST_AGENT.md` has the
+commands and the deploy log.
 
 ## Testing
 
