@@ -48,6 +48,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Verify hosted runner trust and bootstrap Rustup 1.29.2
+        working-directory: ${{ github.workspace }}
+        run: python3 scripts/ci_rustup.py
       - name: Install the pinned toolchain (agent-rs/rust-toolchain.toml)
         run: |
           rustup toolchain install
