@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Rust agent 0.1.1 security candidate
-
-- Prepare the Rust-only patch with rustls-webpki 0.103.16 and webpki-roots 1.0.10,
-  preserving maintained cutover documentation and the fixed Python certifi lock.
-  Hosted bootstrap uses signed CA-only package updates, verified Rustup 1.29.2
-  and uv 0.13.4. This preparation does not publish a tag/release or deploy a binary.
-
 ### Security
 
 - Update the locked certifi CA bundle to 2026.10.19 for the eMudhra/emSign
@@ -626,6 +619,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Telegram HTTP failure logging now redacts the bot token while preserving the
   response status and bounded API error detail.
 - IMAP checks now retry empty recent-message searches according to `retries` and `retry_delay` before returning `no_recent_message`.
+
+## agent-rs-v0.1.1 — 2026-10-21
+
+- Publish the Rust-only security patch with rustls-webpki 0.103.16 and
+  webpki-roots 1.0.10, preserving maintained cutover documentation and the fixed
+  Python certifi lock. No application, protocol or database changes are included.
+- Hosted bootstrap uses signed CA-only package updates, verified Rustup 1.29.2
+  and uv 0.13.4. Exact-source CI (including cargo-deny/parity) and the tag release
+  build passed; the Linux binary embeds `c578530b64561c43ea56eb4377a9a03dd2131ddc`.
+- Published archive SHA256: `288dbf02893b16d2993450eb9bfd610c7edbb31ecb2026a4e80eeb6af1892a2f`.
+  Publication does not establish controller selection or live incident-chain rejection.
 
 ## [0.1.7] - 2025-10-05
 

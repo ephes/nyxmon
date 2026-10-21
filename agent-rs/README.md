@@ -8,6 +8,10 @@ ops-library `nyxmon_deploy` role installs a pinned release binary and selects
 it with `nyxmon_agent_impl: rust` (PLAN.md 8). rsync and git deploys still
 ship `src/` only; `agent-rs/` reaches the host only as a release.
 
+The current published security release is [`agent-rs-v0.1.1`](https://github.com/ephes/nyxmon/releases/tag/agent-rs-v0.1.1),
+published on 2026-10-21 from `c578530b64561c43ea56eb4377a9a03dd2131ddc`.
+Publication is separate from the managed deployment and running-process proof.
+
 Status: slice S1 (foundations): workspace, CI, recipes, the `pyjson`
 module, the fixture pipeline, the environment readers, the domain types and
 the TLS helpers; slice S3 (alerting core): notification policy, site
