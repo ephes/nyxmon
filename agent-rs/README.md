@@ -430,3 +430,8 @@ Never add DDL to the Python agent; a new required column raises
   held for the lifetime of the process; the Python agent takes the same
   `flock` (`src/nyxmon/agent_lock.py`). `--check-schema` opens the database
   read-only and takes no lock.
+
+## Security dependency backport
+
+See the [2026-10-21 eMudhra security backport](security/2026-10-21-emudhra.md)
+for the two trust dependency fixes and the separate release/runtime boundary.
