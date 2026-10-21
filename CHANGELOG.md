@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Update the locked certifi CA bundle to 2026.10.19 for the eMudhra/emSign
+  CA compromise
+  ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)).
+  Lock-only change. Re-sync deployed environments and restart long-running
+  processes so they load the new bundle.
 - Remove `config.settings.macos`; `config.settings.production` is the only
   deployed settings module. Compared with the removed module it redirects
   plain HTTP to HTTPS, sends HSTS, and accepts only the hosts in
