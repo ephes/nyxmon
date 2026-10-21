@@ -107,9 +107,160 @@ unset name BASH_ENV
     )
 
 
+CA_TARGETS = {
+    "22.04": "20260816ubuntu0.22.04.1",
+    "24.04": "20260816ubuntu0.24.04.1",
+}
+APT_OPTIONS = [
+    "-o",
+    "DPkg::Lock::Timeout=60",
+    "-o",
+    "Acquire::Retries=1",
+    "-o",
+    "Acquire::http::Timeout=30",
+    "-o",
+    "Acquire::https::Timeout=30",
+    "-o",
+    "Acquire::https::Verify-Peer=true",
+    "-o",
+    "Acquire::https::Verify-Host=true",
+    "-o",
+    "Acquire::AllowInsecureRepositories=false",
+    "-o",
+    "Acquire::AllowDowngradeToInsecureRepositories=false",
+    "-o",
+    "APT::Get::AllowUnauthenticated=false",
+]
+
+
+def ubuntu_ca_target(path: Path = Path("/etc/os-release")) -> str:
+    # os-release is a data file, never execute/source it as shell code.
+    import shlex
+
+    fields = {}
+    for line in path.read_text().splitlines():
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            values = shlex.split(value)
+            fields[key] = values[0] if len(values) == 1 else ""
+    if fields.get("ID") != "ubuntu" or fields.get("VERSION_ID") not in CA_TARGETS:
+        raise RuntimeError("CA refresh requires hosted Ubuntu 22.04 or 24.04")
+    return CA_TARGETS[fields["VERSION_ID"]]
+
+
+def package_state(env: dict[str, str]) -> dict[str, tuple[str, str]]:
+    result = subprocess.run(
+        [
+            "/usr/bin/dpkg-query",
+            "-W",
+            "-f=${binary:Package}\t${Version}\t${db:Status-Abbrev}\n",
+        ],
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    state = {}
+    for line in result.stdout.splitlines():
+        name, version, status = line.split("\t")
+        state[name] = (version, status.strip())
+    return state
+
+
+def validate_ca_transaction(output: str, target: str) -> None:
+    actions = []
+    for line in output.splitlines():
+        if line.startswith(("Inst ", "Conf ", "Remv ")):
+            match = re.match(r"^(Inst|Conf) (\S+) (?:\[[^]]+\] )?\(([^ )]+)", line)
+            if not match or match[2] != "ca-certificates" or match[3] != target:
+                raise RuntimeError(
+                    "APT simulation contains a non-allowlisted package action"
+                )
+            actions.append(match[1])
+    if actions != ["Inst", "Conf"]:
+        raise RuntimeError("APT simulation must upgrade/configure only ca-certificates")
+
+
+def refresh_runner_ca(env: dict[str, str]) -> None:
+    target = ubuntu_ca_target()
+    clean = {key: value for key, value in env.items() if key != "APT_CONFIG"}
+    clean.update(LC_ALL="C", DEBIAN_FRONTEND="noninteractive")
+    before = package_state(clean)
+    version, status = before.get("ca-certificates", ("", ""))
+    if status != "ii":
+        raise RuntimeError("ca-certificates must already be fully installed")
+    compare = subprocess.run(
+        ["/usr/bin/dpkg", "--compare-versions", version, "ge", target],
+        env=clean,
+        check=False,
+        timeout=30,
+    )
+    if compare.returncode == 0:
+        print(f"Runner ca-certificates {version} already meets {target}")
+        return
+    if compare.returncode != 1:
+        raise RuntimeError("dpkg version comparison failed")
+    apt = [
+        "/usr/bin/sudo",
+        "-n",
+        "--preserve-env=http_proxy,https_proxy,no_proxy,HTTP_PROXY,HTTPS_PROXY,NO_PROXY",
+        "--",
+        "/usr/bin/env",
+        "-u",
+        "APT_CONFIG",
+        "DEBIAN_FRONTEND=noninteractive",
+        "LC_ALL=C",
+        "/usr/bin/apt-get",
+        *APT_OPTIONS,
+    ]
+    subprocess.run(
+        [*apt, "update"],
+        env=clean,
+        check=True,
+        timeout=300,
+    )
+    transaction = [
+        "--only-upgrade",
+        "--no-install-recommends",
+        "--no-remove",
+        "install",
+        f"ca-certificates={target}",
+    ]
+    simulation = subprocess.run(
+        [*apt, "--simulate", *transaction],
+        env=clean,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
+    print(simulation.stdout)
+    validate_ca_transaction(simulation.stdout, target)
+    subprocess.run(
+        [*apt, "--assume-yes", *transaction],
+        env=clean,
+        check=True,
+        timeout=300,
+    )
+    after = package_state(clean)
+    if after.get("ca-certificates") != (target, "ii"):
+        raise RuntimeError("fixed ca-certificates package not fully installed")
+    if {k: v for k, v in before.items() if k != "ca-certificates"} != {
+        k: v for k, v in after.items() if k != "ca-certificates"
+    }:
+        raise RuntimeError(
+            "non-target package state changed during CA-only transaction"
+        )
+    print(
+        f"Upgraded only ca-certificates {version} -> {target}; other package states unchanged"
+    )
+
+
 def bootstrap(env: dict[str, str]) -> None:
     home, temporary, github_env = runner_paths(env)
-    count = admit_ca(CA_FILE)  # Admission precedes curl and any manager execution.
+    refresh_runner_ca(env)  # Standard signed APT only, inside admitted hosted runner.
+    count = admit_ca(CA_FILE)  # Fingerprint admission still precedes curl/manager/SDK.
     clean = clean_environment(env, home)
     with tempfile.TemporaryDirectory(
         prefix="verified-rustup-", dir=temporary
