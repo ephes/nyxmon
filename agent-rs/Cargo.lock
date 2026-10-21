@@ -874,7 +874,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-agent"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "clap",
@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-checks"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
  "cookie_store",
@@ -925,7 +925,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "indexmap",
  "num-bigint",
@@ -935,7 +935,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-notify"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bytes",
  "http-body-util",
@@ -955,7 +955,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nyxmon-core",
  "rusqlite",

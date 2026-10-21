@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent 0.1.1 security candidate
+
+- Prepare the Rust-only patch with rustls-webpki 0.103.16 and webpki-roots 1.0.10,
+  preserving maintained cutover documentation and the fixed Python certifi lock.
+  Hosted bootstrap uses signed CA-only package updates, verified Rustup 1.29.2
+  and uv 0.13.4. This preparation does not publish a tag/release or deploy a binary.
+
 ### Security
 
 - Update the locked certifi CA bundle to 2026.10.19 for the eMudhra/emSign
