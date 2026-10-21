@@ -53,7 +53,7 @@ def runner_paths(env: dict[str, str]) -> tuple[Path, Path, Path]:
     paths = tuple(Path(env[name]) for name in ("HOME", "RUNNER_TEMP", "GITHUB_ENV"))
     if any(not p.is_absolute() or any(c in str(p) for c in "\r\n") for p in paths):
         raise RuntimeError("runner paths must be absolute single-line paths")
-    return paths
+    return paths[0], paths[1], paths[2]
 
 
 def admit_ca(path: Path) -> int:
