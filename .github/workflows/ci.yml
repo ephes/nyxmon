@@ -1,8 +1,7 @@
 name: CI
 
 # Same checks as `just lint`, `just typecheck`, `just test` and `npm test`
-# (the Rust agent in agent-rs/ runs in the `rust` job, its parity harness,
-# `just rs-parity`, in the `parity` job).
+# (the Rust agent in agent-rs/ runs in the `rust` job).
 # Lint runs the pre-commit Ruff hooks (check and format) exactly as locally.
 # Tests use config.settings.test (SQLite, no external services), so no
 # secrets are needed.
@@ -133,53 +132,3 @@ jobs:
           size=$(stat -c %s target/release/nyxmon-agent)
           echo "nyxmon-agent release binary: ${size} bytes"
           echo "nyxmon-agent release binary: ${size} bytes" >> "$GITHUB_STEP_SUMMARY"
-
-  parity:
-    name: Rust agent parity harness (just rs-parity)
-    needs: [python, rust]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    env:
-      CARGO_TERM_COLOR: always
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-      - name: Set up uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-        with:
-          version: "0.13.4"
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-      - name: Sync locked dependencies
-        run: uv sync
-      - name: Verify hosted runner trust and bootstrap Rustup 1.29.2
-        working-directory: ${{ github.workspace }}
-        run: python3 scripts/ci_rustup.py
-      - name: Install the pinned toolchain (agent-rs/rust-toolchain.toml)
-        working-directory: agent-rs
-        run: |
-          rustup toolchain install
-          rustc --version
-      - name: Cache cargo registry and build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            agent-rs/target
-          key: rust-parity-${{ runner.os }}-${{ hashFiles('agent-rs/rust-toolchain.toml', 'agent-rs/Cargo.lock') }}
-          restore-keys: rust-parity-${{ runner.os }}-
-      - name: Allow the fake nameserver on port 53
-        run: sudo sysctl -w net.ipv4.ip_unprivileged_port_start=53
-      - name: Build the agent
-        working-directory: agent-rs
-        run: cargo build --locked
-      - name: Parity harness
-        run: uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/nyxmon-agent --require-dns

@@ -484,7 +484,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Production (macmini) runs the Rust agent `nyxmon-agent` 0.1.0 instead of
   `start-agent` since 2026-10-16 (slice S16 of `agent-rs/PLAN.md`), after a
   shadow run, a controlled test alert and a rollback drill. The Python agent
-  stays in the repository and on the host as the rollback target. PLAN.md 4.4
+  stayed in the repository and on the host as the rollback target until the
+  fallback was retired on 2026-10-25 (see "Removed"). PLAN.md 4.4
   now states the memory budget as cgroup and anonymous memory: 0.1.0 uses
   about 12 MB cgroup memory (`ps` RSS about 21 MiB, half of it the
   file-backed binary).
@@ -552,6 +553,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warning per distinct value naming `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS` and
   `NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS`, then continues with the
   defaults. Remove it from deployment configuration.
+
+### Removed
+- Retire the Python agent fallback (2026-10-25, after the clean 7-day soak
+  of the Rust agent): production runs only `nyxmon-agent`, the deployment no
+  longer offers a switch back to `start-agent`, and rollback is a previous
+  Rust release pin or git history. Removed with it is the transition-only
+  tooling: the offline parity harness (`agent-rs/parity/run_parity.py`,
+  `fakes.py`, `just rs-parity`, CI job `parity`), the shadow-run tools
+  (`shadow_prepare.py`, `shadow_record.py`, `shadow_compare.py`), the fixture
+  drift test (`tests/unit/test_agent_rs_fixtures.py`) and its Python-oracle
+  generators (`agent-rs/fixtures/generate.py`, `gen_*.py`), and the tests of
+  the harness and the shadow tools. The fixture JSON files stay as Rust-owned
+  test data; `just rs-fixtures` now regenerates only the schema contract
+  (`agent-rs/fixtures/schema/`), which `test_agent_rs_schema_contract.py`
+  still checks against the Django migrations. `nyxmon-agent --shadow` and
+  `run-check` are unchanged (a notifier-only switch and a one-check runner
+  of the released binary). The Python agent (`start-agent` in `src/nyxmon`) stays in
+  the repository but is no longer deployed; removing it together with its
+  `_ensure_schema` DDL is a separate follow-up.
 
 ### Fixed
 - Upgrade note: apply Django migration `0013_site_connectivity_state` (normally

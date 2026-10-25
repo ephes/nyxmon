@@ -1,6 +1,12 @@
 # Rust port of the nyxmon monitoring agent — implementation plan
 
-Status: plan, not yet implemented. Work item `nyxmon-rust-agent`.
+Status: implemented (slices S1-S16). Production cut over to the Rust agent
+on 2026-10-16; after the 7-day soak the Python fallback was retired on
+2026-10-25 (Q6): the deployment no longer switches back to `start-agent`,
+rollback is a previous Rust release pin or git history, and the transition
+tooling of 7.2 (drift guard), 7.4 (parity harness) and 9.1 (shadow-run tools)
+was removed. The rest of this document is kept as the record of the port.
+Work item `nyxmon-rust-agent`.
 
 This document is the contract for porting `start-agent`
 (`src/nyxmon/entrypoints/cli.py:start_agent`, run by `nyxmon-monitor.service`
@@ -567,7 +573,9 @@ at INFO.
 `sqlite_repo.py:_ensure_schema` and `_upgrade_notification_state_schema` stay
 unchanged in the Python agent: they are idempotent no-ops on a migrated
 database, they keep agent-only test databases working, and the Python agent
-is the rollback target. Rule from now on (documented in
+is the rollback target. (2026-10-25: the Python agent is no longer deployed
+or a rollback target; its `_ensure_schema` DDL goes with the separate
+follow-up that removes the Python agent, Q6.) Rule from now on (documented in
 `docs/agent-rs.md` and enforced by the contract test below): **no new DDL is
 added to the Python agent**. Every future change to an agent table is a
 Django migration plus an update of the Rust contract. The Python DDL is
@@ -1900,6 +1908,13 @@ behaviour change cannot merge without regenerating fixtures, and the Rust
 tests then show what the Rust side must change. Rust loads fixtures with
 `include_str!` from `agent-rs/fixtures`.
 
+> **2026-10-25:** the drift guard (`tests/unit/test_agent_rs_fixtures.py`)
+> and the generators (`fixtures/generate.py`, `gen_*.py`) were removed with
+> the Python fallback (see git history). The fixture files are frozen as
+> Rust-owned test data: a behaviour change edits the fixture together with
+> the Rust code. `just rs-fixtures` regenerates only `schema/` (2.4), whose
+> contract test stays.
+
 ### 7.3 Process-level e2e (Rust binary)
 
 `agent-rs/crates/nyxmon-agent/tests/`: start the built binary against a temp
@@ -1916,6 +1931,10 @@ database (from the schema fixture) and fake servers:
   `127.0.0.1:<open port>`) writes the expected payload sequence.
 
 ### 7.4 Offline parity harness (Python vs Rust on identical inputs)
+
+> **2026-10-25:** the harness (`agent-rs/parity/run_parity.py`, `fakes.py`,
+> `just rs-parity`, CI job `parity`) and its tests were removed with the
+> Python fallback; see git history. `run-check` stays in the binary.
 
 `agent-rs/parity/run_parity.py` (`just rs-parity`): builds two copies of a
 database seeded with a curated check corpus (every check type, policies,
@@ -2012,6 +2031,10 @@ after accepting it: whether a client then reports a failed connect or a
 failed handshake depends on scheduling, in Python as well.
 
 ### 7.5 CI and just recipes
+
+> **2026-10-25:** the `parity` job and `just rs-parity` were removed;
+> `just rs-fixtures` regenerates only the schema contract, and the `python`
+> job runs only the schema contract test of the two drift tests below.
 
 - `.github/workflows/ci.yml` gains a `rust` job (pinned action SHAs like the
   existing jobs; toolchain from `rust-toolchain.toml`; cargo cache):
@@ -2163,6 +2186,12 @@ in CI when feasible, else asserts the drop-in rendering only.
 
 ### 8.5 Rollback
 
+> **2026-10-25:** the Python fallback is retired; the role (ops-library
+> 2.75.0) no longer has `nyxmon_agent_impl`, and the base unit runs the Rust
+> binary. Rollback is
+> the Rust-to-Rust case below (pin the previous release again) or a revert
+> from git history. The Python and emergency drop-in paths below are history.
+
 - Normal: set `nyxmon_agent_impl: python` in macmini host vars and run
   `just deploy-one nyxmon` (in tmux). The role removes the drop-in, systemd
   restarts the unit with the venv `start-agent`; SIGTERM makes the Rust agent
@@ -2191,6 +2220,13 @@ the same variables; lock file; `--check-schema`, `--shadow`, `run-check`),
 ## 9. Rollout
 
 ### 9.1 Shadow runs on macmini (no production writes, no Telegram)
+
+> **2026-10-25:** the shadow run was completed before the cutover (S15); the
+> tools (`shadow_prepare.py`, `shadow_record.py`, `shadow_compare.py`) and
+> their tests were removed with the Python fallback (see git history).
+> `nyxmon-agent --shadow` stays in the binary; it replaces only the notifier
+> (checks and database writes run normally), so the copy and mail-check
+> precautions of steps 1-2 still apply to any use of it.
 
 Prerequisites: S1–S13 merged, release `agent-rs-v0.1.0` published, the role
 deployed with `nyxmon_agent_impl: python` and the version pinned (binary
@@ -2468,6 +2504,11 @@ Acceptance criteria per slice (in addition to the green checks):
   (affects Django and backups) after cutover?
 - **Q6** When to retire the Python agent (and its `_ensure_schema` DDL):
   proposed after a 30-day soak, as its own change.
+  **Decided:** the owner retired the Python fallback on 2026-10-25, after
+  the clean 7-day soak (deployment switch, parity harness, shadow-run tools
+  and fixture drift test removed). The Python agent source in `src/nyxmon`
+  (the `start-agent` entry point) stays but is no longer deployed; removing
+  it together with `_ensure_schema` is a separate follow-up.
 - **Q7** Approve the shadow run on macmini (second agent process, doubled
   probe traffic to the monitored endpoints for ~1–2 days, mail checks
   excluded, one extra SMTP test mail in phase C).

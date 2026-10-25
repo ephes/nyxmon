@@ -53,7 +53,8 @@ pub(super) fn in_ranges(ranges: &[(u32, u32)], c: char) -> bool {
 }
 
 /// Code point ranges that are not printable for the oracle CPython, generated
-/// by `fixtures/generate.py` from `str.isprintable()`, so `repr` follows
+/// by the former `fixtures/generate.py` (removed 2026-10-25) from
+/// `str.isprintable()`, so `repr` follows
 /// CPython's Unicode database version rather than a Rust crate's.
 fn nonprintable_ranges() -> &'static [(u32, u32)] {
     static RANGES: OnceLock<Vec<(u32, u32)>> = OnceLock::new();

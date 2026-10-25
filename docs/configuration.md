@@ -866,8 +866,8 @@ A second agent started on the same database logs
 `another nyxmon agent holds <lock path>; refusing to start` and exits with
 status 1. The Rust port of the agent (`agent-rs/`) takes the same lock, so the
 two implementations can never run against one database at the same time. The
-lock path is derived from `--db` as given; a copy of the database (a shadow
-run) has its own lock. The file may stay behind after the agent exits; it is
+lock path is derived from `--db` as given; a copy of the database (for a
+`--shadow` run) has its own lock. The file may stay behind after the agent exits; it is
 not a stale lock (the kernel drops `flock` locks with the process), so never
 delete it to "unlock" a database.
 
@@ -877,14 +877,19 @@ The Rust port of the agent, `nyxmon-agent` (`agent-rs/`, see
 {doc}`agent-rs`), reads the same command-line flags and the same environment
 variables as `start-agent`, with the same defaults, bounds and fallbacks:
 everything on this page applies to both implementations. It takes the same
-agent lock. In addition it offers:
+agent lock. Production runs only `nyxmon-agent`; the Python fallback was
+retired on 2026-10-25 and `start-agent` is no longer deployed. In addition it
+offers:
 
 - `nyxmon-agent --db PATH --check-schema`: verify the database schema
   against what the agent needs, read-only and without the lock; exit 0 or 1.
   The Rust agent never creates or alters tables: run `manage.py migrate`
   first.
-- `nyxmon-agent --db PATH --shadow`: a shadow run on a copy of the
-  database. Alerts become one log line each
+- `nyxmon-agent --db PATH --shadow`: only the notifier changes. Checks run,
+  results and notification state are written and the cleaner deletes as in
+  production, so use it only on a copy of the database, with the `smtp` and
+  `imap` checks disabled in the copy (an SMTP check sends real mail; an IMAP
+  check deletes the messages it matched). Alerts become one log line each
   (`notification check_id=<id> status=<s> error_type=<t>`); `TELEGRAM_*` and
   `OPSGATE_*` are ignored and `--enable-telegram` is refused.
 - `nyxmon-agent run-check --db PATH --check-id N [--imap-no-delete]`: run one

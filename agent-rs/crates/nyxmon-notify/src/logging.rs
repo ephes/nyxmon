@@ -12,8 +12,8 @@ use crate::{Delivery, Notifier, NotifyFuture};
 /// Logs one ERROR line per alert under `nyxmon.adapters.notification`;
 /// writing the line is the delivery.
 ///
-/// In `--shadow` mode the line is machine-readable for the shadow
-/// comparison: `notification check_id=<id> status=<s> error_type=<t>`
+/// In `--shadow` mode the line is machine-readable, one per alert:
+/// `notification check_id=<id> status=<s> error_type=<t>`
 /// (`<t>` is `str(error_type)`, empty when absent). Otherwise it follows the
 /// Python text (PLAN.md P2).
 #[derive(Clone)]

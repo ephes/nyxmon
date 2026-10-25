@@ -16,11 +16,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run Django server: `cd src/django && uv run manage.py runserver`
 - Rust agent (`agent-rs/`, see `agent-rs/README.md`): `just rs-test`,
   `just rs-lint`, `just rs-fmt`, `just rs-deny`; `just test`/`just lint`/`just typecheck`
-  include them. After changing agent behaviour in `src/nyxmon` or adding a
-  Django migration, run `just rs-fixtures` (the fixture drift and schema
-  contract tests fail otherwise). Never add DDL to the Python agent.
-  `just rs-parity` runs the Python and the Rust agent side by side on fake
-  servers and fails on any unmasked difference (CI job `parity`).
+  include them. After adding a Django migration, run `just rs-fixtures`
+  (it regenerates the Rust schema contract; the schema contract test fails
+  otherwise). Never add DDL to the Python agent. Production runs only the
+  Rust agent: the Python fallback was retired on 2026-10-25, `start-agent` in
+  `src/nyxmon` is no longer deployed (its removal is a separate follow-up),
+  and the fixtures in `agent-rs/fixtures/` are Rust-owned test data (no
+  generator, no drift test).
 
 ## Production Deployment
 - Build and publish package: `uv build && uv publish`

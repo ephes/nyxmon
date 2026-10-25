@@ -1,12 +1,18 @@
 # nyxmon-agent (Rust)
 
 A Rust port of the nyxmon monitoring agent (`start-agent`). The contract is
-[`PLAN.md`](PLAN.md); the Python agent in `src/nyxmon` stays the reference
-implementation and the rollback target. **Production (macmini) runs this
-agent since 2026-10-16** (release `agent-rs-v0.1.0`, slice S16): the
-ops-library `nyxmon_deploy` role installs a pinned release binary and selects
-it with `nyxmon_agent_impl: rust` (PLAN.md 8). rsync and git deploys still
-ship `src/` only; `agent-rs/` reaches the host only as a release.
+[`PLAN.md`](PLAN.md). **Production (macmini) runs this agent since
+2026-10-16** (release `agent-rs-v0.1.0`, slice S16; `agent-rs-v0.1.1` since
+2026-10-21): the ops-library `nyxmon_deploy` role installs a pinned release
+binary and runs it (PLAN.md 8). rsync and git deploys still ship `src/`
+only; `agent-rs/` reaches the host only as a release.
+
+The Python fallback was retired on 2026-10-25: the deployment can no longer
+switch back to `start-agent`, rollback is a previous Rust release pin or git
+history, and the transition tooling (the offline parity harness, the
+shadow-run tools and the fixture drift test with its generators) was removed;
+see git history. The Python agent stays in `src/nyxmon` but is not deployed;
+removing it together with its `_ensure_schema` DDL is a separate follow-up.
 
 The current published security release is [`agent-rs-v0.1.1`](https://github.com/ephes/nyxmon/releases/tag/agent-rs-v0.1.1),
 published on 2026-10-21 from `c578530b64561c43ea56eb4377a9a03dd2131ddc`.
@@ -31,7 +37,7 @@ helpers and wire format; S5b part 2: the `dns` executor on an own stub
 resolver that follows dnspython.
 
 Slice S8 adds the notifiers (`nyxmon-notify`): Telegram with the OpsGate
-ticket integration, and the logging/shadow notifier.
+ticket integration, and the logging notifier (`--shadow`).
 
 Slice S9a adds the agent runtime library (`nyxmon-agent`): the executor
 registry (`nyxmon_checks::registry`), the batch runner with the shutdown
@@ -63,8 +69,8 @@ output parsers and statistics in `nyxmon_core::ping_text`.
 
 Slice S12 adds `nyxmon-agent run-check`, the process tests of PLAN.md 7.3
 (signals, SIGKILL and stale-lease reclaim, the cleaner), the offline parity
-harness against the Python agent (`just rs-parity`, CI job `parity`), the
-shadow-run tools and the operator documentation (`docs/agent-rs.md`).
+harness against the Python agent, the shadow-run tools (both removed on
+2026-10-25) and the operator documentation (`docs/agent-rs.md`).
 
 Slices S13 to S16 released and rolled out the binary: the release pipeline
 (S13), the deployment role switch and the install on macmini (S14), the
@@ -79,12 +85,6 @@ agent-rs/
   Cargo.lock            committed; every build uses --locked
   rust-toolchain.toml   pinned toolchain (also the MSRV)
   deny.toml             cargo-deny policy (licenses, advisories, sources)
-  parity/
-    run_parity.py       offline parity harness (Python vs Rust, `just rs-parity`)
-    fakes.py            its scripted fake servers
-    shadow_prepare.py   shadow run (PLAN.md 9.1): database copy for the shadow agent
-    shadow_record.py    shadow run: records both databases over time
-    shadow_compare.py   shadow run: comparison report
   scripts/
     release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
   PLAN.md               the implementation plan and parity contract
@@ -98,10 +98,9 @@ agent-rs/
     nyxmon-agent/       runtime library (runner, result handler, cleaner, logging)
                         and the binary (S9+)
   fixtures/
-    generate.py         writes the fixtures from the Python code
-    gen_*.py            per-slice fixture builders loaded by generate.py
     generate_schema.py  writes schema/ from `manage.py migrate`
-    *.json              generated fixtures (do not edit by hand)
+    *.json              fixtures generated from the Python code until
+                        2026-10-25, Rust-owned test data since
     schema/             the Django schema contract (generated)
 ```
 
@@ -111,7 +110,7 @@ agent-rs/
   `rust-toolchain.toml` on first use. Run cargo from inside `agent-rs/` (the
   just recipes do) so the pin applies; a non-rustup `cargo` on `PATH` ignores
   the pin.
-- `uv` for the fixture generator (`uv sync` at the repository root).
+- `uv` for the schema contract generator (`uv sync` at the repository root).
 - Docker only for `just rs-build-linux`; on an ARM Mac the Docker VM needs
   amd64 emulation (Docker Desktop's default; colima: `--vz-rosetta` or
   QEMU binfmt), otherwise the container fails with `exec format error`.
@@ -125,8 +124,7 @@ From the repository root:
 | `just rs-test` | `cargo test --workspace --locked` |
 | `just rs-lint` | `cargo fmt --all --check` and `cargo clippy --workspace --all-targets --locked -- -D warnings` |
 | `just rs-fmt` | format the workspace |
-| `just rs-fixtures` | regenerate `fixtures/*.json` from the Python code |
-| `just rs-parity` | build the binary and run the offline parity harness against the Python agent (see below) |
+| `just rs-fixtures` | regenerate the schema contract `fixtures/schema/` from the Django migrations |
 | `just rs-build` | release build for the host (`agent-rs/target/release/nyxmon-agent`) |
 | `just rs-build-linux` | release build for macmini (`x86_64-unknown-linux-gnu`, glibc) in a pinned `rust:<ver>-bookworm` container; output under `agent-rs/target/docker-linux-amd64/` |
 | `just rs-deny` | `cargo deny --locked check` against `deny.toml` (licenses, advisories, sources); needs [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) on `PATH` |
@@ -134,8 +132,8 @@ From the repository root:
 
 CI runs the same Rust checks in the `rust` job of `.github/workflows/ci.yml`,
 plus `cargo deny --locked check` (a pinned, checksum-verified cargo-deny
-release; PLAN.md R9), and reports the release binary size; the fixture drift
-test runs in the `python` job as part of pytest.
+release; PLAN.md R9), and reports the release binary size; the schema
+contract test runs in the `python` job as part of pytest.
 
 ## Running the binary
 
@@ -144,7 +142,7 @@ nyxmon-agent --db PATH [--interval 5] [--cleanup-interval 3600]
              [--retention-period 86400] [--batch-size 1000] [--disable-cleaner]
              [--log-level INFO] [--enable-telegram]     # start-agent's flags
 nyxmon-agent --db PATH --check-schema    # verify the schema read-only, exit 0/1
-nyxmon-agent --db PATH --shadow          # shadow run: machine-readable alert lines, no Telegram
+nyxmon-agent --db PATH --shadow          # alerts as machine-readable log lines, no Telegram/OpsGate
 nyxmon-agent run-check --db PATH --check-id N [--imap-no-delete] [--log-level LEVEL]
 nyxmon-agent --version
 ```
@@ -156,27 +154,11 @@ JSON line, `{"check_id": N, "check_type": "...", "status": "...", "data":
 messages of an IMAP check in the mailbox. Exit status 0 when the check ran,
 1 for a missing database, an old schema or an unknown id (PLAN.md 7.4).
 
-## Parity harness
-
-`just rs-parity` builds the binary and runs `parity/run_parity.py`: the
-Python `start-agent` and `nyxmon-agent --shadow` run at the same time on two
-copies of a database seeded with the same check corpus, each against its own
-scripted fake servers (`parity/fakes.py`, answering by request index per
-endpoint), and the first six results of every check, the notification
-state after each sample, the alerts per check and the collector incidents
-are compared. Any difference outside the documented masks (PLAN.md 7.4)
-fails the run; `--keep` keeps the databases and logs. The DNS check needs
-port 53 (CI allows it with `sysctl net.ipv4.ip_unprivileged_port_start=53`);
-without it the harness leaves that check out and says so. The `parity` job
-of `.github/workflows/ci.yml` runs it with `--require-dns`.
-
-## Shadow run tools
-
-`parity/shadow_prepare.py`, `shadow_record.py` and `shadow_compare.py`
-prepare the database copy for a shadow run on the production host, record
-both databases while the shadow agent runs, and report the differences
-(PLAN.md 9.1). They need only the host's `python3`; the procedure is in
-`docs/agent-rs.md` ("Shadow run"). Tests: `tests/unit/test_agent_rs_shadow.py`.
+`--shadow` replaces only the notifier: checks run, results and notification
+state are written and the cleaner deletes as in production. Use it only on a
+copy of the database, with the `smtp` and `imap` checks disabled in the copy
+(an SMTP check sends real mail; an IMAP check deletes the messages it
+matched, which the production check expects).
 
 ## Releases
 
@@ -211,20 +193,18 @@ the release workflow and `just rs-build-linux`), else from `git rev-parse
 HEAD`, else `unknown`. A local build from a dirty tree reports the HEAD
 commit.
 
-## Fixtures: Python is the oracle
+## Fixtures
 
-`fixtures/generate.py` calls the real Python functions on a fixed corpus
-(clocks, nonces and the environment injected) and writes deterministic JSON
-(`sort_keys`, `indent=1`, ASCII). Rust tests embed the files with
-`include_str!` and must reproduce every case. `tests/unit/test_agent_rs_fixtures.py`
-regenerates them in memory and fails when a committed file differs, so a
-Python behaviour change cannot merge without `just rs-fixtures`, and the Rust
-tests then show what the port must change. Each slice adds its builders to
-`GENERATORS` in `generate.py`.
-
-The oracle is the newest CPython 3.13 patch release (what CI's
-`setup-python` installs; `uv python install 3.13` locally). Older patch
-releases can differ in corner cases, which the drift test then reports.
+The JSON files in `fixtures/` pin the behaviour the port reproduces. Until
+2026-10-25 they were generated from the Python implementation
+(`fixtures/generate.py` called the real Python functions on a fixed corpus,
+with clocks, nonces and the environment injected, and a drift test
+regenerated them on every `pytest` run; the oracle was the newest CPython
+3.13 patch release). With the Python fallback retired, the generators and
+the drift test were removed (see git history) and the files are Rust-owned
+test data: a behaviour change edits the fixture together with the Rust code.
+Rust tests embed the files with `include_str!` and must reproduce every case.
+The descriptions below say what each file was generated from.
 
 Current fixtures:
 
@@ -295,8 +275,8 @@ Current fixtures:
   `suppression_rules.json`, `decision.json`, `lease.json`,
   `incident_payloads.json` (`gen_alerting.py`): the alerting core. JSON
   whose key order matters is stored as JSON text (`*_json`) because the
-  files are written with sorted keys. `decision.json` is generated under
-  `sys.monitoring` line tracing and the generator fails unless the corpus
+  files are written with sorted keys. `decision.json` was generated under
+  `sys.monitoring` line tracing and the generator failed unless the corpus
   executes every line of `_should_notify_check_result`.
 - `site_replay/*.json` (`gen_site.py`): the real `SiteConnectivityObserver`
   driven round by round by a scripted probe runner, clock, in-memory store
@@ -305,7 +285,7 @@ Current fixtures:
   log lines in call order (payloads as `json.dumps` text), the probed
   targets, the published snapshot and the exception a round raised;
   `nyxmon-core` replays them against `site::Observer` with the same fakes.
-  `site_replay/coverage.json` fails generation unless the corpus executes
+  `site_replay/coverage.json` failed generation unless the corpus executed
   every line of the observer's pure methods and rendering helpers.
 - `config_ping.json`, `ping_text.json`, `ping_unicode.json` (`gen_ping.py`):
   the ping configuration and target host; `build_ping_command`,

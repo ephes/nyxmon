@@ -1,5 +1,6 @@
-//! `collector_incidents.json` (`gen_collector.py`): the collector incident
-//! payload and messages against the Python implementation.
+//! `collector_incidents.json` (generated from the Python implementation by
+//! the former `gen_collector.py`, removed 2026-10-25): the collector incident
+//! payload and messages.
 
 use super::*;
 use crate::fixture::{Field, load};

@@ -39,7 +39,7 @@ typecheck:
     uv run mypy
     cd agent-rs && cargo check --workspace --all-targets --locked
 
-# Run all tests (Python suite incl. the Rust fixture drift test, then the Rust agent)
+# Run all tests (Python suite incl. the Rust schema contract test, then the Rust agent)
 test:
     uv run pytest
     just rs-test
@@ -100,15 +100,9 @@ rs-deny:
 rs-fmt:
     cd agent-rs && cargo fmt --all
 
-# Regenerate the shared fixtures and the schema contract from the Python implementation
+# Regenerate the Rust agent's schema contract (agent-rs/fixtures/schema) from the Django migrations
 rs-fixtures:
-    uv run python agent-rs/fixtures/generate.py
     uv run python agent-rs/fixtures/generate_schema.py
-
-# Offline parity harness: Python and Rust agents on the same corpus and fake servers (agent-rs/PLAN.md 7.4)
-rs-parity *ARGS:
-    cd agent-rs && cargo build --locked
-    uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/nyxmon-agent {{ARGS}}
 
 # Release build of the Rust agent for this host
 rs-build:

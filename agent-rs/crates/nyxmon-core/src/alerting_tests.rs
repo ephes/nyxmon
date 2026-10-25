@@ -1,7 +1,8 @@
 //! Fixture tests of the alerting core (slice S3): policy, site dependency,
 //! site snapshot, suppression rules, the decision function, the runtime
 //! estimate and the delivery-marker helpers, each against the file
-//! `fixtures/generate.py` (`gen_alerting.py`) produced from the Python code.
+//! the former `fixtures/generate.py` (`gen_alerting.py`, removed 2026-10-25)
+//! produced from the Python code.
 
 use std::collections::HashMap;
 use std::sync::Arc;

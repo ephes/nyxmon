@@ -71,7 +71,8 @@ fn payload_text(payload: &PyDict) -> String {
     dumps(&PyJson::Dict(payload.clone()), &DumpOpts::python_default()).expect("dumpable")
 }
 
-/// The persistent fake state of `gen_site.py:_World`.
+/// The persistent fake state of the former generator's `gen_site.py:_World`
+/// (removed 2026-10-25, see git history).
 #[derive(Default)]
 struct State {
     now: i64,

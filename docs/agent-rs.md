@@ -3,23 +3,26 @@
 `nyxmon-agent` is a Rust port of the monitoring agent (`start-agent`). It
 runs the same checks against the same SQLite database, writes the same rows,
 sends the same Telegram and OpsGate messages and takes the same command line
-and environment variables, so either implementation can run the
-`nyxmon-monitor` service and the dashboard cannot tell which one wrote a row.
-The Python agent stays in the repository as the reference implementation and
-the rollback target.
+and environment variables, so it replaced the Python agent in the
+`nyxmon-monitor` service without the dashboard noticing which one wrote a row.
+The Python agent (`start-agent` in `src/nyxmon`) stays in the repository, but
+it is no longer deployed and no longer a rollback target.
 
 The contract is `agent-rs/PLAN.md`; build, test and release commands are in
 `agent-rs/README.md`. This page is the overview for operators and
 contributors.
 
 ```{note}
-Production runs the Rust agent since 2026-10-16: the ops-library
-`nyxmon_deploy` role selects it with `nyxmon_agent_impl: rust` (PLAN.md 8.3)
-and macmini runs release `agent-rs-v0.1.0`. Before the switch the binary was
-validated by the process tests, the offline parity harness and a shadow run
-on the production host (below). The Python agent stays installed as the
-rollback target; the owner decides on its retirement after the soak
-(PLAN.md 9.4).
+Production runs the Rust agent since 2026-10-16 (cutover with release
+`agent-rs-v0.1.0`; macmini runs `agent-rs-v0.1.1` since 2026-10-21). Before
+the switch the binary was validated by the process tests, an offline parity
+harness and a shadow run on the production host. After a clean 7-day soak the
+Python fallback was retired on 2026-10-25: the deployment no longer offers a
+switch back to `start-agent`, and the parity harness, the shadow-run tools
+and the fixture drift test were removed (see git history). Rollback is a
+previous Rust release pin, or git history. The `start-agent` entry point
+remains in `src/nyxmon` but is not deployed; removing it together with its
+`_ensure_schema` DDL is a separate follow-up.
 ```
 
 ## Architecture
@@ -33,7 +36,7 @@ owns the only read-write SQLite connection (the "DB actor"):
 | JSON values with CPython semantics (`PyJson`), environment readers, notification policy, suppression rules, the notification decision, the site observer state machine, lease estimate | `nyxmon-core` | `domain/`, `service_layer/`, `site_connectivity.py` (pure parts) |
 | SQLite store: claims, stale reclaim, release, result persistence, incidents, cleaner deletes, schema verification, the agent lock | `nyxmon-store` | `adapters/repositories/sqlite_repo.py`, `agent_lock.py` |
 | Check executors: `http`, `json-http`, `json-metrics`, `tcp`, `ping`, `dns`, `smtp`, `imap`; maintenance-suppression fetch | `nyxmon-checks` | `adapters/runner/executors/` |
-| Telegram (MarkdownV2 with plain-text fallback), OpsGate tickets, the logging/shadow notifier | `nyxmon-notify` | `adapters/notification.py` |
+| Telegram (MarkdownV2 with plain-text fallback), OpsGate tickets, the logging notifier (`--shadow`) | `nyxmon-notify` | `adapters/notification.py` |
 | Collector loop, batch runner, result handler, cleaner, site observer runtime, CLI and shutdown | `nyxmon-agent` | `collector.py`, `async_runner.py`, `handlers.py`, `cleaner.py`, `cli.py` |
 
 Long-lived tasks: the collector loop (one batch task per iteration), the
@@ -56,9 +59,10 @@ against glibc 2.35 or older, so names resolve through `getaddrinfo` and
 Django migrations own the database schema. The Rust agent runs no DDL: at
 startup it checks that every table and column it uses exists and that the
 `nyxboard` migration it needs (`0013_site_connectivity_state`) is applied,
-and refuses to start otherwise (exit 1 with the missing columns). The Python
-agent still creates and upgrades its tables itself (`_ensure_schema`), but
-**new DDL must never be added there**: a schema change is a Django migration,
+and refuses to start otherwise (exit 1 with the missing columns). The
+undeployed Python agent still creates and upgrades its tables itself
+(`_ensure_schema`, to be removed with it), but **new DDL must never be added
+there**: a schema change is a Django migration,
 and `just rs-fixtures` regenerates the schema contract the Rust tests and
 `tests/unit/test_agent_rs_schema_contract.py` check. A migration that the
 Rust agent needs raises its minimum migration and is a breaking agent
@@ -79,8 +83,10 @@ PLAN.md 1.3 defines three parity classes:
   payloads, the text of every Telegram, OpsGate and collector message,
   environment variables, CLI flags, exit codes, signal handling, and the
   operator log lines listed in PLAN.md 1.7. Pinned by fixtures that the
-  Python code generates (`agent-rs/fixtures`, a drift test fails when Python
-  changes without regenerating them).
+  Python code generated (`agent-rs/fixtures`). Since the Python fallback was
+  retired (2026-10-25) the fixtures are Rust-owned test data: the generators
+  and the drift test are gone, and a behaviour change edits the fixture
+  together with the Rust code.
 - **P2 — equivalent**: error messages that come from library exceptions
   (`str(exc)` of httpx, ssl, smtplib, dnspython), durations, other log lines,
   and the order of set reprs in configuration errors.
@@ -129,7 +135,7 @@ reads the same environment variables ({doc}`configuration`). Additions:
 | --- | --- |
 | `nyxmon-agent --version` | `nyxmon-agent <version> (<git commit>)` |
 | `nyxmon-agent --db PATH --check-schema` | verify the schema read-only, exit 0/1 |
-| `nyxmon-agent --db PATH --shadow` | shadow run on a database copy: the logging notifier with one machine-readable line per alert (`notification check_id=<id> status=<s> error_type=<t>`); `TELEGRAM_*`/`OPSGATE_*` are ignored and `--enable-telegram` is refused |
+| `nyxmon-agent --db PATH --shadow` | the logging notifier with one machine-readable line per alert (`notification check_id=<id> status=<s> error_type=<t>`) instead of Telegram/OpsGate; `TELEGRAM_*`/`OPSGATE_*` are ignored and `--enable-telegram` is refused. Only the notifier changes: checks run, results and notification state are written and the cleaner deletes as in production, so use it only on a copy of the database, and disable the `smtp` and `imap` checks in the copy first (an SMTP check sends real mail; an IMAP check deletes the messages it matched, which the production check expects). |
 | `nyxmon-agent run-check --db PATH --check-id N [--imap-no-delete]` | execute one check from a read-only database and print the result as one JSON line; no lock, no result row, no notification; disabled checks run too |
 
 Log lines go to stderr in the Python format
@@ -143,7 +149,8 @@ Both implementations take an exclusive `flock` on `<db path>.agent.lock`
 before they touch the database; a second agent exits 1 with
 `another nyxmon agent holds <lock path>; refusing to start` (see "Operations:
 one agent per database" in {doc}`configuration`). A database copy has its
-own lock, which is what makes a shadow run possible.
+own lock, so a `--shadow` run on a copy does not conflict with the
+production agent.
 
 ### Shutdown
 
@@ -156,114 +163,15 @@ claims stay until the processing lease expires; the next start then records
 one `stale_processing_lease` result per check and sends one batch alert,
 exactly like the Python agent.
 
-### Shadow run
+### Deployment and rollback
 
-Before the switch, the binary runs next to the production agent on a copy
-of the database (PLAN.md 9.1), with no Telegram and no writes to the
-production database. The tools are in `agent-rs/parity/` and need only the
-host's `python3`. Deployments do not ship `agent-rs/`, so copy them to the
-host first, into a directory only the `nyxmon` user can read, and run them as
-that user (it owns the live database):
-
-```bash
-install -d -o nyxmon -g nyxmon -m 0700 /var/lib/nyxmon-shadow /var/lib/nyxmon-shadow/tools
-install -o nyxmon -g nyxmon -m 0600 shadow_prepare.py shadow_record.py \
-    shadow_compare.py /var/lib/nyxmon-shadow/tools/
-```
-
-1. **Copy and prepare**:
-
-   ```bash
-   sudo -u nyxmon python3 /var/lib/nyxmon-shadow/tools/shadow_prepare.py \
-       --source /home/nyxmon/site/db.sqlite3 \
-       --dest /var/lib/nyxmon-shadow/db.sqlite3
-   ```
-
-   It copies the live database online (SQLite backup API), disables the
-   `smtp` and `imap` checks in the copy (a shadow IMAP check would delete the
-   messages the production check expects; a shadow SMTP check sends mail),
-   releases the claims the copy inherited, deletes the copy's collector
-   incidents, prints T0 and writes the notification-state baseline B0 to
-   `db.sqlite3.baseline.json`.
-
-2. **Run the shadow agent** in tmux, with the production hardening and an
-   environment file holding only `NYXMON_*` variables:
-
-   ```bash
-   systemd-run --unit nyxmon-agent-shadow -p User=nyxmon -p Group=nyxmon \
-       -p NoNewPrivileges=yes -p ProtectSystem=strict \
-       -p ReadWritePaths=/var/lib/nyxmon-shadow \
-       -p EnvironmentFile=/var/lib/nyxmon-shadow/shadow.env \
-       /opt/nyxmon-agent/<version>/nyxmon-agent \
-       --db /var/lib/nyxmon-shadow/db.sqlite3 --shadow
-   journalctl -fu nyxmon-agent-shadow
-   ```
-
-3. **Record** both databases every 60 s in the same tmux session (read-only;
-   new results, changed notification states and incidents, lease snapshots,
-   retention counters, and memory/CPU of both units):
-
-   ```bash
-   sudo -u nyxmon python3 /var/lib/nyxmon-shadow/tools/shadow_record.py \
-       --prod /home/nyxmon/site/db.sqlite3 \
-       --shadow /var/lib/nyxmon-shadow/db.sqlite3 --since <T0> \
-       --unit nyxmon-monitor --unit nyxmon-agent-shadow \
-       --out /var/lib/nyxmon-shadow/record.jsonl
-   ```
-
-4. **Compare** after the window (24 h for phase A):
-
-   ```bash
-   journalctl -u nyxmon-agent-shadow --since @<T0> -o short-unix \
-       > /var/lib/nyxmon-shadow/shadow.log
-   sudo -u nyxmon python3 /var/lib/nyxmon-shadow/tools/shadow_compare.py \
-       --record /var/lib/nyxmon-shadow/record.jsonl --since <T0> \
-       --baseline /var/lib/nyxmon-shadow/db.sqlite3.baseline.json \
-       --shadow-log /var/lib/nyxmon-shadow/shadow.log \
-       --prod-db /home/nyxmon/site/db.sqlite3 \
-       --shadow-db /var/lib/nyxmon-shadow/db.sqlite3 \
-       --json /var/lib/nyxmon-shadow/report.json
-   ```
-
-   Export the journal before the transient unit is stopped. With the
-   `short-unix` timestamps the comparison counts the alert lines from T0 to
-   the start of the last recorded shadow snapshot (`shadow_log`; earlier runs
-   of the same unit name are left out) and, separately, the lines up to
-   `--log-grace-seconds` (default 60) after it (`shadow_log_after_window`):
-   the agent records a decision before it logs the alert, so a decision the
-   last snapshot saw may be logged just after it. A check is a finding
-   unless its `attempt_seq` rise lies between `shadow_log` and
-   `shadow_log + shadow_log_after_window`.
-
-   The report lists per check the outcomes of both agents, every shadow
-   sample whose status or error type differs from the nearest production
-   sample (with both timestamps, so a changed endpoint explains it), data
-   key lists that occur in only one database, the number of notification
-   decisions per database (`attempt_seq` now minus `attempt_seq` in B0,
-   cross-checked with the journal lines as above), stale-lease results,
-   claims stuck in `processing`, whether the shadow cleaner deletes old
-   results, and memory and CPU against the budgets of PLAN.md 4.4. It ends
-   with the findings to explain; acceptance is "every finding explained".
-
-5. **Phase B** repeats the run with `NYXMON_SITE_CONNECTIVITY_MODE=observe`;
-   **phase C** runs the mail checks once from the copy:
-   `nyxmon-agent run-check --db /var/lib/nyxmon-shadow/db.sqlite3 --check-id <smtp id>`
-   and `run-check --imap-no-delete --check-id <imap id>`, compared with the
-   latest production results of the same checks.
-
-Stop the unit (`systemctl stop nyxmon-agent-shadow`) and remove
-`/var/lib/nyxmon-shadow` afterwards.
-
-### Switching and rollback
-
-The `nyxmon-monitor` unit runs one implementation at a time, chosen by the
-deployment role (`nyxmon_agent_impl: python | rust` in the ops-control host
-variables, PLAN.md 8.3-8.5). Rolling back is flipping the variable to
-`python` and deploying; in an emergency, remove the drop-in
-`/etc/systemd/system/nyxmon-monitor.service.d/agent-impl.conf`, run
-`systemctl daemon-reload` and restart the unit. Nothing in the database
-depends on which agent wrote it, and the lock makes sure the two never run
-on the production database at once.
+The `nyxmon-monitor` unit runs the pinned `nyxmon-agent` release
+(`/opt/nyxmon-agent/<version>/nyxmon-agent`); the ops-library `nyxmon_deploy`
+role and its pyinfra port install, validate (`--version`, `--check-schema`)
+and select it. Rollback is pinning the previous Rust release again (the
+previously selected version stays installed) and deploying, or a revert
+from git history. Until 2026-10-25 the role could also switch back to the
+Python agent (`nyxmon_agent_impl: python`); that fallback is retired.
 
 The cutover on 2026-10-16 was verified as in PLAN.md 9.3: every enabled check
 had a new result within its interval, the status distribution matched the
@@ -278,15 +186,16 @@ commands and the deploy log.
 
 ## Testing
 
-- **Fixtures** (`just rs-fixtures`): the Python code generates the expected
-  outputs of every pure function and of executor runs against scripted
-  servers; the Rust tests replay them.
+- **Fixtures** (`agent-rs/fixtures`): expected outputs of every pure function
+  and of executor runs against scripted servers, generated from the Python
+  code until 2026-10-25 and Rust-owned test data since; the Rust tests replay
+  them. `just rs-fixtures` regenerates only the schema contract
+  (`fixtures/schema/`) from the Django migrations.
 - **Process tests** (`agent-rs/crates/nyxmon-agent/tests/binary.rs`): the
   built binary against temporary databases and fake servers (signals,
   SIGKILL and stale-lease reclaim, the cleaner, the site observer, the lock,
   `run-check`).
-- **Offline parity harness** (`just rs-parity`, CI job `parity`): both agents
-  side by side on one corpus of checks against scripted fake servers; every
-  difference in results, key order, notification state or alerts outside
-  the documented masks fails the run (PLAN.md 7.4).
-- **Shadow run** on the production host before the switch (above).
+- **Before the cutover** an offline parity harness (both agents side by side
+  against scripted fake servers, PLAN.md 7.4) and a shadow run on the
+  production host (PLAN.md 9.1) compared the two implementations. Both were
+  removed with the Python fallback on 2026-10-25; see git history.
