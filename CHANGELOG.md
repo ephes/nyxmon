@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Warning digest. With `NYXMON_NOTIFY_WARNING_DELIVERY=digest` (Rust agent
+  0.1.2) a warning sends no Telegram message of its own, and the new
+  `manage.py send_warning_digest` reports all open warnings in one silent
+  message, or nothing when none are open. Errors still alert at once. The
+  default stays `individual`, so nothing changes without the setting.
+
 ### Security
 
 - Update the locked certifi CA bundle to 2026.10.19 for the eMudhra/emSign

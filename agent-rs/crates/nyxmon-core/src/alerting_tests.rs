@@ -499,3 +499,146 @@ fn list_indexes_accept_ascii_digits_only() {
     assert_eq!(lookup(&payload, "0.1"), Ok(Some(&PyJson::Int(2))));
     assert_eq!(lookup(&payload, "0.\u{661}"), Ok(None));
 }
+
+/// One decision with `NYXMON_NOTIFY_WARNING_DELIVERY` set to `delivery`.
+fn delivery_decision(
+    delivery: &str,
+    read: NotificationState,
+    status: ResultStatus,
+    retry_seconds: i64,
+) -> (crate::model::NotificationDecision, Vec<(String, String)>) {
+    let (sink, warn_once, mut env) = harness();
+    env.replace_source(EnvSource::Map(HashMap::from([(
+        "NYXMON_NOTIFY_WARNING_DELIVERY".to_owned(),
+        delivery.to_owned(),
+    )])));
+    let check = Check {
+        check_id: 7,
+        service_id: 1,
+        name: String::new(),
+        check_type: "http".to_owned(),
+        url: "https://example.invalid".to_owned(),
+        check_interval: 300,
+        next_check_time: 0,
+        processing_started_at: 0,
+        status: CHECK_STATUS_IDLE.to_owned(),
+        disabled: false,
+        data: PyJson::Dict(PyDict::new()),
+        claim_started_at: 0,
+    };
+    let cooldown = BigInt::from(3600);
+    let ctx = DecisionContext {
+        env: &env,
+        warnings: &warn_once,
+        snapshot: None,
+        limits: SiteLimits::default(),
+        retry_seconds,
+        immediate_cooldown: &cooldown,
+    };
+    let decision = decide(
+        &ctx,
+        read,
+        &check,
+        status,
+        &mut PyDict::new(),
+        false,
+        1_000_000,
+    );
+    (decision, sink.take())
+}
+
+fn open_incident() -> NotificationState {
+    NotificationState {
+        failure_count: 5,
+        first_failure_at: 500,
+        ..NotificationState::default()
+    }
+}
+
+#[test]
+fn digest_delivery_sends_nothing_for_a_warning_and_records_its_start() {
+    let (decision, logged) = delivery_decision(
+        "digest",
+        NotificationState::default(),
+        ResultStatus::Warning,
+        0,
+    );
+    assert!(!decision.should_notify);
+    assert_eq!(decision.attempt_seq, 0);
+    assert_eq!(decision.next_state.first_failure_at, 1_000_000);
+    assert_eq!(decision.next_state.failure_count, 0);
+    assert_eq!(decision.next_state.last_notified_at, 0);
+    assert!(logged.is_empty());
+}
+
+#[test]
+fn digest_delivery_keeps_an_open_warning_quiet_past_the_reminder() {
+    let read = NotificationState {
+        last_notified_at: 1,
+        ..open_incident()
+    };
+    let (decision, _) = delivery_decision("digest", read, ResultStatus::Warning, 0);
+    assert!(!decision.should_notify);
+    assert_eq!(decision.next_state, read);
+}
+
+#[test]
+fn digest_delivery_does_not_retry_a_warning_delivery() {
+    let read = NotificationState {
+        attempt_seq: 3,
+        attempt_at: 1,
+        ..open_incident()
+    };
+    let (decision, _) = delivery_decision("digest", read, ResultStatus::Warning, 60);
+    assert!(!decision.should_notify);
+    assert_eq!(decision.next_state.attempt_at, 1);
+}
+
+#[test]
+fn digest_delivery_still_alerts_on_an_error() {
+    let read = NotificationState {
+        failure_count: 1,
+        first_failure_at: 500,
+        ..NotificationState::default()
+    };
+    let (decision, _) = delivery_decision("digest", read, ResultStatus::Error, 0);
+    assert!(decision.should_notify);
+    assert_eq!(decision.next_state.last_notified_at, 1_000_000);
+}
+
+#[test]
+fn digest_warnings_do_not_use_up_the_first_alert_threshold() {
+    // Six warnings in a row, then the first error sample: the global
+    // threshold of two still applies to the error.
+    let mut state = NotificationState::default();
+    for _ in 0..6 {
+        state = delivery_decision("digest", state, ResultStatus::Warning, 0)
+            .0
+            .next_state;
+    }
+    let first = delivery_decision("digest", state, ResultStatus::Error, 0).0;
+    assert!(!first.should_notify);
+    assert!(
+        delivery_decision("digest", first.next_state, ResultStatus::Error, 0)
+            .0
+            .should_notify
+    );
+}
+
+#[test]
+fn individual_delivery_is_the_default_and_alerts_on_a_warning() {
+    for delivery in ["", "individual", "INDIVIDUAL"] {
+        let (decision, logged) =
+            delivery_decision(delivery, open_incident(), ResultStatus::Warning, 0);
+        assert!(decision.should_notify, "{delivery:?}");
+        assert!(logged.is_empty(), "{delivery:?}");
+    }
+}
+
+#[test]
+fn unknown_delivery_warns_and_keeps_alerting() {
+    let (decision, logged) = delivery_decision("weekly", open_incident(), ResultStatus::Warning, 0);
+    assert!(decision.should_notify);
+    assert_eq!(logged.len(), 1);
+    assert!(logged[0].1.contains("NYXMON_NOTIFY_WARNING_DELIVERY"));
+}

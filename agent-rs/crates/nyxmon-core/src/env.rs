@@ -305,6 +305,36 @@ pub fn global_reminder_seconds(env: &Env, status: ResultStatus) -> i64 {
     )
 }
 
+pub const ENV_WARNING_DELIVERY: &str = "NYXMON_NOTIFY_WARNING_DELIVERY";
+
+/// `NYXMON_NOTIFY_WARNING_DELIVERY`: whether warnings wait for the digest.
+///
+/// `individual` (the default) alerts per check. `digest` sends nothing for a
+/// warning; `manage.py send_warning_digest` reports open warnings instead. An
+/// unknown value warns once and keeps alerting, so a typo cannot silence
+/// anything. There is no Python counterpart: the Python agent is retired.
+pub fn warnings_go_to_digest(env: &Env) -> bool {
+    let value = env.stripped(ENV_WARNING_DELIVERY).to_lowercase();
+    match value.as_str() {
+        "" | "individual" => false,
+        "digest" => true,
+        _ => {
+            env.warn_once(
+                loggers::NOTIFICATION_POLICY,
+                ENV_WARNING_DELIVERY,
+                &value,
+                || {
+                    format!(
+                        "{ENV_WARNING_DELIVERY} must be 'individual' or 'digest'; \
+                         using 'individual'"
+                    )
+                },
+            );
+            false
+        }
+    }
+}
+
 pub const DEFAULT_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS: i64 = 3600;
 
 /// `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS`

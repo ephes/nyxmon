@@ -9,7 +9,7 @@
 
 use num_bigint::BigInt;
 
-use crate::env::{Env, SiteEnvConfig, SiteMode};
+use crate::env::{Env, SiteEnvConfig, SiteMode, warnings_go_to_digest};
 use crate::log::WarnOnce;
 use crate::model::{Check, NotificationDecision, NotificationState, ResultStatus};
 use crate::policy::resolve_notification_policy;
@@ -203,6 +203,20 @@ pub fn decide(
             next_state = with_attempt(next_state, now);
         }
         return finish(state, next_state, should_notify, now);
+    }
+
+    if status == ResultStatus::Warning && warnings_go_to_digest(ctx.env) {
+        // The digest reports this warning, so nothing is sent and no delivery
+        // is retried. `first_failure_at` gives the digest its "since" date.
+        // `failure_count` stays put: a long warning must not use up the
+        // first-alert threshold of a later error, which would then page on
+        // its first sample.
+        let next_state = NotificationState {
+            first_failure_at: or_now(state.first_failure_at, now),
+            held_since,
+            ..state
+        };
+        return finish(state, next_state, false, now);
     }
 
     let policy =

@@ -55,6 +55,15 @@ Telegram notifications read:
   incidents (default `86400`, 24 hours; range `60`–`2592000`). Warnings are
   never silenced; they simply remind daily, because standing warnings are
   usually acknowledged conditions waiting on an operator or a third party.
+- `NYXMON_NOTIFY_WARNING_DELIVERY`: `individual` (default) alerts per warning
+  as described above. `digest` sends no Telegram message for a warning and
+  retries none; `manage.py send_warning_digest` reports all open warnings in
+  one silent message instead, and sends nothing when none are open. Run it from
+  a timer. Errors always alert at once. Warnings do not count towards an
+  error's first-alert threshold in this mode. An unknown value logs one warning
+  and means `individual`, so a typo cannot silence an alert. A warning-only
+  problem can stay unseen until the next digest, so give anything urgent a
+  `critical` severity. The Rust agent reads this setting from release 0.1.2.
 - `NYXMON_NOTIFY_REPEAT_FAILURES`: **Deprecated and ignored.** Reminder cadence
   is now elapsed time rather than a sample count. A sample count cannot be
   translated into a duration, because twelve samples mean about one hour for a

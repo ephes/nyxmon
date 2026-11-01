@@ -158,6 +158,7 @@ else that differs is a bug.
 | `NYXMON_SHUTDOWN_GRACE_SECONDS` | `collector.py:shutdown_grace_seconds` | 5 | Python `float()`, finite, 0..30, else warn and 5 |
 | `NYXMON_NOTIFY_CONSECUTIVE_FAILURES` | `notification_policy.py:global_consecutive_failures` | 2 | int 1..100 else warn, default |
 | `NYXMON_NOTIFY_REPEAT_INTERVAL_SECONDS` | `global_reminder_seconds` | 21600 | int 60..2592000 |
+| `NYXMON_NOTIFY_WARNING_DELIVERY` | `warnings_go_to_digest` (Rust only, added after the Python retirement) | `individual` | `individual` or `digest`; anything else warns once and means `individual` |
 | `NYXMON_NOTIFY_WARNING_REPEAT_INTERVAL_SECONDS` | `global_reminder_seconds` | 86400 | int 60..2592000 |
 | `NYXMON_NOTIFY_REPEAT_FAILURES` | `_check_deprecated_env` | — | ignored; one warning per distinct value |
 | `NYXMON_NOTIFY_IMMEDIATE_COOLDOWN_SECONDS` | `handlers.py:_notify_immediate_cooldown_seconds` | 3600 | positive int else warn, default |
