@@ -59,8 +59,12 @@ Telegram notifications read:
   as described above. `digest` sends no Telegram message for a warning and
   retries none; `manage.py send_warning_digest` reports all open warnings in
   one silent message instead, and sends nothing when none are open. Run it from
-  a timer. Errors always alert at once. Warnings do not count towards an
-  error's first-alert threshold in this mode. An unknown value logs one warning
+  a timer. A missing or zero incident start is shown as `since unknown`. Invalid
+  start timestamps (outside positive UTC epochs through `9999-12-31`, or not
+  convertible by the runtime) also show `since unknown` and log a warning with
+  the check id for repair. The remaining warnings still send; the command never
+  changes notification cadence state. Errors always alert at once. Warnings do
+  not count towards an error's first-alert threshold in this mode. An unknown value logs one warning
   and means `individual`, so a typo cannot silence an alert. A warning-only
   problem can stay unseen until the next digest, so give anything urgent a
   `critical` severity. The Rust agent reads this setting from release 0.1.2.

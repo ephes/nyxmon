@@ -97,6 +97,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep warning digests deliverable when an individual incident start timestamp
+  is invalid: show `since unknown` and log the check id without changing cadence
+  state or suppressing neighboring warnings.
+
+- Reuse each check's five prefetched samples and computed status throughout the
+  dashboard, avoiding queries per card and repeated service status label.
+
+- Preserve concurrent agent lease, status and configuration updates when running
+  or toggling checks from the dashboard. Each toggle atomically inverts the
+  current state, so concurrent toggles no longer collapse into one.
+
 - Gracefully drain monitor checks on SIGTERM/SIGINT for a configurable five-second
   grace period, then release remaining owned leases without recording failures
   or sending stale-lease alerts. Crash/SIGKILL lease recovery still alerts, and

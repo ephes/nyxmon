@@ -9,14 +9,18 @@ Usage:
 """
 
 import asyncio
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from django.core.management.base import BaseCommand, CommandError
 
 from nyxboard.models import CheckNotificationState, HealthCheck, Result
+from nyxboard.timestamps import usable_epoch
 from nyxmon.adapters.notification import AsyncTelegramNotifier
 from nyxmon.domain import ResultStatus
+
+logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_CHARS = 3800
 MAX_ERROR_CHARS = 200
@@ -47,10 +51,13 @@ def open_warnings() -> list[OpenWarning]:
         data = result.data if isinstance(result.data, dict) else {}
         if any(data.get(key) for key in INERT_RESULT_KEYS):
             continue
-        first_failure_at = since_by_check.get(check.pk) or 0
+        first_failure_at = since_by_check.get(check.pk)
+        epoch = usable_epoch(first_failure_at)
+        if epoch is None and first_failure_at not in (None, 0):
+            logger.warning("Invalid first_failure_at for check %s", check.pk)
         since = (
-            datetime.fromtimestamp(first_failure_at, UTC).strftime("%Y-%m-%d")
-            if first_failure_at
+            datetime.fromtimestamp(epoch, UTC).strftime("%Y-%m-%d")
+            if epoch is not None
             else "unknown"
         )
         warnings.append(

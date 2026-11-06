@@ -114,3 +114,60 @@ def test_long_digest_stays_in_the_limit_and_counts_the_rest():
     assert len(text) <= MAX_MESSAGE_CHARS + 100
     assert text.startswith("⚠️ Nyxmon digest: 100 open warnings")
     assert "more in NyxBoard" in text
+
+
+@pytest.mark.parametrize(
+    "epoch,expected",
+    [
+        (9_000_000_000_000_000_000, "unknown"),
+        (253_402_300_800, "unknown"),  # First second beyond datetime's UTC range.
+        (2_147_483_647, "2038-01-19"),
+        (1, "1970-01-01"),
+        (0, "unknown"),
+    ],
+)
+def test_invalid_since_is_isolated_without_mutating_cadence(
+    make_check, caplog, epoch, expected
+):
+    check = make_check("a boundary", warning(), first_failure_at=epoch)
+    make_check("b normal", warning(), first_failure_at=1793491200)
+    before = list(CheckNotificationState.objects.order_by("pk").values())
+    with patch(SEND, new_callable=AsyncMock, return_value=True) as send:
+        assert "Sent a digest of 2" in run()
+    text = send.await_args.args[0].replace("\\", "")
+    assert f"a boundary (since {expected})" in text
+    assert "b normal (since 2026-11-01)" in text
+    assert list(CheckNotificationState.objects.order_by("pk").values()) == before
+    if epoch > 253_402_300_799:
+        assert f"Invalid first_failure_at for check {check.pk}" in caplog.text
+        assert str(epoch) not in caplog.text
+
+
+@pytest.mark.parametrize("error", [OSError, OverflowError, ValueError])
+def test_platform_timestamp_conversion_failure_does_not_abort_digest(make_check, error):
+    make_check("synthetic warning", warning(), first_failure_at=1793491200)
+    with (
+        patch("nyxboard.timestamps.datetime") as clock,
+        patch(SEND, new_callable=AsyncMock, return_value=True) as send,
+    ):
+        clock.fromtimestamp.side_effect = error("synthetic conversion failure")
+        assert "Sent a digest of 1" in run()
+    assert "since unknown" in send.await_args.args[0]
+
+
+@pytest.mark.parametrize("value", [True, "123", -1, 0, 0.5, float("nan"), float("inf")])
+def test_epoch_policy_rejects_malformed_or_nonpositive_values(value):
+    from nyxboard.timestamps import usable_epoch
+
+    assert usable_epoch(value) is None
+
+
+def test_epoch_upper_bound_is_checked_before_platform_conversion():
+    from datetime import timezone
+
+    from nyxboard.timestamps import MAX_EPOCH, usable_epoch
+
+    with patch("nyxboard.timestamps.datetime") as clock:
+        assert usable_epoch(MAX_EPOCH) == MAX_EPOCH
+        assert usable_epoch(MAX_EPOCH + 1) is None
+    clock.fromtimestamp.assert_called_once_with(MAX_EPOCH, tz=timezone.utc)
