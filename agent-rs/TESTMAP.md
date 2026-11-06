@@ -347,3 +347,22 @@ against a temporary database from the schema fixture and fake servers).
 | `tests/unit/repositories/in_memory_*` | — | — | n/a (in-memory store is not ported, PLAN.md 1.2) |
 | `tests/unit/test_check_management_cli.py`, `models_test.py` (Django-side helpers) | — | — | n/a (`add-check`/`show-checks` are not ported) |
 | `tests/dashboard/*`, `test_production_*.py` | — | — | n/a (Django dashboard, unchanged) |
+
+
+## Bounded HTTP decoding regressions
+
+- `decode::tests::optional_gzip_headers_are_bounded_across_frames` streams
+  unterminated synthetic FNAME/FCOMMENT headers and checks retained byte bounds.
+- `valid_optional_gzip_headers_still_decode` covers filename/comment/extra fields
+  with one-byte, split and complete frames.
+- `inflaters_stop_before_exceeding_the_output_allowance` covers high-ratio
+  gzip/zlib/raw streams and checks the inflater's actual output counter.
+- `each_stacked_stage_and_identity_have_cumulative_allowances` and
+  `exact_output_limits_allow_trailers_and_split_frames` pin stacked and plain
+  limits, exact-size completion and normal decoding.
+- `http_client::tests::intermediate_decoding_and_discard_mode_obey_output_budgets`
+  drives the production HTTP caller with synthetic loopback responses, including
+  an intermediate stream larger than a final small response and discard mode.
+
+- `tiny_header_frames_use_bounded_amortized_reservations` counts buffer capacity
+  changes for one-byte frames rather than relying on platform timing.

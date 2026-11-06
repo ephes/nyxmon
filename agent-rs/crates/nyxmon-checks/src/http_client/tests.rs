@@ -497,3 +497,50 @@ fn cookie_paths_follow_escape_path() {
     // A raw backslash and its escape are the same cookie path in Python.
     assert_eq!(cookie_path("/a\\b"), cookie_path("/a%5cb"));
 }
+
+#[tokio::test]
+async fn intermediate_decoding_and_discard_mode_obey_output_budgets() {
+    use flate2::{
+        Compression,
+        write::{GzEncoder, ZlibEncoder},
+    };
+    use std::io::Write;
+    let gzip = |data: &[u8]| {
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(data).unwrap();
+        encoder.finish().unwrap()
+    };
+    let mut inner = ZlibEncoder::new(Vec::new(), Compression::default());
+    inner.write_all(b"{\"state\": \"ok\"}").unwrap();
+    let mut intermediate = inner.finish().unwrap();
+    intermediate.extend(vec![0; 4096]); // ignored trailing bytes of inner zlib
+    let body = gzip(&intermediate);
+    assert!(body.len() < 256);
+    let server = FakeServer::start(vec![respond(
+        200,
+        &[("Content-Encoding", "deflate, gzip")],
+        &body,
+    )])
+    .await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let response = session().get(&get(&url, true)).await.unwrap();
+    let limit = BigInt::from(256);
+    assert_eq!(
+        read_body(response, Some(BodyLimit { limit: &limit })).await,
+        Err(BodyError::TooLarge(
+            "response body exceeds the 256 byte limit".to_owned()
+        ))
+    );
+
+    let body = gzip(&vec![b'a'; 9 * 1024 * 1024]);
+    let server =
+        FakeServer::start(vec![respond(200, &[("Content-Encoding", "gzip")], &body)]).await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let response = session().get(&get(&url, true)).await.unwrap();
+    assert_eq!(
+        read_body(response, None).await,
+        Err(BodyError::TooLarge(
+            "discarded response exceeds the 8388608 byte limit".to_owned()
+        ))
+    );
+}

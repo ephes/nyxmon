@@ -11,18 +11,24 @@ use flate2::{Crc, Decompress, FlushDecompress, Status};
 
 /// `httpx.DecodingError`; the message is P2 (zlib's text in Python).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DecodeError(pub String);
+pub enum DecodeError {
+    Invalid(String),
+    TooLarge,
+}
 
 impl std::fmt::Display for DecodeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+        match self {
+            Self::Invalid(message) => f.write_str(message),
+            Self::TooLarge => f.write_str("decoded response exceeds output limit"),
+        }
     }
 }
 
 impl std::error::Error for DecodeError {}
 
 fn zlib_error(detail: &str) -> DecodeError {
-    DecodeError(format!("Error -3 while decompressing data: {detail}"))
+    DecodeError::Invalid(format!("Error -3 while decompressing data: {detail}"))
 }
 
 /// A streaming inflater (`zlib.decompressobj` with a zlib or raw stream).
@@ -41,34 +47,50 @@ impl Inflate {
 
     /// Decompress `input`; returns the output and how many input bytes the
     /// stream consumed (less than `input.len()` once the stream ended).
-    fn feed(&mut self, input: &[u8]) -> Result<(Vec<u8>, usize), DecodeError> {
-        let mut out = Vec::with_capacity(input.len().saturating_mul(2).max(64));
+    fn feed(&mut self, input: &[u8], allowance: usize) -> Result<(Vec<u8>, usize), DecodeError> {
+        let mut out = Vec::new();
         let mut consumed = 0;
+        let mut buffer = [0u8; 8192];
         while !self.done {
-            if out.len() == out.capacity() {
-                out.reserve(out.capacity().max(4096));
-            }
+            let remaining = allowance - out.len();
+            // Probe one byte on the stack at an exact limit, so stream endings
+            // and trailers may complete without allocating beyond the allowance.
+            let size = remaining.clamp(1, buffer.len());
             let before_in = self.inner.total_in();
             let before_out = self.inner.total_out();
             let status = self
                 .inner
-                .decompress_vec(&input[consumed..], &mut out, FlushDecompress::None)
+                .decompress(
+                    &input[consumed..],
+                    &mut buffer[..size],
+                    FlushDecompress::None,
+                )
                 .map_err(|err| zlib_error(&err.to_string()))?;
             let read = usize::try_from(self.inner.total_in() - before_in).unwrap_or(usize::MAX);
-            let wrote = self.inner.total_out() != before_out;
+            let wrote = usize::try_from(self.inner.total_out() - before_out).unwrap_or(usize::MAX);
+            if wrote > remaining {
+                return Err(DecodeError::TooLarge);
+            }
+            if out.capacity() - out.len() < wrote {
+                let capacity = out.capacity().max(4096).saturating_mul(2).min(allowance);
+                out.reserve_exact(capacity - out.len());
+            }
+            out.extend_from_slice(&buffer[..wrote]);
             consumed += read;
             if status == Status::StreamEnd {
                 self.done = true;
-            } else if out.len() == out.capacity() {
-                // More output may be pending inside the inflater.
+            } else if wrote == size {
                 continue;
-            } else if consumed >= input.len() || (read == 0 && !wrote) {
+            } else if consumed >= input.len() || (read == 0 && wrote == 0) {
                 break;
             }
         }
         Ok((out, consumed))
     }
 }
+
+/// Maximum combined fixed/optional gzip header, independent of decoded output.
+const MAX_GZIP_HEADER_BYTES: usize = 128 * 1024;
 
 /// `zlib.decompressobj(zlib.MAX_WBITS | 16)`: one gzip member.
 struct Gzip {
@@ -140,26 +162,44 @@ impl Gzip {
         Ok((buf.len() >= pos).then_some(pos))
     }
 
-    fn decode(&mut self, data: &[u8]) -> Result<Vec<u8>, DecodeError> {
+    fn decode(&mut self, data: &[u8], allowance: usize) -> Result<Vec<u8>, DecodeError> {
         if self.finished || data.is_empty() {
             return Ok(Vec::new());
         }
-        let after_header;
-        let mut input = data;
         if !self.header_done {
-            self.header.extend_from_slice(data);
+            // Buffer only a bounded prefix. A single frame may also contain a
+            // large body; decode the remaining frame directly after the header.
+            let take = data.len().min(MAX_GZIP_HEADER_BYTES - self.header.len());
+            if self.header.capacity() - self.header.len() < take {
+                let capacity = self
+                    .header
+                    .capacity()
+                    .max(1024)
+                    .saturating_mul(2)
+                    .max(self.header.len() + take)
+                    .min(MAX_GZIP_HEADER_BYTES);
+                self.header.reserve_exact(capacity - self.header.len());
+            }
+            self.header.extend_from_slice(&data[..take]);
             let Some(len) = Self::header_len(&self.header)? else {
+                if self.header.len() == MAX_GZIP_HEADER_BYTES {
+                    return Err(zlib_error("gzip header exceeds 131072 byte limit"));
+                }
                 return Ok(Vec::new());
             };
             self.header_done = true;
-            after_header = self.header.split_off(len);
-            self.header.clear();
-            input = &after_header;
+            let buffered = std::mem::take(&mut self.header);
+            let mut out = self.decode(&buffered[len..], allowance)?;
+            let rest = self.decode(&data[take..], allowance - out.len())?;
+            out.reserve_exact(rest.len());
+            out.extend_from_slice(&rest);
+            return Ok(out);
         }
+        let mut input = data;
         let body = self.body.get_or_insert_with(|| Inflate::new(false));
         let mut out = Vec::new();
         if !body.done {
-            let (decoded, consumed) = body.feed(input)?;
+            let (decoded, consumed) = body.feed(input, allowance)?;
             self.crc.update(&decoded);
             input = &input[consumed..];
             out = decoded;
@@ -200,13 +240,13 @@ struct Deflate {
 }
 
 impl Deflate {
-    fn decode(&mut self, data: &[u8]) -> Result<Vec<u8>, DecodeError> {
+    fn decode(&mut self, data: &[u8], allowance: usize) -> Result<Vec<u8>, DecodeError> {
         let was_first = std::mem::replace(&mut self.first_attempt, false);
-        match self.inner.feed(data) {
+        match self.inner.feed(data, allowance) {
             Ok((out, _)) => Ok(out),
-            Err(_) if was_first => {
+            Err(DecodeError::Invalid(_)) if was_first => {
                 self.inner = Inflate::new(false);
-                self.decode(data)
+                self.decode(data, allowance)
             }
             Err(err) => Err(err),
         }
@@ -220,11 +260,16 @@ enum Stage {
 }
 
 impl Stage {
-    fn decode(&mut self, data: &[u8]) -> Result<Vec<u8>, DecodeError> {
+    fn decode(&mut self, data: &[u8], allowance: usize) -> Result<Vec<u8>, DecodeError> {
         match self {
-            Stage::Gzip(gzip) => gzip.decode(data),
-            Stage::Deflate(deflate) => deflate.decode(data),
-            Stage::Identity => Ok(data.to_vec()),
+            Stage::Gzip(gzip) => gzip.decode(data, allowance),
+            Stage::Deflate(deflate) => deflate.decode(data, allowance),
+            Stage::Identity => {
+                if data.len() > allowance {
+                    return Err(DecodeError::TooLarge);
+                }
+                Ok(data.to_vec())
+            }
         }
     }
 }
@@ -232,7 +277,7 @@ impl Stage {
 /// The decoder for a response's `Content-Encoding` values.
 pub struct BodyDecoder {
     /// In decoding order (the reverse of the header order).
-    stages: Vec<Stage>,
+    stages: Vec<(Stage, usize)>,
 }
 
 impl BodyDecoder {
@@ -240,6 +285,11 @@ impl BodyDecoder {
     /// known encodings (`identity`, `gzip`, `deflate`, case-insensitive)
     /// become decoders, unknown ones are skipped.
     pub fn new<'a>(encodings: impl IntoIterator<Item = &'a str>) -> Self {
+        Self::with_limit(encodings, usize::MAX)
+    }
+
+    /// Bound cumulative output of every stage, including intermediate streams.
+    pub fn with_limit<'a>(encodings: impl IntoIterator<Item = &'a str>, allowance: usize) -> Self {
         let mut stages: Vec<Stage> = encodings
             .into_iter()
             .filter_map(|value| match value.trim().to_lowercase().as_str() {
@@ -253,7 +303,12 @@ impl BodyDecoder {
             })
             .collect();
         stages.reverse();
-        BodyDecoder { stages }
+        if stages.is_empty() {
+            stages.push(Stage::Identity);
+        }
+        BodyDecoder {
+            stages: stages.into_iter().map(|stage| (stage, allowance)).collect(),
+        }
     }
 
     /// Decode one raw chunk.
@@ -261,11 +316,13 @@ impl BodyDecoder {
     /// # Errors
     /// Corrupt compressed data.
     pub fn decode(&mut self, data: &[u8]) -> Result<Vec<u8>, DecodeError> {
-        let mut data = data.to_vec();
-        for stage in &mut self.stages {
-            data = stage.decode(&data)?;
+        let mut data = std::borrow::Cow::Borrowed(data);
+        for (stage, remaining) in &mut self.stages {
+            let decoded = stage.decode(&data, *remaining)?;
+            *remaining -= decoded.len();
+            data = std::borrow::Cow::Owned(decoded);
         }
-        Ok(data)
+        Ok(data.into_owned())
     }
 
     /// The end of the body. zlib's `flush()` returns nothing further for the
@@ -276,11 +333,7 @@ impl BodyDecoder {
     /// # Errors
     /// Corrupt compressed data.
     pub fn flush(&mut self) -> Result<Vec<u8>, DecodeError> {
-        let mut data = Vec::new();
-        for stage in &mut self.stages {
-            data = stage.decode(&data)?;
-        }
-        Ok(data)
+        self.decode(&[])
     }
 }
 

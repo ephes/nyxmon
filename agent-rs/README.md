@@ -426,3 +426,22 @@ Never add DDL to the Python agent; a new required column raises
 
 See the [2026-10-21 eMudhra security backport](security/2026-10-21-emudhra.md)
 for the two trust dependency fixes and the separate release/runtime boundary.
+
+
+## Bounded HTTP decoding
+
+The Rust decoder intentionally tightens httpx parity for resource safety. A
+combined gzip fixed/optional header is limited to 128 KiB, independently of the
+decoded body limit. Unterminated filename/comment fields fail at that limit;
+ordinary extra fields (including the full 65,535-byte extra field), filenames,
+comments and CRC/trailer validation remain supported.
+
+`read_body` passes `max_body_bytes` (or the suppression fetcher's allowance)
+into the inflater. Each stacked stage has its own cumulative allowance equal to
+that limit, so a large intermediate stream may be refused even if a later stage
+would shrink it. Inflate uses a fixed stack buffer and caps vector reservations
+before copying; one stack byte can probe an exact output limit to allow stream
+end/trailers without growing the output. Raw/zlib first-chunk fallback and
+truncated/trailing-byte behavior are unchanged. Size refusals retain the normal
+`BodyTooLarge` result/message. Discard mode also has an 8 MiB decoded allowance.
+These changes require an eventual Rust-agent rollout; no deployment is included.

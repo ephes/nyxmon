@@ -119,3 +119,146 @@ fn large_expansions_are_complete() {
     assert_eq!(decode_all(&["gzip"], &gzip(&big), 1000).unwrap(), big);
     assert_eq!(decode_all(&["deflate"], &zlib(&big), 1 << 16).unwrap(), big);
 }
+
+#[test]
+fn optional_gzip_headers_are_bounded_across_frames() {
+    for flag in [0x08, 0x10] {
+        let mut decoder = Gzip::new();
+        decoder
+            .decode(&[0x1f, 0x8b, 8, flag, 0, 0, 0, 0, 0, 0], usize::MAX)
+            .unwrap();
+        let mut rejected = false;
+        for _ in 0..=128 {
+            if decoder.decode(&[b'x'; 1024], usize::MAX).is_err() {
+                rejected = true;
+                break;
+            }
+        }
+        assert!(
+            rejected,
+            "unterminated optional flag {flag} must be refused"
+        );
+        assert!(decoder.header.len() <= 128 * 1024);
+    }
+}
+
+#[test]
+fn valid_optional_gzip_headers_still_decode() {
+    let mut encoder = flate2::GzBuilder::new()
+        .filename("synthetic.json")
+        .comment("synthetic fixture")
+        .extra(vec![7; 65535])
+        .write(Vec::new(), Compression::default());
+    encoder.write_all(TEXT).unwrap();
+    let compressed = encoder.finish().unwrap();
+    for chunk in [1, 1024, compressed.len()] {
+        assert_eq!(decode_all(&["gzip"], &compressed, chunk).unwrap(), TEXT);
+    }
+}
+
+#[test]
+fn inflaters_stop_before_exceeding_the_output_allowance() {
+    let big = vec![b'a'; 1024 * 1024];
+    for (is_raw, encoded) in [(false, gzip(&big)), (false, zlib(&big)), (true, raw(&big))] {
+        let encoding = if encoded.starts_with(&[0x1f, 0x8b]) {
+            "gzip"
+        } else {
+            "deflate"
+        };
+        for chunk_size in [1, 17, encoded.len()] {
+            // Preserve httpx's first-chunk-only raw fallback: a single raw
+            // byte may not reject the zlib header until a subsequent chunk.
+            if is_raw && chunk_size == 1 {
+                continue;
+            }
+            let mut decoder = BodyDecoder::with_limit([encoding], 31);
+            let mut error = None;
+            for chunk in encoded.chunks(chunk_size) {
+                match decoder.decode(chunk) {
+                    Ok(bytes) => assert!(bytes.len() <= 31),
+                    Err(err) => {
+                        error = Some(err);
+                        break;
+                    }
+                }
+            }
+            assert_eq!(
+                error,
+                Some(DecodeError::TooLarge),
+                "{encoding}/{chunk_size}"
+            );
+        }
+    }
+    // Inspect the inflater's own output counter: detection is inside inflation,
+    // not a size check after allocating a fully expanded response.
+    let mut inflater = Inflate::new(true);
+    assert_eq!(
+        inflater.feed(&zlib(&big), 31).unwrap_err(),
+        DecodeError::TooLarge
+    );
+    assert!(inflater.inner.total_out() <= 32);
+}
+
+#[test]
+fn each_stacked_stage_and_identity_have_cumulative_allowances() {
+    let big = vec![b'a'; 1024 * 1024];
+    let intermediate = zlib(&big);
+    let mut decoder = BodyDecoder::with_limit(["deflate", "gzip"], intermediate.len());
+    assert_eq!(
+        decoder.decode(&gzip(&intermediate)).unwrap_err(),
+        DecodeError::TooLarge
+    );
+    // Even a large intermediate that would eventually shrink is bounded.
+    let mut intermediate = zlib(TEXT);
+    intermediate.extend(vec![0; 4096]);
+    let mut decoder = BodyDecoder::with_limit(["deflate", "gzip"], TEXT.len());
+    assert_eq!(
+        decoder.decode(&gzip(&intermediate)).unwrap_err(),
+        DecodeError::TooLarge
+    );
+    for encodings in [vec![], vec!["identity"], vec!["br"]] {
+        let mut decoder = BodyDecoder::with_limit(encodings, 3);
+        assert_eq!(decoder.decode(b"abc").unwrap(), b"abc");
+        assert_eq!(decoder.decode(b"d").unwrap_err(), DecodeError::TooLarge);
+    }
+}
+
+#[test]
+fn exact_output_limits_allow_trailers_and_split_frames() {
+    for (encoding, encoded) in [
+        ("gzip", gzip(TEXT)),
+        ("deflate", zlib(TEXT)),
+        ("deflate", raw(TEXT)),
+    ] {
+        let mut decoder = BodyDecoder::with_limit([encoding], TEXT.len());
+        let mut out = Vec::new();
+        // Raw deflate fallback requires enough initial bytes to reject zlib.
+        for chunk in encoded.chunks(7) {
+            out.extend(decoder.decode(chunk).unwrap());
+        }
+        out.extend(decoder.flush().unwrap());
+        assert_eq!(out, TEXT);
+    }
+}
+
+#[test]
+fn tiny_header_frames_use_bounded_amortized_reservations() {
+    let mut decoder = Gzip::new();
+    decoder
+        .decode(&[0x1f, 0x8b, 8, 8, 0, 0, 0, 0, 0, 0], usize::MAX)
+        .unwrap();
+    let mut capacity = decoder.header.capacity();
+    let mut changes = 0;
+    for _ in 0..4096 {
+        decoder.decode(b"x", usize::MAX).unwrap();
+        if decoder.header.capacity() != capacity {
+            changes += 1;
+            capacity = decoder.header.capacity();
+        }
+        assert!(capacity <= MAX_GZIP_HEADER_BYTES);
+    }
+    assert!(
+        changes <= 12,
+        "one-byte frames caused {changes} reallocations"
+    );
+}
