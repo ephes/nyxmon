@@ -328,6 +328,11 @@ on the database to monitor?
 
 ## Dependency security checks
 
+The retained Python tooling requires dnspython >=2.9.0 to address
+CVE-2026-114605. Refresh Python environments with `uv sync --frozen`. Production
+monitoring uses the Rust agent; this Python dependency change does not change
+Rust DNS behavior or require an agent deployment.
+
 The October 2026 refresh updates advisory-affected locked dependencies to patched
 versions. Install the reviewed lock with `uv sync --frozen`; use targeted
 `uv lock --upgrade-package PACKAGE==VERSION` updates rather than upgrading all packages.

@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Require dnspython >=2.9.0 and refresh its Python lock entry for
+  CVE-2026-114605. Re-sync Python environments; Rust-agent DNS is unchanged.
+
 - Update the locked certifi CA bundle to 2026.10.19 for the eMudhra/emSign
   CA compromise
   ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)).
