@@ -1,3 +1,4 @@
+from django.db.models import Case, F, PositiveIntegerField, Prefetch, When
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -7,11 +8,13 @@ from datetime import datetime, timezone
 from time import time
 
 from .auth import nyxboard_login_required
+from .timestamps import usable_epoch as _usable_epoch
 from .models import (
     CheckNotificationState,
     CollectorIncident,
     Service,
     HealthCheck,
+    Result,
     StatusChoices,
 )
 from .forms import (
@@ -52,31 +55,6 @@ FORM_CLASSES = {
     CheckType.IMAP: ImapHealthCheckForm,
     CheckType.JSON_METRICS: JsonMetricsHealthCheckForm,
 }
-
-
-def _usable_epoch(value):
-    """Return ``value`` as a positive integer epoch, or ``None``.
-
-    Args:
-        value: Anything a payload might carry in a timestamp field.
-
-    Returns:
-        The epoch as an ``int`` when it is a usable positive timestamp,
-        otherwise ``None``. Booleans, strings, ``None``, ``nan`` and
-        out-of-range numbers all yield ``None`` rather than raising: the
-        payload is written by the worker and must never be able to break the
-        dashboard.
-    """
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    if value <= 0:
-        return None
-    try:
-        epoch = int(value)
-        datetime.fromtimestamp(epoch, tz=timezone.utc)
-    except (OverflowError, OSError, ValueError):
-        return None
-    return epoch
 
 
 def _format_epoch(value):
@@ -185,44 +163,43 @@ def dashboard(request):
     """
     Function-based view to display the dashboard of services and their health checks.
     """
-    # Get all services with their health checks
-    services = Service.objects.prefetch_related("healthcheck_set")
-
-    # Fetch recent results for all health checks separately
-    health_checks = HealthCheck.objects.filter(service__in=services)
+    # A sliced prefetch uses a window per check, fetching only its five samples.
+    # Enrich the same instances that service summaries and cards will render.
+    services = Service.objects.prefetch_related(
+        Prefetch(
+            "healthcheck_set",
+            queryset=HealthCheck.objects.prefetch_related(
+                Prefetch(
+                    "results",
+                    queryset=Result.objects.order_by("-created_at", "-id")[:5],
+                    to_attr="recent_results",
+                )
+            ),
+        )
+    )
 
     # Dictionary to map check IDs to their last result
     check_results = {}
 
-    # For each health check, fetch its recent results separately and determine mode
     current_time = time()
-
-    for check in health_checks:
-        # Get recent results
-        recent_results = check.results.order_by("-created_at", "-id")[:5]
-        check.recent_results = list(
-            recent_results
-        )  # Force evaluation and convert to list
-
-        # Set check mode - determines if progress ring is shown or if it's due for a check
-        if check.next_check_time <= current_time:
-            check.check_mode = "due"
-        else:
-            check.check_mode = "normal"
-
-        # Get last result if any
-        if check.recent_results:
-            check.last_result = check.recent_results[0]
-            # Add to our mapping dictionary
-            check_results[check.id] = {
-                "formatted_time": check.last_result.created_at.strftime(
-                    "%b %-d, %H:%M"
-                ),
-                "timestamp": int(check.last_result.created_at.timestamp()),
-                "status": check.last_result.status,
-            }
-        else:
-            check.last_result = None
+    for service in services:
+        for check in service.healthcheck_set.all():
+            check.dashboard_status = check.get_status()
+            check.check_mode = (
+                "due" if check.next_check_time <= current_time else "normal"
+            )
+            check.last_result = (
+                check.recent_results[0] if check.recent_results else None
+            )
+            if check.last_result:
+                check_results[check.id] = {
+                    "formatted_time": check.last_result.created_at.strftime(
+                        "%b %-d, %H:%M"
+                    ),
+                    "timestamp": int(check.last_result.created_at.timestamp()),
+                    "status": check.last_result.status,
+                }
+        service.dashboard_status = service.get_status()
 
     # Create a JSON object with only the essential check result data
     check_results_json = {}
@@ -573,14 +550,13 @@ def healthcheck_trigger(request, check_id):
 
     health_check = get_object_or_404(HealthCheck, id=check_id)
 
-    # Get data needed for the template first
-    recent_results = health_check.results.order_by("-created_at", "-id")[:5]
+    # Scheduling must not overwrite an agent's active lease or configuration.
+    HealthCheck.objects.filter(pk=health_check.pk).update(next_check_time=int(time()))
+    health_check.refresh_from_db()
+
+    recent_results = list(health_check.results.order_by("-created_at", "-id")[:5])
     last_result = recent_results[0] if recent_results else None
     health_check.recent_results = recent_results
-
-    # Set the next check time to now, so it will be picked up by the agent
-    health_check.next_check_time = int(time())
-    health_check.save()
 
     # Determine which template to use based on what partial was requested
     template_name = "nyxboard/partials/healthcheck-card.html"
@@ -608,20 +584,21 @@ def healthcheck_toggle_disabled(request, check_id):
 
     health_check = get_object_or_404(HealthCheck, id=check_id)
 
-    # Get data needed for the template first
-    recent_results = health_check.results.order_by("-created_at", "-id")[:5]
+    # Each request inverts the database value once, even if reads interleave.
+    # CASE uses the old disabled value; only disabling resets the schedule.
+    HealthCheck.objects.filter(pk=health_check.pk).update(
+        disabled=~F("disabled"),
+        next_check_time=Case(
+            When(disabled=False, then=int(time())),
+            default=F("next_check_time"),
+            output_field=PositiveIntegerField(),
+        ),
+    )
+    health_check.refresh_from_db()
+
+    recent_results = list(health_check.results.order_by("-created_at", "-id")[:5])
     last_result = recent_results[0] if recent_results else None
     health_check.recent_results = recent_results
-
-    # Toggle the disabled status
-    health_check.disabled = not health_check.disabled
-
-    # If we're disabling, reset the next check time to now
-    # This prevents the progress ring from showing progress for disabled checks
-    if health_check.disabled:
-        health_check.next_check_time = int(time())
-
-    health_check.save()
 
     # Determine check mode based on current status
     current_time = time()

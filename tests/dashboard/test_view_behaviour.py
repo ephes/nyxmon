@@ -665,3 +665,67 @@ def test_mutations_require_csrf_token(service, check, name, target):
     check.refresh_from_db()
     assert check.next_check_time == scheduled
     assert check.disabled is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", PARTIAL_VIEWS[1:])
+def test_ui_mutation_preserves_concurrent_agent_update(
+    client, check, monkeypatch, name
+):
+    from nyxboard import views
+
+    original = views.get_object_or_404
+    injected = False
+
+    def read_then_agent_update(*args, **kwargs):
+        nonlocal injected
+        stale = original(*args, **kwargs)
+        HealthCheck.objects.filter(pk=check.pk).update(
+            status=CheckStatus.PROCESSING,
+            processing_started_at=123456,
+            data={"timeout": 17},
+            url="https://updated.example.invalid",
+        )
+        injected = True
+        return stale
+
+    monkeypatch.setattr(views, "get_object_or_404", read_then_agent_update)
+    response = client.post(reverse(name, kwargs={"check_id": check.pk}))
+    assert injected
+    assert response.status_code == 200
+    check.refresh_from_db()
+    for current in (check, response.context["check"]):
+        assert current.status == CheckStatus.PROCESSING
+        assert current.processing_started_at == 123456
+        assert current.data == {"timeout": 17}
+        assert current.url == "https://updated.example.invalid"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("initial_disabled", [False, True])
+def test_interleaved_toggles_each_invert_current_state(
+    client, check, monkeypatch, initial_disabled
+):
+    from nyxboard import views
+
+    HealthCheck.objects.filter(pk=check.pk).update(disabled=initial_disabled)
+    original = views.get_object_or_404
+    interleaved = False
+    url = reverse("nyxboard:healthcheck_toggle_disabled", kwargs={"check_id": check.pk})
+
+    def read_then_toggle(*args, **kwargs):
+        nonlocal interleaved
+        stale = original(*args, **kwargs)
+        if not interleaved:
+            interleaved = True
+            assert client.post(url).status_code == 200
+        return stale
+
+    monkeypatch.setattr(views, "get_object_or_404", read_then_toggle)
+    response = client.post(url)
+    assert interleaved
+    check.refresh_from_db()
+    assert check.disabled is initial_disabled
+    label = "Disabled" if initial_disabled else "Enabled"
+    assert f'class="toggle-label">{label}</span>' in response.content.decode()
+    assert check.next_check_time <= int(time())

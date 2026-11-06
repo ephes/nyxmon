@@ -20,6 +20,22 @@ For production deployment, see the deployment section below.
 
 ## Managing Checks
 
+### Dashboard status
+
+The dashboard loads at most five results per check, ordered by newest timestamp
+then newest id when timestamps tie. Service summaries and check cards share
+these samples and the statuses computed for that response. Loading additional
+checks does not add a result query for every card or repeated status label.
+
+### Dashboard actions
+
+**Run now** changes only the next scheduled time. It does not reset or take over
+an agent's running lease; a running check must finish or undergo normal lease
+recovery. The disable switch atomically inverts the current database value once
+per POST, so two concurrent toggles cancel each other. Disabling resets the next
+scheduled time; enabling preserves it. Both actions preserve agent status,
+claim timestamps and configuration, then reload the check for the response.
+
 ### Creating Development Data
 
 For development and testing, generate sample services and checks:
