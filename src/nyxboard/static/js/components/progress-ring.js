@@ -98,6 +98,7 @@ class ProgressRing extends HTMLElement {
     
     // Flag to track if event has been fired
     this._hasFiredDueEvent = false;
+    this._dueTimer = null;
     
     // Debug flag
     this.debug = false;
@@ -128,6 +129,7 @@ class ProgressRing extends HTMLElement {
   disconnectedCallback() {
     // Clean up when element is removed
     this.stopUpdates();
+    this.cancelDueEvent();
     
     // Remove event listeners
     document.removeEventListener('theme-changed', this.handleThemeChange);
@@ -167,6 +169,7 @@ class ProgressRing extends HTMLElement {
   
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
+    this.cancelDueEvent();
     
     if (this.debug) {
       console.log(`ProgressRing attribute changed: ${name} = ${newValue}`);
@@ -225,39 +228,25 @@ class ProgressRing extends HTMLElement {
     const progress = this.calculateProgress(nextCheck, checkInterval);
     this.updateProgressRing(progress);
     
-    // Fire the due event when we reach 100% (if not already fired)
-    if (progress >= 100 && !this._hasFiredDueEvent) {
-      this._hasFiredDueEvent = true;
-      
-      if (this.debug) {
-        console.log('Firing check-due event from progress-ring');
-      }
-      
-      // Add a debounce to prevent multiple events firing too quickly
-      if (!this._scheduledDueEvent) {
-        this._scheduledDueEvent = true;
-        
-        // Use setTimeout with a small delay instead of requestAnimationFrame
-        setTimeout(() => {
-          try {
-            // First dispatch standard custom event
-            const checkDueEvent = new CustomEvent('check-due', {
-              bubbles: true,
-              composed: true
-            });
-            
-            this.dispatchEvent(checkDueEvent);
-            
-          } catch (error) {
-            console.error('Error dispatching check-due event:', error);
-          } finally {
-            this._scheduledDueEvent = false;
-          }
-        }, 100); // Small delay to prevent race conditions
-      }
+    // One notification for the current connected schedule. Timing/mode edits
+    // and disconnect cancel this owned callback before it can dispatch.
+    if (progress >= 100 && !this._hasFiredDueEvent && this._dueTimer === null && this.isConnected) {
+      this._dueTimer = setTimeout(() => {
+        this._dueTimer = null;
+        if (!this.isConnected || this.getAttribute('mode') === 'due' ||
+            this.calculateProgress(this.getAttribute('next-check'), this.getAttribute('check-interval')) < 100) return;
+        this._hasFiredDueEvent = true;
+        this.dispatchEvent(new CustomEvent('check-due', { bubbles: true, composed: true }));
+      }, 100);
     }
   }
-  
+
+  cancelDueEvent() {
+    clearTimeout(this._dueTimer);
+    this._dueTimer = null;
+    this._hasFiredDueEvent = false;
+  }
+
   calculateProgress(nextCheckTimestamp, checkInterval) {
     const now = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
     const nextCheck = parseInt(nextCheckTimestamp);
