@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Test the registered dashboard components instead of copied calculations and
+  handlers. Fix due dispatch, listener cleanup and service-header updates after
+  check replacement/recovery. Render the registered autonomous elements and
+  preserve separate processing and displayed health states. Dashboard changes
+  require a subsequent static-asset/dashboard deployment; none is performed.
+
 ### Added
 
 - Warning digest. With `NYXMON_NOTIFY_WARNING_DELIVERY=digest` (Rust agent

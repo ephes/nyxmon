@@ -248,24 +248,6 @@ class ProgressRing extends HTMLElement {
             
             this.dispatchEvent(checkDueEvent);
             
-            // Only dispatch HTMX event if component is still in the DOM
-            if (document.body.contains(this)) {
-              const healthCheck = this.closest('li[is="health-check"]');
-              if (healthCheck) {
-                // Then also dispatch an HTMX event that can be triggered directly by HTMX
-                const htmxEvent = new CustomEvent('checkDue', {
-                  bubbles: true,
-                  composed: true
-                });
-                
-                healthCheck.dispatchEvent(htmxEvent);
-                if (this.debug) console.log('HTMX checkDue event dispatched to', healthCheck.id);
-              }
-              
-              if (this.debug) {
-                console.log('check-due event dispatched successfully');
-              }
-            }
           } catch (error) {
             console.error('Error dispatching check-due event:', error);
           } finally {

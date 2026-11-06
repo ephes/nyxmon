@@ -358,3 +358,6 @@ lock; rerun the CI checks to verify compatibility.
 JavaScript tests now use Vitest 4.1.11 to remove vulnerable test-runner
 dependencies. Use Node.js 22 (at least 22.12) as in CI, run `npm ci`, then
 `npm audit` and `npm test`.
+
+Dashboard component tests and refresh behavior are documented in
+[docs/dashboard-components.md](docs/dashboard-components.md).

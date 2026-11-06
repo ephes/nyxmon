@@ -1,163 +1,89 @@
-/**
- * Tests for the HealthCheck web component
- */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
+import '../components/progress-ring.js';
+import '../components/check-timer.js';
+import '../components/health-check.js';
+import '../dashboard.js';
 
-// We're not importing the actual component since we just want to test the logic
-// import '../components/health-check.js';
+function check(id = '123', status = 'passed') {
+  const element = document.createElement('health-check');
+  element.id = `check-${id}`;
+  element.setAttribute('check-id', id);
+  element.setAttribute('status', status);
+  element.setAttribute('check-mode', 'normal');
+  element.setAttribute('next-check', 1800000060);
+  element.setAttribute('check-interval', 60);
+  element.innerHTML = '<progress-ring></progress-ring><check-timer></check-timer>';
+  return element;
+}
 
-describe('HealthCheck', () => {
-  // Test specific implementation
-  let healthCheck;
-  let progressRing;
-  let checkTimer;
-  
-  beforeEach(() => {
-    // Create a test instance
-    healthCheck = {
-      // Properties
-      attributes: {
-        'check-id': '123',
-        'check-mode': 'normal',
-        'next-check': '1620000000',
-        'check-interval': '3600',
-        'status': 'passed'
-      },
-      id: 'check-123',
-      debug: false,
-      
-      // Methods
-      getAttribute: function(name) {
-        return this.attributes[name];
-      },
-      
-      setAttribute: vi.fn(function(name, value) {
-        this.attributes[name] = value;
-      }),
-      
-      // Components
-      querySelector: function(selector) {
-        if (selector === 'progress-ring') return progressRing;
-        if (selector === 'check-timer') return checkTimer;
-        return null;
-      },
-      
-      // Component methods
-      updateComponentStatuses: function() {
-        const mode = this.getAttribute('check-mode');
-        const status = this.getAttribute('status');
-        const nextCheck = this.getAttribute('next-check');
-        const checkInterval = this.getAttribute('check-interval');
-        
-        const progressRing = this.querySelector('progress-ring');
-        if (progressRing) {
-          if (mode) progressRing.setAttribute('mode', mode);
-          if (nextCheck) progressRing.setAttribute('next-check', nextCheck);
-          if (checkInterval) progressRing.setAttribute('check-interval', checkInterval);
-        }
-        
-        const checkTimer = this.querySelector('check-timer');
-        if (checkTimer) {
-          if (mode) checkTimer.setAttribute('mode', mode);
-          if (status) checkTimer.setAttribute('status', status);
-          if (nextCheck) checkTimer.setAttribute('next-check', nextCheck);
-        }
-      },
-      
-      handleCheckDue: function(event) {
-        const checkId = this.getAttribute('check-id');
-        
-        // Only proceed if we're not already in "due" mode
-        if (this.getAttribute('check-mode') !== 'due') {
-          // First update our own attribute to immediately reflect the due state
-          this.setAttribute('check-mode', 'due');
-          
-          // Then use HTMX to update the health check
-          if (window.htmx) {
-            setTimeout(() => {
-              window.htmx.ajax('GET', `/healthchecks/${checkId}/status/`, {
-                target: `#check-${checkId}`, 
-                swap: 'outerHTML'
-              });
-            }, 10);
-          }
-        }
-      }
-    };
-    
-    // Create mock child elements
-    progressRing = {
-      setAttribute: vi.fn()
-    };
-    
-    checkTimer = {
-      setAttribute: vi.fn()
-    };
-    
-    // Mock HTMX
-    window.htmx = {
-      ajax: vi.fn(),
-      trigger: vi.fn()
-    };
-    
-    // Mock setTimeout to run immediately
-    vi.spyOn(window, 'setTimeout').mockImplementation((callback) => {
-      callback();
-      return 1;
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  window.htmx = { ajax: vi.fn() };
+  document.dispatchEvent(new Event('DOMContentLoaded'));
+});
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
+
+describe('production health check', () => {
+  it('initializes real child components and propagates observed attributes', () => {
+    const element = check();
+    document.body.append(element);
+    const ring = element.querySelector('progress-ring');
+    const timer = element.querySelector('check-timer');
+    expect(ring).toBeInstanceOf(customElements.get('progress-ring'));
+    expect(timer).toBeInstanceOf(customElements.get('check-timer'));
+    expect(ring.getAttribute('next-check')).toBe('1800000060');
+    expect(ring.getAttribute('check-interval')).toBe('60');
+    expect(timer.getAttribute('status')).toBe('passed');
+    element.setAttribute('status', 'failed');
+    element.setAttribute('next-check', '1800000120');
+    element.setAttribute('check-interval', '120');
+    element.setAttribute('check-mode', 'due');
+    expect(timer.getAttribute('status')).toBe('failed');
+    for (const child of [ring, timer]) {
+      expect(child.getAttribute('mode')).toBe('due');
+      expect(child.getAttribute('next-check')).toBe('1800000120');
+    }
+    expect(ring.getAttribute('check-interval')).toBe('120');
+    expect(ring.progressText.textContent).toBe('100%');
+  });
+
+  it('dispatches once for the owning check despite duplicate due events', () => {
+    const first = check('123');
+    const second = check('456');
+    document.body.append(first, second);
+    const ring = second.querySelector('progress-ring');
+    ring.dispatchEvent(new CustomEvent('check-due', { bubbles: true }));
+    ring.dispatchEvent(new CustomEvent('check-due', { bubbles: true }));
+    vi.advanceTimersByTime(50);
+    expect(second.getAttribute('check-mode')).toBe('due');
+    expect(first.getAttribute('check-mode')).toBe('normal');
+    expect(window.htmx.ajax).toHaveBeenCalledExactlyOnceWith('GET', '/healthchecks/456/status/', {
+      target: '#check-456', swap: 'outerHTML',
     });
   });
-  
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-  
-  it('updates component statuses when check mode changes', () => {
-    // Set check-mode attribute
-    healthCheck.attributes['check-mode'] = 'due';
-    
-    // Call the method
-    healthCheck.updateComponentStatuses();
-    
-    // Verify components were updated
-    expect(progressRing.setAttribute).toHaveBeenCalledWith('mode', 'due');
-    expect(checkTimer.setAttribute).toHaveBeenCalledWith('mode', 'due');
-  });
-  
-  it('handles the check-due event by transitioning to due mode', () => {
-    // Create a check-due event
-    const checkDueEvent = { type: 'check-due' };
-    
-    // Call the handler directly
-    healthCheck.handleCheckDue(checkDueEvent);
-    
-    // Verify mode attribute was changed
-    expect(healthCheck.setAttribute).toHaveBeenCalledWith('check-mode', 'due');
-    
-    // Verify HTMX Ajax call was made
-    expect(window.htmx.ajax).toHaveBeenCalledWith(
-      'GET',
-      '/healthchecks/123/status/',
-      expect.objectContaining({
-        target: '#check-123',
-        swap: 'outerHTML'
-      })
-    );
-  });
-  
-  it('does not transition to due mode if already in due mode', () => {
-    // Set component to due mode
-    healthCheck.attributes['check-mode'] = 'due';
-    
-    // Reset the mock to clear previous calls
-    window.htmx.ajax.mockClear();
-    
-    // Create a check-due event
-    const checkDueEvent = { type: 'check-due' };
-    
-    // Call the handler directly
-    healthCheck.handleCheckDue(checkDueEvent);
-    
-    // Verify HTMX Ajax call was NOT made
+
+  it('ignores a due event from a detached check', () => {
+    const element = check();
+    document.body.append(element);
+    element.remove();
+    element.querySelector('progress-ring').dispatchEvent(new CustomEvent('check-due'));
+    vi.advanceTimersByTime(100);
     expect(window.htmx.ajax).not.toHaveBeenCalled();
   });
+});
+
+it('keeps processing state separate from displayed health and ignores disabled checks', () => {
+  const element = check();
+  element.setAttribute('execution-status', 'processing');
+  element.setAttribute('disabled', '');
+  document.body.append(element);
+  expect(element.querySelector('check-timer').getAttribute('status')).toBe('processing');
+  element.querySelector('progress-ring').dispatchEvent(new CustomEvent('check-due'));
+  vi.advanceTimersByTime(100);
+  expect(window.htmx.ajax).not.toHaveBeenCalled();
 });
