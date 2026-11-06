@@ -17,7 +17,7 @@ class HealthCheck extends HTMLElement {
   }
   
   static get observedAttributes() {
-    return ['check-id', 'check-mode', 'next-check', 'check-interval', 'status', 'theme'];
+    return ['check-id', 'check-mode', 'next-check', 'check-interval', 'status', 'execution-status', 'theme'];
   }
   
   connectedCallback() {
@@ -39,6 +39,7 @@ class HealthCheck extends HTMLElement {
     
     // Initialize child components if needed
     this.updateComponentStatuses();
+    this.notifyStatusChanged();
   }
   
   disconnectedCallback() {
@@ -61,13 +62,20 @@ class HealthCheck extends HTMLElement {
     if (this.debug) console.log(`HealthCheck attribute changed: ${name} = ${newValue}`);
     
     // When attributes change, update the corresponding components
-    if (name === 'check-mode' || name === 'status' || name === 'next-check' || name === 'check-interval') {
+    if (name === 'check-mode' || name === 'status' || name === 'next-check' || name === 'check-interval' || name === 'execution-status') {
       this.updateComponentStatuses();
+      if (name === 'status') this.notifyStatusChanged();
     } else if (name === 'theme') {
       this.applyCurrentTheme();
     }
   }
   
+  notifyStatusChanged() {
+    if (this.isConnected) {
+      this.dispatchEvent(new CustomEvent('health-check-status-changed', { bubbles: true }));
+    }
+  }
+
   updateComponentStatuses() {
     const mode = this.getAttribute('check-mode');
     const status = this.getAttribute('status');
@@ -86,7 +94,7 @@ class HealthCheck extends HTMLElement {
     const checkTimer = this.querySelector('check-timer');
     if (checkTimer) {
       if (mode) checkTimer.setAttribute('mode', mode);
-      if (status) checkTimer.setAttribute('status', status);
+      if (status) checkTimer.setAttribute('status', this.getAttribute('execution-status') === 'processing' ? 'processing' : status);
       if (nextCheck) checkTimer.setAttribute('next-check', nextCheck);
     }
   }
@@ -95,7 +103,7 @@ class HealthCheck extends HTMLElement {
     const checkId = this.getAttribute('check-id');
     
     // Only proceed if we're not already in "due" mode and this is still in the DOM
-    if (this.getAttribute('check-mode') !== 'due' && document.body.contains(this)) {
+    if (!this.hasAttribute('disabled') && this.getAttribute('check-mode') !== 'due' && document.body.contains(this)) {
       console.log(`Progress reached 100% for check ${checkId}. Transitioning to due mode.`);
       
       // First update our own attribute to immediately reflect the due state
@@ -109,7 +117,6 @@ class HealthCheck extends HTMLElement {
       }
       
       // Store the current state of the last-result data to preserve it during processing
-      const checkId = this.getAttribute('check-id');
       const lastResultElement = document.querySelector(`#last-result-${checkId}`);
       if (lastResultElement) {
         this._lastResultData = lastResultElement.innerHTML;

@@ -43,6 +43,13 @@ class TestDashboardView:
         assert response.status_code == 200
         assert "services" in response.context
         assert list(response.context["services"]) == [service]
+        html = response.content.decode()
+        assert '<service-card class="service-checks-section"' in html
+        assert '<health-check role="listitem"' in html
+        assert 'status="passed"' in html
+        assert 'execution-status="idle"' in html
+        assert 'is="health-check"' not in html
+
         assert "status_choices" in response.context
 
         # Test functionality rather than implementation details

@@ -184,7 +184,7 @@
                 });
                 
                 // Also check for health-check elements with the special component
-                const healthChecks = containerNode.querySelectorAll('li[is="health-check"]');
+                const healthChecks = containerNode.querySelectorAll('health-check');
                 healthChecks.forEach(check => {
                     if (currentTheme === 'dark') {
                         check.classList.add('dark-themed');
@@ -231,7 +231,7 @@
             });
             
             // Also check for health-check elements
-            const healthChecks = document.querySelectorAll('li[is="health-check"]');
+            const healthChecks = document.querySelectorAll('health-check');
             healthChecks.forEach(check => {
                 if (document.body.contains(check)) {
                     if (currentTheme === 'dark') {
@@ -300,7 +300,7 @@
                     });
                     
                     // Apply classes to health-check elements without recursive processing
-                    const healthChecks = document.querySelectorAll('li[is="health-check"]');
+                    const healthChecks = document.querySelectorAll('health-check');
                     healthChecks.forEach(check => {
                         if (isDark) {
                             check.classList.add('dark-themed');

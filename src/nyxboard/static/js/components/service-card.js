@@ -5,7 +5,8 @@ class ServiceCard extends HTMLElement {
   constructor() {
     super();
     
-    // We're using a regular DOM element (not Shadow DOM) to allow for HTMX integration
+    // Retain the exact listener identity across connect/disconnect cycles.
+    this.statusChangeHandler = () => this.updateServiceStatus();
   }
   
   static get observedAttributes() {
@@ -16,8 +17,11 @@ class ServiceCard extends HTMLElement {
     if (oldValue === newValue) return;
     
     if (name === 'service-status') {
+      const statuses = ['passed', 'failed', 'warning', 'recovering', 'unknown'];
+      this.classList.remove(...statuses);
+      if (newValue) this.classList.add(newValue);
       // Update the service header class
-      const serviceHeader = this.querySelector('.service-header');
+      const serviceHeader = this.querySelector('.service-header, .service-checks-header');
       if (serviceHeader) {
         // Remove old status classes
         serviceHeader.classList.remove('passed', 'failed', 'warning', 'recovering', 'unknown');
@@ -31,6 +35,8 @@ class ServiceCard extends HTMLElement {
       // Update the status text
       const statusElement = this.querySelector('.service-status');
       if (statusElement && newValue) {
+        statusElement.classList.remove(...statuses.map(status => `status-${status}`));
+        statusElement.classList.add(`status-${newValue}`);
         statusElement.textContent = newValue.charAt(0).toUpperCase() + newValue.slice(1);
       }
     }
@@ -38,12 +44,12 @@ class ServiceCard extends HTMLElement {
   
   connectedCallback() {
     // Listen for health check status changes to update service status
-    this.addEventListener('health-check-status-changed', this.updateServiceStatus.bind(this));
+    this.addEventListener('health-check-status-changed', this.statusChangeHandler);
   }
   
   disconnectedCallback() {
     // Clean up event listeners
-    this.removeEventListener('health-check-status-changed', this.updateServiceStatus.bind(this));
+    this.removeEventListener('health-check-status-changed', this.statusChangeHandler);
   }
   
   updateServiceStatus() {
@@ -74,6 +80,15 @@ class ServiceCard extends HTMLElement {
     }
     
     this.setAttribute('service-status', serviceStatus);
+    // The overview mirrors the grouped checks without another request path.
+    const serviceId = this.getAttribute('service-id');
+    if (serviceId) {
+      document.querySelectorAll('service-card').forEach(card => {
+        if (card !== this && card.getAttribute('service-id') === serviceId) {
+          card.setAttribute('service-status', serviceStatus);
+        }
+      });
+    }
   }
 }
 

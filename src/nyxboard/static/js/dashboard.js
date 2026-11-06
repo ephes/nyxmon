@@ -30,37 +30,7 @@ function initDashboard() {
     }
   });
   
-  // Add a global event listener for check-due events to debug
-  document.body.addEventListener('check-due', function(evt) {
-    console.log('Global check-due event received from:', evt.target);
-    
-    // Fallback handler for check-due events
-    // This is a safety measure in case the health-check component doesn't handle the event
-    const progressRing = evt.target;
-    const healthCheck = progressRing.closest('li[is="health-check"]');
-    
-    if (healthCheck && healthCheck.getAttribute('check-mode') !== 'due') {
-      console.log('Fallback: Progress reached 100% for check', healthCheck.id);
-      
-      // Get the check ID from the element's ID
-      const checkId = healthCheck.getAttribute('check-id');
-      if (!checkId) return;
-      
-      // Update the health check mode to prevent further requests
-      healthCheck.setAttribute('check-mode', 'due');
-      
-      // Send the HTMX request manually
-      if (window.htmx) {
-        console.log('Fallback: Triggering HTMX request to /healthchecks/' + checkId + '/status/');
-        setTimeout(() => {
-          window.htmx.ajax('GET', `/healthchecks/${checkId}/status/`, {
-            target: `#check-${checkId}`,
-            swap: 'outerHTML'
-          });
-        }, 50);
-      }
-    }
-  });
+
 }
 
 // Initialize when DOM is ready

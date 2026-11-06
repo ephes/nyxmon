@@ -1248,3 +1248,7 @@ details.dropdown .dropdown-menu a:focus {
     background-color: var(--color-input-hover-bg);
     outline: none;
 }
+/* Autonomous elements retain the layout of their former li/div hosts. */
+health-check, service-card {
+    display: block;
+}

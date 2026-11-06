@@ -32,6 +32,7 @@ installation
 usage
 configuration
 site-connectivity
+dashboard-components
 dns-check-examples
 smtp-checks
 imap-checks

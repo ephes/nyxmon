@@ -1,12 +1,14 @@
 {% load static %}
 
 {# This template partial displays a single health check with improved card design #}
-<li is="health-check" 
+<health-check role="listitem"
     class="health-check {{ check.get_status }} {% if check.disabled %}disabled{% endif %}" 
     id="check-{{ check.id }}"
     check-id="{{ check.id }}"
     check-mode="{{ check_mode }}"
-    status="{{ check.status }}"
+    status="{{ check.get_status }}"
+    execution-status="{{ check.status }}"
+    {% if check.disabled %}disabled{% endif %}
     {% if check_mode == "due" and not check.disabled %}
         hx-get="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
         hx-trigger="every 1s"
@@ -95,11 +97,4 @@
         </div>
     </div>
     
-    <!-- Direct HTMX trigger for when the progress reaches 100% -->
-    <span style="display:none" 
-          id="check-trigger-{{ check.id }}"
-          hx-get="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
-          hx-trigger="checkDue from:closest li"
-          hx-target="#check-{{ check.id }}"
-          hx-swap="outerHTML"></span>
-</li>
+</health-check>
