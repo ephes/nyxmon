@@ -206,12 +206,12 @@ class CheckTimer extends HTMLElement {
       this.checkStatus.style.display = 'none';
       
       if (nextCheck) {
-        // Format the time (only once if not changed)
-        if (!this.nextCheckTime._formattedValue || this.nextCheckTime._formattedValue !== nextCheck) {
-          this.nextCheckTime.textContent = this.formatNextCheckTime(nextCheck);
-          this.nextCheckTime._formattedValue = nextCheck;
+        // The heading also depends on the clock (deadline and calendar day).
+        const heading = this.formatNextCheckTime(nextCheck);
+        if (this.nextCheckTime.textContent !== heading) {
+          this.nextCheckTime.textContent = heading;
         }
-        
+
         // Always update countdown
         this.nextCheckCountdown.textContent = this.formatTimeRemaining(nextCheck);
       }
@@ -248,6 +248,7 @@ class CheckTimer extends HTMLElement {
     }
     
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const checkDate = new Date(nextCheck.getFullYear(), nextCheck.getMonth(), nextCheck.getDate());
     
     const timeString = nextCheck.toLocaleTimeString('en-US', {
@@ -258,7 +259,7 @@ class CheckTimer extends HTMLElement {
     
     if (checkDate.getTime() === today.getTime()) {
       return `Today at ${timeString}`;
-    } else if (checkDate.getTime() === today.getTime() + 86400000) {
+    } else if (checkDate.getTime() === tomorrow.getTime()) {
       return `Tomorrow at ${timeString}`;
     } else {
       return nextCheck.toLocaleString('en-US', {

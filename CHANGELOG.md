@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bound dashboard fallback refreshes to ten seconds, abort detached requests,
+  reject invalid/redirected status fragments and offer a five-second manual
+  retry cooldown. Cancel superseded due callbacks and refresh timer headings
+  across deadlines, midnight and daylight-saving changes. Requires a later
+  dashboard/static-asset deployment; none is performed.
+
 - Test the registered dashboard components instead of copied calculations and
   handlers. Fix due dispatch, listener cleanup and service-header updates after
   check replacement/recovery. Render the registered autonomous elements and

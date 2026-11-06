@@ -21,3 +21,25 @@ reconnect. Detached checks do not notify former parents.
 The default refresh boundary is HTMX. Duplicate due events issue one request for
 the owning check. JavaScript changes take effect after a later dashboard/static
 asset deployment; this work does not deploy them.
+
+
+## Fetch fallback and clock updates
+
+If HTMX is unavailable, a refresh accepts only an OK, non-redirected response
+from the exact same-origin status URL, containing one `health-check` element
+with the requested DOM ID and check ID. Whitespace around the fragment is fine.
+Invalid responses retain the current check and show a status message with a
+manual **Retry status** button, enabled after five seconds. No automatic request
+loop is added. Each fallback request has a ten-second deadline covering headers
+and response text, one AbortController, and one active owner. Disconnect aborts
+and clears its timers; reconnect starts a fresh request after an error or cancelled fetch/HTMX delay.
+Successfully replaced nodes retire their request state before disconnect.
+Late results from prior requests cannot replace the current check.
+
+Progress rings cancel delayed due events on timing/mode edits and disconnect,
+and recheck attachment and the current schedule before dispatch. Each schedule
+notifies once; reconnect of an overdue normal ring starts a fresh schedule.
+Timer headings update with the countdown at the deadline and at local midnight.
+Tomorrow means the next calendar date, including 23/25-hour DST days. Unchanged
+heading text retains its DOM node. Tests fix the DST timezone in a child Node
+process, independent of the machine's local zone.

@@ -52,3 +52,37 @@ describe('production progress ring arithmetic', () => {
     expect(element.progressText.textContent).toBe('100%');
   });
 });
+
+describe('production due callback lifetime', () => {
+  it('cancels a due callback when rescheduled into the future', () => {
+    const element = ring(now);
+    const due = vi.fn();
+    element.addEventListener('check-due', due);
+    element.setAttribute('next-check', now + 60);
+    vi.advanceTimersByTime(100);
+    expect(due).not.toHaveBeenCalled();
+  });
+  it('cancels on detach and emits once per current schedule including reconnect', () => {
+    const element = ring(now);
+    const due = vi.fn();
+    element.addEventListener('check-due', due);
+    element.remove();
+    vi.advanceTimersByTime(100);
+    expect(due).not.toHaveBeenCalled();
+    document.body.append(element);
+    vi.advanceTimersByTime(2000);
+    expect(due).toHaveBeenCalledTimes(1);
+    element.setAttribute('next-check', now + 60);
+    element.setAttribute('next-check', now - 1);
+    vi.advanceTimersByTime(2000);
+    expect(due).toHaveBeenCalledTimes(2);
+  });
+  it('cancels a pending notification when switched to due mode', () => {
+    const element = ring(now);
+    const due = vi.fn();
+    element.addEventListener('check-due', due);
+    element.setAttribute('mode', 'due');
+    vi.advanceTimersByTime(2000);
+    expect(due).not.toHaveBeenCalled();
+  });
+});
