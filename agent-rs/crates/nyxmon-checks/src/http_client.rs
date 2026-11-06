@@ -36,6 +36,7 @@ use hyper::body::{Bytes, Incoming};
 use hyper::header::{self, HeaderMap, HeaderName, HeaderValue};
 use hyper_util::rt::TokioIo;
 use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 use rustls::{ClientConfig, RootCertStore};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
@@ -694,8 +695,14 @@ pub struct BodyLimit<'a> {
     pub limit: &'a BigInt,
 }
 
-fn decode_error(err: DecodeError) -> BodyError {
-    BodyError::Http(HttpError::request(err.0))
+fn decode_error(err: DecodeError, limit: Option<&BodyLimit<'_>>) -> BodyError {
+    match err {
+        DecodeError::TooLarge => BodyError::TooLarge(match limit {
+            Some(limit) => format!("response body exceeds the {} byte limit", limit.limit),
+            None => "discarded response exceeds the 8388608 byte limit".to_owned(),
+        }),
+        DecodeError::Invalid(message) => BodyError::Http(HttpError::request(message)),
+    }
 }
 
 /// Read and decode a body (`aiter_bytes`), failing once the decoded bytes
@@ -720,10 +727,22 @@ pub async fn read_body(
             "response body of {declared} bytes exceeds the {limit} byte limit"
         )));
     }
-    let mut decoder = BodyDecoder::new(
+    // Apply the configured allowance inside every inflater, including stacked
+    // intermediate streams. Discard mode still receives a finite budget.
+    let allowance = limit.as_ref().map_or(8 * 1024 * 1024, |cap| {
+        cap.limit.to_usize().unwrap_or_else(|| {
+            if cap.limit < &BigInt::from(0) {
+                0
+            } else {
+                usize::MAX
+            }
+        })
+    });
+    let mut decoder = BodyDecoder::with_limit(
         content_encodings(&response.headers)
             .iter()
             .map(String::as_str),
+        allowance,
     );
     let mut body: Vec<u8> = Vec::new();
     let push = |body: &mut Vec<u8>, chunk: Vec<u8>| -> Result<(), BodyError> {
@@ -740,11 +759,15 @@ pub async fn read_body(
     while let Some(frame) = response.body.frame().await {
         let frame = frame.map_err(|err| BodyError::Http(HttpError::transport(&err)))?;
         if let Ok(data) = frame.into_data() {
-            let decoded = decoder.decode(&data).map_err(decode_error)?;
+            let decoded = decoder
+                .decode(&data)
+                .map_err(|err| decode_error(err, limit.as_ref()))?;
             push(&mut body, decoded)?;
         }
     }
-    let tail = decoder.flush().map_err(decode_error)?;
+    let tail = decoder
+        .flush()
+        .map_err(|err| decode_error(err, limit.as_ref()))?;
     push(&mut body, tail)?;
     Ok(body)
 }

@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Bound Rust gzip headers to 128 KiB and enforce decoded byte allowances
+  inside inflation and every stacked decoder, before vector growth. Discarded
+  bodies have an 8 MiB decoded limit. Normal decoding and safe size-error
+  messages are retained; oversized intermediate streams now fail intentionally.
+  Requires a future Rust-agent deployment; none is performed.
+
 - Add a separate read-only CI audit of the frozen Python runtime and all
   development groups using pinned pip-audit; export and advisory failures
   fail the job. Run it locally with `python scripts/audit_python.py`.
