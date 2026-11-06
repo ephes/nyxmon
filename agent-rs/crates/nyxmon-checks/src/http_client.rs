@@ -13,7 +13,7 @@
 //!   `Cookie` header lists longer paths first like `http.cookiejar`;
 //! - httpx's default headers, its User-Agent (Q2) and HTTP/1.1 only;
 //! - redirects followed by hand like `AsyncClient._send_handling_redirects`
-//!   (at most 20, each redirect body read and decoded before following,
+//!   (at most 20, each redirect body closed without reading before following,
 //!   `Authorization` kept only on same-origin redirects and https upgrades,
 //!   credentials in the URL sent as basic auth like `_build_request_auth`);
 //! - `Content-Encoding` decoding as httpx ([`crate::decode`]).
@@ -570,10 +570,9 @@ impl HttpSession {
                 return Ok(response);
             }
             redirects += 1;
-            read_body(response, None).await.map_err(|err| match err {
-                BodyError::Http(err) => err,
-                BodyError::TooLarge(message) => HttpError::request(message),
-            })?;
+            // Connections are never reused. Dropping the unnecessary body
+            // aborts its driver instead of decoding/draining an unbounded peer.
+            drop(response);
             if redirects > MAX_REDIRECTS {
                 return Err(HttpError::request("Exceeded maximum allowed redirects."));
             }
@@ -708,7 +707,9 @@ fn decode_error(err: DecodeError, limit: Option<&BodyLimit<'_>>) -> BodyError {
 /// Read and decode a body (`aiter_bytes`), failing once the decoded bytes
 /// pass `limit` (json-metrics `_fetch`: a declared `Content-Length` of all
 /// ASCII digits over the limit fails before reading). Without a limit the
-/// body is read and discarded (redirect bodies).
+/// body is read and discarded under an 8 MiB decoded allowance. This guarded
+/// API mode is retained for callers; current production readers supply a limit.
+/// Redirects close their bodies directly without calling this helper.
 ///
 /// # Errors
 /// [`BodyError::TooLarge`] with the Python message, or the transport or

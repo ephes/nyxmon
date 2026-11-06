@@ -258,11 +258,9 @@ fn short_timeout_notifier(base: &str, timeout: Duration) -> (TelegramNotifier, A
     (TelegramNotifier::new(&env, settings), log)
 }
 
-/// httpx's read timeout bounds each socket read, not the whole response: a
-/// response that keeps arriving within the timeout is delivered even when it
-/// takes several timeouts in total.
+/// Socket progress cannot reset the whole-call deadline indefinitely.
 #[tokio::test]
-async fn timeout_applies_per_read_not_per_response() {
+async fn whole_call_deadline_bounds_progressing_notifications() {
     let server = FakeServer::start(
         vec![Reply::Dribble {
             gap: Duration::from_millis(120),
@@ -271,7 +269,27 @@ async fn timeout_applies_per_read_not_per_response() {
     )
     .await;
     let (notifier, log) = short_timeout_notifier(&server.base(), Duration::from_millis(400));
-    // About ten pieces, 120 ms apart: well over the 400 ms timeout in total.
+    assert_eq!(notifier.send("hi", true).await, Delivery::Failed);
+    let lines = log.take();
+    assert_eq!(lines.len(), 1);
+    assert!(
+        lines[0]
+            .1
+            .starts_with("Failed to send Telegram notification: TimeoutException: ")
+    );
+    assert_redacted(&lines);
+}
+
+#[tokio::test]
+async fn progressing_notifications_within_the_total_budget_are_delivered() {
+    let server = FakeServer::start(
+        vec![Reply::Dribble {
+            gap: Duration::from_millis(20),
+        }],
+        vec![],
+    )
+    .await;
+    let (notifier, log) = short_timeout_notifier(&server.base(), Duration::from_millis(400));
     assert_eq!(notifier.send("hi", true).await, Delivery::Delivered);
     assert_eq!(
         log.take(),

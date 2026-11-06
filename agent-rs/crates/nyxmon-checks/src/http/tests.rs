@@ -60,39 +60,40 @@ async fn the_final_body_is_never_read() {
 }
 
 #[tokio::test]
-async fn a_stalled_redirect_body_times_out() {
+async fn a_stalled_redirect_body_is_closed_before_following() {
     let mut step = vec![Action::Write(head(
         302,
         &[("Location", "/next"), ("Content-Length", "10")],
     ))];
     step.push(Action::Hold);
-    let server = FakeServer::start(vec![step]).await;
+    let server = FakeServer::start(vec![step, respond(200, &[], b"")]).await;
     let url = format!("http://127.0.0.1:{}/", server.port());
     let result = execute(&check(&url, r#"{"timeout": 0.3}"#), &ctx()).await;
-    assert_eq!(
-        result.data.get("error_type").and_then(PyJson::as_str),
-        Some("timeout")
-    );
-    assert_eq!(server.requests().len(), 1);
+    assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
+    assert_eq!(server.requests().len(), 2);
 }
 
 #[tokio::test]
 async fn the_timeout_bounds_each_read_not_the_whole_request() {
-    // Headers after 200 ms, then the body in pieces 200 ms apart: 1 s in
-    // total with a 0.5 s timeout still succeeds on a redirect body.
-    let mut step = vec![
-        Action::Sleep(Duration::from_millis(200)),
-        Action::Write(head(302, &[("Location", "/next"), ("Content-Length", "4")])),
-    ];
-    for _ in 0..4 {
+    // Header pieces arrive 200 ms apart; a 0.5 s per-read timeout allows
+    // the complete head even though the total exceeds 0.5 s.
+    let mut step = Vec::new();
+    for piece in [
+        b"HTTP/1.1 ".as_slice(),
+        b"200 OK\r\n",
+        b"Content-Length: ",
+        b"4\r\n",
+        b"\r\n",
+    ] {
         step.push(Action::Sleep(Duration::from_millis(200)));
-        step.push(Action::Write(b"x".to_vec()));
+        step.push(Action::Write(piece.to_vec()));
     }
-    let server = FakeServer::start(vec![step, respond(200, &[], b"")]).await;
+    step.push(Action::Hold);
+    let server = FakeServer::start(vec![step]).await;
     let url = format!("http://127.0.0.1:{}/", server.port());
     let result = execute(&check(&url, r#"{"timeout": 0.5}"#), &ctx()).await;
     assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
-    assert_eq!(server.requests().len(), 2);
+    assert_eq!(server.requests().len(), 1);
 }
 
 #[tokio::test]

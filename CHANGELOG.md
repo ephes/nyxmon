@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Close Rust HTTP redirect bodies before following fresh connections, so
+  trickling/oversized bodies cannot delay redirect validation or consume decoding
+  resources. Cap notifier response bodies at 64 KiB and bound the complete call
+  to twice its configured phase timeout; cancel connection drivers on exit.
+  Requires a future Rust-agent deployment; none is performed.
+
 - Bound Rust gzip headers to 128 KiB and enforce decoded byte allowances
   inside inflation and every stacked decoder, before vector growth. Discarded
   bodies have an 8 MiB decoded limit. Normal decoding and safe size-error

@@ -154,17 +154,17 @@ async fn url_credentials_are_basic_auth_kept_like_explicit_auth() {
 }
 
 #[tokio::test]
-async fn a_corrupt_redirect_body_is_a_request_error() {
+async fn a_corrupt_redirect_body_is_closed_without_decoding() {
     let step = respond(
         302,
         &[("Location", "/next"), ("Content-Encoding", "gzip")],
         b"not gzip at all",
     );
-    let server = FakeServer::start(vec![step]).await;
+    let server = FakeServer::start(vec![step, respond(204, &[], b"")]).await;
     let url = format!("http://127.0.0.1:{}/", server.port());
-    let err = session().get(&get(&url, true)).await.unwrap_err();
-    assert_eq!(err.kind, HttpErrorKind::Request);
-    assert_eq!(server.requests().len(), 1);
+    let response = session().get(&get(&url, true)).await.unwrap();
+    assert_eq!(response.status, 204);
+    assert_eq!(server.requests().len(), 2);
 }
 
 #[tokio::test]
@@ -543,4 +543,46 @@ async fn intermediate_decoding_and_discard_mode_obey_output_budgets() {
             "discarded response exceeds the 8388608 byte limit".to_owned()
         ))
     );
+}
+
+#[tokio::test]
+async fn redirect_bodies_cannot_delay_following_or_the_redirect_limit() {
+    let mut trickle = vec![Action::Write(head(
+        302,
+        &[("Location", "/next"), ("Transfer-Encoding", "chunked")],
+    ))];
+    for _ in 0..40 {
+        trickle.push(Action::Sleep(Duration::from_millis(50)));
+        trickle.push(Action::Write(b"1\r\nx\r\n".to_vec()));
+    }
+    trickle.push(Action::Hold);
+    // Final ordinary HTTP checks still finish at headers without a body read.
+    let final_headers = vec![
+        Action::Write(head(200, &[("Content-Length", "999999")])),
+        Action::Hold,
+    ];
+    let server = FakeServer::start(vec![trickle, final_headers]).await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let response = tokio::time::timeout(Duration::from_secs(1), session().get(&get(&url, true)))
+        .await
+        .expect("redirect body cannot delay the check")
+        .unwrap();
+    assert_eq!(response.status, 200);
+    assert_eq!(server.requests().len(), 2);
+
+    let step = vec![
+        Action::Write(head(
+            302,
+            &[("Location", "/loop"), ("Content-Length", "999999")],
+        )),
+        Action::Hold,
+    ];
+    let server = FakeServer::start(vec![step; MAX_REDIRECTS + 1]).await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let error = tokio::time::timeout(Duration::from_secs(1), session().get(&get(&url, true)))
+        .await
+        .expect("redirect count enforced before draining")
+        .unwrap_err();
+    assert_eq!(error.kind, HttpErrorKind::Request);
+    assert_eq!(error.message, "Exceeded maximum allowed redirects.");
 }

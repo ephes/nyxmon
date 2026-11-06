@@ -343,7 +343,10 @@ OpsGate producer integration (optional) reads:
 - `OPSGATE_SUBMIT_TOKEN`: Nyxmon submit token for OpsGate
 - `OPSGATE_APPROVAL_BASE_URL`: Base URL used for approval links in notifications (defaults to submit base URL)
 - `OPSGATE_TICKET_EXPIRES_SECONDS`: Ticket expiry window in seconds (default `14400`)
-- `OPSGATE_SUBMIT_TIMEOUT_SECONDS`: Submit HTTP timeout in seconds (default `10`)
+- `OPSGATE_SUBMIT_TIMEOUT_SECONDS`: Submit HTTP phase timeout in seconds (default `10`).
+  The Rust notifier also bounds the whole call to twice this value and caps its
+  response at 64 KiB. Telegram uses a 10-second phase timeout and a 20-second
+  whole-call deadline. Oversized responses fail without logging their contents.
 - `OPSGATE_SUBMIT_INCLUDE_WARNINGS`: Whether warning checks also create tickets (`false` by default)
 
 ### Django Settings

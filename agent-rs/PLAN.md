@@ -1139,10 +1139,10 @@ raised). Any error in this function is logged as
     non-HEAD 301/302 → GET); headers per `_redirect_headers` (Authorization
     dropped unless same origin or https upgrade, `Host` replaced, `Cookie`
     rebuilt from the jar); at most 20 redirects, the 21st →
-    `TooManyRedirects` → `request_error`; **each redirect response body is
-    read completely before following** (httpx `await response.aread()`),
-    under the read timeout, so a stalled redirect body yields `timeout` as in
-    Python;
+    `TooManyRedirects` → `request_error`; redirect response bodies are closed
+    without reading/decoding, aborting their owned connection drivers. This
+    intentional safety difference prevents trickling bodies from retaining
+    checks; each next request already uses a fresh connection;
   - decoding: the request always sends `Accept-Encoding: gzip, deflate`;
     `Content-Encoding` values `gzip`, `deflate` (zlib-wrapped, falling back
     to raw deflate as httpx's `DeflateDecoder`), `identity`, and
@@ -1159,7 +1159,7 @@ raised). Any error in this function is logged as
   `Accept-Encoding: gzip, deflate`, `Connection: keep-alive`, and the
   User-Agent `python-httpx/0.28.1` (Q2). HTTP/1.1 only.
 - The HTTP check never reads the final response body (`_fetch_headers`
-  streams and closes); it does read redirect bodies when following (above).
+  streams and closes); redirect bodies are also closed without reading.
 - Error classification: httpx `TimeoutException` → a timed-out connect,
   handshake, read or write; `ConnectError` → DNS/TCP/TLS connect failures;
   other transport errors → `request_error`;
@@ -1448,7 +1448,11 @@ exit 1).
   then every single socket read and write within 10 s; reqwest's
   `read_timeout` cannot express this for the response head, so the
   notifiers use hyper's HTTP/1.1 client over a per-operation timeout
-  wrapper); 2xx → delivered; HTTP 400 whose body
+  wrapper). A whole-call deadline of twice that phase timeout includes DNS,
+  TCP, TLS, upload and response reads, and response bodies are capped at 64 KiB
+  before collection. These are intentional safety differences; ordinary phase
+  timeout classes remain, while total deadline exhaustion is `TimeoutException`.
+  2xx → delivered; HTTP 400 whose body
   contains `can't parse entities` (lowercased) → resend once as
   `markdown_v2_to_plain_text` without `parse_mode`; other failures → `Failed`
   with the redacted log line; no token/chat → `Unknown` with warning.
@@ -2459,7 +2463,7 @@ Acceptance criteria per slice (in addition to the green checks):
   eyeballs timing, rustls vs OpenSSL) — mitigated by the glibc target, the
   shadow run on the real host and network, and D-9.
 - **R2 httpx semantics that are easy to get subtly wrong** (per-phase
-  timeouts, redirect handling incl. reading redirect bodies, Authorization on
+  timeouts, redirect handling and intentional body refusal, Authorization on
   https upgrades, decoding and the caps, `Accept-Encoding`, User-Agent, the
   batch-wide cookie jar shared by all HTTP-family checks of a batch).
   Mitigated by reimplementing redirects/decoding explicitly (5.5), fake-server
