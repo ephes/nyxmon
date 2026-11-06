@@ -336,12 +336,21 @@ Rust DNS behavior or require an agent deployment.
 The October 2026 refresh updates advisory-affected locked dependencies to patched
 versions. Install the reviewed lock with `uv sync --frozen`; use targeted
 `uv lock --upgrade-package PACKAGE==VERSION` updates rather than upgrading all packages.
-Audit runtime, development and optional dependencies before and after an update:
+Audit runtime, development and optional dependencies before and after an update,
+using the same command as CI's separate **Python dependency audit** job:
 
 ```shell
-uv export --frozen --all-extras --all-groups --no-emit-project --no-hashes -o /tmp/requirements-audit.txt
-uvx pip-audit -r /tmp/requirements-audit.txt --no-deps --disable-pip
+python scripts/audit_python.py
 ```
+
+The command exports the frozen lock with all extras and groups (including `dev`
+and `dashboard-dev`), then runs `pip-audit==2.10.1` with `--no-deps --disable-pip`.
+It installs no project dependencies, uses temporary requirements and HTTP cache
+files, and fails if either export or audit fails. It needs access to PyPI's
+advisory service. Coverage is the registry graph selected by environment markers
+on the running interpreter/platform; isolated pre-commit hook environments and
+Rust dependencies have separate checks. CI uses Python 3.13 on Linux, read-only
+repository permissions and a ten-minute job timeout.
 
 The audit must fail against the vulnerable lock and pass against the refreshed
 lock; rerun the CI checks to verify compatibility.

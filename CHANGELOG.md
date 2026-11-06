@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Add a separate read-only CI audit of the frozen Python runtime and all
+  development groups using pinned pip-audit; export and advisory failures
+  fail the job. Run it locally with `python scripts/audit_python.py`.
 - Require dnspython >=2.9.0 and refresh its Python lock entry for
   CVE-2026-114605. Re-sync Python environments; Rust-agent DNS is unchanged.
 
