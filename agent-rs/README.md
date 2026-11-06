@@ -445,3 +445,24 @@ end/trailers without growing the output. Raw/zlib first-chunk fallback and
 truncated/trailing-byte behavior are unchanged. Size refusals retain the normal
 `BodyTooLarge` result/message. Discard mode also has an 8 MiB decoded allowance.
 These changes require an eventual Rust-agent rollout; no deployment is included.
+
+
+## Outbound response budgets
+
+HTTP redirects close their bodies immediately before opening the next fresh
+connection. No redirect bytes are drained or decoded; malformed compressed
+redirect bodies are ignored intentionally. Destination validation, the
+20-redirect cap, cookie handling and cross-origin credential stripping remain.
+Ordinary HTTP checks still return from final headers alone.
+
+Notifier POSTs retain their configured per-phase timeout `t` and additionally
+have one whole-call deadline of `2 * t`, covering DNS, connect, TLS, upload and
+response acquisition together. This allows one connect budget plus one transfer
+budget while bounding progress that would otherwise reset every socket timer.
+Ordinary connect/read/write timeout classes are retained; total exhaustion
+returns the safe `TimeoutException: timed out` classification. Response bodies
+are limited to 64 KiB before collection, including chunked bodies; over-limit
+responses return a generic `ReadError` without body content. Owned connection
+drivers are aborted on success, rejection, timeout and cancellation. No extra
+retry path is introduced. This tightening requires a future Rust-agent rollout;
+no deployment is performed here.

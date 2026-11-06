@@ -7,7 +7,8 @@
 //! - `timeout=t` with httpx's per-phase semantics: the TCP connect plus TLS
 //!   handshake within `t` (`ConnectTimeout`), then every single socket write
 //!   (`WriteTimeout`) and every single socket read (`ReadTimeout`) within
-//!   `t`, so a response that keeps arriving never times out;
+//!   `t`. A whole-call deadline of `2 * t` additionally bounds DNS, connect, TLS,
+//!   upload and response acquisition together (intentional safety tightening);
 //! - connecting like `anyio.connect_tcp` (httpx's backend): the resolved
 //!   addresses in anyio's order, a new attempt every 250 ms or as soon as
 //!   the newest one fails, the first connection wins;
@@ -20,6 +21,7 @@
 //! or text bodies, so the outcome is the same. Proxy variables are not
 //! honoured (PLAN.md D-13).
 //!
+//! Response bodies are capped at 64 KiB before collection.
 //! Transport errors carry the httpx exception class and a Python-style
 //! message (`[Errno N] …`, `timed out`); both are log text only (P2).
 
@@ -34,6 +36,7 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
+use hyper::body::Body as _;
 use hyper_util::rt::TokioIo;
 use rustls::ClientConfig;
 use rustls::pki_types::ServerName;
@@ -44,6 +47,8 @@ use tokio_rustls::TlsConnector;
 
 /// `User-Agent` of httpx 0.28.1 (owner decision: kept).
 pub(crate) const USER_AGENT: &str = "python-httpx/0.28.1";
+
+const MAX_RESPONSE_BYTES: usize = 64 * 1024;
 
 /// The longest timeout used; a configured `OPSGATE_SUBMIT_TIMEOUT_SECONDS`
 /// beyond it is clamped (Python passes any positive integer through).
@@ -459,8 +464,25 @@ impl HttpClient {
         }
     }
 
-    /// POST `body` to `url` and read the whole response.
+    /// POST with one deadline covering the complete call and a bounded response.
     pub(crate) async fn post(
+        &self,
+        url: &str,
+        headers: &[(&str, &str)],
+        body: String,
+    ) -> Result<Response, TransportError> {
+        match tokio::time::timeout(
+            self.timeout.saturating_mul(2),
+            self.post_inner(url, headers, body),
+        )
+        .await
+        {
+            Ok(result) => result,
+            Err(_) => Err(TransportError::new("TimeoutException", "timed out")),
+        }
+    }
+
+    async fn post_inner(
         &self,
         url: &str,
         headers: &[(&str, &str)],
@@ -524,14 +546,29 @@ async fn exchange<S: Stream + 'static>(
         .await
         .map_err(|e| classify(&e, true))?;
     let status = response.status().as_u16();
-    let body = response
-        .into_body()
-        .collect()
-        .await
-        .map_err(|e| classify(&e, true))?
-        .to_bytes()
-        .to_vec();
+    let mut incoming = response.into_body();
+    if incoming.size_hint().lower() > MAX_RESPONSE_BYTES as u64 {
+        return Err(response_limit_error());
+    }
+    // One small, bounded allocation avoids reallocating for tiny frames.
+    let mut body = Vec::with_capacity(MAX_RESPONSE_BYTES);
+    while let Some(frame) = incoming.frame().await {
+        let frame = frame.map_err(|e| classify(&e, true))?;
+        if let Ok(data) = frame.into_data() {
+            if data.len() > MAX_RESPONSE_BYTES - body.len() {
+                return Err(response_limit_error());
+            }
+            body.extend_from_slice(&data);
+        }
+    }
     Ok(Response { status, body })
+}
+
+fn response_limit_error() -> TransportError {
+    TransportError::new(
+        "ReadError",
+        "notification response exceeds 65536 byte limit",
+    )
 }
 
 /// `urllib.parse.urlencode(fields)` as httpx encodes `data=`: `quote_plus`
@@ -699,3 +736,6 @@ mod tests {
         assert!(!os_error_text(&err).contains("os error"));
     }
 }
+
+#[cfg(test)]
+mod budget_tests;

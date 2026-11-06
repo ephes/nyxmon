@@ -164,7 +164,7 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `test_http_executor.py::test_body_is_never_read_and_the_stream_is_closed` | `http/tests.rs::the_final_body_is_never_read` | done |
 | `JsonMetricsExecutor.execute` (`test_json_metrics_executor.py`: thresholds, severities, HTTP error, invalid config, JSON error, timeout retries, declared/streamed/decompressed body caps, error body not read) | `config_json_metrics.json` `executor_cases` replayed against a fake server (`json_metrics/tests.rs`), plus `::a_body_without_declared_length_is_capped_while_streaming`, `::an_error_response_body_is_not_read`, `::transport_errors_are_request_errors_and_retried` | done |
 | httpx URL parsing (`_urlparse.urlparse`, `URL.raw_path`, credentials, IPv6 scopes, `idna.encode` IDNA 2008 incl. CONTEXTJ/CONTEXTO and the Bidi Rule) and redirect resolution (`_redirect_url`, `URL.join`/`urljoin`) | `httpx_url.json` (`nyxmon-checks/src/httpx_url/tests.rs`) on `nyxmon_checks::idna2008` (`idna2008_tables.json`) | done |
-| httpx redirects (`_send_handling_redirects`, `_redirect_headers`, 20-redirect limit, redirect bodies read under the read timeout), URL credentials (`_build_request_auth`), default headers and User-Agent, batch cookie jar, `Cookie` order and path matching, per-read timeouts, timeouts beyond float range, anyio Happy Eyeballs | `http_client/tests.rs` (one fake-server test per rule), `http/tests.rs::a_stalled_redirect_body_times_out`, `::the_timeout_bounds_each_read_not_the_whole_request`, `::an_invalid_location_fails_even_when_redirects_are_not_followed`, `::url_errors_follow_the_httpx_classes`, `json_metrics/tests.rs::a_timeout_beyond_float_range_is_an_unexpected_error` | done |
+| httpx redirects (`_send_handling_redirects`, `_redirect_headers`, 20-redirect limit, redirect bodies closed without draining), URL credentials (`_build_request_auth`), default headers and User-Agent, batch cookie jar, `Cookie` order and path matching, per-read timeouts, timeouts beyond float range, anyio Happy Eyeballs | `http_client/tests.rs` (one fake-server test per rule), `http/tests.rs::a_stalled_redirect_body_is_closed_before_following`, `::the_timeout_bounds_each_read_not_the_whole_request`, `::an_invalid_location_fails_even_when_redirects_are_not_followed`, `::url_errors_follow_the_httpx_classes`, `json_metrics/tests.rs::a_timeout_beyond_float_range_is_an_unexpected_error` | done |
 | httpx `Content-Encoding` decoders (`GZipDecoder` incl. header CRC, `DeflateDecoder` with raw fallback, `MultiDecoder`, unknown encodings) | `decode/tests.rs` and the gzip/deflate `executor_cases` | done |
 | Retry delays (`anyio.sleep`) | recorded per fixture case (`Sleeper::recording`); `http/tests.rs::retry_delays_wait_on_the_tokio_clock` checks the real sleeper on a paused clock | done |
 
@@ -366,3 +366,21 @@ against a temporary database from the schema fixture and fake servers).
 
 - `tiny_header_frames_use_bounded_amortized_reservations` counts buffer capacity
   changes for one-byte frames rather than relying on platform timing.
+
+
+## Bounded outbound waits
+
+- `http_client::tests::redirect_bodies_cannot_delay_following_or_the_redirect_limit`
+  scripts a continuously trickling 302 and an endless redirect chain. The final
+  header-only HTTP check still finishes without reading a body. Existing
+  redirect destination, credentials and cookie fixtures remain in force.
+- `http::budget_tests::declared_and_chunked_responses_are_capped_without_echoing_content`
+  checks notifier limits and generic errors; peers verify connection closure.
+- `whole_call_deadline_stops_a_continuously_progressing_response` checks total
+  time independently of socket progress. `exact_cap_and_small_error_responses_still_succeed`
+  preserves normal and exact-cap bodies. Fixtures use ephemeral loopback peers.
+- Notifier integration regressions `whole_call_deadline_bounds_progressing_notifications`
+  and `progressing_notifications_within_the_total_budget_are_delivered` exercise
+  delivery/log behavior; ordinary stalled reads retain their `ReadTimeout` class.
+- `one_byte_chunked_frames_use_one_bounded_response_allocation` verifies the
+  notifier preallocates its small cap once rather than reserving per tiny frame.
