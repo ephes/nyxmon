@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Validate HTMX health-check response identity before swapping and require an
+  actual replacement before confirming mutations or reconciliation. Empty,
+  malformed, wrong-card and no-swap successes retain ownership and recover with
+  GET; authentication redirects keep navigating normally.
+
 - Reconcile failed dashboard mutations with confirmed server state, scope pending
   controls and preserve Run now actions during polls, retain keyboard focus through card swaps, and announce meaningful
   check/service status transitions once across mirrored cards and repeated polls.
@@ -50,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default stays `individual`, so nothing changes without the setting.
 
 ### Security
+
+- Install a payload-free process-wide Rust panic hook for the agent and
+  `run-check` commands, preventing panic payloads and backtraces from leaking to
+  stderr while preserving executor results and task failure diagnostics.
 
 - Bound complete Rust SMTP/IMAP attempts to five/eight times their validated
   timeout, including setup and cleanup; retain completed session outcomes if

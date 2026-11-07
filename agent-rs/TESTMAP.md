@@ -409,3 +409,9 @@ against a temporary database from the schema fixture and fake servers).
   preserves the DB-actor cause; the D-19 restore regression now supervises the
   real observer task and requires process failure. The supervision tests also
   cover a normal observer return racing intentional shutdown.
+
+- `supervision::tests::panic_payloads_never_reach_real_stderr` captures subprocess
+  stderr with backtraces enabled for invented executor, observer, cleaner and
+  main-thread panics. It uses the command startup logging installation, the real
+  run-check runner and task supervisor; payloads/backtraces never escape, executor
+  error results remain intact and required-task panics exit unsuccessfully.

@@ -8,7 +8,7 @@ function render() {
   document.body.innerHTML = fixtures.fragments['1-False'] + fixtures.fragments['2-False'];
   return document.querySelector('#check-1 input[type=checkbox]');
 }
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); });
+afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.clearAllMocks(); });
 
 it('owns one pending toggle and restores the confirmed value after rejection', () => {
   const checkbox = render(); const xhr = { status: 403 };
@@ -26,8 +26,11 @@ it('owns one pending toggle and restores the confirmed value after rejection', (
 
 it('reconciles an ambiguous toggle with GET instead of another inversion', async () => {
   const checkbox = render(); const xhr = { status: 0 };
-  const ajax = vi.spyOn(window.htmx, 'ajax').mockImplementation(async () => {
-    document.getElementById('check-1').outerHTML = fixtures.fragments['1-True'];
+  const ajax = vi.spyOn(window.htmx, 'ajax').mockImplementation(async (_method, _url, options) => {
+    const card = document.getElementById('check-1'); const xhr = {};
+    event('htmx:beforeRequest', card, { xhr, requestConfig: { headers: options.headers } });
+    event('htmx:beforeSwap', card, { xhr, target: card, shouldSwap: true, serverResponse: fixtures.fragments['1-True'] });
+    card.outerHTML = fixtures.fragments['1-True'];
   });
   checkbox.checked = true;
   event('htmx:beforeRequest', checkbox, { xhr, requestConfig: { headers: {} } });
@@ -62,4 +65,42 @@ it('locks mutating run actions without discarding their response', () => {
   event('htmx:afterRequest', form, { xhr, successful: false });
   expect(document.querySelector('#check-1 input').disabled).toBe(false);
   expect(document.querySelector('#check-1 input').checked).toBe(false);
+});
+
+it.each([
+  '',
+  '<html><body>Unexpected page</body></html>',
+  fixtures.fragments['2-True'],
+  fixtures.fragments['1-True'].replace('check-id="1"', 'check-id="2"'),
+  fixtures.fragments['1-True'] + fixtures.fragments['2-True'],
+  'Unexpected text' + fixtures.fragments['1-True'],
+])('rejects an invalid card fragment before swapping', serverResponse => {
+  render();
+  const card = document.getElementById('check-1');
+  const detail = { xhr: {}, elt: card, target: card, shouldSwap: true, serverResponse };
+  card.dispatchEvent(new CustomEvent('htmx:beforeSwap', { bubbles: true, detail }));
+  expect(detail.shouldSwap).toBe(false);
+});
+
+it('binds GET response identity to its request card even when a header retargets the swap', () => {
+  render();
+  const card = document.getElementById('check-1'); const other = document.getElementById('check-2'); const xhr = {};
+  event('htmx:beforeRequest', card, { xhr, requestConfig: { headers: {} } });
+  const detail = { xhr, elt: other, target: other, shouldSwap: true, serverResponse: fixtures.fragments['2-True'] };
+  other.dispatchEvent(new CustomEvent('htmx:beforeSwap', { bubbles: true, detail }));
+  expect(detail.shouldSwap).toBe(false);
+});
+
+it('reconciles a successful no-swap mutation and keeps controls locked if GET also has no swap', async () => {
+  const checkbox = render(); const xhr = { status: 204 };
+  const ajax = vi.spyOn(window.htmx, 'ajax').mockResolvedValue();
+  checkbox.checked = true;
+  event('htmx:beforeRequest', checkbox, { xhr, requestConfig: { headers: {} } });
+  event('htmx:afterRequest', checkbox, { xhr, successful: true });
+  await Promise.resolve(); await Promise.resolve();
+  expect(ajax).toHaveBeenCalledTimes(1);
+  expect(ajax.mock.calls[0][0]).toBe('GET');
+  expect(checkbox.disabled).toBe(true); expect(checkbox.checked).toBe(false);
+  expect(document.querySelector('#check-1 [role=alert]').textContent).toContain('uncertain');
+
 });
