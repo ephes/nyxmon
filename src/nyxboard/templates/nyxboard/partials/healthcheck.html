@@ -70,7 +70,7 @@
                       hx-target="#check-{{ check.id }}"
                       hx-swap="outerHTML">
                     {% csrf_token %}
-                    <button type="submit" class="run-check-button">
+                    <button type="submit" class="run-check-button" aria-label="{% if check.status == 'processing' %}Running... {{ check.name }}{% else %}Run now: {{ check.name }}{% endif %}">
                         {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
                     </button>
                 </form>

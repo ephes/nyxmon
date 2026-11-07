@@ -32,3 +32,7 @@ docs/_build/
 
 # Rust agent build output
 /agent-rs/target/
+
+# Browser test artifacts
+/test-results/
+/playwright-report/

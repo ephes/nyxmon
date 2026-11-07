@@ -72,12 +72,12 @@
             <!-- Disable toggle with HTMX and label -->
             <div class="toggle-control">
                 <label class="toggle-switch" title="{% if check.disabled %}Enable{% else %}Disable{% endif %} check">
-                    <input type="checkbox" 
+                    <input type="checkbox" aria-label="Disable check {{ check.name }}" 
                            {% if check.disabled %}checked{% endif %}
                            hx-post="{% url 'nyxboard:healthcheck_toggle_disabled' check_id=check.id %}"
                            hx-swap="outerHTML"
                            hx-target="#check-{{ check.id }}">
-                    <span class="toggle-slider"></span>
+                    <span class="toggle-slider" aria-hidden="true"></span>
                 </label>
                 <span class="toggle-label">{% if check.disabled %}Disabled{% else %}Enabled{% endif %}</span>
             </div>
@@ -89,7 +89,7 @@
                       hx-swap="outerHTML"
                       style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="run-check-button">
+                    <button type="submit" class="run-check-button" aria-label="{% if check.status == 'processing' %}Running... {{ check.name }}{% else %}Run now: {{ check.name }}{% endif %}">
                         {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
                     </button>
                 </form>

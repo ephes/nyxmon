@@ -10,7 +10,8 @@
     <script>
         // Apply theme immediately to prevent flash
         (function() {
-            const savedTheme = localStorage.getItem('nyxmon-theme');
+            let savedTheme;
+            try { savedTheme = localStorage.getItem('nyxmon-theme'); } catch { /* Storage is optional. */ }
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const isDarkTheme = savedTheme === 'dark' || (!savedTheme && prefersDark);
             
@@ -26,7 +27,7 @@
                 if (document.readyState === 'interactive' || document.readyState === 'complete') {
                     const themeToggle = document.getElementById('themeToggle');
                     if (themeToggle) {
-                        themeToggle.checked = isDarkTheme;
+                        themeToggle.checked = document.documentElement.dataset.theme === 'dark';
                     }
                 }
             });
@@ -44,8 +45,8 @@
                 <span class="theme-label light-label">Light</span>
                 <label id="theme-toggle-container" class="theme-switch-toggle">
                     <!-- We set the checked state on page load via JavaScript -->
-                    <input type="checkbox" id="themeToggle">
-                    <span class="theme-switch-slider"></span>
+                    <input type="checkbox" id="themeToggle" aria-label="Dark theme">
+                    <span class="theme-switch-slider" aria-hidden="true"></span>
                 </label>
                 <span class="theme-label dark-label">Dark</span>
             </div>
@@ -76,74 +77,27 @@
     // Initialize theme based on preferences
     function initializeTheme() {
         const themeToggle = document.getElementById('themeToggle');
-        const html = document.documentElement;
-        const body = document.body;
-        
-        // Get the theme that was applied in the early script in the <head>
-        const isDarkTheme = html.dataset.theme === 'dark';
-        
-        if (isDarkTheme) {
-            // Apply to both html and body for consistency
-            html.classList.add('dark-theme');
-            body.classList.add('dark-theme');
-            if (themeToggle) themeToggle.checked = true;
-            
-            // Dispatch custom event for theme change
-            document.dispatchEvent(new CustomEvent('theme-changed', {
-                detail: { theme: 'dark' } 
-            }));
-        }
-        
-        // Toggle theme when the checkbox changes
-        if (themeToggle) {
-            themeToggle.addEventListener('change', () => {
-                const html = document.documentElement;
-                
-                if (themeToggle.checked) {
-                    // Apply to both html and body for consistency
-                    html.classList.add('dark-theme');
-                    body.classList.add('dark-theme');
-                    localStorage.setItem('nyxmon-theme', 'dark');
-                    
-                    // Dispatch custom event for theme change
-                    document.dispatchEvent(new CustomEvent('theme-changed', {
-                        detail: { theme: 'dark' } 
-                    }));
-                    
-                    // Store theme in session via AJAX
-                    fetch('{% url "nyxboard:set_theme" %}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({ theme: 'dark' })
-                    });
-                } else {
-                    // Remove from both html and body for consistency
-                    html.classList.remove('dark-theme');
-                    body.classList.remove('dark-theme');
-                    localStorage.setItem('nyxmon-theme', 'light');
-                    
-                    // Dispatch custom event for theme change
-                    document.dispatchEvent(new CustomEvent('theme-changed', {
-                        detail: { theme: 'light' } 
-                    }));
-                    
-                    // Store theme in session via AJAX
-                    fetch('{% url "nyxboard:set_theme" %}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({ theme: 'light' })
-                    });
-                }
-            });
-        }
+        const apply = (theme) => {
+            const dark = theme === 'dark';
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.classList.toggle('dark-theme', dark);
+            document.body.classList.toggle('dark-theme', dark);
+            if (themeToggle) themeToggle.checked = dark;
+            document.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme } }));
+        };
+        apply(document.documentElement.dataset.theme || 'light');
+        themeToggle?.addEventListener('change', () => {
+            const theme = themeToggle.checked ? 'dark' : 'light';
+            apply(theme);
+            try { localStorage.setItem('nyxmon-theme', theme); } catch { /* In-memory choice still applies. */ }
+            fetch('{% url "nyxboard:set_theme" %}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ theme })
+            }).catch(() => { /* Session persistence is best effort. */ });
+        });
     }
-    
+
     // Handle HTMX events to maintain theme after content swaps
     document.addEventListener('htmx:afterSwap', function(event) {
         const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
@@ -311,10 +265,6 @@
                     
                     console.log(`Theme switched to ${theme}, applied to ${webComponents.length} components`);
                     
-                    // Dispatch a custom event that components can listen for
-                    document.dispatchEvent(new CustomEvent('theme-changed', {
-                        detail: { theme: theme }
-                    }));
                 } catch (error) {
                     console.error('Error in mutation observer handler:', error);
                 }
