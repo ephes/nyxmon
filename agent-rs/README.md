@@ -160,6 +160,23 @@ copy of the database, with the `smtp` and `imap` checks disabled in the copy
 (an SMTP check sends real mail; an IMAP check deletes the messages it
 matched, which the production check expects).
 
+### Notification diagnostic text
+
+The logging notifier emits one line per alert in normal and `--shadow` modes.
+Untrusted check names and shadow error types keep at most 200 Unicode code
+points; normal-mode result diagnostics keep at most 1000, each followed by an
+accurate truncation marker when needed. Controls, format characters and Unicode
+line/paragraph separators become `?`; trusted IDs and statuses remain intact.
+This deliberately hardens legacy Python fixture text. Delivery still succeeds
+once the line is written. Adopting this change requires a later Rust rollout.
+
+Handwritten sanitizer invariants supplement the frozen fixtures: safe Unicode,
+200-code-point strings/keys, 25 input entries per container, and containers
+omitted at depth four (root depth zero). Scalars remain allowed there. Sanitized
+key collisions replace the earlier value in place; omission counts refer to
+input entries, and the reserved `[omitted]` marker replaces a colliding key.
+Run these offline cases with `cargo test -p nyxmon-notify --locked` in `agent-rs/`.
+
 ## Releases
 
 `.github/workflows/agent-rs-release.yml` builds the binary the deployment

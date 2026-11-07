@@ -7,6 +7,7 @@ use nyxmon_core::pyjson::PyJson;
 
 use crate::log::{Level, NotifyLog, TracingLog};
 use crate::pystr::{py_repr, py_str};
+use crate::sanitize::sanitize_untrusted_text;
 use crate::{Delivery, Notifier, NotifyFuture};
 
 /// Logs one ERROR line per alert under `nyxmon.adapters.notification`;
@@ -14,8 +15,10 @@ use crate::{Delivery, Notifier, NotifyFuture};
 ///
 /// In `--shadow` mode the line is machine-readable, one per alert:
 /// `notification check_id=<id> status=<s> error_type=<t>`
-/// (`<t>` is `str(error_type)`, empty when absent). Otherwise it follows the
-/// Python text (PLAN.md P2).
+/// (`<t>` is cleaned and bounded `str(error_type)`, empty when absent).
+/// Labels keep 200 characters; plain result diagnostics keep 1000 characters,
+/// plus omission markers. Controls/format characters/separators become `?`.
+/// This intentionally hardens the legacy Python text (PLAN.md P2).
 #[derive(Clone)]
 pub struct LoggingNotifier {
     shadow: bool,
@@ -38,6 +41,7 @@ impl LoggingNotifier {
                 .data
                 .get("error_type")
                 .map_or_else(String::new, py_str);
+            let error_type = sanitize_untrusted_text(&error_type, Some(200));
             return format!(
                 "notification check_id={} status={} error_type={error_type}",
                 check.check_id, result.status
@@ -46,7 +50,7 @@ impl LoggingNotifier {
         let check_name = if check.name.is_empty() {
             format!("Check {}", check.check_id)
         } else {
-            check.name.clone()
+            sanitize_untrusted_text(&check.name, Some(200))
         };
         format!(
             "Check failed: {check_name} (ID: {}), Result: Result(result_id=None, check_id={} \
@@ -54,7 +58,7 @@ impl LoggingNotifier {
             check.check_id,
             result.check_id,
             result.status,
-            py_repr(&PyJson::Dict(result.data.clone()))
+            sanitize_untrusted_text(&py_repr(&PyJson::Dict(result.data.clone())), Some(1000))
         )
     }
 }
