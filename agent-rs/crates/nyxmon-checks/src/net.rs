@@ -5,13 +5,14 @@
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
 use rustls::ClientConfig;
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, ReadBuf};
 use tokio::net::TcpStream;
+use tokio::sync::Semaphore;
 use tokio_rustls::TlsConnector;
 use tokio_rustls::client::TlsStream;
 
@@ -60,6 +61,33 @@ pub async fn with_timeout<T>(
         .unwrap_or_else(|_| Err(timed_out()))
 }
 
+/// Cap running AND queued blocking mail lookups process-wide. Dropping a
+/// caller cannot cancel libc; the closure must own its permit until it exits.
+/// Callers bound admission and completion with their operation/attempt deadline.
+pub(crate) async fn system_lookup<T: Send + 'static>(
+    lookup: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, NetError> {
+    static SLOTS: OnceLock<Arc<Semaphore>> = OnceLock::new();
+    let slots = SLOTS.get_or_init(|| Arc::new(Semaphore::new(16)));
+    system_lookup_with_slots(Arc::clone(slots), lookup).await
+}
+
+async fn system_lookup_with_slots<T: Send + 'static>(
+    slots: Arc<Semaphore>,
+    lookup: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, NetError> {
+    let permit = slots
+        .acquire_owned()
+        .await
+        .map_err(|err| NetError::Other(err.to_string()))?;
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        lookup()
+    })
+    .await
+    .map_err(|err| NetError::Other(err.to_string()))
+}
+
 /// `socket.getaddrinfo(host, port, 0, SOCK_STREAM)` (blocking libc call on
 /// the blocking pool); the host is IDNA-encoded like Python's `socket`.
 pub async fn resolve(host: &str, port: u16) -> Result<Vec<SocketAddr>, NetError> {
@@ -68,7 +96,7 @@ pub async fn resolve(host: &str, port: u16) -> Result<Vec<SocketAddr>, NetError>
             "encoding with 'idna' codec failed (UnicodeError: {err})"
         ))
     })?;
-    let lookup = tokio::task::spawn_blocking(move || {
+    let lookup = system_lookup(move || {
         let hints = dns_lookup::AddrInfoHints {
             socktype: dns_lookup::SockType::Stream.into(),
             ..Default::default()
@@ -92,15 +120,16 @@ pub async fn resolve(host: &str, port: u16) -> Result<Vec<SocketAddr>, NetError>
             }
         }
     })
-    .await
-    .map_err(|err| NetError::Other(err.to_string()))?;
+    .await?;
     lookup.map_err(NetError::Os)
 }
 
 /// `socket.create_connection((host, port), timeout)`: every resolved
 /// address in turn, each bounded by `timeout`; the last error wins.
 pub async fn connect_tcp(host: &str, port: u16, timeout: Duration) -> Result<TcpStream, NetError> {
-    let addrs = resolve(host, port).await?;
+    let addrs = tokio::time::timeout(timeout, resolve(host, port))
+        .await
+        .map_err(|_| NetError::Timeout("timed out".to_owned()))??;
     let mut last = None;
     for addr in addrs {
         match with_timeout(timeout, TcpStream::connect(addr)).await {
@@ -280,3 +309,6 @@ impl Conn {
         .await
     }
 }
+
+#[cfg(test)]
+mod tests;

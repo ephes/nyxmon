@@ -27,7 +27,7 @@ rustls.workspace = true
 rustls-native-certs.workspace = true
 regex.workspace = true
 rustix = { workspace = true, features = ["fs"] }
-tokio = { workspace = true, features = ["io-util", "macros", "net", "process", "rt", "time"] }
+tokio = { workspace = true, features = ["io-util", "macros", "net", "process", "rt", "sync", "time"] }
 tracing.workspace = true
 x509-parser.workspace = true
 dns-lookup.workspace = true

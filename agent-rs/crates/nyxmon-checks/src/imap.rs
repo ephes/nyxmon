@@ -887,27 +887,38 @@ async fn run_once(
     config: &ImapConfig,
     env: &impl MailEnv,
 ) -> Result<CheckResult, AttemptError> {
-    let host = config.session_host().map_err(ImapExc::Other)?;
-    let timeout = Duration::from_secs_f64(config.timeout);
-    let tls_config = || tls::build_client_tls_config(config.verify, "IMAP", &host, env.log());
-    // __aenter__: connect, login, select (no LOGOUT when it fails).
-    let mut imap = match config.tls_mode {
-        ImapTls::Implicit => Imap::open(&host, config.port, timeout, Some(tls_config())).await?,
-        ImapTls::None => Imap::open(&host, config.port, timeout, None).await?,
-        ImapTls::Starttls => {
-            let mut imap = Imap::open(&host, config.port, timeout, None).await?;
-            imap.starttls(tls_config()).await?;
-            imap
-        }
-    };
-    checked(
-        "login",
-        imap.login(&config.username, &config.password).await?,
-    )?;
-    checked("select", imap.select(&config.folder).await?)?;
-    let outcome = session(&mut imap, config, env).await;
-    // __aexit__: best-effort LOGOUT.
-    let _ = imap.logout().await;
+    let deadline = tokio::time::Instant::now() + Duration::from_secs_f64(config.timeout * 8.0);
+    let mut imap = tokio::time::timeout_at(deadline, async {
+        let host = config.session_host().map_err(ImapExc::Other)?;
+        let timeout = Duration::from_secs_f64(config.timeout);
+        let tls_config = || tls::build_client_tls_config(config.verify, "IMAP", &host, env.log());
+        // __aenter__: connect, login, select (no LOGOUT when it fails).
+        let mut imap = match config.tls_mode {
+            ImapTls::Implicit => {
+                Imap::open(&host, config.port, timeout, Some(tls_config())).await?
+            }
+            ImapTls::None => Imap::open(&host, config.port, timeout, None).await?,
+            ImapTls::Starttls => {
+                let mut imap = Imap::open(&host, config.port, timeout, None).await?;
+                imap.starttls(tls_config()).await?;
+                imap
+            }
+        };
+        checked(
+            "login",
+            imap.login(&config.username, &config.password).await?,
+        )?;
+        checked("select", imap.select(&config.folder).await?)?;
+        Ok::<_, ImapExc>(imap)
+    })
+    .await
+    .map_err(|_| ImapExc::Other("mail attempt timed out".to_owned()))??;
+    let outcome = tokio::time::timeout_at(deadline, session(&mut imap, config, env))
+        .await
+        .unwrap_or_else(|_| Err(ImapExc::Other("mail attempt timed out".to_owned()).into()));
+    // Best-effort cleanup shares the deadline and cannot replace a completed
+    // outcome (including NoRecent, which has its own retry policy).
+    let _ = tokio::time::timeout_at(deadline, imap.logout()).await;
     let (uids, latest) = outcome?;
     let mut data = PyDict::new();
     data.insert(

@@ -54,7 +54,7 @@ impl MailEnv for SystemMailEnv {
         if let Some(name) = NAME.get() {
             return name.clone();
         }
-        let name = tokio::task::spawn_blocking(smtp_local_hostname)
+        let name = crate::net::system_lookup(smtp_local_hostname)
             .await
             .unwrap_or_else(|_| "[127.0.0.1]".to_owned());
         NAME.get_or_init(|| name).clone()

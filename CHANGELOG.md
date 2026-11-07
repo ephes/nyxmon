@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Bound complete Rust SMTP/IMAP attempts to five/eight times their validated
+  timeout, including setup and cleanup; retain completed session outcomes if
+  QUIT/LOGOUT stalls, including accepted delivery and IMAP cleanup/retry results. Cap outstanding blocking mail resolver jobs at 16, retaining capacity
+  charges until cancelled callers' underlying jobs exit. Admission consumes the
+  caller's deadline. Requires a future Rust-agent release and deployment; none
+  is performed.
+
 - Bound Rust IMAP literals to 1 MiB and aggregate responses to 8 MiB/1,024
   lines, accounting for retained unsolicited data between commands. Bound SMTP
   replies to 64 KiB/100 lines. Close over-limit connections before further
