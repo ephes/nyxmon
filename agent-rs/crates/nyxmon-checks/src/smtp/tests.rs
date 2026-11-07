@@ -532,3 +532,55 @@ async fn unsupported_addresses_do_not_connect() {
         r#"{"error_type": "configuration_error", "error_msg": "to_addr is not supported by the Rust agent: use a plain ASCII address or a comma-separated list of them (user@example.com or Name <user@example.com>) that fits one header line"}"#
     );
 }
+
+#[tokio::test]
+async fn multiline_reply_caps_prevent_auth_and_data() {
+    for reply in [
+        "250-x\r\n".repeat(101),
+        format!("250-{}\r\n", "x".repeat(4090)).repeat(17),
+    ] {
+        let server = ScriptServer::start(
+            vec![vec![
+                send(GREETING),
+                Step::Recv,
+                send(&reply),
+                send("250 done\r\n"),
+                Step::Recv,
+            ]],
+            false,
+        )
+        .await;
+        let result = execute(&check(server.port, ""), &TestEnv::new()).await;
+        assert_eq!(result.data["error_type"], PyJson::from("smtp_error"));
+        assert_eq!(
+            result.data["error_msg"],
+            PyJson::from("Reply limit exceeded.")
+        );
+        assert_eq!(result.data["attempts"], PyJson::Int(1));
+        assert_eq!(
+            server.transcripts().await,
+            vec![vec!["ehlo client.example".to_owned()]]
+        );
+    }
+}
+
+#[tokio::test]
+async fn multiline_replies_at_the_limits_allow_delivery() {
+    // Exactly 100 lines, and exactly 64 KiB of wire bytes respectively.
+    for reply in [
+        format!("{}250 done\r\n", "250-x\r\n".repeat(99)),
+        format!(
+            "{}250 {}\r\n",
+            format!("250-{}\r\n", "x".repeat(8186)).repeat(7),
+            "x".repeat(8186)
+        ),
+    ] {
+        let mut script = with_greeting(delivery());
+        script[2] = send(&reply);
+        script.drain(3..5);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, r#", "username": """#), &TestEnv::new()).await;
+        assert_eq!(result.status, ResultStatus::Ok, "{}", data(&result));
+        server.transcripts().await;
+    }
+}

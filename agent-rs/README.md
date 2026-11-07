@@ -466,3 +466,18 @@ responses return a generic `ReadError` without body content. Owned connection
 drivers are aborted on success, rejection, timeout and cancellation. No extra
 retry path is introduced. This tightening requires a future Rust-agent rollout;
 no deployment is performed here.
+
+### Mail response limits
+
+Rust mail checks intentionally bound untrusted server replies. IMAP accepts
+literals up to 1 MiB and at most 8 MiB of incoming response bytes and 1,024
+response lines per command (including the greeting). Untagged data retained
+from earlier commands counts against the next command's budget, preventing
+unsolicited data from accumulating across commands. Literal lengths are checked
+before their bodies are read. SMTP accepts at most 64 KiB of wire bytes and 100
+lines per reply, in addition to its existing 8,192-byte line limit. Boundaries
+are inclusive. Exceeding a limit closes the connection and records a controlled
+protocol error without echoing the oversized payload. Normal UID selection,
+targeted expunge, EHLO parsing and accepted-DATA classification are unchanged.
+These limits require a future Rust-agent release and rollout; none is performed
+as part of this change.

@@ -25,6 +25,8 @@ use crate::tls;
 
 /// `smtplib._MAXLINE`.
 const MAX_LINE: usize = 8192;
+const MAX_REPLY_BYTES: usize = 64 << 10;
+const MAX_REPLY_LINES: usize = 100;
 /// `smtplib._MAXCHALLENGE`.
 const MAX_CHALLENGE: u32 = 5;
 
@@ -236,6 +238,7 @@ impl Client {
     async fn getreply(&mut self) -> Result<(i64, Vec<u8>), SmtpExc> {
         let mut resp: Vec<Vec<u8>> = Vec::new();
         let mut errcode;
+        let mut reply_bytes = 0;
         loop {
             let Some(conn) = self.conn.as_mut() else {
                 return Err(SmtpExc::Connection(
@@ -262,6 +265,11 @@ impl Client {
                 self.close();
                 return Err(SmtpExc::Response(500, b"Line too long.".to_vec()));
             }
+            if line.len() > MAX_REPLY_BYTES - reply_bytes || resp.len() >= MAX_REPLY_LINES {
+                self.close();
+                return Err(SmtpExc::Response(500, b"Reply limit exceeded.".to_vec()));
+            }
+            reply_bytes += line.len();
             let text = line.get(4..).unwrap_or_default();
             let start = text.iter().position(|b| !b" \t\r\n".contains(b));
             let end = text.iter().rposition(|b| !b" \t\r\n".contains(b));
