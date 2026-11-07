@@ -195,6 +195,7 @@ pub struct TestEnv {
     pub sleeps: Mutex<Vec<Duration>>,
     pub log: RecordingSink,
     pub now: f64,
+    pub hostname_entered: Option<Arc<tokio::sync::Notify>>,
 }
 
 impl TestEnv {
@@ -228,6 +229,10 @@ impl MailEnv for TestEnv {
     }
 
     async fn local_hostname(&self) -> String {
+        if let Some(entered) = &self.hostname_entered {
+            entered.notify_one();
+            std::future::pending::<()>().await;
+        }
         "client.example".to_owned()
     }
 

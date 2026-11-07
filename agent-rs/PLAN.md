@@ -1257,6 +1257,11 @@ resolution loop and the message handling the results depend on.
   `Nyxmon SMTP health check. Correlation token: <token>. Safe to delete.`
   Header validation (`from_addr`, `to_addr`, `subject_prefix` non-empty, no
   CR/LF) — fixture.
+- Every attempt additionally has one monotonic deadline of `5 * timeout`,
+  covering DNS, admission, hostname discovery, TLS and the full session/QUIT.
+  Exhaustion reports `timeout` without retry. QUIT uses the remaining budget
+  and cannot override the completed delivery outcome. Existing temporary SMTP
+  response retries and their sleeps are unchanged.
 - Reply limits intentionally diverge from smtplib: 64 KiB of wire bytes and
   100 lines per reply, inclusive; excess closes the connection with a controlled
   SMTP error (see README mail response limits).
@@ -1290,7 +1295,7 @@ resolution loop and the message handling the results depend on.
   `SMTPServerDisconnected` or connection refused → `connection_error`; other SMTP errors →
   `smtp_error`; TLS errors → `tls_error`; other OS errors →
   `connection_error`. Retries only for `temporary` (4xx), with `retry_delay`.
-  `timeout` is reached only by the connect and the TLS handshake: a timed-out
+  Per-operation `timeout` is reached only by the connect and the TLS handshake: a timed-out
   reply read is `SMTPServerDisconnected("Connection unexpectedly closed: timed
   out")` and a timed-out write `SMTPServerDisconnected("Server not
   connected")` in `smtplib`, so both are `connection_error`.
@@ -1577,6 +1582,16 @@ exit 1).
   check uses ping today.
 
 ### 5.14 IMAP (`imap_executor.py`)
+
+Every attempt has one monotonic deadline of `8 * timeout`, including DNS,
+setup, the session and best-effort LOGOUT. LOGOUT uses the remaining budget
+without overriding a completed session result or its no-recent-message retry
+policy. Setup/session exhaustion records `unexpected_error`
+with `mail attempt timed out`, without retry. No-recent-message retries/sleeps
+are unchanged. SMTP and IMAP blocking destination lookups plus SMTP hostname
+discovery share 16 process-wide slots, held by the actual closure even after
+caller cancellation. Admission and completion consume the caller's timeout
+(destination) or whole-attempt deadline (hostname); see README.
 
 Response limits intentionally diverge from imaplib: 1 MiB per literal,
 8 MiB of incoming bytes and 1,024 lines per command, inclusive. Retained

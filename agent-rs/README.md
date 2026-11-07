@@ -481,3 +481,27 @@ protocol error without echoing the oversized payload. Normal UID selection,
 targeted expunge, EHLO parsing and accepted-DATA classification are unchanged.
 These limits require a future Rust-agent release and rollout; none is performed
 as part of this change.
+
+### Mail attempt deadlines and resolver capacity
+
+In addition to per-operation timeouts, each SMTP attempt has a total monotonic
+budget of `5 * timeout` seconds and each IMAP attempt `8 * timeout` seconds,
+using the validated check setting. This includes DNS/admission, TCP/TLS setup,
+all commands, and best-effort QUIT/LOGOUT. Cleanup uses the remaining budget;
+completed SMTP/IMAP session outcomes survive a QUIT/LOGOUT stall, including
+accepted SMTP DATA, successful IMAP cleanup, and IMAP no-recent-message retries.
+An exhausted SMTP attempt reports `timeout` (`connection timed out`); IMAP
+reports `unexpected_error` (`mail attempt timed out`). Deadline failures are
+not retried. Existing SMTP temporary-response retries and IMAP no-recent-message
+retries remain unchanged, with at most `retries + 1` attempts and the configured
+`retry_delay` between them. No retry sleeps are inside an attempt budget.
+
+Mail destination lookups and SMTP local-hostname discovery share 16 process-wide
+slots for blocking system resolver jobs, including jobs queued in Tokio's
+blocking pool. A job owns its slot until the closure exits, even when its caller
+is cancelled or times out. Destination resolution, including slot admission,
+is bounded by the per-operation `timeout`; hostname discovery is inside the
+SMTP attempt deadline. If all slots remain occupied, later callers time out
+without queuing more blocking jobs. Capacity returns when those jobs finish;
+libc calls cannot be cancelled. Other check executors' resolver paths are
+unchanged. These changes require a future Rust-agent release and rollout.

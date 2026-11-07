@@ -548,3 +548,107 @@ async fn unsolicited_retention_is_bounded_across_commands() {
     assert!(imap.conn.is_none());
     server.transcripts().await;
 }
+
+#[tokio::test]
+async fn imap_attempt_deadline_stops_a_dripping_greeting() {
+    let mut script = vec![send("* OK ")];
+    for _ in 0..200 {
+        script.extend([Step::Pause(Duration::from_millis(30)), send("x")]);
+    }
+    script.push(Step::Stall);
+    let server = ScriptServer::start(vec![script], false).await;
+    let env = TestEnv::new();
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        execute(&check(server.port, r#", "timeout": 0.1"#), &env),
+    )
+    .await
+    .expect("whole IMAP attempt must expire")
+    .unwrap();
+    assert_eq!(result.data["error_type"], PyJson::from("unexpected_error"));
+    assert_eq!(
+        result.data["error_msg"],
+        PyJson::from("mail attempt timed out")
+    );
+    assert_eq!(result.data["attempts"], PyJson::Int(1));
+    assert!(env.sleeps().is_empty());
+    assert!(server.transcripts().await[0].is_empty());
+}
+
+fn dripping_logout() -> Vec<Step> {
+    let mut script = vec![Step::Recv, send("* BYE ")];
+    for _ in 0..200 {
+        script.extend([Step::Pause(Duration::from_millis(30)), send("x")]);
+    }
+    script.push(Step::Stall);
+    script
+}
+
+#[tokio::test]
+async fn imap_attempt_deadline_preserves_completed_cleanup_when_logout_drips() {
+    let mut script = vec![send(GREETING)];
+    script.extend(login_select());
+    script.extend([
+        Step::Recv,
+        send("* SEARCH 5\r\n"),
+        tagged("OK done"),
+        Step::Recv,
+        send("* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n"),
+        tagged("OK done"),
+        Step::Recv,
+        tagged("OK stored"),
+        Step::Recv,
+        send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
+        tagged("OK done"),
+        Step::Recv,
+        tagged("OK expunged"),
+    ]);
+    script.extend(dripping_logout());
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        execute(&check(server.port, r#", "timeout": 0.1"#), &TestEnv::new()),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(result.status, ResultStatus::Ok, "{:?}", result.data);
+    assert_eq!(
+        result.data["matched_uids"],
+        PyJson::List(vec![PyJson::from("5")])
+    );
+    let transcript = untag(server.transcripts().await.remove(0));
+    assert_eq!(
+        &transcript[4..],
+        [
+            "UID STORE 5 +FLAGS (\\Deleted)",
+            "CAPABILITY",
+            "UID EXPUNGE 5",
+            "LOGOUT"
+        ]
+    );
+}
+
+#[tokio::test]
+async fn imap_attempt_deadline_preserves_no_recent_retries_when_logout_drips() {
+    let mut script = vec![send(GREETING)];
+    script.extend(login_select());
+    script.extend([Step::Recv, send("* SEARCH\r\n"), tagged("OK done")]);
+    script.extend(dripping_logout());
+    let server = ScriptServer::start(vec![script.clone(), script], false).await;
+    let env = TestEnv::new();
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        execute(
+            &check(server.port, r#", "timeout": 0.1, "retries": 1"#),
+            &env,
+        ),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(result.data["error_type"], PyJson::from("no_recent_message"));
+    assert_eq!(result.data["attempts"], PyJson::Int(2));
+    assert_eq!(env.sleeps(), [Duration::from_secs(7)]);
+    assert_eq!(server.transcripts().await.len(), 2);
+}

@@ -575,27 +575,38 @@ async fn send_once(
             "getaddrinfo() argument 1 must be string or None".to_owned(),
         ));
     };
-    let timeout = Duration::from_secs_f64(config.timeout);
-    let tcp = connect_tcp(host, config.port, timeout).await?;
-    let stream = match (&config.tls, tls_config.clone()) {
-        (SmtpTls::Implicit, Some(tls)) => tls_handshake(tcp, host, tls, timeout).await?,
-        _ => MailStream::Plain(tcp),
-    };
-    let mut client = Client {
-        conn: Some(Conn::new(stream, timeout)),
-        host: host.clone(),
-        local_hostname: String::new(),
-        esmtp: IndexMap::new(),
-        does_esmtp: false,
-    };
-    let (code, msg) = client.getreply().await?;
-    if code != 220 {
-        client.close();
-        return Err(SmtpExc::Response(code, msg));
-    }
-    client.local_hostname = env.local_hostname().await;
-    let outcome = session(&mut client, config, message, tls_config).await;
-    client.quit_quietly().await;
+    // One deadline for setup, delivery and cleanup, matching the lease
+    // estimator. Once session returns, cleanup cannot change its outcome.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs_f64(config.timeout * 5.0);
+    let mut client = tokio::time::timeout_at(deadline, async {
+        let timeout = Duration::from_secs_f64(config.timeout);
+        let tcp = connect_tcp(host, config.port, timeout).await?;
+        let stream = match (&config.tls, tls_config.clone()) {
+            (SmtpTls::Implicit, Some(tls)) => tls_handshake(tcp, host, tls, timeout).await?,
+            _ => MailStream::Plain(tcp),
+        };
+        let mut client = Client {
+            conn: Some(Conn::new(stream, timeout)),
+            host: host.clone(),
+            local_hostname: String::new(),
+            esmtp: IndexMap::new(),
+            does_esmtp: false,
+        };
+        let (code, msg) = client.getreply().await?;
+        if code != 220 {
+            client.close();
+            return Err(SmtpExc::Response(code, msg));
+        }
+        client.local_hostname = env.local_hostname().await;
+        Ok::<_, SmtpExc>(client)
+    })
+    .await
+    .map_err(|_| SmtpExc::Timeout)??;
+    let outcome =
+        tokio::time::timeout_at(deadline, session(&mut client, config, message, tls_config))
+            .await
+            .unwrap_or(Err(SmtpExc::Timeout));
+    let _ = tokio::time::timeout_at(deadline, client.quit_quietly()).await;
     outcome
 }
 

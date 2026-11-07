@@ -584,3 +584,75 @@ async fn multiline_replies_at_the_limits_allow_delivery() {
         server.transcripts().await;
     }
 }
+
+#[tokio::test]
+async fn smtp_attempt_deadline_stops_a_dripping_greeting() {
+    let mut script = vec![send("220 ")];
+    for _ in 0..200 {
+        script.extend([Step::Pause(Duration::from_millis(30)), send("x")]);
+    }
+    script.push(Step::Stall);
+    let server = ScriptServer::start(vec![script], false).await;
+    let env = TestEnv::new();
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        execute(&check(server.port, r#", "timeout": 0.1"#), &env),
+    )
+    .await
+    .expect("whole SMTP attempt must expire");
+    assert_eq!(result.data["error_type"], PyJson::from("timeout"));
+    assert_eq!(result.data["attempts"], PyJson::Int(1));
+    assert!(env.sleeps().is_empty());
+    assert!(server.transcripts().await[0].is_empty());
+}
+
+#[tokio::test]
+async fn smtp_attempt_deadline_preserves_delivery_when_quit_drips() {
+    let mut script = with_greeting(delivery());
+    script.pop(); // QUIT was read; replace its reply with an endless partial line.
+    script.push(send("221 "));
+    for _ in 0..200 {
+        script.extend([Step::Pause(Duration::from_millis(30)), send("x")]);
+    }
+    script.push(Step::Stall);
+    let server = ScriptServer::start(vec![script], false).await;
+    let env = TestEnv::new();
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        execute(&check(server.port, r#", "timeout": 0.1"#), &env),
+    )
+    .await
+    .expect("QUIT shares the attempt deadline");
+    assert_eq!(result.status, ResultStatus::Ok, "{}", data(&result));
+    assert_eq!(result.data["attempts"], PyJson::Int(1));
+    assert!(env.sleeps().is_empty());
+    assert_eq!(server.transcripts().await, vec![delivery_lines()]);
+}
+
+#[tokio::test]
+async fn smtp_attempt_deadline_includes_hostname_discovery() {
+    use std::sync::Arc;
+    let server = ScriptServer::start(vec![vec![send(GREETING), Step::Close]], false).await;
+    let entered = Arc::new(tokio::sync::Notify::new());
+    let env = Arc::new(TestEnv {
+        hostname_entered: Some(Arc::clone(&entered)),
+        ..TestEnv::new()
+    });
+    let task_env = Arc::clone(&env);
+    let caller =
+        tokio::spawn(async move { execute(&check(server.port, ""), task_env.as_ref()).await });
+    tokio::time::timeout(Duration::from_secs(5), entered.notified())
+        .await
+        .expect("network setup reaches hostname discovery before pausing time");
+    tokio::time::pause();
+    tokio::time::advance(Duration::from_secs(25)).await;
+    let result = tokio::time::timeout(Duration::from_secs(1), caller)
+        .await
+        .expect("attempt deadline cancels stalled hostname discovery")
+        .unwrap();
+    assert_eq!(result.data["error_type"], PyJson::from("timeout"));
+    assert_eq!(result.data["attempts"], PyJson::Int(1));
+    assert!(env.sleeps().is_empty());
+    tokio::time::resume();
+    server.transcripts().await;
+}
