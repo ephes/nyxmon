@@ -355,9 +355,14 @@ repository permissions and a ten-minute job timeout.
 The audit must fail against the vulnerable lock and pass against the refreshed
 lock; rerun the CI checks to verify compatibility.
 
-JavaScript tests now use Vitest 4.1.11 to remove vulnerable test-runner
+JavaScript tests now use Vitest 4.1.12 to remove vulnerable test-runner
 dependencies. Use Node.js 22 (at least 22.12) as in CI, run `npm ci`, then
-`npm audit` and `npm test`.
+`just js-audit` and `npm test`. The local audit includes development
+dependencies and fails for moderate or higher advisories. Run it explicitly
+alongside `just lint`, `just typecheck`, `just test` and `just rs-deny`; it
+requires npm registry access and adds no CI workflow. The refresh fixes
+GHSA-qxg6-89mg-rqv8 and GHSA-xp26-3454-mjgp in the development mock server
+(the latter is Windows-specific); these are not deployed-dashboard vulnerabilities.
 
 `npm test` includes Chromium tests against synthetic production-template fixtures.
 Run `uv sync --frozen` and `npx playwright install chromium` before the first run;

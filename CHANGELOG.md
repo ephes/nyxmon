@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refresh Vitest and its mocker to 4.1.12 for development mock-server advisories
+  GHSA-qxg6-89mg-rqv8 and GHSA-xp26-3454-mjgp. Add `just js-audit`
+  (`npm run audit`) as an explicit local moderate-or-higher advisory gate,
+  including development dependencies. No deployment is needed.
+
 - Fence Rust result and notification publication against the executed check
   definition. Superseded samples are discarded and only their matching old lease
   is settled, preserving current schedules and newer claims. Requires a later

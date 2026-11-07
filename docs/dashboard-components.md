@@ -1,6 +1,6 @@
 # Dashboard components
 
-Run `npm ci && npm test` on Node 22.12 or newer. Tests import each registered
+Run `npm ci && just js-audit && npm test` on Node 22.12 or newer. Tests import each registered
 production element once in jsdom, use synthetic DOM fragments and fake clocks,
 and remove elements before restoring timers and request globals. The regular
 `npm test` also runs Playwright Chromium against production Django templates,

@@ -44,6 +44,10 @@ test:
     uv run pytest
     just rs-test
 
+# Local JavaScript advisory gate (includes test tooling)
+js-audit:
+    npm run audit
+
 # Run specific test
 test-one TEST_PATH:
     uv run pytest {{TEST_PATH}} -v
