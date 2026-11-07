@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject nonpositive Rust-agent retention and scheduling intervals before tasks
+  start; reject invalid retention before any cleaner/store deletion. Use
+  `--disable-cleaner` to turn pruning off.
+
 - Bound dashboard fallback refreshes to ten seconds, abort detached requests,
   reject invalid/redirected status fragments and offer a five-second manual
   retry cooldown. Cancel superseded due callbacks and refresh timer headings

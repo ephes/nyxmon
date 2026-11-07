@@ -117,3 +117,30 @@ async fn databases_without_the_sessions_table_are_supported() {
         1
     );
 }
+
+#[tokio::test]
+async fn invalid_retention_preserves_results_and_expired_sessions() {
+    let db = populated();
+    db.raw()
+        .execute(
+            "INSERT INTO django_session VALUES ('expired', '', datetime('now', '-1 day'))",
+            [],
+        )
+        .unwrap();
+    for retention in [-1, 0] {
+        assert!(
+            db.store()
+                .delete_old_results(retention, 1000)
+                .await
+                .is_err()
+        );
+        assert_eq!(result_ids(&db), [1, 2, 3]);
+        assert_eq!(
+            db.raw()
+                .query_row("SELECT COUNT(*) FROM django_session", [], |r| r
+                    .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+    }
+}

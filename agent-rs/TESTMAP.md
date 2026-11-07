@@ -384,3 +384,13 @@ against a temporary database from the schema fixture and fake servers).
   delivery/log behavior; ordinary stalled reads retain their `ReadTimeout` class.
 - `one_byte_chunked_frames_use_one_bounded_response_allocation` verifies the
   notifier preallocates its small cap once rather than reserving per tiny frame.
+
+## Startup scheduling/retention domains
+
+- `cli::scheduling_tests` rejects zero/negative values, including when cleaning is disabled.
+- `cleaner::tests::invalid_retention_or_interval_never_reaches_the_pruner` and
+  `nyxmon-store/tests/cleaner.rs::invalid_retention_preserves_results_and_expired_sessions`
+  guard direct callers before mutation. Existing backlog/positive-interval fake-time
+  tests preserve ordinary pruning and spaced cycles.
+- `app::tests::invalid_programmatic_configuration_fails_before_opening_the_database`
+  guards application callers before database access or task startup.

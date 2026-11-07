@@ -66,6 +66,10 @@ pub fn start_agent(args: &Args) -> ExitCode {
         cli_error!("--shadow cannot be combined with --enable-telegram; refusing to start");
         return ExitCode::FAILURE;
     }
+    // Also guard programmatic callers before opening the DB or spawning tasks.
+    if args.interval <= 0 || args.cleanup_interval <= 0 || args.retention_period <= 0 {
+        return fatal("interval, cleanup_interval and retention_period must be strictly positive");
+    }
     let db_path = Path::new(&args.db);
     if !db_path.exists() {
         cli_error!("Database file not found: {}", py_path_str(&args.db));
@@ -225,4 +229,32 @@ fn received(signum: i32, collector: &Collector, site_stop: &Flag) -> bool {
     collector.request_stop();
     site_stop.set();
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn invalid_programmatic_configuration_fails_before_opening_the_database() {
+        for field in ["interval", "cleanup_interval", "retention_period"] {
+            for value in [-1, 0] {
+                let mut args = Args::try_parse_from(["nyxmon-agent", "--db", "unused"]).unwrap();
+                match field {
+                    "interval" => args.interval = value,
+                    "cleanup_interval" => args.cleanup_interval = value,
+                    _ => args.retention_period = value,
+                }
+                let (capture, _guard) = crate::logging::capture();
+                assert_eq!(start_agent(&args), ExitCode::FAILURE);
+                assert!(
+                    capture
+                        .messages()
+                        .join("\n")
+                        .contains("must be strictly positive")
+                );
+            }
+        }
+    }
 }

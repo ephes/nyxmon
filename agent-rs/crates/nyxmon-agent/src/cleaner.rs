@@ -55,7 +55,7 @@ impl<S: ResultsPruner> Cleaner<S> {
     /// `AsyncResultsCleaner(interval=..., retention_period=..., batch_size=...)`.
     ///
     /// # Errors
-    /// `batch_size` or `max_batches_per_cycle` below 1.
+    /// Any interval, retention or batch limit below 1.
     pub fn new(
         store: S,
         interval: i64,
@@ -63,6 +63,12 @@ impl<S: ResultsPruner> Cleaner<S> {
         batch_size: i64,
         max_batches_per_cycle: i64,
     ) -> Result<Self, CleanerConfigError> {
+        if retention_period < 1 {
+            return Err(CleanerConfigError("retention_period must be at least 1"));
+        }
+        if interval < 1 {
+            return Err(CleanerConfigError("interval must be at least 1"));
+        }
         if batch_size < 1 {
             return Err(CleanerConfigError("batch_size must be at least 1"));
         }

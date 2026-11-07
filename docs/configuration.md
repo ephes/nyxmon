@@ -961,3 +961,11 @@ leases are already cleared at that point, so their `stale_processing_lease`
 results and the `stale_processing_lease_batch` alert are written before the
 process exits. That wait is not limited by the grace period; only the unit's
 stop timeout ends a recovery that genuinely hangs.
+
+Scheduling and retention flags (`--interval`, `--cleanup-interval`,
+`--retention-period`) accept strictly positive signed 64-bit seconds (1 through
+9223372036854775807). Invalid values fail before monitoring starts, even with
+`--disable-cleaner`; that flag is the explicit way to turn pruning off.
+Defaults remain 5, 3600 and 86400 seconds. Retry sleeps retain their existing
+nonpositive-delay semantics. Direct cleaner/store calls also reject nonpositive
+retention before deleting results or expired sessions.

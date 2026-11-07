@@ -12,6 +12,15 @@ fn python_int(value: &str) -> Result<i64, String> {
     i64::try_from(parsed).map_err(|_| format!("int value out of range: '{value}'"))
 }
 
+/// Application scheduling/retention domains are separate from retry sleeps.
+fn positive_seconds(value: &str) -> Result<i64, String> {
+    let seconds = python_int(value)?;
+    if seconds <= 0 {
+        return Err("seconds must be strictly positive".to_owned());
+    }
+    Ok(seconds)
+}
+
 /// `--version` text after the program name: the package version and the git
 /// commit the binary was built from (`build.rs`), e.g. `0.1.0 (27cf52e…)`.
 /// The release workflow and the deployment role parse the first word.
@@ -35,15 +44,15 @@ pub struct Args {
     pub db: String,
 
     /// Check interval in seconds (default: 5)
-    #[arg(long, default_value = "5", value_parser = python_int, allow_hyphen_values = true)]
+    #[arg(long, default_value = "5", value_parser = positive_seconds, allow_hyphen_values = true)]
     pub interval: i64,
 
     /// Results cleanup interval in seconds (default: 3600 - 1 hour)
-    #[arg(long, default_value = "3600", value_parser = python_int, allow_hyphen_values = true)]
+    #[arg(long, default_value = "3600", value_parser = positive_seconds, allow_hyphen_values = true)]
     pub cleanup_interval: i64,
 
     /// Results retention period in seconds (default: 86400 - 24 hours)
-    #[arg(long, default_value = "86400", value_parser = python_int, allow_hyphen_values = true)]
+    #[arg(long, default_value = "86400", value_parser = positive_seconds, allow_hyphen_values = true)]
     pub retention_period: i64,
 
     /// Number of old results deleted per batch; each cleanup run deletes
@@ -162,6 +171,26 @@ mod tests {
             (".", "."),
         ] {
             assert_eq!(py_path_str(raw), rendered, "{raw}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod scheduling_tests {
+    use super::*;
+
+    #[test]
+    fn nonpositive_scheduling_and_retention_are_usage_errors() {
+        for option in ["--interval", "--cleanup-interval", "--retention-period"] {
+            for value in ["0", "-1"] {
+                for disabled in [false, true] {
+                    let mut argv = vec!["nyxmon-agent", "--db", "unused", option, value];
+                    if disabled {
+                        argv.push("--disable-cleaner");
+                    }
+                    assert!(Args::try_parse_from(argv).is_err(), "{option} {value}");
+                }
+            }
         }
     }
 }

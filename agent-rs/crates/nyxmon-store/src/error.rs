@@ -5,6 +5,8 @@ use std::fmt;
 /// Why a store operation failed.
 #[derive(Debug)]
 pub enum StoreError {
+    /// A caller supplied an invalid operation argument; no SQL was executed.
+    InvalidArgument(&'static str),
     /// An SQLite error (busy timeout, constraint, I/O, ...). The operation's
     /// transaction was rolled back.
     Sqlite(rusqlite::Error),
@@ -24,6 +26,7 @@ pub enum StoreError {
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            StoreError::InvalidArgument(message) => f.write_str(message),
             StoreError::Sqlite(err) => write!(f, "{err}"),
             StoreError::NotificationStateConflict { check_id } => {
                 write!(f, "{check_id}")
