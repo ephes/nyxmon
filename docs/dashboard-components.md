@@ -72,6 +72,15 @@ are uncertain: the browser fetches authoritative card state with GET, never
 retries the inversion POST. If that GET fails, Refresh status retries only GET;
 changing the check stays disabled until its state is confirmed. Requests have a
 ten-second timeout. Other cards remain usable.
+A successful HTTP status confirms a mutation only after the old card is actually
+replaced by one `health-check` with the same DOM ID and `check-id`. Before HTMX
+swaps, full pages, empty/multiple fragments and mismatched identities are refused.
+The expected identity belongs to the request, including when response headers
+try to retarget the swap to another card.
+A 204 or other success without replacement follows the same GET reconciliation
+path. Reconciliation validates identity and replacement too; an invalid response
+keeps mutation controls locked and offers Refresh status. Authentication
+`HX-Redirect` responses continue through HTMX navigation without reconciliation.
 Per-check controls have stable IDs. HTMX card swaps preserve focused controls
 and selection; a removed/disabled action falls back to its labelled card. A
 background swap never moves focus from another connected control.

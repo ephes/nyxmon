@@ -220,3 +220,79 @@ test('rejecting a toggle resumes the due poll that it superseded', async ({ page
   await expect.poll(() => gets).toBe(2);
   await expect(page.locator('#check-1')).toHaveAttribute('check-mode', 'normal');
 });
+
+const invalidResponses = {
+  '204': { status: 204, body: '' },
+  empty: { body: '' },
+  document: { body: `<!doctype html><html><head><title>Unexpected page</title></head><body>${fixtures.fragments['1-True']}</body></html>` },
+  'wrong-card': { body: fixtures.fragments['2-True'] },
+  'wrong-check-id': { body: fixtures.fragments['1-True'].replace('check-id="1"', 'check-id="2"') },
+  multiple: { body: fixtures.fragments['1-True'] + fixtures.fragments['2-True'] },
+  retargeted: { body: fixtures.fragments['2-True'], headers: { 'HX-Retarget': '#check-2' } },
+  'no-swap': { body: fixtures.fragments['1-True'], headers: { 'HX-Reswap': 'none' } },
+};
+for (const [name, response] of Object.entries(invalidResponses)) {
+  for (const action of ['toggle-disabled', 'trigger']) {
+    test(`${action} ${name} success retains the owned card until one confirming GET`, async ({ page }) => {
+      let posts = 0, gets = 0, release;
+      const gate = new Promise(resolve => { release = resolve; });
+      await page.route(`**/healthchecks/1/${action}/`, route => {
+        posts++;
+        return route.fulfill({ contentType: 'text/html', ...response });
+      });
+      await page.route('**/healthchecks/1/status/', async route => {
+        gets++; await gate;
+        await route.fulfill({ contentType: 'text/html', body: fixtures.fragments['1-True'] });
+      });
+      await page.goto(server.url);
+      const previous = await page.locator('#check-1').elementHandle();
+      if (action === 'toggle-disabled') await page.getByRole('checkbox', { name: 'Disable check Alpha', exact: true }).press('Space');
+      else await page.getByRole('button', { name: 'Run now: Alpha', exact: true }).press('Enter');
+      await expect.poll(() => gets).toBe(1);
+      expect(await previous.evaluate(card => card.isConnected)).toBe(true);
+      await expect(page.locator('#check-1 input[type=checkbox]')).toBeDisabled();
+      await expect(page.locator('#check-1 .toggle-label')).toHaveText('Enabled');
+      await expect(page.locator('#check-2')).toHaveCount(1);
+      release();
+      await expect(page.locator('#check-1 input[type=checkbox]')).toBeEnabled();
+      await expect(page.locator('#check-1 input[type=checkbox]')).toBeChecked();
+      expect(posts).toBe(1); expect(gets).toBe(1);
+    });
+  }
+}
+
+for (const name of ['204', 'empty', 'document', 'wrong-card', 'wrong-check-id', 'multiple', 'retargeted', 'no-swap']) {
+  test(`invalid reconciliation ${name} keeps mutation ownership and offers only GET retry`, async ({ page }) => {
+    let posts = 0, gets = 0;
+    await page.route('**/healthchecks/1/toggle-disabled/', route => { posts++; return route.abort(); });
+    await page.route('**/healthchecks/1/status/', route => {
+      gets++;
+      return route.fulfill(gets === 1 ? { contentType: 'text/html', ...invalidResponses[name] } :
+        { contentType: 'text/html', body: fixtures.fragments['1-True'] });
+    });
+    await page.goto(server.url);
+    const previous = await page.locator('#check-1').elementHandle();
+    await page.getByRole('checkbox', { name: 'Disable check Alpha', exact: true }).press('Space');
+    const retry = page.getByRole('button', { name: 'Refresh status', exact: true });
+    await expect(retry).toBeEnabled();
+    expect(await previous.evaluate(card => card.isConnected)).toBe(true);
+    await expect(page.locator('#check-1 input[type=checkbox]')).toBeDisabled();
+    await expect(page.locator('#check-1 [data-toggle-feedback]')).toContainText('uncertain');
+    expect(posts).toBe(1); expect(gets).toBe(1);
+    await retry.click();
+    await expect(page.locator('#check-1 input[type=checkbox]')).toBeEnabled();
+    await expect(page.locator('#check-1 input[type=checkbox]')).toBeChecked();
+    expect(posts).toBe(1); expect(gets).toBe(2);
+  });
+}
+
+test('authentication HX-Redirect navigates without starting reconciliation', async ({ page }) => {
+  let gets = 0;
+  await page.route('**/healthchecks/1/status/', route => { gets++; return route.abort(); });
+  await page.route('**/healthchecks/1/toggle-disabled/', route => route.fulfill({ status: 403, headers: { 'HX-Redirect': '/synthetic-login/' }, body: '' }));
+  await page.route('**/synthetic-login/', route => route.fulfill({ contentType: 'text/html', body: '<p>Synthetic login</p>' }));
+  await page.goto(server.url);
+  await page.getByRole('checkbox', { name: 'Disable check Alpha', exact: true }).press('Space');
+  await expect(page).toHaveURL(`${server.url}/synthetic-login/`);
+  expect(gets).toBe(0);
+});

@@ -2,6 +2,26 @@
 const pending = new Map();
 const mutations = new WeakMap();
 const focus = new WeakMap();
+const validated = new WeakMap();
+const requests = new WeakMap();
+
+function validFragment(html, card) {
+  // A full document must not become a card, even if its body contains one.
+  if (typeof html !== 'string' || /<!doctype|<(?:html|head|body)(?:\s|>)/i.test(html)) return false;
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const replacement = template.content.firstElementChild;
+  return template.content.children.length === 1 &&
+    ![...template.content.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()) &&
+    replacement?.matches('health-check') && replacement.id === card.id &&
+    replacement.getAttribute('check-id') === card.getAttribute('check-id') &&
+    template.content.querySelectorAll('health-check').length === 1;
+}
+function confirmedReplacement(card, xhr) {
+  const fresh = document.getElementById(card.id);
+  return validated.get(xhr) === card && fresh && fresh !== card && !card.isConnected &&
+    fresh.matches('health-check') && fresh.getAttribute('check-id') === card.getAttribute('check-id') ? fresh : null;
+}
 
 function cardFor(element) { return element?.closest?.('health-check'); }
 function captureFocus(card) {
@@ -57,8 +77,8 @@ async function reconcile(state) {
       source: state.card, target: `#${state.card.id}`, swap: 'outerHTML',
       headers: { 'X-Nyxmon-Reconcile': '1' },
     });
-    const fresh = document.getElementById(state.card.id);
-    if (!fresh || fresh === state.card) throw new Error('No confirmed card');
+    const fresh = confirmedReplacement(state.card, state.reconcileXhr);
+    if (!fresh) throw new Error('No confirmed card');
     pending.delete(state.card.id);
     busy(fresh, false);
     feedback(fresh, 'Request response failed; server state refreshed and confirmed.');
@@ -81,9 +101,14 @@ document.addEventListener('htmx:beforeRequest', event => {
   if (!card) return;
   const existing = pending.get(card.id);
   if (existing) {
-    if (!(existing.reconciling && requestConfig?.headers?.['X-Nyxmon-Reconcile'] === '1')) event.preventDefault();
+    if (existing.reconciling && requestConfig?.headers?.['X-Nyxmon-Reconcile'] === '1') {
+      existing.reconcileXhr = xhr;
+      requests.set(xhr, card);
+    }
+    else event.preventDefault();
     return;
   }
+  requests.set(xhr, card);
   if (!elt.matches('[data-check-toggle], [data-check-run]')) return;
   const state = { card, xhr, confirmed: card.querySelector('[data-check-toggle]')?.dataset.confirmedDisabled === 'true', url: card.dataset.statusUrl, focus: captureFocus(card) };
   pending.set(card.id, state);
@@ -97,14 +122,16 @@ document.addEventListener('htmx:afterRequest', event => {
   const state = mutations.get(event.detail.xhr);
   if (!state) return;
   mutations.delete(event.detail.xhr);
-  if (event.detail.successful) {
+  // HTMX handles authentication navigation before beforeSwap.
+  if (event.detail.xhr.getResponseHeader?.('HX-Redirect')) return;
+  const fresh = confirmedReplacement(state.card, event.detail.xhr);
+  if (event.detail.successful && fresh) {
     pending.delete(state.card.id);
-    const fresh = document.getElementById(state.card.id);
-    if (fresh) busy(fresh, false);
+    busy(fresh, false);
   } else {
     restoreConfirmed(state);
     const code = event.detail.xhr.status;
-    if (code >= 400 && code < 500 && code !== 408) {
+    if (!event.detail.successful && code >= 400 && code < 500 && code !== 408) {
       pending.delete(state.card.id);
       busy(state.card, false);
       feedback(state.card, 'Request rejected; previous server state restored. Try again.');
@@ -119,7 +146,15 @@ document.addEventListener('htmx:afterRequest', event => {
 });
 
 document.addEventListener('htmx:beforeSwap', event => {
-  const card = cardFor(event.detail.target);
+  const { xhr, target, elt, serverResponse, shouldSwap } = event.detail;
+  const card = requests.get(xhr) || mutations.get(xhr)?.card || cardFor(elt) || cardFor(target);
+  if (card && shouldSwap) {
+    if (target !== card || !validFragment(serverResponse, card)) {
+      event.detail.shouldSwap = false;
+      return;
+    }
+    validated.set(xhr, card);
+  }
   const saved = captureFocus(card);
   if (saved) focus.set(event.detail.xhr, saved);
 });
