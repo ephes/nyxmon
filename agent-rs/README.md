@@ -525,8 +525,11 @@ Probe panics/cancellations count conservatively as failed connectivity but are
 classified as internal probe errors with a target index/type, without panic
 payloads. A round deadline leaves unanswered targets failed and emits a DEBUG
 deadline diagnostic; an ordinary negative answer is not an internal probe error.
-Rust's default panic hook is unchanged; its stderr is separate from structured
-observer diagnostics and can include the panic payload.
+Both agent and `run-check` commands install a process-wide panic hook at startup.
+It writes only `nyxmon-agent: panic (payload withheld)` to stderr, without the
+payload, thread name, source location or backtrace (even with `RUST_BACKTRACE`).
+Task/category and check identity remain available in the existing diagnostics;
+executor panics still become error results and required-task panics fail the process.
 
 Unexpected observer return includes a failed lifecycle restore (PLAN.md D-19). With observation
 enabled, silently running without its evidence/holds is no longer accepted.

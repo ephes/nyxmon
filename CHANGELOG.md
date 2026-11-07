@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Install a payload-free process-wide Rust panic hook for the agent and
+  `run-check` commands, preventing panic payloads and backtraces from leaking to
+  stderr while preserving executor results and task failure diagnostics.
+
 - Bound complete Rust SMTP/IMAP attempts to five/eight times their validated
   timeout, including setup and cleanup; retain completed session outcomes if
   QUIT/LOGOUT stalls, including accepted delivery and IMAP cleanup/retry results. Cap outstanding blocking mail resolver jobs at 16, retaining capacity

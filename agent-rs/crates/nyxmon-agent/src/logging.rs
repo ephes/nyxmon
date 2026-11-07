@@ -15,6 +15,24 @@ use tracing::level_filters::LevelFilter;
 use tracing::subscriber::Interest;
 use tracing::{Event, Level, Metadata, span};
 
+/// Install the binary's payload-free panic hook and stderr subscriber.
+pub fn install_logging(log_level: &str) -> bool {
+    // Install once at command startup, never around individual tasks. Do not
+    // invoke the default hook: it prints payloads and possibly a backtrace.
+    std::panic::set_hook(Box::new(|_| {
+        let _ = writeln!(
+            std::io::stderr().lock(),
+            "nyxmon-agent: panic (payload withheld)"
+        );
+    }));
+    let level = level_filter(log_level).expect("restricted by clap");
+    if tracing::subscriber::set_global_default(PyLogSubscriber::stderr(level)).is_err() {
+        eprintln!("cannot install the log subscriber");
+        return false;
+    }
+    true
+}
+
 /// `--log-level` choices.
 pub const LOG_LEVELS: [&str; 5] = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"];
 

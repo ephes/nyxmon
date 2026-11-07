@@ -6,17 +6,8 @@ use std::process::ExitCode;
 use clap::Parser;
 use nyxmon_agent::app::start_agent;
 use nyxmon_agent::cli::Args;
-use nyxmon_agent::logging::{PyLogSubscriber, level_filter};
+use nyxmon_agent::logging::install_logging;
 use nyxmon_agent::run_check::{RunCheckArgs, run_check};
-
-fn install_logging(log_level: &str) -> bool {
-    let level = level_filter(log_level).expect("restricted by clap");
-    if tracing::subscriber::set_global_default(PyLogSubscriber::stderr(level)).is_err() {
-        eprintln!("cannot install the log subscriber");
-        return false;
-    }
-    true
-}
 
 fn main() -> ExitCode {
     // `start-agent` takes no positional argument, so a leading `run-check`
