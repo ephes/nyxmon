@@ -428,3 +428,123 @@ async fn the_cutoff_is_taken_after_the_search() {
     assert_eq!(result.data["error_type"], PyJson::from("no_recent_message"));
     server.transcripts().await;
 }
+
+#[tokio::test]
+async fn oversized_literal_is_rejected_without_reading_its_body() {
+    let server = ScriptServer::start(
+        vec![vec![
+            send(GREETING),
+            Step::Recv,
+            send("* 1 FETCH (BODY {1048577}\r\n"),
+            Step::Stall,
+        ]],
+        false,
+    )
+    .await;
+    let mut imap = Imap::open("127.0.0.1", server.port, Duration::from_secs(1), None)
+        .await
+        .unwrap();
+    let err = imap
+        .login(&PyJson::from("monitor"), &PyJson::from("synthetic"))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ImapExc::Lib(ref text) if text.contains("response limit exceeded")),
+        "{err:?}"
+    );
+    assert!(imap.conn.is_none());
+    assert_eq!(
+        untag(server.transcripts().await.remove(0)),
+        ["LOGIN monitor \"synthetic\""]
+    );
+}
+
+#[tokio::test]
+async fn imap_aggregate_response_caps_close_the_connection() {
+    // Exercise the entry ceiling independently of the byte ceiling.
+    // The byte case uses individually legal lines and fewer than 1024 entries.
+    for reply in [
+        "* X small\r\n".repeat(1025),
+        format!("* X {}\r\n", "x".repeat(65536)).repeat(129),
+    ] {
+        let server = ScriptServer::start(
+            vec![vec![
+                send(GREETING),
+                Step::Recv,
+                send(&reply),
+                tagged("OK done"),
+            ]],
+            false,
+        )
+        .await;
+        let mut imap = Imap::open("127.0.0.1", server.port, Duration::from_secs(1), None)
+            .await
+            .unwrap();
+        let err = imap
+            .login(&PyJson::from("monitor"), &PyJson::from("synthetic"))
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(err, ImapExc::Lib(ref text) if text.contains("response limit exceeded")),
+            "{err:?}"
+        );
+        assert!(imap.conn.is_none());
+        server.transcripts().await;
+    }
+}
+
+#[tokio::test]
+async fn a_literal_at_the_limit_and_ordinary_commands_still_work() {
+    let mut script = vec![
+        send(GREETING),
+        Step::Recv,
+        send("* X {1048576}\r\n"),
+        Step::Bytes(vec![b'x'; 1 << 20]),
+        send("\r\n"),
+        tagged("OK [CAPABILITY IMAP4rev1 UIDPLUS] logged in"),
+    ];
+    script.extend([
+        Step::Recv,
+        send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
+        tagged("OK done"),
+    ]);
+    let server = ScriptServer::start(vec![script], false).await;
+    let mut imap = Imap::open("127.0.0.1", server.port, Duration::from_secs(1), None)
+        .await
+        .unwrap();
+    assert_eq!(
+        imap.login(&PyJson::from("monitor"), &PyJson::from("synthetic"))
+            .await
+            .unwrap()
+            .0,
+        "OK"
+    );
+    assert_eq!(imap.capability().await.unwrap().0, "OK");
+    drop(imap);
+    server.transcripts().await;
+}
+
+#[tokio::test]
+async fn unsolicited_retention_is_bounded_across_commands() {
+    let mut script = vec![send(GREETING)];
+    for _ in 0..2 {
+        script.extend([
+            Step::Recv,
+            send(&"* X small\r\n".repeat(600)),
+            send("* CAPABILITY IMAP4rev1\r\n"),
+            tagged("OK done"),
+        ]);
+    }
+    let server = ScriptServer::start(vec![script], false).await;
+    let mut imap = Imap::open("127.0.0.1", server.port, Duration::from_secs(1), None)
+        .await
+        .unwrap();
+    imap.capability().await.unwrap();
+    let err = imap.capability().await.unwrap_err();
+    assert!(
+        matches!(err, ImapExc::Lib(ref text) if text.contains("response limit exceeded")),
+        "{err:?}"
+    );
+    assert!(imap.conn.is_none());
+    server.transcripts().await;
+}

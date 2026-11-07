@@ -1257,6 +1257,9 @@ resolution loop and the message handling the results depend on.
   `Nyxmon SMTP health check. Correlation token: <token>. Safe to delete.`
   Header validation (`from_addr`, `to_addr`, `subject_prefix` non-empty, no
   CR/LF) — fixture.
+- Reply limits intentionally diverge from smtplib: 64 KiB of wire bytes and
+  100 lines per reply, inclusive; excess closes the connection with a controlled
+  SMTP error (see README mail response limits).
 - Dialogue as smtplib: connect (`implicit` → TLS first) with `timeout` per
   socket operation; greeting must be 220 else `SMTPConnectError`, which is a
   subclass of `SMTPResponseException` and is therefore caught by the
@@ -1574,6 +1577,11 @@ exit 1).
   check uses ping today.
 
 ### 5.14 IMAP (`imap_executor.py`)
+
+Response limits intentionally diverge from imaplib: 1 MiB per literal,
+8 MiB of incoming bytes and 1,024 lines per command, inclusive. Retained
+untagged data counts against the next command's budget. Limit violations close
+the connection, including before oversized literal bodies are read; see README.
 
 - Host: `data.host`, scheme stripped via `urlparse(...).hostname` when it
   contains `://` (`urlparse`'s `ValueError` → `unexpected_error`).

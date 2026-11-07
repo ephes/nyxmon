@@ -26,6 +26,10 @@ use crate::tls;
 
 /// `imaplib._MAXLINE`.
 const MAX_LINE: usize = 1_000_000;
+// Mail monitoring needs metadata, never arbitrarily large message bodies.
+const MAX_LITERAL: usize = 1 << 20;
+const MAX_RESPONSE_BYTES: usize = 8 << 20;
+const MAX_RESPONSES: usize = 1024;
 
 /// An exception raised inside the session, by the class the executor's
 /// `except` chain distinguishes.
@@ -272,6 +276,8 @@ struct Imap {
     capabilities: Vec<String>,
     state: &'static str,
     tls_established: bool,
+    response_bytes: usize,
+    response_count: usize,
 }
 
 impl Imap {
@@ -299,6 +305,8 @@ impl Imap {
             capabilities: Vec::new(),
             state: "LOGOUT",
             tls_established: false,
+            response_bytes: 0,
+            response_count: 0,
         };
         imap.connect().await?;
         Ok(imap)
@@ -336,12 +344,47 @@ impl Imap {
         }
     }
 
+    fn response_limit_error(&mut self) -> ImapExc {
+        // The stream is no longer synchronized; do not send LOGOUT on it.
+        self.conn = None;
+        ImapExc::Lib("IMAP response limit exceeded".to_owned())
+    }
+
+    fn charge_response(&mut self, bytes: usize, count: usize) -> Result<(), ImapExc> {
+        if self.response_bytes > MAX_RESPONSE_BYTES
+            || self.response_count > MAX_RESPONSES
+            || bytes > MAX_RESPONSE_BYTES.saturating_sub(self.response_bytes)
+            || count > MAX_RESPONSES.saturating_sub(self.response_count)
+        {
+            return Err(self.response_limit_error());
+        }
+        self.response_bytes += bytes;
+        self.response_count += count;
+        Ok(())
+    }
+
+    fn reset_response_budget(&mut self) -> Result<(), ImapExc> {
+        // Unsolicited data can outlive a command. Include it in the next
+        // budget rather than allowing growth across otherwise small replies.
+        self.response_bytes = 0;
+        self.response_count = 0;
+        for datum in self.untagged.values().flatten() {
+            self.response_bytes += match datum {
+                Datum::Bytes(bytes) => bytes.len(),
+                Datum::Literal(header, literal) => header.len() + literal.len(),
+            };
+            self.response_count += 1;
+        }
+        self.charge_response(0, 0)
+    }
+
     /// `IMAP4._get_line`.
     async fn get_line(&mut self) -> Result<Vec<u8>, ImapExc> {
         let Some(conn) = self.conn.as_mut() else {
             return Err(ImapExc::Lib("socket error: EOF".to_owned()));
         };
         let mut line = conn.read_line(MAX_LINE + 1).await.map_err(|e| io_exc(&e))?;
+        self.charge_response(line.len(), 1)?;
         if line.len() > MAX_LINE {
             return Err(ImapExc::Lib(format!("got more than {MAX_LINE} bytes")));
         }
@@ -436,6 +479,11 @@ impl Imap {
             }
             let mut depth = 0;
             while let Some(size) = literal_size(&dat) {
+                if size > MAX_LITERAL {
+                    return Err(self.response_limit_error());
+                }
+                // Reserve before reading any literal bytes.
+                self.charge_response(size, 0)?;
                 let literal = match self.conn.as_mut() {
                     Some(conn) => conn.read_exact_or_eof(size).await.map_err(|e| io_exc(&e))?,
                     None => Vec::new(),
@@ -486,6 +534,7 @@ impl Imap {
                 "mailbox status changed to READ-ONLY".to_owned(),
             ));
         }
+        self.reset_response_budget()?;
         let tag = format!("{}{}", self.tagpre, self.tagnum);
         self.tagnum += 1;
         self.tagged.insert(tag.clone(), None);

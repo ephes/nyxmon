@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Bound Rust IMAP literals to 1 MiB and aggregate responses to 8 MiB/1,024
+  lines, accounting for retained unsolicited data between commands. Bound SMTP
+  replies to 64 KiB/100 lines. Close over-limit connections before further
+  protocol work; normal mail delivery and targeted cleanup remain unchanged.
+  Requires a future Rust-agent release and deployment; none is performed.
+
 - Close Rust HTTP redirect bodies before following fresh connections, so
   trickling/oversized bodies cannot delay redirect validation or consume decoding
   resources. Cap notifier response bodies at 64 KiB and bound the complete call
