@@ -28,3 +28,5 @@ pub mod startup;
 pub mod sync;
 #[cfg(test)]
 mod testutil;
+
+mod supervision;

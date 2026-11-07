@@ -345,9 +345,14 @@ section 3.6); no other new variable is introduced by the port.
   `SiteConnectivityObserver.run` calls `restore()` outside its round
   `try`, so a persisted payload whose timestamp `int()` cannot convert
   (`Infinity`, `NaN`; only a hand-edited row can hold one, the agent writes
-  integers) ends the observer task silently. The Rust observer ends the
-  same way but logs `site connectivity observer stopped: restoring the
-  persisted lifecycle failed` with the exception class. Pinned by
+  integers) ends the observer task silently. Rust logs `site connectivity
+  observer stopped: restoring the persisted lifecycle failed` with the exception
+  class, and application supervision now fails the process after bounded cleanup.
+  Configured observation is required: silently continuing without it would hide
+  missing connectivity evidence/holds. A malformed row needs operator repair;
+  restart alone will repeat the failure. Disable site observation explicitly
+  (`NYXMON_SITE_CONNECTIVITY_MODE=off`) to collect without it during repair.
+  Pinned by
   `site/tests.rs::a_restore_that_raises_stops_the_observer_with_a_log_line`.
 
 - **D-20 Processing leases outside SQLite's range.** When

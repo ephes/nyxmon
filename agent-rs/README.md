@@ -513,3 +513,23 @@ Scheduling and retention flags (`--interval`, `--cleanup-interval`,
 Defaults remain 5, 3600 and 86400 seconds. Retry sleeps retain their existing
 nonpositive-delay semantics. Direct cleaner/store calls also reject nonpositive
 retention before deleting results or expired sessions.
+
+The Rust agent supervises its collector and enabled observer/cleaner tasks.
+Unexpected task return, panic or cancellation logs only the task/category and
+exits unsuccessfully after stopping owned work. SIGTERM/SIGINT still drain the
+collector successfully; observer/cleaner aborts during shutdown are intentional.
+Collector draining has a 60-second outer deadline (30s maximum configured grace,
+15s result flush and cleanup allowance); auxiliary joins have a one-second bound.
+A deadline breach or panic during drain also fails the process for restart.
+Probe panics/cancellations count conservatively as failed connectivity but are
+classified as internal probe errors with a target index/type, without panic
+payloads. A round deadline leaves unanswered targets failed and emits a DEBUG
+deadline diagnostic; an ordinary negative answer is not an internal probe error.
+Rust's default panic hook is unchanged; its stderr is separate from structured
+observer diagnostics and can include the panic payload.
+
+Unexpected observer return includes a failed lifecycle restore (PLAN.md D-19). With observation
+enabled, silently running without its evidence/holds is no longer accepted.
+A malformed persisted `site:connectivity` lifecycle needs operator repair; a
+service manager restart alone repeats the failure. To collect without observation
+during repair, explicitly set `NYXMON_SITE_CONNECTIVITY_MODE=off`.

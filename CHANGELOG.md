@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Supervise required Rust monitoring tasks: unexpected returns, cancellation and
+  panics exit with failure after bounded cleanup. Classify probe task failures
+  separately from negative connectivity answers without logging panic payloads.
+  A malformed persisted site lifecycle now fails startup with observation enabled;
+  repair the row or set `NYXMON_SITE_CONNECTIVITY_MODE=off` to avoid repeated
+  failures on restart.
+
 - Reject nonpositive Rust-agent retention and scheduling intervals before tasks
   start; reject invalid retention before any cleaner/store deletion. Use
   `--disable-cleaner` to turn pruning off.

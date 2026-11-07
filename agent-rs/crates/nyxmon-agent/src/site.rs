@@ -10,6 +10,7 @@
 //! the synthetic incident row, the snapshot channel the result handler reads
 //! ([`ObserverSiteState`]), and the loop that probes every `probe_interval`.
 
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -177,10 +178,11 @@ impl SitePorts for AgentSitePorts {
     async fn probe(&self, targets: &[ProbeTarget]) -> Vec<ProbeOutcome> {
         let mut outcomes = vec![ProbeOutcome::Failed; targets.len()];
         let mut round = JoinSet::new();
+        let mut pending = HashMap::new();
         for (index, target) in targets.iter().enumerate() {
             let probes = self.probes.clone();
             let target = target.clone();
-            round.spawn(async move {
+            let task = round.spawn(async move {
                 let outcome = match probes.probe(&target).await {
                     Ok(true) => ProbeOutcome::Answered,
                     Ok(false) => ProbeOutcome::Failed,
@@ -188,15 +190,39 @@ impl SitePorts for AgentSitePorts {
                 };
                 (index, outcome)
             });
+            pending.insert(task.id(), index);
         }
         let _ = tokio::time::timeout(self.round_budget, async {
-            while let Some(joined) = round.join_next().await {
-                if let Ok((index, outcome)) = joined {
-                    outcomes[index] = outcome;
+            while let Some(joined) = round.join_next_with_id().await {
+                match joined {
+                    Ok((id, (index, outcome))) => {
+                        pending.remove(&id);
+                        outcomes[index] = outcome;
+                    }
+                    Err(err) => {
+                        if let Some(index) = pending.remove(&err.id()) {
+                            let kind = targets[index].kind;
+                            let category = if err.is_panic() {
+                                "panicked"
+                            } else {
+                                "cancelled"
+                            };
+                            outcomes[index] = ProbeOutcome::Raised(PortError(format!(
+                                "probe task {category}: target index {index}, type {kind:?}"
+                            )));
+                        }
+                    }
                 }
             }
         })
         .await;
+        for index in pending.values() {
+            let kind = targets[*index].kind;
+            site_log!(
+                debug,
+                "probe round deadline: target index {index}, type {kind:?}"
+            );
+        }
         // Dropping the set cancels the targets still running.
         round.abort_all();
         outcomes
@@ -394,7 +420,8 @@ impl SiteRuntime {
         self.warn_unobserved_site_requirements().await;
         if let Err(err) = self.restore().await {
             // Python's `run` lets the exception end the observer task
-            // silently; the port logs it (P3, PLAN.md D-19).
+            // silently; Rust logs it and application supervision fails the
+            // process rather than leaving configured observation absent (D-19).
             site_log!(
                 error,
                 "site connectivity observer stopped: restoring the persisted lifecycle failed\n{err}"

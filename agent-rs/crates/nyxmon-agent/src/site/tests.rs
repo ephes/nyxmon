@@ -230,7 +230,21 @@ async fn a_restore_that_raises_stops_the_observer_with_a_log_line() {
     let clock = ManualClock::new(T0);
     let probes = Arc::new(ScriptedProbes::default());
     let site = runtime(make_config(), store, &clock, probes.clone(), None);
-    site.run(Arc::new(Flag::new())).await;
+    let stop = Arc::new(Flag::new());
+    let stopped = stop.clone();
+    let collector = tokio::spawn(async move {
+        stopped.wait().await;
+    });
+    assert!(
+        crate::supervision::supervise(
+            collector,
+            Some(tokio::spawn(site.run(stop.clone()))),
+            None,
+            std::future::pending(),
+            || stop.set(),
+        )
+        .await
+    );
 
     assert_eq!(probes.calls.load(Ordering::SeqCst), 0);
     assert!(capture.contains(
@@ -560,4 +574,53 @@ async fn unobserved_requirements_are_reported_once_per_check() {
         lines[0].1.contains("requires the unobserved path(s) ipv6"),
         "{lines:?}"
     );
+}
+
+struct MixedProbes;
+impl ProbeRunner for MixedProbes {
+    fn probe<'a>(&'a self, target: &'a ProbeTarget) -> ProbeFuture<'a> {
+        Box::pin(async move {
+            match target.port {
+                1 => panic!("panic-sentinel-secret"),
+                2 => Ok(false),
+                3 => pending_probe().await,
+                _ => Ok(true),
+            }
+        })
+    }
+}
+async fn pending_probe() -> Result<bool, PortError> {
+    std::future::pending().await
+}
+
+#[tokio::test(start_paused = true)]
+async fn probe_panics_are_internal_evidence_without_payloads() {
+    let db = TestDb::new();
+    let clock = ManualClock::new(T0);
+    let site = runtime(
+        make_config(),
+        db.store(),
+        &clock,
+        Arc::new(MixedProbes),
+        None,
+    );
+    let targets = vec![
+        target("ipv4", "192.0.2.1", 1),
+        target("ipv4", "192.0.2.2", 2),
+        target("ipv4", "192.0.2.3", 3),
+        target("ipv4", "192.0.2.4", 4),
+    ];
+    let (capture, _guard) = logging::capture();
+    let outcomes = site.ports.probe(&targets).await;
+    assert!(
+        matches!(&outcomes[0], ProbeOutcome::Raised(err) if err.0.contains("target index 0") && err.0.contains("panicked"))
+    );
+    assert!(matches!(outcomes[1], ProbeOutcome::Failed));
+    assert!(matches!(outcomes[2], ProbeOutcome::Failed));
+    assert!(matches!(outcomes[3], ProbeOutcome::Answered));
+    assert!(!format!("{outcomes:?}").contains("panic-sentinel-secret"));
+    let diagnostics = capture.messages().join("\n");
+    assert!(diagnostics.contains("probe round deadline: target index 2"));
+    assert!(!diagnostics.contains("target index 1"));
+    assert!(!diagnostics.contains("panic-sentinel-secret"));
 }
