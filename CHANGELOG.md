@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bound Rust logging-notifier labels and result diagnostics and replace unsafe
+  controls/separators, preserving a single line, check IDs, statuses and delivery
+  semantics in normal and shadow modes. Requires a later Rust binary rollout.
+- Protect ticket sanitization with handwritten Unicode, 200-character, 25-item,
+  depth-four and key-collision/omission invariants, independent of legacy fixtures.
+
 - Fence Rust result and notification publication against the executed check
   definition. Superseded samples are discarded and only their matching old lease
   is settled, preserving current schedules and newer claims. Requires a later

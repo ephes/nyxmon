@@ -119,6 +119,7 @@ scenarios against a local fake Telegram/OpsGate server).
 | `test_opsgate_notification.py::test_prompt_boundary_is_unpredictable` | `fixtures.rs::prompt_boundary_is_unpredictable` | done |
 | `test_opsgate_notification.py::test_sanitize_untrusted_data_bounds_containers` | `opsgate.json` `sanitize`/`sanitize_text` (`fixtures.rs::sanitize_matches_python`; non-JSON `repr` fallback unreachable for JSON values) | done |
 | `test_opsgate_notification.py::test_hostile_result_data_cannot_steer_ticket_permissions_or_identity`, `::test_internal_collector_alert_keeps_incident_key_task_ref` | `prompts`/`payloads` `task_ref`; `http` scenarios "hostile data …", "internal alert keys off its incident" | done |
+| Handwritten hostile logging labels and sanitizer security boundaries | `tests/logging.rs::hostile_labels_remain_one_bounded_delivered_line`, `tests/sanitize.rs` (controls, Unicode, strings/keys, items/markers/collisions, depth) | done; intentional diagnostic safety difference from Python |
 | `LoggingNotifier` (`--shadow` line) | `http.rs::logging_notifier_lines` | done |
 
 ## S6 — TCP + ping
