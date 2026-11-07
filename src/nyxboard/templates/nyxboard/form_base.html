@@ -19,8 +19,10 @@
 
     <form method="post" class="form">
         {% csrf_token %}
+        {{ form.non_field_errors }}
         
-        {% for field in form %}
+        {% for hidden in form.hidden_fields %}{{ hidden }}{{ hidden.errors }}{% endfor %}
+        {% for field in form.visible_fields %}
             <div class="form-field {% if field.field.widget.input_type == 'checkbox' %}checkbox-field{% endif %}">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 {{ field }}

@@ -1,8 +1,15 @@
+from copy import deepcopy
+from time import time
+
 import ipaddress
 from typing import Any
 import httpx
 from django import forms
 from django.core.validators import URLValidator
+from django.db import transaction
+from django.db.models import Case, F, When, PositiveIntegerField, TextField
+from django.db.models.functions import Cast
+from django.utils.crypto import constant_time_compare, salted_hmac
 import json
 
 from .models import Service, HealthCheck
@@ -74,6 +81,24 @@ class ServiceForm(forms.ModelForm):
         widgets = {"name": forms.TextInput(attrs={"class": "form-control"})}
 
 
+DEFINITION_FIELDS = (
+    "name",
+    "service_id",
+    "check_type",
+    "url",
+    "check_interval",
+    "disabled",
+    "data",
+)
+EDIT_CONFLICT = (
+    "This check changed or was deleted. Please reload and reconcile your edits."
+)
+
+
+class DefinitionConflict(Exception):
+    """An edit lost its definition compare-and-swap."""
+
+
 class HealthCheckForm(forms.ModelForm):
     """Base form for all health checks.
 
@@ -83,6 +108,76 @@ class HealthCheckForm(forms.ModelForm):
     Note: 'url' field semantics vary by check type (URL for HTTP, domain for DNS).
     Subclasses may customize label and help text.
     """
+
+    definition_revision = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    def __init__(self, *args, require_revision=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._definition = {
+            name: deepcopy(getattr(self.instance, name)) for name in DEFINITION_FIELDS
+        }
+        self._schedule = self.instance.next_check_time
+        self._claim = self.instance.processing_started_at
+        revision = salted_hmac(
+            "nyxboard.check-definition",
+            json.dumps([self.instance.pk, self._definition], sort_keys=True),
+            algorithm="sha256",
+        ).hexdigest()
+        self._revision = revision
+        self.fields["definition_revision"].initial = revision
+        self.fields["definition_revision"].required = bool(
+            require_revision and self.instance.pk
+        )
+
+    def clean_definition_revision(self):
+        revision = self.cleaned_data.get("definition_revision")
+        if revision and not constant_time_compare(revision, self._revision):
+            raise forms.ValidationError(EDIT_CONFLICT)
+        return revision
+
+    def _persist_definition(self, instance):
+        if self.instance._state.adding:
+            instance.save()
+            return
+        values = {name: getattr(instance, name) for name in DEFINITION_FIELDS}
+        if values["check_interval"] != self._definition["check_interval"]:
+            # Only reset an untouched idle schedule. A concurrent claim,
+            # completion or Run now owns its newer runtime values.
+            values["next_check_time"] = Case(
+                When(
+                    status="idle",
+                    processing_started_at=self._claim,
+                    next_check_time=self._schedule,
+                    then=int(time()),
+                ),
+                default=F("next_check_time"),
+                output_field=PositiveIntegerField(),
+            )
+        # Compare decoded JSON for semantics, but fence the UPDATE against the
+        # exact stored text. JSONField equality alone serializes the operand,
+        # which rejects unchanged rows written with other JSON whitespace.
+        candidates = HealthCheck.objects.filter(
+            pk=instance.pk,
+            **{key: value for key, value in self._definition.items() if key != "data"},
+        ).annotate(definition_data_text=Cast("data", TextField()))
+        stored_data = candidates.values_list("definition_data_text", flat=True).first()
+        if stored_data is None or json.dumps(
+            json.loads(stored_data), sort_keys=True
+        ) != json.dumps(self._definition["data"], sort_keys=True):
+            raise DefinitionConflict(EDIT_CONFLICT)
+        with transaction.atomic():
+            changed = candidates.filter(definition_data_text=stored_data).update(
+                **values
+            )
+            if not changed:
+                raise DefinitionConflict(EDIT_CONFLICT)
+            instance.refresh_from_db()
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            self._persist_definition(instance)
+        return instance
 
     class Meta:
         model = HealthCheck
@@ -218,7 +313,7 @@ class GenericHealthCheckForm(HealthCheckForm):
         # or from model default ({}) when creating. We don't touch it.
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
 
         return instance
 
@@ -284,7 +379,7 @@ class HttpHealthCheckForm(HealthCheckForm):
         instance.data = {}
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
 
         return instance
 
@@ -537,7 +632,7 @@ class SmtpHealthCheckForm(HealthCheckForm):
             instance.data["password"] = existing_data["password"]
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
 
         return instance
 
@@ -790,7 +885,7 @@ class ImapHealthCheckForm(HealthCheckForm):
             instance.data["password"] = existing_data["password"]
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
 
         return instance
 
@@ -1045,7 +1140,7 @@ class TcpHealthCheckForm(HealthCheckForm):
         instance.data = data
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
         return instance
 
 
@@ -1137,7 +1232,7 @@ class PingHealthCheckForm(HealthCheckForm):
         instance.data = data
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
         return instance
 
 
@@ -1330,7 +1425,7 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
         instance.data = data
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
         return instance
 
 
@@ -1510,6 +1605,6 @@ class DnsHealthCheckForm(HealthCheckForm):
             instance.data["source_ip"] = self.cleaned_data["source_ip"]
 
         if commit:
-            instance.save()
+            self._persist_definition(instance)
 
         return instance

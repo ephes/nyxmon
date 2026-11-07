@@ -13,6 +13,9 @@
 
   <form method="post" class="form">
     {% csrf_token %}
+    {{ form.definition_revision }}
+    {{ form.definition_revision.errors }}
+    {{ form.non_field_errors }}
 
     <h3 class="section-title">Basic Information</h3>
 

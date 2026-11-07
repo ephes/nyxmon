@@ -365,3 +365,18 @@ Linux CI installs browser system dependencies with `--with-deps`.
 
 Dashboard component tests and refresh behavior are documented in
 [docs/dashboard-components.md](docs/dashboard-components.md).
+
+## Editing health checks
+
+Edit forms save only check definitions and preserve the Rust agent's runtime
+status, claim timestamp and schedule. Changing the interval makes an untouched
+idle check due immediately; a concurrent claim, completion or scheduling action
+keeps its schedule. Disabled-only POSTs to the edit endpoint update only the disabled flag.
+Dashboard card toggles retain their existing scheduling behavior.
+
+Each browser edit carries a signed definition fingerprint (including configuration
+and credentials, without exposing them in the fingerprint). If another operator
+changes or deletes the check, the form keeps submitted values and asks you to
+reload and reconcile. Runtime-only agent changes do not invalidate an edit.
+Programmatic form saves compare against the definition loaded when the form was
+constructed. Deleted checks are never recreated by an edit.
