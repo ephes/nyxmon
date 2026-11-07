@@ -1,3 +1,5 @@
+import { announceStatus } from '../status-announcer.js';
+
 /**
  * Custom element for displaying a health check with its status, progress, and controls.
  * This component integrates with HTMX for server interactions.
@@ -79,6 +81,9 @@ class HealthCheck extends HTMLElement {
   
   notifyStatusChanged() {
     if (this.isConnected) {
+      announceStatus('check', this.getAttribute('check-id'),
+        this.querySelector('.health-check-title, .health-check-link')?.textContent.trim(),
+        this.getAttribute('status'));
       this.dispatchEvent(new CustomEvent('health-check-status-changed', { bubbles: true }));
     }
   }
@@ -118,8 +123,8 @@ class HealthCheck extends HTMLElement {
         try {
           if (this.isConnected) {
             window.htmx.ajax('GET', `/healthchecks/${checkId}/status/`, {
-              target: `#check-${checkId}`, swap: 'outerHTML'
-            });
+              source: this, target: `#check-${checkId}`, swap: 'outerHTML'
+            })?.catch(() => { /* A deliberate toggle may supersede this poll. */ });
           }
         } finally {
           this._htmxCallInProgress = false;

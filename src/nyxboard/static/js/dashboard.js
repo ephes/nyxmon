@@ -3,6 +3,8 @@
  * Loads all components and initializes the dashboard.
  */
 
+import './card-interactions.js';
+
 // Import web components
 import './components/progress-ring.js';
 import './components/check-timer.js';
