@@ -62,3 +62,34 @@ Service forms return to service detail when editing and the service list when
 creating. Check forms return to check detail when editing, the originating
 service when creating there, or the check list for global creation. Back and
 Cancel share a Django-resolved destination, including invalid bound POSTs.
+
+## Live check interaction
+
+A mutating toggle or Run now action owns its card while pending; its controls are disabled and duplicate
+card requests are suppressed. A definite 4xx rejection restores the last
+confirmed checkbox/text and announces failure. Network, timeout and 5xx outcomes
+are uncertain: the browser fetches authoritative card state with GET, never
+retries the inversion POST. If that GET fails, Refresh status retries only GET;
+changing the check stays disabled until its state is confirmed. Requests have a
+ten-second timeout. Other cards remain usable.
+Per-check controls have stable IDs. HTMX card swaps preserve focused controls
+and selection; a removed/disabled action falls back to its labelled card. A
+background swap never moves focus from another connected control.
+One persistent polite Monitoring updates region announces changed service/check
+health with identity. Initial render, unchanged polls, timer ticks and mirrored
+service updates do not repeat announcements; simultaneous changes are combined.
+
+HTMX's per-card synchronization marks polls abortable: overlapping polls are
+dropped, while a deliberate mutation supersedes an older poll. Mutations use
+queue-last and lock native controls, so they do not discard one another's POST
+responses. A late pre-mutation poll cannot overwrite confirmed state. Component GETs use the owning card as their HTMX source. Reconciliation
+starts after the completed POST releases its synchronization lock.
+
+The pending guard also checks HTMX's request target for body-sourced requests.
+Failed status recovery keeps focus on the replacement Refresh status action
+when focus belonged to that card, including repeated failures; it never takes
+focus back from an unrelated input/card.
+
+A rejected mutation resumes a due component poll that it superseded. Run now
+participates in the same pending/error ownership, rather than inheriting a poll
+strategy that could silently discard the action.

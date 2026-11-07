@@ -63,7 +63,7 @@ describe('production health check', () => {
     expect(second.getAttribute('check-mode')).toBe('due');
     expect(first.getAttribute('check-mode')).toBe('normal');
     expect(window.htmx.ajax).toHaveBeenCalledExactlyOnceWith('GET', '/healthchecks/456/status/', {
-      target: '#check-456', swap: 'outerHTML',
+      source: second, target: '#check-456', swap: 'outerHTML',
     });
   });
 

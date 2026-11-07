@@ -1,3 +1,5 @@
+import { announceStatus } from '../status-announcer.js';
+
 /**
  * Custom element for displaying a service with its health checks.
  */
@@ -17,6 +19,7 @@ class ServiceCard extends HTMLElement {
     if (oldValue === newValue) return;
     
     if (name === 'service-status') {
+      if (this.isConnected) this.announceStatus(newValue);
       const statuses = ['passed', 'failed', 'warning', 'recovering', 'unknown'];
       this.classList.remove(...statuses);
       if (newValue) this.classList.add(newValue);
@@ -42,7 +45,13 @@ class ServiceCard extends HTMLElement {
     }
   }
   
+  announceStatus(status) {
+    announceStatus('service', this.getAttribute('service-id'),
+      this.querySelector('.service-link, .service-checks-link, .service-name')?.textContent.trim(), status);
+  }
+
   connectedCallback() {
+    this.announceStatus(this.getAttribute('service-status'));
     // Listen for health check status changes to update service status
     this.addEventListener('health-check-status-changed', this.statusChangeHandler);
   }

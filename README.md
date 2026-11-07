@@ -359,5 +359,9 @@ JavaScript tests now use Vitest 4.1.11 to remove vulnerable test-runner
 dependencies. Use Node.js 22 (at least 22.12) as in CI, run `npm ci`, then
 `npm audit` and `npm test`.
 
+`npm test` includes Chromium tests against synthetic production-template fixtures.
+Run `uv sync --frozen` and `npx playwright install chromium` before the first run;
+Linux CI installs browser system dependencies with `--with-deps`.
+
 Dashboard component tests and refresh behavior are documented in
 [docs/dashboard-components.md](docs/dashboard-components.md).

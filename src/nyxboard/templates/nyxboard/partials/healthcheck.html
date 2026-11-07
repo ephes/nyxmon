@@ -3,8 +3,11 @@
 {# This template partial displays a single health check with htmx and web component integration #}
 <health-check role="listitem"
     class="health-check {{ check.get_status }}" 
-    id="check-{{ check.id }}"
+    id="check-{{ check.id }}" tabindex="-1" aria-labelledby="check-title-{{ check.id }}"
     check-id="{{ check.id }}"
+    data-status-url="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
+    hx-sync="closest health-check:abort"
+    hx-request='{"timeout":10000}'
     check-mode="{{ check_mode }}"
     status="{{ check.get_status }}"
     execution-status="{{ check.status }}"
@@ -17,7 +20,7 @@
     <div class="health-check-main">
         <div class="health-check-info">
             <div class="health-check-id">
-                <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" class="health-check-link">
+                <a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}" id="check-title-{{ check.id }}" class="health-check-link">
                     {{ check.name }}
                 </a>
             </div>
@@ -66,11 +69,11 @@
         <!-- Right section: action button -->
         <div class="health-check-right">
             <div class="check-action-container">
-                <form hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
+                <form data-check-run hx-sync="closest health-check:queue last" hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
                       hx-target="#check-{{ check.id }}"
                       hx-swap="outerHTML">
                     {% csrf_token %}
-                    <button type="submit" class="run-check-button" aria-label="{% if check.status == 'processing' %}Running... {{ check.name }}{% else %}Run now: {{ check.name }}{% endif %}">
+                    <button id="check-{{ check.id }}-run" type="submit" class="run-check-button" aria-label="{% if check.status == 'processing' %}Running... {{ check.name }}{% else %}Run now: {{ check.name }}{% endif %}">
                         {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
                     </button>
                 </form>

@@ -3,8 +3,11 @@
 {# This template partial displays a single health check with improved card design #}
 <health-check role="listitem"
     class="health-check {{ check.get_status }} {% if check.disabled %}disabled{% endif %}" 
-    id="check-{{ check.id }}"
+    id="check-{{ check.id }}" tabindex="-1" aria-labelledby="check-title-{{ check.id }}"
     check-id="{{ check.id }}"
+    data-status-url="{% url 'nyxboard:healthcheck_update_status' check_id=check.id %}"
+    hx-sync="closest health-check:abort"
+    hx-request='{"timeout":10000}'
     check-mode="{{ check_mode }}"
     status="{{ check.get_status }}"
     execution-status="{{ check.status }}"
@@ -16,7 +19,7 @@
     {% endif %}>
     
     <div class="health-check-header">
-        <h3 class="health-check-title">{{ check.name }}</h3>
+        <h3 id="check-title-{{ check.id }}" class="health-check-title">{{ check.name }}</h3>
         {% if check.url|slice:":4" == "http" %}
             <a href="{{ check.url }}" target="_blank" rel="noopener noreferrer" class="health-check-url">{{ check.url }}</a>
         {% else %}
@@ -72,7 +75,7 @@
             <!-- Disable toggle with HTMX and label -->
             <div class="toggle-control">
                 <label class="toggle-switch" title="{% if check.disabled %}Enable{% else %}Disable{% endif %} check">
-                    <input type="checkbox" aria-label="Disable check {{ check.name }}" 
+                    <input hx-sync="closest health-check:queue last" id="check-{{ check.id }}-disabled" data-check-toggle data-confirmed-disabled="{{ check.disabled|yesno:'true,false' }}" type="checkbox" aria-label="Disable check {{ check.name }}"
                            {% if check.disabled %}checked{% endif %}
                            hx-post="{% url 'nyxboard:healthcheck_toggle_disabled' check_id=check.id %}"
                            hx-swap="outerHTML"
@@ -84,12 +87,12 @@
             
             <!-- Run now button with HTMX integration, only show when not disabled -->
             {% if not check.disabled %}
-                <form hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
+                <form data-check-run hx-sync="closest health-check:queue last" hx-post="{% url 'nyxboard:healthcheck_trigger' check_id=check.id %}"
                       hx-target="#check-{{ check.id }}"
                       hx-swap="outerHTML"
                       style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="run-check-button" aria-label="{% if check.status == 'processing' %}Running... {{ check.name }}{% else %}Run now: {{ check.name }}{% endif %}">
+                    <button id="check-{{ check.id }}-run" type="submit" class="run-check-button" aria-label="{% if check.status == 'processing' %}Running... {{ check.name }}{% else %}Run now: {{ check.name }}{% endif %}">
                         {% if check.status == "processing" %}Running...{% else %}Run now{% endif %}
                     </button>
                 </form>
