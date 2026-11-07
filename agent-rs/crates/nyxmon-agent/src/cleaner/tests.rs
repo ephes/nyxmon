@@ -176,3 +176,13 @@ async fn a_cycle_drains_an_sqlite_backlog() {
         .unwrap();
     assert_eq!(remaining, (2501..=2510).collect::<Vec<_>>());
 }
+
+#[test]
+fn invalid_retention_or_interval_never_reaches_the_pruner() {
+    let results = FakeResults::default();
+    for value in [-1, 0] {
+        assert!(Cleaner::new(results.clone(), 3600, value, 100, 100).is_err());
+        assert!(Cleaner::new(results.clone(), value, 86400, 100, 100).is_err());
+    }
+    assert!(results.calls().is_empty());
+}

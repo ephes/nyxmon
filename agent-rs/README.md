@@ -505,3 +505,11 @@ SMTP attempt deadline. If all slots remain occupied, later callers time out
 without queuing more blocking jobs. Capacity returns when those jobs finish;
 libc calls cannot be cancelled. Other check executors' resolver paths are
 unchanged. These changes require a future Rust-agent release and rollout.
+
+Scheduling and retention flags (`--interval`, `--cleanup-interval`,
+`--retention-period`) accept strictly positive signed 64-bit seconds (1 through
+9223372036854775807). Invalid values fail before monitoring starts, even with
+`--disable-cleaner`; that flag is the explicit way to turn pruning off.
+Defaults remain 5, 3600 and 86400 seconds. Retry sleeps retain their existing
+nonpositive-delay semantics. Direct cleaner/store calls also reject nonpositive
+retention before deleting results or expired sessions.

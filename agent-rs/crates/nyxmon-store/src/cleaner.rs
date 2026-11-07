@@ -15,6 +15,11 @@ pub(crate) fn delete_old_results(
     retention_seconds: i64,
     batch_size: i64,
 ) -> Result<usize, StoreError> {
+    if retention_seconds <= 0 {
+        return Err(StoreError::InvalidArgument(
+            "retention_seconds must be strictly positive",
+        ));
+    }
     // The agent also supports databases without the sessions table; the
     // probe runs every batch, like Python's.
     let sessions = connection
