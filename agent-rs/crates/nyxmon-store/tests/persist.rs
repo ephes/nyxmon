@@ -326,7 +326,7 @@ async fn late_completion_cannot_override_reclaimed_idle_backoff() {
 }
 
 #[tokio::test]
-async fn result_only_persistence_never_mutates_anchor_check() {
+async fn result_only_persistence_drops_a_stale_definition() {
     let db = TestDb::new();
     db.insert(row(1).next(123));
     let store = db.store();
@@ -335,7 +335,7 @@ async fn result_only_persistence_never_mutates_anchor_check() {
     snapshot.next_check_time = 999;
 
     assert!(
-        store
+        !store
             .persist_check_result(PersistRequest {
                 complete_check: false,
                 ..request(&snapshot, error(1), Some((zero(), zero())))
@@ -352,7 +352,7 @@ async fn result_only_persistence_never_mutates_anchor_check() {
         .unwrap();
     assert_eq!(name, "check 1");
     assert_eq!(db.schedule(1), Some(("idle".to_owned(), 123, 0)));
-    assert_eq!(db.results().len(), 1);
+    assert!(db.results().is_empty());
 }
 
 #[tokio::test]
@@ -621,4 +621,118 @@ async fn nan_in_result_data_fails_json_valid_and_rolls_back() {
     assert!(matches!(err, StoreError::Sqlite(_)), "{err:?}");
     assert_eq!(db.schedule(1), Some(("processing".to_owned(), 0, 4_000)));
     assert!(db.results().is_empty());
+}
+
+#[tokio::test]
+async fn changed_definitions_drop_samples_and_settle_only_the_old_claim() {
+    for edit in [
+        "url = 'https://changed.example/'",
+        "data = '{\"threshold\":2}'",
+        "check_type = 'dns'",
+        "check_interval = 60",
+        "disabled = 1",
+        "name = 'Renamed'",
+        "service_id = 2",
+    ] {
+        for newer_claim in [false, true] {
+            for complete_check in [false, true] {
+                let db = TestDb::new();
+                db.insert(row(1));
+                let store = db.store();
+                let claimed = store.claim_due_checks(1_000, 1).await.unwrap().remove(0);
+                let old_state = state([4, 2, 123, 456, 789, 12, 3, 999]);
+                db.set_state(1, old_state);
+                db.raw()
+                    .execute("INSERT INTO service (id, name) VALUES (2, 'other')", [])
+                    .unwrap();
+                db.raw()
+                    .execute(
+                        &format!(
+                            "UPDATE health_check SET {edit}, next_check_time = 9999 WHERE id = 1"
+                        ),
+                        [],
+                    )
+                    .unwrap();
+                if newer_claim {
+                    db.raw()
+                        .execute(
+                            "UPDATE health_check SET processing_started_at = 2000 WHERE id = 1",
+                            [],
+                        )
+                        .unwrap();
+                }
+                let mut req = request(
+                    &completed(&claimed, 1_001),
+                    error(1),
+                    Some((old_state, zero())),
+                );
+                req.complete_check = complete_check;
+                req.hold_marker = Some(5_000);
+                assert!(!store.persist_check_result(req).await.unwrap(), "{edit}");
+                assert!(db.results().is_empty(), "{edit}");
+                assert_eq!(db.state_row(1), Some(old_state.as_row()), "{edit}");
+                let expected = if newer_claim {
+                    ("processing".to_owned(), 9999, 2000)
+                } else if complete_check {
+                    ("idle".to_owned(), 9999, 0)
+                } else {
+                    ("processing".to_owned(), 9999, 1000)
+                };
+                assert_eq!(db.schedule(1), Some(expected), "{edit}");
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn definition_comparison_accepts_unchanged_json_with_different_spacing() {
+    let db = TestDb::new();
+    db.insert(row(1).data(r#"{"value": "café", "nested": [1, true]}"#));
+    let store = db.store();
+    let claimed = store.claim_due_checks(1_000, 1).await.unwrap().remove(0);
+    db.raw()
+        .execute(
+            "UPDATE health_check SET data = ? WHERE id = 1",
+            [r#"{ "nested" : [1,true], "value" : "caf\u00e9" }"#],
+        )
+        .unwrap();
+    assert!(
+        store
+            .persist_check_result(request(&completed(&claimed, 1_001), error(1), None))
+            .await
+            .unwrap()
+    );
+    assert_eq!(db.results().len(), 1);
+}
+
+#[tokio::test]
+async fn superseded_fallback_cannot_create_or_change_a_hold_marker() {
+    for existing_state in [false, true] {
+        let db = TestDb::new();
+        db.insert(row(1));
+        let store = db.store();
+        let claimed = store.claim_due_checks(1_000, 1).await.unwrap().remove(0);
+        let old_state = state([2, 0, 0, 0, 900, 0, 0, 0]);
+        if existing_state {
+            db.set_state(1, old_state);
+        }
+        db.raw()
+            .execute(
+                "UPDATE health_check SET url = 'https://changed.example/' WHERE id = 1",
+                [],
+            )
+            .unwrap();
+        assert!(
+            !store
+                .persist_check_result(hold(&completed(&claimed, 1_001), 5_000))
+                .await
+                .unwrap()
+        );
+        assert!(db.results().is_empty());
+        assert_eq!(
+            db.state_row(1),
+            existing_state.then_some(old_state.as_row())
+        );
+        assert_eq!(db.schedule(1), Some(("idle".to_owned(), 0, 0)));
+    }
 }

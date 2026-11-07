@@ -171,3 +171,34 @@ def test_epoch_upper_bound_is_checked_before_platform_conversion():
         assert usable_epoch(MAX_EPOCH) == MAX_EPOCH
         assert usable_epoch(MAX_EPOCH + 1) is None
     clock.fromtimestamp.assert_called_once_with(MAX_EPOCH, tz=timezone.utc)
+
+
+@pytest.mark.parametrize(
+    "latest,backdated",
+    [
+        (ResultStatus.OK, ResultStatus.WARNING),
+        (ResultStatus.WARNING, ResultStatus.OK),
+    ],
+)
+@pytest.mark.parametrize("tie", [False, True])
+def test_digest_uses_timestamp_then_id_like_dashboard(
+    make_check, latest, backdated, tie
+):
+    from datetime import UTC, datetime, timedelta
+    from nyxmon.domain import StatusChoices
+
+    check = make_check("ordered")
+    first = Result.objects.create(health_check=check, status=latest, data={})
+    second = Result.objects.create(health_check=check, status=backdated, data={})
+    now = datetime(2026, 1, 2, tzinfo=UTC)
+    Result.objects.filter(pk=first.pk).update(created_at=now)
+    Result.objects.filter(pk=second.pk).update(
+        created_at=now if tie else now - timedelta(days=1)
+    )
+    expected_warning = (backdated if tie else latest) == ResultStatus.WARNING
+    assert bool(open_warnings()) is expected_warning
+    assert (check.get_status() == StatusChoices.WARNING) is expected_warning
+    with patch(SEND, new_callable=AsyncMock) as send:
+        output = run(dry_run=True)
+    assert ("1 open warning" in output) is expected_warning
+    send.assert_not_awaited()

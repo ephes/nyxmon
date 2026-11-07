@@ -415,3 +415,17 @@ against a temporary database from the schema fixture and fake servers).
   main-thread panics. It uses the command startup logging installation, the real
   run-check runner and task supervisor; payloads/backtraces never escape, executor
   error results remain intact and required-task panics exit unsuccessfully.
+
+## Definition publication regressions
+
+- `nyxmon-store/tests/persist.rs::changed_definitions_drop_samples_and_settle_only_the_old_claim`
+  checks definition edits on real temporary SQLite connections, preserved alert
+  state/schedules, result-only persistence and newer-claim ownership.
+- `::superseded_fallback_cannot_create_or_change_a_hold_marker` verifies the
+  transition-free fallback neither stamps a hold nor creates alert state.
+- `::definition_comparison_accepts_unchanged_json_with_different_spacing` checks
+  decoded JSON equality across whitespace, Unicode escapes and key order.
+- `nyxmon-agent/src/runner/tests.rs::a_definition_edited_during_a_probe_cannot_publish_or_notify`
+  defers a synthetic executor, edits URL/data/type/interval/disabled or deletes
+  through a second SQLite connection, then resumes through the real result
+  handler and store. An unchanged control publishes and notifies normally.

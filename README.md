@@ -380,3 +380,20 @@ changes or deletes the check, the form keeps submitted values and asks you to
 reload and reconcile. Runtime-only agent changes do not invalidate an edit.
 Programmatic form saves compare against the definition loaded when the form was
 constructed. Deleted checks are never recreated by an edit.
+
+## Current monitoring evidence
+
+The Rust agent publishes a probe result and its notification transition only
+while the check's executed definition (service, name, type, target, interval,
+enabled flag and configuration) still matches in the publication transaction.
+An edit or deletion during a probe supersedes its completion: the old sample is
+discarded and cannot change alert state or send a notification. Only the matching
+old claim is released; an operator's schedule or newer claim is preserved.
+Probes run outside database write transactions. Edits after publication do not
+revoke an already committed notification intent. Adopting this behavior in
+production requires a later owner-managed Rust binary release and rollout.
+
+The warning digest selects each enabled check's latest result by timestamp,
+then ID for ties, matching the dashboard. A later-inserted backdated warning
+cannot reopen a warning after a newer recovery. Existing suppression and
+notification cadence rules remain in effect.

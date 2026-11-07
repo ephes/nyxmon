@@ -536,3 +536,21 @@ enabled, silently running without its evidence/holds is no longer accepted.
 A malformed persisted `site:connectivity` lifecycle needs operator repair; a
 service manager restart alone repeats the failure. To collect without observation
 during repair, explicitly set `NYXMON_SITE_CONNECTIVITY_MODE=off`.
+
+## Result publication after definition edits
+
+The claimed `Check` retains the definition that the runner executes. Before
+publishing, the store compares its service, name, check type, URL, interval,
+disabled flag and decoded configuration with the current row in the same
+`BEGIN IMMEDIATE` transaction as completion, result and alert-state writes.
+An edited or deleted definition supersedes the sample: no history row, alert
+transition, hold marker or notification is published. A matching old processing
+lease is released without changing the current schedule; a newer lease is kept.
+JSON whitespace and key order do not constitute definition changes.
+
+Network probes and notification delivery run outside the write transaction.
+Publication is the fence: a later edit does not revoke delivery already granted
+by a committed notification intent. Unchanged definitions retain normal
+completion, stale-lease recovery and late-claim behavior. The Python fallback
+remains retired. Production adoption needs a later binary release/rollout;
+this change does not perform one.
