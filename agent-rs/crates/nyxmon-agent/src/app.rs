@@ -195,46 +195,56 @@ async fn run_monitoring_services(args: &Args, db_path: &Path) -> ExitCode {
         env,
         args.interval,
     ));
-    let mut collecting = tokio::spawn(collector.clone().run());
+    let collecting = tokio::spawn(collector.clone().run());
     // A second task beside the collector: probing never blocks collection.
     let site_stop = Arc::new(Flag::new());
     let observing = site.map(|site| tokio::spawn(site.run(site_stop.clone())));
     let cleaning = cleaner.map(|cleaner| tokio::spawn(async move { cleaner.run().await }));
     cli_info!("Monitoring started with {}s check interval", args.interval);
 
-    let ended = tokio::select! {
-        _ = sigterm.recv() => received(15, &collector, &site_stop),
-        _ = sigint.recv() => received(2, &collector, &site_stop),
-        _ = &mut collecting => true,
+    let shutdown = async {
+        tokio::select! {
+            _ = sigterm.recv() => { received(15); },
+            _ = sigint.recv() => { received(2); },
+        }
     };
-    if let Some(cleaning) = cleaning {
-        cleaning.abort();
-    }
-    // Further signals are absorbed by the open streams while shutting down.
-    if !ended {
-        let _ = collecting.await;
-    }
-    // Python cancels the observer with the portal once the collector is done.
-    if let Some(observing) = observing {
-        observing.abort();
-    }
-    if collector.failed() {
-        return fatal("the database thread is gone");
-    }
-    ExitCode::SUCCESS
+    let task_failed =
+        crate::supervision::supervise(collecting, observing, cleaning, shutdown, || {
+            collector.request_stop();
+            site_stop.set();
+        })
+        .await;
+    monitoring_exit(task_failed, collector.failed())
 }
 
-fn received(signum: i32, collector: &Collector, site_stop: &Flag) -> bool {
+fn monitoring_exit(task_failed: bool, database_failed: bool) -> ExitCode {
+    if database_failed {
+        return fatal("the database thread is gone");
+    }
+    if task_failed {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn received(signum: i32) {
     cli_info!("Received signal {signum}, shutting down...");
-    collector.request_stop();
-    site_stop.set();
-    false
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use clap::Parser;
+
+    #[test]
+    fn database_failure_keeps_its_diagnostic_after_task_completion() {
+        let (capture, _guard) = crate::logging::capture();
+        assert_eq!(monitoring_exit(true, true), ExitCode::FAILURE);
+        assert!(capture.contains("the database thread is gone"));
+        assert_eq!(monitoring_exit(true, false), ExitCode::FAILURE);
+        assert_eq!(monitoring_exit(false, false), ExitCode::SUCCESS);
+    }
 
     #[test]
     fn invalid_programmatic_configuration_fails_before_opening_the_database() {

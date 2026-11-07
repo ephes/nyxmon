@@ -394,3 +394,18 @@ against a temporary database from the schema fixture and fake servers).
   tests preserve ordinary pruning and spaced cycles.
 - `app::tests::invalid_programmatic_configuration_fails_before_opening_the_database`
   guards application callers before database access or task startup.
+
+## Task supervision and probe joins
+
+- `supervision::tests` injects collector panic, early observer/cleaner return,
+  normal signal-style shutdown, intentional abort, panic during drain and a
+  wedged collector using paused time. All tasks run through the application seam.
+- `site::tests::probe_panics_are_internal_evidence_without_payloads` distinguishes
+  panic, negative answer and round deadline while another probe completes; no
+  panic sentinel enters observer outcomes or structured diagnostics.
+- Existing binary SIGTERM/SIGINT tests retain successful process exit and leases.
+
+- `app::tests::database_failure_keeps_its_diagnostic_after_task_completion`
+  preserves the DB-actor cause; the D-19 restore regression now supervises the
+  real observer task and requires process failure. The supervision tests also
+  cover a normal observer return racing intentional shutdown.
