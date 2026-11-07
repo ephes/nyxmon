@@ -480,3 +480,83 @@ async fn a_result_finishing_after_the_cutoff_is_not_handed_over() {
     assert_eq!(*received.lock().unwrap(), [1]);
     assert!(stop.drained.is_set());
 }
+
+#[tokio::test]
+async fn a_definition_edited_during_a_probe_cannot_publish_or_notify() {
+    for edit in [
+        "url = 'https://changed.example/'",
+        "data = '{\"policy\":2}'",
+        "check_type = 'dns'",
+        "check_interval = 60",
+        "disabled = 1",
+        "DELETE",
+        "UNCHANGED",
+    ] {
+        let db = TestDb::new();
+        db.insert(&check(1));
+        let store = db.store();
+        let claimed = store.claim_due_checks(1_000, 1).await.unwrap().remove(0);
+        let notifier = ScriptedNotifier::new(Some(store.clone()));
+        let clock = ManualClock::new(1_001);
+        let handler = Arc::new(handler(
+            store,
+            notifier.clone(),
+            &[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")],
+            &clock,
+        ));
+        let started = Arc::new(Flag::new());
+        let release = Arc::new(Flag::new());
+        let fake = executors({
+            let started = started.clone();
+            let release = release.clone();
+            move |check| {
+                let started = started.clone();
+                let release = release.clone();
+                Box::pin(async move {
+                    started.set();
+                    release.wait().await;
+                    Ok(CheckResult::new(
+                        check.check_id,
+                        ResultStatus::Error,
+                        PyDict::new(),
+                    ))
+                })
+            }
+        });
+        let batch = tokio::spawn(async move {
+            run_batch(&fake, vec![claimed], None, move |check, result| {
+                let handler = handler.clone();
+                async move { handler.receive(check, result).await }
+            })
+            .await;
+        });
+        tokio::time::timeout(Duration::from_secs(5), started.wait())
+            .await
+            .unwrap();
+        // A real second SQLite connection can write while the probe is pending.
+        if edit == "DELETE" {
+            db.execute("DELETE FROM health_check WHERE id = 1");
+        } else if edit != "UNCHANGED" {
+            db.execute(&format!(
+                "UPDATE health_check SET {edit}, next_check_time = 9000 WHERE id = 1"
+            ));
+        }
+        release.set();
+        tokio::time::timeout(Duration::from_secs(5), batch)
+            .await
+            .unwrap()
+            .unwrap();
+        if edit == "UNCHANGED" {
+            assert_eq!(db.results().len(), 1);
+            assert_eq!(notifier.count(), 1);
+            assert_eq!(db.schedule(1), ("idle".to_owned(), 1301, 0));
+        } else {
+            assert!(db.results().is_empty(), "{edit}");
+            assert_eq!(notifier.count(), 0, "{edit}");
+            assert_eq!(db.state(1), NotificationState::default(), "{edit}");
+            if edit != "DELETE" {
+                assert_eq!(db.schedule(1), ("idle".to_owned(), 9000, 0), "{edit}");
+            }
+        }
+    }
+}

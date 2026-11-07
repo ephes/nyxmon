@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fence Rust result and notification publication against the executed check
+  definition. Superseded samples are discarded and only their matching old lease
+  is settled, preserving current schedules and newer claims. Requires a later
+  owner-managed Rust binary rollout.
+- Select warning-digest results by timestamp then ID, matching the dashboard
+  when results are inserted out of chronological order.
+
 - Preserve agent-owned runtime columns when editing any health-check type.
   Reset only an untouched idle schedule on interval changes. Reject stale or
   deleted browser edits with a reload/reconcile error and retain submitted values;

@@ -3,19 +3,21 @@
 
 use nyxmon_core::PyJson;
 use nyxmon_core::model::{Check, CheckResult, NOTIFICATION_STATE_COLUMNS, NotificationState};
+use nyxmon_core::pyjson::{DumpOpts, dumps};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 
 use crate::LOGGER;
 use crate::actor::Store;
 use crate::error::StoreError;
-use crate::rows::select_notification_state;
+use crate::rows::{CHECK_COLUMNS, row_to_check, select_notification_state};
 
 /// One call of `persist_check_result`.
 #[derive(Clone, Debug)]
 pub struct PersistRequest {
     /// The check after `schedule_next_check` (its `status`,
     /// `next_check_time`, `processing_started_at` are written; its
-    /// `claim_started_at` guards the completion).
+    /// `claim_started_at` guards the completion). Its definition fields retain
+    /// the executed snapshot and fence publication against concurrent edits.
     pub check: Check,
     pub result: CheckResult,
     /// `(expected, next)` notification states for the compare-and-swap.
@@ -155,7 +157,7 @@ fn check_exists_in(
 
 /// `_persist_check_result_async`, in one `BEGIN IMMEDIATE` transaction.
 ///
-/// Returns `false` when the result was dropped for a deleted check or stored
+/// Returns `false` when an edited/deleted definition superseded the sample or it was stored
 /// without completing because a newer claim exists (the notification state
 /// is then not touched and nothing may be sent).
 pub(crate) fn persist_check_result(
@@ -170,28 +172,60 @@ pub(crate) fn persist_check_result(
         hold_marker,
     } = request;
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    // `check` retains the definition executed by the runner; scheduling only
+    // changes its runtime fields. Read under the same write transaction that
+    // publishes the sample so an operator cannot edit between fence and write.
+    let current = transaction
+        .query_row(
+            &format!("SELECT {CHECK_COLUMNS} FROM health_check WHERE id = ?"),
+            [check.check_id],
+            row_to_check,
+        )
+        .optional()?;
+    let options = DumpOpts {
+        sort_keys: true,
+        ..DumpOpts::python_default()
+    };
+    let encode = |data| dumps(data, &options).map_err(|err| StoreError::Json(err.to_string()));
+    let same_definition = if let Some(current) = current {
+        current.service_id == check.service_id
+            && current.name == check.name
+            && current.check_type == check.check_type
+            && current.url == check.url
+            && current.check_interval == check.check_interval
+            && current.disabled == check.disabled
+            && encode(&current.data)? == encode(&check.data)?
+    } else {
+        false
+    };
+    if !same_definition {
+        if complete_check {
+            // Only settle this old lease. Keep any schedule chosen by the
+            // operator and leave a newer claim entirely untouched.
+            transaction.execute(
+                "UPDATE health_check SET status = 'idle', processing_started_at = 0
+                 WHERE id = ? AND status = 'processing' AND processing_started_at = ?",
+                params![check.check_id, check.claim_started_at],
+            )?;
+        }
+        transaction.commit()?;
+        tracing::info!(
+            target: LOGGER,
+            "dropped superseded result for check_id={}", check.check_id
+        );
+        return Ok(false);
+    }
     let completion_applied = if complete_check {
         complete(&transaction, &check)?
     } else {
         true
     };
-    if !complete_check || !completion_applied {
-        if !check_exists_in(&transaction, "health_check", "id", check.check_id)? {
-            transaction.rollback()?;
-            tracing::info!(
-                target: LOGGER,
-                "dropped late result for deleted check_id={}",
-                check.check_id
-            );
-            return Ok(false);
-        }
-        if complete_check {
-            tracing::info!(
-                target: LOGGER,
-                "stored late result without changing newer claim for check_id={}",
-                check.check_id
-            );
-        }
+    if complete_check && !completion_applied {
+        tracing::info!(
+            target: LOGGER,
+            "stored late result without changing newer claim for check_id={}",
+            check.check_id
+        );
     }
     insert_result(&transaction, result)?;
     if complete_check && !completion_applied {

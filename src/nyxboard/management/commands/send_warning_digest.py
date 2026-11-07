@@ -45,7 +45,11 @@ def open_warnings() -> list[OpenWarning]:
     )
     warnings = []
     for check in HealthCheck.objects.filter(disabled=False).order_by("name"):
-        result = Result.objects.filter(health_check=check).order_by("-id").first()
+        result = (
+            Result.objects.filter(health_check=check)
+            .order_by("-created_at", "-id")
+            .first()
+        )
         if result is None or result.status != ResultStatus.WARNING:
             continue
         data = result.data if isinstance(result.data, dict) else {}
