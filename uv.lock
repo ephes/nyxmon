@@ -578,6 +578,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dashboard-dev = [
+    { name = "beautifulsoup4" },
     { name = "django-debug-toolbar" },
     { name = "django-stubs", extra = ["compatible-mypy"] },
     { name = "pytest-django" },
@@ -611,6 +612,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dashboard-dev = [
+    { name = "beautifulsoup4", specifier = ">=4.14.2,<5" },
     { name = "django-debug-toolbar" },
     { name = "django-stubs", extras = ["compatible-mypy"] },
     { name = "pytest-django" },

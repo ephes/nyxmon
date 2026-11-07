@@ -6,7 +6,7 @@
 <div class="form-container">
   <div class="form-header">
     <h2>{{ action }} SMTP Health Check</h2>
-    <a href="{% url 'nyxboard:healthcheck_list' %}" class="back-link">&larr; Back</a>
+    <a href="{{ back_url }}" class="back-link">&larr; Back</a>
   </div>
 
   <p class="help-text">Monitor SMTP server connectivity and email delivery</p>
@@ -259,7 +259,7 @@
 
     <div class="form-actions">
       <button type="submit" class="btn btn-success">{{ action }}</button>
-      <a href="{% url 'nyxboard:healthcheck_list' %}" class="btn btn-secondary">Cancel</a>
+      <a href="{{ back_url }}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>

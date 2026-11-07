@@ -4,11 +4,13 @@
   "description": "Nyxmon Dashboard with web components",
   "type": "module",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run && playwright test",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "@testing-library/dom": "^9.3.4",
     "jsdom": "^24.0.0",
     "vitest": "4.1.11"

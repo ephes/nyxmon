@@ -1,6 +1,7 @@
 from django.db.models import Case, F, PositiveIntegerField, Prefetch, When
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 import json
@@ -258,7 +259,14 @@ def service_create(request):
         form = ServiceForm()
 
     return render(
-        request, "nyxboard/service_form.html", {"form": form, "action": "Create"}
+        request,
+        "nyxboard/service_form.html",
+        {
+            "form": form,
+            "action": "Create",
+            "form_title": "Service",
+            "back_url": reverse("nyxboard:service_list"),
+        },
     )
 
 
@@ -280,7 +288,13 @@ def service_update(request, service_id):
     return render(
         request,
         "nyxboard/service_form.html",
-        {"form": form, "service": service, "action": "Update"},
+        {
+            "form": form,
+            "service": service,
+            "action": "Update",
+            "form_title": "Service",
+            "back_url": reverse("nyxboard:service_detail", args=[service.id]),
+        },
     )
 
 
@@ -397,6 +411,10 @@ def healthcheck_create(request, service_id=None):
             "service": service,
             "action": "Create",
             "check_type": check_type,
+            "form_title": "Health Check",
+            "back_url": reverse("nyxboard:service_detail", args=[service.id])
+            if service
+            else reverse("nyxboard:healthcheck_list"),
             "warnings": getattr(form, "warnings", []),
         },
     )
@@ -471,6 +489,8 @@ def healthcheck_update(request, check_id):
             "health_check": health_check,
             "action": "Update",
             "check_type": health_check.check_type,
+            "form_title": "Health Check",
+            "back_url": reverse("nyxboard:healthcheck_detail", args=[health_check.id]),
             "warnings": getattr(form, "warnings", []),
         },
     )

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Name dashboard theme/check controls, keep theme changes working when storage
+  or session persistence fails, and restore correct form titles and Back/Cancel
+  destinations for service and specialized check forms, including invalid POSTs.
+  Exercise production templates and shipped HTMX in the regular browser gate.
+
 - Supervise required Rust monitoring tasks: unexpected returns, cancellation and
   panics exit with failure after bounded cleanup. Classify probe task failures
   separately from negative connectivity answers without logging panic payloads.

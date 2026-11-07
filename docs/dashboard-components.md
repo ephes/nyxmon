@@ -2,8 +2,12 @@
 
 Run `npm ci && npm test` on Node 22.12 or newer. Tests import each registered
 production element once in jsdom, use synthetic DOM fragments and fake clocks,
-and remove elements before restoring timers and request globals. No services,
-accounts or browser installation are needed. Progress tests pin the before-start,
+and remove elements before restoring timers and request globals. The regular
+`npm test` also runs Playwright Chromium against production Django templates,
+shipped HTMX and component modules. Install with `uv sync --frozen` and
+`npx playwright install chromium` (Linux CI uses `--with-deps`). All records live
+in an in-memory synthetic database; HTTP fixtures never use external services
+or accounts. `npm run test:browser` runs the browser gate alone. Progress tests pin the before-start,
 halfway, due and overdue percentages, the SVG offset, rounding and timing edits.
 Health-check tests exercise observed attributes and the real due event path.
 
@@ -43,3 +47,18 @@ Timer headings update with the countdown at the deadline and at local midnight.
 Tomorrow means the next calendar date, including 23/25-hour DST days. Unchanged
 heading text retains its DOM node. Tests fix the DST timezone in a child Node
 process, independent of the machine's local zone.
+
+## Controls, theme and form navigation
+
+The theme checkbox is named **Dark theme**; checked means dark. Check toggles
+are named **Disable check <name>**, where checked means disabled, and run buttons
+include the check name. Native checkbox keyboard behavior is retained and
+slider decorations are excluded from accessible names.
+Theme changes apply to the document and notify components before best-effort
+storage/session persistence. Storage denial uses the current in-memory choice;
+session failures do not undo it or create an unhandled promise rejection.
+Saved preference wins over the system preference at initial load.
+Service forms return to service detail when editing and the service list when
+creating. Check forms return to check detail when editing, the originating
+service when creating there, or the check list for global creation. Back and
+Cancel share a Django-resolved destination, including invalid bound POSTs.
