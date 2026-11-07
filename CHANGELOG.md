@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve agent-owned runtime columns when editing any health-check type.
+  Reset only an untouched idle schedule on interval changes. Reject stale or
+  deleted browser edits with a reload/reconcile error and retain submitted values;
+  disabled-only edit POSTs write only the disabled flag.
+
 - Validate HTMX health-check response identity before swapping and require an
   actual replacement before confirming mutations or reconciliation. Empty,
   malformed, wrong-card and no-swap successes retain ownership and recover with

@@ -328,7 +328,13 @@ class TestHealthCheckUpdate:
         scheduled = check.next_check_time
         response = client.post(
             self.url(check),
-            http_check_payload(check.service, name="Renamed"),
+            http_check_payload(
+                check.service,
+                name="Renamed",
+                definition_revision=client.get(self.url(check))
+                .context["form"]["definition_revision"]
+                .value(),
+            ),
         )
         assert response.status_code == 302
         assert response["Location"] == reverse(
@@ -341,7 +347,14 @@ class TestHealthCheckUpdate:
     def test_post_interval_change_makes_check_due(self, client, check):
         before = int(time())
         response = client.post(
-            self.url(check), http_check_payload(check.service, check_interval=60)
+            self.url(check),
+            http_check_payload(
+                check.service,
+                check_interval=60,
+                definition_revision=client.get(self.url(check))
+                .context["form"]["definition_revision"]
+                .value(),
+            ),
         )
         assert response.status_code == 302
         check.refresh_from_db()

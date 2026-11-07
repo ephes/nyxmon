@@ -19,6 +19,8 @@ from .models import (
     StatusChoices,
 )
 from .forms import (
+    DefinitionConflict,
+    EDIT_CONFLICT,
     ServiceForm,
     HttpHealthCheckForm,
     DnsHealthCheckForm,
@@ -425,7 +427,15 @@ def healthcheck_update(request, check_id):
     """
     Update an existing health check.
     """
-    health_check = get_object_or_404(HealthCheck, id=check_id)
+    deleted = False
+    health_check = HealthCheck.objects.filter(id=check_id).first()
+    if health_check is None:
+        if request.method != "POST" or "name" not in request.POST:
+            get_object_or_404(HealthCheck, id=check_id)
+        deleted = True
+        health_check = HealthCheck(
+            id=check_id, check_type=request.POST.get("check_type", CheckType.HTTP)
+        )
 
     # Get the appropriate form class based on the check type
     # Use generic form as fallback to preserve check_type and data for unmapped types (legacy types)
@@ -437,8 +447,7 @@ def healthcheck_update(request, check_id):
             "disabled" in request.POST and len(request.POST) == 2
         ):  # Just disabled and csrf token
             new_disabled_value = request.POST.get("disabled") == "1"
-            health_check.disabled = new_disabled_value
-            health_check.save()
+            HealthCheck.objects.filter(pk=check_id).update(disabled=new_disabled_value)
 
             # Redirect back to the referring page when it is on this host;
             # an external or missing referrer falls back to the dashboard.
@@ -452,19 +461,19 @@ def healthcheck_update(request, check_id):
             return redirect("nyxboard:dashboard")
 
         # Normal form submission
-        form = FormClass(request.POST, instance=health_check)
-        if form.is_valid():
-            # Check if check_interval has changed
-            if "check_interval" in form.changed_data:
-                # Reset next_check_time to now to make the check due immediately
-                health_check = form.save(commit=False)
-                health_check.next_check_time = int(time())
-                health_check.save()
-            else:
+        form = FormClass(request.POST, instance=health_check, require_revision=True)
+        valid = form.is_valid()
+        if deleted:
+            form.add_error(None, EDIT_CONFLICT)
+        elif valid:
+            try:
                 form.save()
-            return redirect("nyxboard:healthcheck_detail", check_id=health_check.id)
+            except DefinitionConflict:
+                form.add_error(None, EDIT_CONFLICT)
+            else:
+                return redirect("nyxboard:healthcheck_detail", check_id=health_check.id)
     else:
-        form = FormClass(instance=health_check)
+        form = FormClass(instance=health_check, require_revision=True)
 
     # Select template based on check type
     template_map = {
