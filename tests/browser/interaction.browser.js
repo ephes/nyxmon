@@ -58,8 +58,11 @@ for (const source of ['action', 'poll']) {
     const run = page.getByRole('button', { name: 'Run now: Alpha', exact: true });
     await run.focus();
     const swap = async () => {
-      if (source === 'action' && !disabled) await run.press('Enter');
-      else await page.evaluate(() => window.htmx.ajax('GET', '/healthchecks/1/status/', { source: document.getElementById('check-1'), target: '#check-1', swap: 'outerHTML' }));
+      if (source === 'action' && !disabled) {
+        const previous = await page.locator('#check-1').elementHandle();
+        await run.press('Enter');
+        await page.waitForFunction(card => !card.isConnected, previous);
+      } else await page.evaluate(() => window.htmx.ajax('GET', '/healthchecks/1/status/', { source: document.getElementById('check-1'), target: '#check-1', swap: 'outerHTML' }));
     };
     await swap(); await expect(run).toBeFocused();
     await page.keyboard.press('Tab');
