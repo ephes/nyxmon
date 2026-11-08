@@ -10,7 +10,7 @@ publish.workspace = true
 
 [dependencies]
 nyxmon-core.workspace = true
-rusqlite.workspace = true
+rusqlite = { workspace = true, features = ["limits"] }
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
 rustix = { workspace = true, features = ["fs"] }

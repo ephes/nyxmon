@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Chunk Rust held-check rechecks below the connection's SQLite parameter limit,
+  deduplicate IDs and preserve atomic rollback and exact changed-row counts.
+- Limit Rust check execution to five active tasks and collector admission to
+  `min(NYXMON_CHECK_BATCH_SIZE, 5)`. Waiting fleet checks remain unclaimed,
+  preserving the per-check lease estimate and shutdown release semantics.
+
 - Discard superseded Rust lease completions before inserting results, keeping
   late failures from replacing healthy dashboard observations. Retain the
   stale-lease recovery audit and log refused executions; no migration needed.

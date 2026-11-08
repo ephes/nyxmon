@@ -744,7 +744,9 @@ are part of the contract.
   `reschedule_checks_async` with `status='idle' AND disabled=0 AND
   next_check_time > :run_at`, `count_held_checks_async`,
   `count_processing_claims_before_async` with `processing_started_at > 0 AND
-  < :epoch`): verbatim.
+  < :epoch`): preserve these guards. Rust rescheduling deduplicates IDs and
+  chunks at `min(500, connection_variable_limit - 2)` in one IMMEDIATE
+  transaction; any chunk failure rolls back all preceding chunks.
 - **Notification ack** (`_acknowledge_notification_attempt_async`):
   `UPDATE check_notification_state SET attempt_at=0 WHERE check_id=? AND
   attempt_seq=? AND attempt_at<>0`.
@@ -1395,7 +1397,7 @@ Names: `Nyxmon collector (stale check leases)`,
 `stale_processing_lease_batch`, `collector_execution_paused`.
 
 Implemented in S9 (`nyxmon-agent/src/collector.rs`): the loop (claim with
-`check_batch_size()`, run the batch as a task, record each result through
+`min(check_batch_size(), 5)`, run the batch as a task, record each result through
 the result handler, sleep `--interval`) and the shutdown below. A claim
 failure is logged as `check collector iteration failed` and the loop
 continues. S10 adds steps 1 (restart reconciliation; the unobserved-site
@@ -1443,19 +1445,24 @@ this contract without signal or platform dependencies.
 
 ### 5.9 Runner (`async_runner.py`, `executors/__init__.py`)
 
-All checks of a batch start concurrently; results are consumed serially in
+Rust intentionally tightens the historical all-at-once runner: at most five
+checks execute concurrently, refilling the JoinSet after result handling.
+Collector admission uses the same five-check ceiling, so no claimed check
+waits for an execution slot and the existing largest-check lease estimate
+needs no queue allowance. Unclaimed checks remain due for later iterations.
+Results are consumed serially in
 completion order (3.7). Unknown types and executor panics produce the runner
 results of 1.6. `validate_check_types` uses the same registered type list.
 
-Implementation (S9a, `nyxmon-agent/src/runner.rs`): every check is a task
-of a `JoinSet`, so dropping the batch future aborts the checks still running
+Implementation (`nyxmon-agent/src/runner.rs`): each active check is a task
+of a bounded `JoinSet`, so dropping the batch future aborts the checks still running
 (D-3). An exception escaping an executor (`Err(PyException)`) or a panic is
 logged as `check executor raised unexpectedly for check_id=<id>
 check_type=<t>` and becomes `executor_exception`; a check whose `data`
 column cannot be decoded (`nyxmon_store::data_is_undecodable`) becomes
 `{"error_type": "configuration_error", "error_msg": "check data is not
 valid JSON"}` (D-8) before its executor runs. An intake stop is watched while
-a result is being handled, as in Python: it aborts the running checks at
+a result is being handled, as in Python: it admits no waiting checks and aborts the running checks at
 once, the results that had already finished are still handed over, then
 `drained` is set. Because an abort cannot interrupt a poll that is already
 running, every check task checks a per-batch cutoff flag (set together with

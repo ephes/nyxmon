@@ -360,3 +360,39 @@ async fn a_claim_failure_is_logged_and_the_loop_continues() {
     collector.collect_once(&Flag::new()).await;
     assert_eq!(setup.db.results().len(), 1);
 }
+
+#[tokio::test]
+async fn large_batch_admission_leaves_waiting_checks_unclaimed_and_stop_releases_active() {
+    let setup = Setup::new(&(1..=20).collect::<Vec<_>>());
+    let started = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let collector = setup.collector(
+        &[
+            ("NYXMON_CHECK_BATCH_SIZE", "100"),
+            ("NYXMON_SHUTDOWN_GRACE_SECONDS", "0"),
+        ],
+        ScriptedNotifier::new(None),
+        {
+            let started = started.clone();
+            move |_| {
+                let started = started.clone();
+                Box::pin(async move {
+                    started.fetch_add(1, Ordering::SeqCst);
+                    std::future::pending().await
+                })
+            }
+        },
+    );
+    let run = tokio::spawn(collector.clone().run());
+    until(|| started.load(Ordering::SeqCst) >= 5).await;
+    let admitted = collector.active().len();
+    stop_and_join(&collector, run).await;
+    assert_eq!(admitted, 5);
+    assert_eq!(started.load(Ordering::SeqCst), 5);
+    for id in 1..=20 {
+        assert_eq!(
+            setup.db.schedule(id),
+            ("idle".to_owned(), if id <= 5 { T0 + 300 } else { 0 }, 0)
+        );
+    }
+    assert!(setup.db.results().is_empty());
+}

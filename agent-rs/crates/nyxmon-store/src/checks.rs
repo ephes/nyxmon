@@ -213,20 +213,34 @@ fn reschedule_checks(
     if check_ids.is_empty() {
         return Ok(0);
     }
-    let placeholders = vec!["?"; check_ids.len()].join(",");
-    let sql = format!(
-        "UPDATE health_check SET next_check_time = ?
-            WHERE id IN ({placeholders})
-              AND status = 'idle'
-              AND disabled = 0
-              AND next_check_time > ?"
-    );
-    let mut values = Vec::with_capacity(check_ids.len() + 2);
-    values.push(run_at);
-    values.extend_from_slice(check_ids);
-    values.push(run_at);
+    // Two parameters are reserved for the due time. Use the connection's
+    // actual limit (which embedding callers can lower), with a small SQL cap.
+    let limit = connection.limit(rusqlite::limits::Limit::SQLITE_LIMIT_VARIABLE_NUMBER)?;
+    if limit <= 2 {
+        return Err(StoreError::InvalidArgument(
+            "reschedule needs at least three SQL variables",
+        ));
+    }
+    let chunk_size = ((limit - 2) as usize).min(500);
+    let mut ids = check_ids.to_vec();
+    ids.sort_unstable();
+    ids.dedup();
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let changed = transaction.execute(&sql, params_from_iter(values))?;
+    let mut changed = 0;
+    for chunk in ids.chunks(chunk_size) {
+        let placeholders = vec!["?"; chunk.len()].join(",");
+        let sql = format!(
+            "UPDATE health_check SET next_check_time = ?
+                WHERE id IN ({placeholders})
+                  AND status = 'idle'
+                  AND disabled = 0
+                  AND next_check_time > ?"
+        );
+        let values = std::iter::once(run_at)
+            .chain(chunk.iter().copied())
+            .chain([run_at]);
+        changed += transaction.execute(&sql, params_from_iter(values))?;
+    }
     transaction.commit()?;
     Ok(changed)
 }
@@ -337,5 +351,75 @@ impl Store {
         let check_ids = check_ids.to_vec();
         self.call(move |connection| reschedule_checks(connection, &check_ids, run_at))
             .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::limits::Limit;
+
+    fn fixture() -> Connection {
+        let connection = Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE health_check (
+                id INTEGER PRIMARY KEY, status TEXT, disabled INTEGER, next_check_time INTEGER
+             );
+             WITH RECURSIVE ids(id) AS (VALUES(1) UNION ALL SELECT id+1 FROM ids WHERE id<20)
+             INSERT INTO health_check SELECT id, 'idle', 0, 9000 FROM ids;
+             UPDATE health_check SET status = 'processing' WHERE id = 2;
+             UPDATE health_check SET disabled = 1 WHERE id = 3;
+             UPDATE health_check SET next_check_time = 100 WHERE id = 4;",
+            )
+            .unwrap();
+        connection
+            .set_limit(Limit::SQLITE_LIMIT_VARIABLE_NUMBER, 6)
+            .unwrap();
+        connection
+    }
+
+    fn due(connection: &Connection, at: i64) -> Vec<i64> {
+        connection
+            .prepare("SELECT id FROM health_check WHERE next_check_time = ? ORDER BY id")
+            .unwrap()
+            .query_map([at], |row| row.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap()
+    }
+
+    #[test]
+    fn held_rechecks_fit_connection_parameter_limit_and_count_unique_changes() {
+        let mut connection = fixture();
+        let ids: Vec<_> = (1..=20).chain(1..=20).chain([99]).collect();
+        assert_eq!(reschedule_checks(&mut connection, &ids, 5000).unwrap(), 17);
+        assert_eq!(
+            due(&connection, 5000),
+            (1..=20)
+                .filter(|id| ![2, 3, 4].contains(id))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(reschedule_checks(&mut connection, &ids, 5000).unwrap(), 0);
+        assert_eq!(due(&connection, 100), [4]);
+    }
+
+    #[test]
+    fn held_recheck_middle_chunk_failure_rolls_back_prior_chunks() {
+        let mut connection = fixture();
+        connection
+            .execute_batch(
+                "CREATE TRIGGER reject_recheck BEFORE UPDATE ON health_check WHEN OLD.id = 9
+             BEGIN SELECT RAISE(ABORT, 'synthetic middle chunk failure'); END;",
+            )
+            .unwrap();
+        let error =
+            reschedule_checks(&mut connection, &(1..=20).collect::<Vec<_>>(), 5000).unwrap_err();
+        assert!(
+            error.to_string().contains("synthetic middle chunk failure"),
+            "{error}"
+        );
+        assert!(due(&connection, 5000).is_empty());
+        assert_eq!(due(&connection, 9000).len(), 19);
     }
 }

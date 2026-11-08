@@ -210,6 +210,19 @@ Every key is optional; anything malformed or out of range is warned about once
 and falls back to the global default rather than raising or silently disabling
 alerts. See `docs/configuration.md` for the ranges and resolution order.
 
+
+The Rust runner executes at most five checks at a time. Collector execution
+admission is `min(NYXMON_CHECK_BATCH_SIZE, 5)`; checks beyond that remain idle
+until later iterations, without consuming a lease while waiting for a slot.
+The existing largest-check lease estimate therefore still covers execution;
+there are no queued claimed waves to add to it. Stale recovery continues to
+use the configured batch size (1..100). Shutdown stops admitting tasks and
+releases unfinished owned claims without failure results. This deliberately
+tightens the retired Python runner's all-at-once behavior. Held-check rechecks
+deduplicate IDs and use chunks of at most 500 IDs, reduced further to leave two
+parameters below the SQLite connection limit. One transaction commits all
+chunks or rolls them all back; only idle, enabled, later-due checks change.
+
 On SIGTERM/SIGINT, the monitor stops taking work and drains its current batch
 for up to `NYXMON_SHUTDOWN_GRACE_SECONDS` (default five seconds). Then it cancels
 the checks still running, records the results that finished in time (within up

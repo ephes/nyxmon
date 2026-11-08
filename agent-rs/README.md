@@ -652,3 +652,17 @@ many health-check rows across expired-claim release and legacy timestamp repair.
 Expired claims take priority; remaining slots stamp timestamp-less claims in ID
 order with a full lease from stamping time. Repair-only work continues on later
 collector iterations, releasing the writer lock between batches.
+
+## Bounded fleet execution and rechecks
+
+The Rust runner executes at most five checks at a time. Collector execution
+admission is `min(NYXMON_CHECK_BATCH_SIZE, 5)`; checks beyond that remain idle
+until later iterations, without consuming a lease while waiting for a slot.
+The existing largest-check lease estimate therefore still covers execution;
+there are no queued claimed waves to add to it. Stale recovery continues to
+use the configured batch size (1..100). Shutdown stops admitting tasks and
+releases unfinished owned claims without failure results. This deliberately
+tightens the retired Python runner's all-at-once behavior. Held-check rechecks
+deduplicate IDs and use chunks of at most 500 IDs, reduced further to leave two
+parameters below the SQLite connection limit. One transaction commits all
+chunks or rolls them all back; only idle, enabled, later-due checks change.
