@@ -959,6 +959,7 @@ version = "0.1.2"
 dependencies = [
  "nyxmon-core",
  "rusqlite",
+ "rustix",
  "tempfile",
  "tokio",
  "tracing",

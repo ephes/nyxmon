@@ -13,6 +13,7 @@ nyxmon-core.workspace = true
 rusqlite.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
+rustix = { workspace = true, features = ["fs"] }
 
 [dev-dependencies]
 tempfile.workspace = true

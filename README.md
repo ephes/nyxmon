@@ -408,3 +408,8 @@ The warning digest selects each enabled check's latest result by timestamp,
 then ID for ties, matching the dashboard. A later-inserted backdated warning
 cannot reopen a warning after a newer recovery. Existing suppression and
 notification cadence rules remain in effect.
+
+Service edits carry a browser revision and update only the loaded service name.
+A concurrent deletion or rename returns a conflict with the submitted name intact;
+reload and reconcile before saving. Older open forms must be reloaded once. The
+conditional update cannot reinsert a deleted service.

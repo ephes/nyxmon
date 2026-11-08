@@ -21,6 +21,7 @@ from .models import (
 from .forms import (
     DefinitionConflict,
     EDIT_CONFLICT,
+    SERVICE_EDIT_CONFLICT,
     ServiceForm,
     HttpHealthCheckForm,
     DnsHealthCheckForm,
@@ -280,15 +281,31 @@ def service_update(request, service_id):
     """
     Update an existing service.
     """
-    service = get_object_or_404(Service, id=service_id)
-
+    service = Service.objects.filter(id=service_id).first()
+    deleted = service is None
+    if deleted:
+        if request.method != "POST" or "name" not in request.POST:
+            get_object_or_404(Service, id=service_id)
+        service = Service(id=service_id)
+    response_status = 200
     if request.method == "POST":
-        form = ServiceForm(request.POST, instance=service)
-        if form.is_valid():
-            form.save()
-            return redirect("nyxboard:service_detail", service_id=service.id)
+        form = ServiceForm(request.POST, instance=service, require_revision=True)
+        valid = form.is_valid()
+        if deleted:
+            form.add_error(None, SERVICE_EDIT_CONFLICT)
+            response_status = 409
+        elif form.has_error("definition_revision", "conflict"):
+            response_status = 409
+        elif valid:
+            try:
+                form.save()
+            except DefinitionConflict:
+                form.add_error(None, SERVICE_EDIT_CONFLICT)
+                response_status = 409
+            else:
+                return redirect("nyxboard:service_detail", service_id=service.id)
     else:
-        form = ServiceForm(instance=service)
+        form = ServiceForm(instance=service, require_revision=True)
 
     return render(
         request,
@@ -300,6 +317,7 @@ def service_update(request, service_id):
             "form_title": "Service",
             "back_url": reverse("nyxboard:service_detail", args=[service.id]),
         },
+        status=response_status,
     )
 
 

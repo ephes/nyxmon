@@ -444,12 +444,17 @@ Never add DDL to the Python agent; a new required column raises
 - Runtime log lines use `tracing` with the Python logger name as target;
   `nyxmon_agent::logging::capture()` collects them in tests (current-thread
   runtime).
-- The agent lock (`nyxmon_store::AgentLock`, `<db>.agent.lock`) is taken
-  right after the database file is found to exist, before the store is
-  opened and the schema verified (the order of `cli.py:start_agent`), and is
-  held for the lifetime of the process; the Python agent takes the same
-  `flock` (`src/nyxmon/agent_lock.py`). `--check-schema` opens the database
-  read-only and takes no lock.
+- The Rust agent lock (`nyxmon_store::AgentLock`, `<canonical-db>.agent.lock`)
+  is taken before opening SQLite and held until exit. The database must already
+  exist as a regular file with one hard link; run Django migrations to initialize
+  a missing database. Relative paths, symlinked files and directory aliases resolve
+  to the same lock. SQLite is opened through that admitted canonical path. Lock
+  files must also be regular with one hard link; symlinks, FIFOs and directories
+  are refused without waiting. The private lock file is stable: never delete or
+  replace it while agents can run. Keep the database and its parent directories
+  under trusted ownership, with stable names during operation. Hard-linked
+  databases are unsupported. The retired Python agent is unchanged and does not
+  provide this alias guarantee. `--check-schema` stays read-only without a lock.
 
 ## Security dependency backport
 

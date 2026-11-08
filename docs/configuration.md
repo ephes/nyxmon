@@ -882,25 +882,28 @@ store = SqliteStore(db_path="/path/to/database.sqlite")
 
 ## Operations: one agent per database
 
-`start-agent` takes a non-blocking exclusive `flock` on `<db path>.agent.lock`
-(for example `/home/nyxmon/site/db.sqlite3.agent.lock`, created with mode
-0600) before it touches the database and holds it until the process exits.
-A second agent started on the same database logs
-`another nyxmon agent holds <lock path>; refusing to start` and exits with
-status 1. The Rust port of the agent (`agent-rs/`) takes the same lock, so the
-two implementations can never run against one database at the same time. The
-lock path is derived from `--db` as given; a copy of the database (for a
-`--shadow` run) has its own lock. The file may stay behind after the agent exits; it is
-not a stale lock (the kernel drops `flock` locks with the process), so never
-delete it to "unlock" a database.
+The production Rust agent resolves the existing database to a canonical path,
+takes a non-blocking exclusive `flock` on `<canonical db path>.agent.lock`
+(created with mode 0600), and opens SQLite through that same canonical path.
+Symlinked files, directory aliases and relative spellings share the lock.
+Missing, non-regular or hard-linked databases are refused; initialize a missing
+database with Django migrations first. Lock files must be regular with one hard
+link; symlink, FIFO and directory lock paths are refused without waiting.
+
+A second agent logs `another nyxmon agent holds <lock path>; refusing to start`
+and exits 1. A database copy for a `--shadow` run has its own lock. Keep the state
+directory trusted and stable. Never delete or replace a lock file while an agent
+can run: the kernel releases ownership when its holder exits, so a remaining file
+is not a stale lock. The retired Python agent keeps its legacy path-as-given
+behavior and does not gain the Rust alias guarantees.
 
 ## Operations: the Rust agent
 
 The Rust port of the agent, `nyxmon-agent` (`agent-rs/`, see
 {doc}`agent-rs`), reads the same command-line flags and the same environment
 variables as `start-agent`, with the same defaults, bounds and fallbacks:
-everything on this page applies to both implementations. It takes the same
-agent lock. Production runs only `nyxmon-agent`; the Python fallback was
+shared settings on this page apply to both implementations. The Rust canonical
+agent-lock rules above apply to production. Production runs only `nyxmon-agent`; the Python fallback was
 retired on 2026-10-25 and `start-agent` is no longer deployed. In addition it
 offers:
 

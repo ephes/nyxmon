@@ -76,7 +76,7 @@ pub fn start_agent(args: &Args) -> ExitCode {
         return ExitCode::FAILURE;
     }
     // One agent per database, Python or Rust (PLAN.md 3.6), held until exit.
-    let _lock = match AgentLock::acquire(db_path) {
+    let agent_lock = match AgentLock::acquire(db_path) {
         Ok(lock) => lock,
         Err(err) => {
             cli_error!("{err}");
@@ -96,7 +96,7 @@ pub fn start_agent(args: &Args) -> ExitCode {
         Ok(runtime) => runtime,
         Err(err) => return fatal(err),
     };
-    let code = runtime.block_on(run_monitoring_services(args, db_path));
+    let code = runtime.block_on(run_monitoring_services(args, agent_lock.database_path()));
     // Executor threads blocked in the system resolver must not hold the
     // exit (Python's daemon threads).
     runtime.shutdown_background();
