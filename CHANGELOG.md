@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pin notification intent/retry ownership across actual process death before
+  sending and after fake-transport acceptance, including immediate cooldowns
+  and delayed acknowledgements. Document the potentially repeated delivery.
+- Verify real historical Django reminder migrations through the Rust store and
+  decision pipeline: adopted incidents wait a full window, and never-alerted
+  failures keep the normal threshold. Coverage only; no runtime/schema change.
+
 - Reserve the escaped overflow summary in warning digests so every message fits
   the 3,800-character budget with the exact omitted count.
 - Fence collector-incident acknowledgements with a fresh random delivery identity

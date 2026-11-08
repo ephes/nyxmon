@@ -43,10 +43,15 @@ typecheck:
 test:
     uv run pytest
     just rs-test
+    just notification-handoff
 
 # Local JavaScript advisory gate (includes test tooling)
 js-audit:
     npm run audit
+
+# Run the live historical Django DB -> Rust decision journey locally.
+notification-handoff:
+    NYXMON_TEST_LIVE_HANDOFF=1 uv run pytest tests/dashboard/test_notification_migration_handoff.py -q
 
 # Run specific test
 test-one TEST_PATH:

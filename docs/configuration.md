@@ -1013,3 +1013,23 @@ number. Refreshes preserve the token; a new send replaces it. Closing/reopening
 an incident cannot let a delayed old acknowledgement clear the new pending send,
 even in the same second. Legacy payloads without a token remain readable and get
 one on their next claimed send. This needs a later Rust binary rollout.
+
+The notification restart regressions use fresh Rust processes, scratch SQLite
+files and a fake accepting transport. Death before a send leaves a durable
+intent. Death after transport acceptance but before acknowledgement is uncertain:
+a retry may duplicate that delivery. With delivery retry enabled, the next
+failing sample waits for the configured retry interval, and a successful retry
+ends pending delivery; it does not create an immediate alert loop. The normal
+reminder/immediate cooldown still bounds new notifications. A late acknowledgement
+cannot clear a replacement attempt.
+
+The historical migration integration test creates a Django 0011 database from
+historical models, applies the actual migrations with a fixed scratch-database
+clock and opens that same file through the Rust store/result handler. Previously
+alerted failures wait one full reminder window; never-alerted failures retain
+the normal threshold. Both keep the adopted incident start date. Python tests
+verify a small committed projection from the real migrations; Rust tests run its
+semantic oracle independently, so the Python-only suite needs no Cargo. Locally,
+`just notification-handoff` also opens the actual migrated file through Rust;
+`just test` includes this live check and needs the pinned Rust toolchain. No
+external notification endpoint is contacted.
