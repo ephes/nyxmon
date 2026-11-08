@@ -999,3 +999,8 @@ enabled, silently running without its evidence/holds is no longer accepted.
 A malformed persisted `site:connectivity` lifecycle needs operator repair; a
 service manager restart alone repeats the failure. To collect without observation
 during repair, explicitly set `NYXMON_SITE_CONNECTIVITY_MODE=off`.
+
+The warning digest reads latest warning results and incident start dates in one
+SQLite statement, ordered by result timestamp then ID. Query count is independent
+of the number of checks; recovered checks and historical result payloads are not
+loaded into the digest. Concurrent recovery/reopen cannot mix incident dates.
