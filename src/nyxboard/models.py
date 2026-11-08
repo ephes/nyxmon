@@ -283,3 +283,15 @@ class Result(models.Model):
 
     def __str__(self):
         return f"Result {self.id} for {self.health_check} ({self.status})"
+
+
+class LoginThrottleBucket(models.Model):
+    """A fixed-window count of completed failures and owned password checks."""
+
+    key: models.CharField = models.CharField(max_length=100, primary_key=True)
+    expires_at: models.FloatField = models.FloatField(db_index=True)
+    failures: models.PositiveIntegerField = models.PositiveIntegerField(default=0)
+    pending: models.PositiveIntegerField = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "login_throttle_bucket"

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bound Rust DNS parsing work across compressed names and records and enforce
+  expanded-name limits before copying labels; retain malformed-response handling.
+- Reserve dashboard/admin login budgets atomically in the database before password
+  checks and settle completion/cancellation without losing concurrent failures.
+  Apply migration `0014_login_throttle_bucket` before the dashboard update.
+
 - Pin notification intent/retry ownership across actual process death before
   sending and after fake-transport acceptance, including immediate cooldowns
   and delayed acknowledgements. Document the potentially repeated delivery.

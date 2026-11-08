@@ -231,3 +231,38 @@ fn opt_options_must_fill_the_rdata() {
     assert!(parse_message(&opt(&[0])).is_err());
     assert!(parse_message(&opt(&[0, 10, 0, 3, 1, 2])).is_err());
 }
+
+/// A valid unknown RR carries a backwards-only pointer ladder. Following
+/// records reuse it as their owner name, amplifying work without large names.
+fn pointer_ladder_response(depth: u16, repetitions: u16) -> Vec<u8> {
+    let mut wire = Vec::new();
+    for value in [1u16, FLAG_QR, 0, repetitions + 1, 0, 0] {
+        wire.extend(value.to_be_bytes());
+    }
+    wire.extend([0, 0xfd, 0xe8, 0, 1, 0, 0, 0, 0]); // root, unknown type, class, TTL
+    wire.extend((1 + 2 * depth).to_be_bytes());
+    let mut previous = wire.len() as u16;
+    wire.push(0);
+    for _ in 0..depth {
+        let offset = wire.len() as u16;
+        wire.extend((0xc000 | previous).to_be_bytes());
+        previous = offset;
+    }
+    for _ in 0..repetitions {
+        wire.extend((0xc000 | previous).to_be_bytes());
+        wire.extend([0, 1, 0, 1, 0, 0, 0, 0, 0, 4, 192, 0, 2, 1]);
+    }
+    wire
+}
+
+#[test]
+fn repeated_compressed_names_exhaust_shared_work_budget() {
+    // These packets are otherwise valid; neither rejection depends on timing.
+    for (depth, repetitions) in [(400, 100), (1000, 100)] {
+        let packet = pointer_ladder_response(depth, repetitions);
+        let partial = parse_message(&packet).expect_err("amplified pointer work refused");
+        let parsed = partial.message.unwrap();
+        assert!(!parsed.answers.is_empty());
+        assert!(parsed.answers.len() < usize::from(repetitions));
+    }
+}

@@ -408,3 +408,9 @@ The warning digest selects each enabled check's latest result by timestamp,
 then ID for ties, matching the dashboard. A later-inserted backdated warning
 cannot reopen a warning after a newer recovery. Existing suppression and
 notification cadence rules remain in effect.
+
+Login limits for the dashboard and admin use atomic database reservations before
+password checking, shared across workers. Apply migration
+`0014_login_throttle_bucket` before starting the updated dashboard. See
+[failed login limits](docs/configuration.md#failed-login-limits) for fixed-window,
+cancellation and process-restart behavior.

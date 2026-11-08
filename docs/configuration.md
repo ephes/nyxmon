@@ -440,10 +440,19 @@ of `NYXBOARD_REQUIRE_LOGIN`; its access-control behavior is unchanged.
 Configure `NYXBOARD_LOGIN_FAILURE_LIMIT`, `NYXBOARD_LOGIN_ADDRESS_FAILURE_LIMIT`
 and `NYXBOARD_LOGIN_FAILURE_WINDOW_SECONDS` with positive integers. Setting the
 pair limit to 0 disables throttling; the address limit and window must remain
-positive. Negative limits or proxy hops are rejected at settings load. Counters use the default Django cache:
-development uses per-process memory; production uses the configured file cache.
-Cache eviction or restart can reset counters, and file-cache increments are not
-atomic across workers, so these limits are best-effort under concurrent traffic.
+positive. Negative limits or proxy hops are rejected at settings load. Run
+`manage.py migrate` before starting the updated dashboard: migration
+`0014_login_throttle_bucket` creates database-backed fixed-window counters.
+Admission reserves both budgets atomically before password work, across workers;
+no database lock is held while checking a password. Completed failures consume
+the reservation, successful authentication releases it and resets completed pair
+failures, and exceptions/cancellation release it. Other in-flight checks still
+own their slots. Process death leaves a slot reserved until its original window
+expires; refused attempts never extend that deadline. Old completions cannot
+modify a replacement window. Expired rows are cleaned in batches of at most 100
+per admission. Cache eviction and restarts no longer reset failure budgets.
+The configured ModelBackend remains available for existing sessions; new password
+authentication is owned by LoginThrottleBackend, including its async entrypoint.
 Limits use exact IP addresses; clients able to rotate addresses (including within
 an IPv6 subnet) receive separate budgets.
 
@@ -832,7 +841,7 @@ this environment:
 | Variable | Purpose |
 | --- | --- |
 | `DJANGO_SECRET_KEY` | required |
-| `DJANGO_CACHE_LOCATION` | required; directory of the file cache (also holds the failed-login counters) |
+| `DJANGO_CACHE_LOCATION` | required; directory of the file cache |
 | `DJANGO_ADMIN_URL` | required, for example `admin/` |
 | `DJANGO_ALLOWED_HOSTS` | comma-separated host names; include the public host name and `127.0.0.1` for loopback probes |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | optional; not needed when the browser's origin equals the requested host |

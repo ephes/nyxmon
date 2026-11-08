@@ -614,3 +614,12 @@ The ignored `process_worker` test is a subprocess entry point launched explicitl
 by the crash parent. It returns harmlessly when invoked without the parent's
 inputs. `migrated_reminder_state` normally tests the committed migration projection;
 the local live-handoff check also runs it against the actual Django-migrated file.
+
+### DNS parsing work limit
+
+DNS names are limited to 255 expanded wire bytes, checked before allocating each
+label. Questions, records, labels and compression jumps share a budget of eight
+operations per packet byte, capped at 65,536 operations per response. Budget
+exhaustion uses the existing malformed-response classification. Ordinary compressed
+names and UDP-to-TCP truncation fallback are preserved; heavily amplified pointer
+ladders are refused even if their wire packet is otherwise valid.

@@ -379,12 +379,18 @@ struct Reader<'a> {
     /// Smallest offset a compression pointer may target (`dns.wire.Parser`
     /// only follows pointers backwards).
     end: usize,
+    work_left: usize,
 }
 
 #[derive(Debug)]
 struct FormError;
 
 impl<'a> Reader<'a> {
+    fn charge(&mut self) -> Result<(), FormError> {
+        self.work_left = self.work_left.checked_sub(1).ok_or(FormError)?;
+        Ok(())
+    }
+
     fn take(&mut self, n: usize) -> Result<&'a [u8], FormError> {
         if self.end - self.pos < n {
             return Err(FormError);
@@ -415,7 +421,9 @@ impl<'a> Reader<'a> {
         let mut cursor = self.pos;
         let mut limit = self.pos;
         let mut jumped = false;
+        let mut expanded_len = 1; // terminal root label
         loop {
+            self.charge()?;
             if !jumped && cursor >= self.end {
                 return Err(FormError);
             }
@@ -450,6 +458,10 @@ impl<'a> Reader<'a> {
                     }
                     break;
                 }
+                expanded_len += 1 + usize::from(len);
+                if expanded_len > 255 {
+                    return Err(FormError);
+                }
                 labels.push(self.wire[start..stop].to_vec());
                 cursor = stop;
             }
@@ -459,6 +471,7 @@ impl<'a> Reader<'a> {
     }
 
     fn question(&mut self) -> Result<Question, FormError> {
+        self.charge()?;
         let name = self.name()?;
         let rtype = self.u16()?;
         let class = self.u16()?;
@@ -549,6 +562,9 @@ pub fn parse_message(wire: &[u8]) -> Result<Message, Partial> {
         wire,
         pos: 0,
         end: wire.len(),
+        // Shared by all questions, records, names and compression jumps.
+        // Bound synchronous work even when a tiny suffix is reused many times.
+        work_left: wire.len().saturating_mul(8).min(65_536),
     };
     let header = (|| -> Result<[u16; 6], FormError> {
         Ok([
@@ -585,6 +601,7 @@ pub fn parse_message(wire: &[u8]) -> Result<Message, Partial> {
     let mut body = || -> Result<(), FormError> {
         for (section, count) in [(0, ancount), (1, nscount), (2, arcount)] {
             for _ in 0..count {
+                reader.charge()?;
                 let name = reader.name()?;
                 let rtype = reader.u16()?;
                 let class = reader.u16()?;
