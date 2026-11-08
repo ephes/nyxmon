@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read warning digest results and incident dates in one consistent bulk query,
+  avoiding per-check queries and mixed incident generations.
+
 - Mark future site-observation timestamps stale in the dashboard, including
   pending recovery summaries. Freshness is the inclusive age interval 0..600
   seconds with no skew tolerance; agent notification policy is unchanged.

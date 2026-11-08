@@ -202,3 +202,114 @@ def test_digest_uses_timestamp_then_id_like_dashboard(
         output = run(dry_run=True)
     assert ("1 open warning" in output) is expected_warning
     send.assert_not_awaited()
+
+
+def test_digest_bulk_query_only_loads_latest_warning_payloads(
+    make_check, django_assert_num_queries
+):
+    expected = []
+    for index in range(200):
+        name = f"synthetic {index:03}"
+        check = make_check(name, warning("old payload"), first_failure_at=1793491200)
+        Result.objects.bulk_create(
+            [
+                Result(
+                    health_check=check,
+                    status=ResultStatus.WARNING,
+                    data={"old": "x" * 100},
+                )
+                for _ in range(20)
+            ]
+        )
+        status = ResultStatus.WARNING if index % 3 == 0 else ResultStatus.OK
+        Result.objects.create(
+            health_check=check, status=status, data={"error_msg": name}
+        )
+        if status == ResultStatus.WARNING:
+            expected.append(OpenWarning(name, "2026-11-01", name))
+    # No model hydration (including unrelated historical/configuration payloads).
+    with (
+        patch.object(Result, "from_db", side_effect=AssertionError("result hydration")),
+        patch.object(
+            HealthCheck, "from_db", side_effect=AssertionError("check hydration")
+        ),
+        django_assert_num_queries(1) as queries,
+    ):
+        assert open_warnings() == expected
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        plan = cursor.execute("EXPLAIN QUERY PLAN " + queries[0]["sql"]).fetchall()
+    # Histories belong inside scalar subqueries, never the outer scan.
+    outer_scans = [row[3] for row in plan if row[1] == 0 and row[3].startswith("SCAN")]
+    assert outer_scans == ["SCAN health_check"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_digest_observes_one_incident_generation(tmp_path):
+    import sqlite3
+    from django.db import connection, connections
+
+    service = Service.objects.create(name="snapshot")
+    check = HealthCheck.objects.create(
+        service=service, name="snapshot", url="https://example.invalid"
+    )
+    result = Result.objects.create(
+        health_check=check,
+        status=ResultStatus.WARNING,
+        data={"error_msg": "old incident"},
+    )
+    CheckNotificationState.objects.create(
+        health_check=check, first_failure_at=1793491200
+    )
+    path = tmp_path / "snapshot.sqlite3"
+    with sqlite3.connect(path) as copied:
+        connection.connection.backup(copied)
+        copied.execute("PRAGMA journal_mode=WAL")
+    alias = "digest_snapshot"
+    connections.databases[alias] = {**connection.settings_dict, "NAME": str(path)}
+    reader = connections[alias]
+    reader.connect()
+    changed = False
+
+    def reopen_after_first_read(execute, sql, params, many, context):
+        nonlocal changed
+        answer = execute(sql, params, many, context)
+        if sql.lstrip().upper().startswith("SELECT") and not changed:
+            changed = True
+            with sqlite3.connect(path) as writer:
+                # Close and reopen atomically, as the result publisher does.
+                writer.execute(
+                    "UPDATE check_result SET status='ok' WHERE id=?", (result.pk,)
+                )
+                writer.execute(
+                    "INSERT INTO check_result (health_check_id,status,created_at,data) VALUES (?, 'warning', '2099-01-01', ?)",
+                    (check.pk, '{"error_msg":"new incident"}'),
+                )
+                writer.execute(
+                    "UPDATE check_notification_state SET first_failure_at=1793577600 WHERE check_id=?",
+                    (check.pk,),
+                )
+        return answer
+
+    try:
+        with (
+            patch.object(Result, "objects", Result.objects.db_manager(alias)),
+            patch.object(HealthCheck, "objects", HealthCheck.objects.db_manager(alias)),
+            patch.object(
+                CheckNotificationState,
+                "objects",
+                CheckNotificationState.objects.db_manager(alias),
+            ),
+            reader.execute_wrapper(reopen_after_first_read),
+        ):
+            observed = open_warnings()
+        assert changed
+        assert observed in (
+            [OpenWarning("snapshot", "2026-11-01", "old incident")],
+            [OpenWarning("snapshot", "2026-11-02", "new incident")],
+        )
+    finally:
+        reader.close()
+        del connections[alias]
+        del connections.databases[alias]

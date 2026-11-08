@@ -14,8 +14,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db.models import OuterRef, Subquery
 
-from nyxboard.models import CheckNotificationState, HealthCheck, Result
+from nyxboard.models import HealthCheck, Result
 from nyxboard.timestamps import usable_epoch
 from nyxmon.adapters.notification import AsyncTelegramNotifier
 from nyxmon.domain import ResultStatus
@@ -38,36 +39,41 @@ class OpenWarning:
 
 def open_warnings() -> list[OpenWarning]:
     """Return enabled checks whose newest result is an active warning."""
-    since_by_check = dict(
-        CheckNotificationState.objects.values_list(
-            "health_check_id", "first_failure_at"
+    latest = Result.objects.filter(health_check_id=OuterRef("pk")).order_by(
+        "-created_at", "-id"
+    )
+    # One statement binds each result to its incident state in the same snapshot.
+    # Project only warning payloads; do not hydrate checks or historical results.
+    rows = (
+        HealthCheck.objects.filter(disabled=False)
+        .annotate(
+            latest_status=Subquery(latest.values("status")[:1]),
+            latest_data=Subquery(latest.values("data")[:1]),
+        )
+        .filter(latest_status=ResultStatus.WARNING)
+        .order_by("name", "pk")
+        .values_list(
+            "pk",
+            "name",
+            "latest_data",
+            "notification_state__first_failure_at",
         )
     )
     warnings = []
-    for check in HealthCheck.objects.filter(disabled=False).order_by("name"):
-        result = (
-            Result.objects.filter(health_check=check)
-            .order_by("-created_at", "-id")
-            .first()
-        )
-        if result is None or result.status != ResultStatus.WARNING:
-            continue
-        data = result.data if isinstance(result.data, dict) else {}
+    for check_id, name, payload, first_failure_at in rows:
+        data = payload if isinstance(payload, dict) else {}
         if any(data.get(key) for key in INERT_RESULT_KEYS):
             continue
-        first_failure_at = since_by_check.get(check.pk)
         epoch = usable_epoch(first_failure_at)
         if epoch is None and first_failure_at not in (None, 0):
-            logger.warning("Invalid first_failure_at for check %s", check.pk)
+            logger.warning("Invalid first_failure_at for check %s", check_id)
         since = (
             datetime.fromtimestamp(epoch, UTC).strftime("%Y-%m-%d")
             if epoch is not None
             else "unknown"
         )
         warnings.append(
-            OpenWarning(
-                check.name, since, str(data.get("error_msg", ""))[:MAX_ERROR_CHARS]
-            )
+            OpenWarning(name, since, str(data.get("error_msg", ""))[:MAX_ERROR_CHARS])
         )
     return warnings
 
