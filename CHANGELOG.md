@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Protect Rust DB-actor durability and rollback contracts with gated SQLite
+  tests for cancelled queued/in-flight writes, FIFO ordering, final-handle
+  shutdown, panic rejection of queued callers, and safe restart. No runtime
+  behavior or deployment change.
+
 - Reject Rust cleanup batch sizes outside 1..=1000 before deleting sessions or
   results. Drain expired sessions even when the result backlog is empty, within
   the existing cycle budget, and keep reported result totals separate.

@@ -416,7 +416,11 @@ Never add DDL to the Python agent; a new required column raises
   transaction (writes `BEGIN IMMEDIATE`); a sent operation completes even if
   the caller is cancelled. Where Python reads `time.time()` or
   `check_batch_size()` inside a repository method, the Rust method takes
-  `now`/`batch_size` arguments. `StoreError::ActorDied` is fatal (exit 1).
+  `now`/`batch_size` arguments. Dropping the final handle drains queued work and
+  closes the connection. A panicking operation rolls back its open transaction;
+  queued and subsequent calls receive `StoreError::ActorDied`, which is fatal
+  (exit 1). Channel-gated SQLite regressions cover these cases and cancellation
+  both before execution and during a transaction.
 - Retention accepts a batch size of 1..=1000 at both the cleaner and store
   boundary. `Store::delete_old_results` returns `CleanupBatch` with separate
   result/session counts. A full count in either table continues the bounded
