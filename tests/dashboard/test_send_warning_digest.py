@@ -111,7 +111,7 @@ def test_an_undelivered_digest_fails_the_command(make_check, delivered):
 def test_long_digest_stays_in_the_limit_and_counts_the_rest():
     warnings = [OpenWarning(f"check {i}", "2026-10-01", "x" * 200) for i in range(100)]
     text = render(warnings)
-    assert len(text) <= MAX_MESSAGE_CHARS + 100
+    assert len(text) <= MAX_MESSAGE_CHARS
     assert text.startswith("⚠️ Nyxmon digest: 100 open warnings")
     assert "more in NyxBoard" in text
 
@@ -313,3 +313,29 @@ def test_digest_observes_one_incident_generation(tmp_path):
         reader.close()
         del connections[alias]
         del connections.databases[alias]
+
+
+@pytest.mark.parametrize("escaped", [False, True])
+def test_every_boundary_digest_fits_and_reports_exact_omissions(escaped):
+    from nyxmon.adapters.notification import AsyncTelegramNotifier
+
+    escape = AsyncTelegramNotifier.escape_markdown_v2 if escaped else lambda text: text
+    for count in (1, 9, 10, 11, 99, 100, 101):
+        for width in range(1, 256):
+            warnings = [
+                OpenWarning(
+                    f"{index:03}:" + "_*.[x]" * (width // 6),
+                    "2026-11-01",
+                    "!" * min(width, 200),
+                )
+                for index in range(count)
+            ]
+            text = render(warnings, escape)
+            assert len(text) <= MAX_MESSAGE_CHARS, (escaped, count, width)
+            included = sum(escape(f"{index:03}:") in text for index in range(count))
+            omitted = count - included
+            if omitted:
+                assert text.endswith(escape(f"... and {omitted} more in NyxBoard"))
+            else:
+                assert "more in NyxBoard" not in text
+            assert escape(f"{count} open") in text

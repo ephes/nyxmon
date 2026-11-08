@@ -1008,7 +1008,7 @@ async fn a_late_acknowledgement_cannot_clear_a_newer_intent() {
         .unwrap();
 
     collector
-        .record_incident_send(STALE_BATCH_INCIDENT_KEY, true, 3)
+        .record_incident_send(STALE_BATCH_INCIDENT_KEY, true, 3, None)
         .await;
 
     let after = incident(&setup, STALE_BATCH_INCIDENT_KEY).await.unwrap();

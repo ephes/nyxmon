@@ -14,9 +14,9 @@ use nyxmon_core::collector_incident::{
     PAUSED_INCIDENT_KEY, STALE_BATCH_INCIDENT_KEY, merge_stale_batch_payload, paused_batch_message,
     paused_batch_payload, stale_batch_message,
 };
-use nyxmon_core::incident::DELIVERY_PENDING_KEY;
+use nyxmon_core::incident::{DELIVERY_GENERATION_KEY, DELIVERY_PENDING_KEY};
 use nyxmon_core::model::{CollectorIncident, ResultStatus};
-use nyxmon_core::pyjson::{PyNumError, py_int_of, py_str, py_truthy};
+use nyxmon_core::pyjson::{PyJson, PyNumError, py_int_of, py_str, py_truthy};
 use nyxmon_notify::Delivery;
 use nyxmon_store::StoreError;
 
@@ -145,7 +145,13 @@ impl Collector {
     /// `_record_incident_send`: a failed send only marks the incident for
     /// retry (the claim already wrote the intent); a delivered one is
     /// acknowledged, fenced by the attempt it delivered.
-    pub(super) async fn record_incident_send(&self, incident_key: &str, sent: bool, attempt: i64) {
+    pub(super) async fn record_incident_send(
+        &self,
+        incident_key: &str,
+        sent: bool,
+        attempt: i64,
+        generation: Option<String>,
+    ) {
         if !sent {
             locked(&self.retry_keys).insert(incident_key.to_owned());
             return;
@@ -153,7 +159,7 @@ impl Collector {
         locked(&self.retry_keys).remove(incident_key);
         if let Err(err) = self
             .store
-            .acknowledge_collector_incident_delivery(incident_key, attempt)
+            .acknowledge_collector_incident_delivery(incident_key, attempt, generation)
             .await
         {
             collector_log!(
@@ -206,8 +212,17 @@ impl Collector {
                 incident.alert_count,
             )
             .await;
-        self.record_incident_send(STALE_BATCH_INCIDENT_KEY, sent, incident.alert_count)
-            .await;
+        self.record_incident_send(
+            STALE_BATCH_INCIDENT_KEY,
+            sent,
+            incident.alert_count,
+            incident
+                .payload
+                .get(DELIVERY_GENERATION_KEY)
+                .and_then(PyJson::as_str)
+                .map(str::to_owned),
+        )
+        .await;
         Ok(sent)
     }
 
@@ -349,8 +364,18 @@ impl Collector {
                 alert.incident.alert_count,
             )
             .await;
-        self.record_incident_send(key, sent, alert.incident.alert_count)
-            .await;
+        self.record_incident_send(
+            key,
+            sent,
+            alert.incident.alert_count,
+            alert
+                .incident
+                .payload
+                .get(DELIVERY_GENERATION_KEY)
+                .and_then(PyJson::as_str)
+                .map(str::to_owned),
+        )
+        .await;
         Ok(())
     }
 

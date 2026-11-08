@@ -87,7 +87,13 @@ def render(warnings: list[OpenWarning], escape=lambda text: text) -> str:
         line = f"\n\n{escape(f'{warning.name} (since {warning.since})')}"
         if warning.error:
             line += f"\n{escape(warning.error)}"
-        if len(text) + len(line) > MAX_MESSAGE_CHARS:
+        remaining = count - position - 1
+        summary = (
+            "\n\n" + escape(f"... and {remaining} more in NyxBoard")
+            if remaining
+            else ""
+        )
+        if len(text) + len(line) + len(summary) > MAX_MESSAGE_CHARS:
             return (
                 text + "\n\n" + escape(f"... and {count - position} more in NyxBoard")
             )

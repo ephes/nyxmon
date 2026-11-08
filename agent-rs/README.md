@@ -583,3 +583,9 @@ by a committed notification intent. Unchanged definitions retain normal
 completion, stale-lease recovery and late-claim behavior. The Python fallback
 remains retired. Production adoption needs a later binary release/rollout;
 this change does not perform one.
+
+Collector-incident acknowledgements compare both the attempt count and the random
+`delivery_generation` payload token assigned by the store to each send intent.
+This prevents delayed deliveries from acknowledging a reopened incident; no schema
+change is required. Existing payloads are readable and receive a token on their
+next send. Adopting this behavior requires a later owner-managed binary rollout.

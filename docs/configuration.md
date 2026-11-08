@@ -1004,3 +1004,12 @@ The warning digest reads latest warning results and incident start dates in one
 SQLite statement, ordered by result timestamp then ID. Query count is independent
 of the number of checks; recovered checks and historical result payloads are not
 loaded into the digest. Concurrent recovery/reopen cannot mix incident dates.
+
+Warning digests include a complete prefix of warnings and the exact omitted count
+within 3,800 characters, including Markdown escapes and the overflow summary.
+Collector-incident delivery intent includes a random `delivery_generation` token
+in the existing payload. Acknowledgements must match both it and the attempt
+number. Refreshes preserve the token; a new send replaces it. Closing/reopening
+an incident cannot let a delayed old acknowledgement clear the new pending send,
+even in the same second. Legacy payloads without a token remain readable and get
+one on their next claimed send. This needs a later Rust binary rollout.
