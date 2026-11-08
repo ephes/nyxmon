@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bound Rust ping capture to 64 KiB per pipe / 96 KiB total and report overflow
+  once without output disclosure. Kill the owned process group on timeout,
+  overflow and cancellation, including pipe-holding wrapper descendants.
+
 - Pin notification intent/retry ownership across actual process death before
   sending and after fake-transport acceptance, including immediate cooldowns
   and delayed acknowledgements. Document the potentially repeated delivery.
