@@ -157,8 +157,8 @@ fn check_exists_in(
 
 /// `_persist_check_result_async`, in one `BEGIN IMMEDIATE` transaction.
 ///
-/// Returns `false` when an edited/deleted definition superseded the sample or it was stored
-/// without completing because a newer claim exists (the notification state
+/// Returns `false` when an edited/deleted definition superseded the sample or its lease
+/// no longer owns completion (the notification state
 /// is then not touched and nothing may be sent).
 pub(crate) fn persist_check_result(
     connection: &mut Connection,
@@ -223,15 +223,13 @@ pub(crate) fn persist_check_result(
     if complete_check && !completion_applied {
         tracing::info!(
             target: LOGGER,
-            "stored late result without changing newer claim for check_id={}",
+            "dropped late result from superseded claim for check_id={}",
             check.check_id
         );
-    }
-    insert_result(&transaction, result)?;
-    if complete_check && !completion_applied {
         transaction.commit()?;
         return Ok(false);
     }
+    insert_result(&transaction, result)?;
     if let Some((expected, next)) = transition {
         let current = select_notification_state(&transaction, check.check_id)?;
         if current != expected {

@@ -258,7 +258,7 @@ async fn a_superseded_result_cannot_alert_or_change_state() {
 
     assert!(!submit(&handler, &snapshot, ERROR).await);
     assert_eq!(setup.db.state(1), state);
-    assert_eq!(setup.db.results().len(), 1);
+    assert!(setup.db.results().is_empty());
     assert_eq!(setup.db.schedule(1), ("processing".to_owned(), 0, 200));
     assert_eq!(setup.notifier.count(), 0);
 }

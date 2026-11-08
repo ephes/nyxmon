@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Discard superseded Rust lease completions before inserting results, keeping
+  late failures from replacing healthy dashboard observations. Retain the
+  stale-lease recovery audit and log refused executions; no migration needed.
+- Bound each Rust stale-reclaim/legacy-timestamp repair transaction to its
+  positive batch-size cap, prioritizing expired leases and draining timestamp
+  repairs in ID order over successive collector iterations.
+
 - Bound Rust ping capture to 64 KiB per pipe / 96 KiB total and report overflow
   once without output disclosure. Kill the owned process group on timeout,
   overflow and cancellation, including pipe-holding wrapper descendants.

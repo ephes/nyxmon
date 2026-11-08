@@ -395,3 +395,81 @@ fn read_check_loads_one_row_read_only() {
     assert!(nyxmon_store::read_check(&missing, 1).is_err());
     assert!(!missing.exists());
 }
+
+#[tokio::test]
+async fn legacy_repairs_share_the_reclaim_write_cap_and_eventually_drain() {
+    let db = TestDb::new();
+    // Synthetic restored backlog, inserted in one transaction.
+    db.raw()
+        .execute_batch(
+            "WITH RECURSIVE ids(id) AS (
+        VALUES(1) UNION ALL SELECT id + 1 FROM ids WHERE id < 1001)
+        INSERT INTO health_check (id, service_id, name, check_type, url, check_interval,
+            next_check_time, processing_started_at, status, disabled, data)
+        SELECT id, 1, 'legacy', 'http', 'https://example.test', 300,
+            0, 0, 'processing', 0, '{}' FROM ids;
+        UPDATE health_check SET processing_started_at = 1 WHERE id = 1;",
+        )
+        .unwrap();
+    let store = db.store();
+    let observer = db.raw();
+    let repaired = || {
+        observer
+            .query_row(
+                "SELECT count(*) FROM health_check WHERE processing_started_at > 0",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap()
+    };
+    let first = store.reclaim_stale_checks(10_000, 300, 3).await.unwrap();
+    assert_eq!(ids(&first), [1]);
+    assert_eq!(repaired(), 2, "one reclaim plus two repairs fills the cap");
+    assert_eq!(db.schedule(2).unwrap().2, 10_000);
+    assert_eq!(db.schedule(3).unwrap().2, 10_000);
+    assert_eq!(db.schedule(4).unwrap().2, 0);
+    for _ in 0..334 {
+        let before = repaired();
+        assert!(
+            store
+                .reclaim_stale_checks(10_001, 300, 3)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert!((0..=3).contains(&(repaired() - before)));
+        // A separate writer progresses between bounded repair transactions.
+        observer
+            .execute(
+                "UPDATE service SET name = 'writer progressed' WHERE id = 1",
+                [],
+            )
+            .unwrap();
+    }
+    assert_eq!(repaired(), 1000);
+    assert!(
+        store
+            .reclaim_stale_checks(10_299, 300, 3)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        ids(&store.reclaim_stale_checks(10_300, 300, 3).await.unwrap()),
+        [2, 3]
+    );
+}
+
+#[tokio::test]
+async fn reclaim_rejects_nonpositive_batch_sizes_without_writes() {
+    let db = TestDb::new();
+    db.insert(row(1).processing(0));
+    let store = db.store();
+    for cap in [0, -1] {
+        assert!(matches!(
+            store.reclaim_stale_checks(10_000, 300, cap).await,
+            Err(nyxmon_store::StoreError::InvalidArgument(_))
+        ));
+        assert_eq!(db.schedule(1).unwrap().2, 0);
+    }
+}
