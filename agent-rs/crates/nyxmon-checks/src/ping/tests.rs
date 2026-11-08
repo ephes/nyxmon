@@ -505,7 +505,11 @@ async fn noisy_process_capture_is_rejected_without_deadlocking() {
             )
         };
         let result = run(&["sh", "-c", &command], 5.0).await;
-        assert!(result.is_err(), "noisy output must be rejected");
+        assert_eq!(
+            result,
+            Err(RunError::OutputLimit),
+            "noisy output must be rejected"
+        );
     }
 }
 
