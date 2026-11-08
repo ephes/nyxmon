@@ -32,6 +32,12 @@ uvx pre-commit install
 ```shell
 uv run pytest
 ```
+The Python suite verifies the synthetic historical notification-migration fixture.
+`just test` also runs Rust's semantic oracle and `just notification-handoff`,
+which opens an actual migrated scratch DB through Rust. These local commands need
+the pinned toolchain in `agent-rs/rust-toolchain.toml`; the Python-only suite does
+not require Cargo. All fixtures and notification transports are synthetic.
+
 
 6. Run static analysis:
 ```shell
