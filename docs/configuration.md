@@ -2,7 +2,9 @@
 
 ## Runtime Settings
 
-NyxMon's agent is configured primarily through CLI flags. When running `uv run start-agent`, you can provide:
+The production Rust agent is configured primarily through CLI flags. When running
+`nyxmon-agent`, you can provide the following flags (the retired Python
+`uv run start-agent` command retains its legacy behavior):
 
 - `--db`: Path to the SQLite database file (required)
 - `--interval`: Polling interval in seconds (default: 5)
@@ -15,16 +17,21 @@ NyxMon's agent is configured primarily through CLI flags. When running `uv run s
 
 ### Result Cleanup
 
+The following contract applies to the Rust agent. Its batch ceiling and
+session-backlog draining intentionally differ from the retired Python agent.
+
 Every `--cleanup-interval` seconds the cleaner deletes results older than
 `--retention-period`. It works in batches of `--batch-size` rows, each in its
-own short transaction, and keeps going until a batch comes back short, so the
+own short transaction, and keeps going until both tables return a short batch, so the
 whole expired backlog is removed in one cycle. It yields between batches so the
 collector can keep writing. One cycle runs at most 100 batches (100,000 rows
 with the default batch size); a larger backlog continues on the next cycle and
 the cleaner logs a warning. Each cycle logs the total results it deleted. Each result batch also removes up
 to `--batch-size` expired Django sessions from the shared SQLite database, when
-its `django_session` table exists. Any remaining session backlog continues on the
-next cycle. With `--disable-cleaner`, schedule Django's `clearsessions` separately.
+its `django_session` table exists. A full session batch keeps the cycle running
+even when no results expire; sessions do not count towards reported result totals.
+`--batch-size` and direct Rust cleaner/store calls accept only 1..=1000 rows.
+Both backlogs share the 100-batch cycle budget; any remainder continues next cycle. With `--disable-cleaner`, schedule Django's `clearsessions` separately.
 
 The retention cutoff is computed on SQLite's UTC clock, the same clock that
 stamps the results, so retention is exact whatever the host's time zone.

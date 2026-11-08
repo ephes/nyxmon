@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject Rust cleanup batch sizes outside 1..=1000 before deleting sessions or
+  results. Drain expired sessions even when the result backlog is empty, within
+  the existing cycle budget, and keep reported result totals separate.
+
 - Refresh Vitest and its mocker to 4.1.12 for development mock-server advisories
   GHSA-qxg6-89mg-rqv8 and GHSA-xp26-3454-mjgp. Add `just js-audit`
   (`npm run audit`) as an explicit local moderate-or-higher advisory gate,

@@ -42,9 +42,23 @@ async fn deletes_results_older_than_the_retention() {
     let db = populated();
     let store = db.store();
 
-    assert_eq!(store.delete_old_results(86_400, 1000).await.unwrap(), 2);
+    assert_eq!(
+        store
+            .delete_old_results(86_400, 1000)
+            .await
+            .unwrap()
+            .results_deleted,
+        2
+    );
     assert_eq!(result_ids(&db), [1]);
-    assert_eq!(store.delete_old_results(86_400, 1000).await.unwrap(), 0);
+    assert_eq!(
+        store
+            .delete_old_results(86_400, 1000)
+            .await
+            .unwrap()
+            .results_deleted,
+        0
+    );
 }
 
 #[tokio::test]
@@ -52,7 +66,14 @@ async fn custom_retention() {
     let db = populated();
     let store = db.store();
 
-    assert_eq!(store.delete_old_results(30 * 3600, 1000).await.unwrap(), 1);
+    assert_eq!(
+        store
+            .delete_old_results(30 * 3600, 1000)
+            .await
+            .unwrap()
+            .results_deleted,
+        1
+    );
     assert_eq!(result_ids(&db), [1, 2]);
 }
 
@@ -61,10 +82,31 @@ async fn batches_are_bounded_and_ordered_by_id() {
     let db = populated();
     let store = db.store();
 
-    assert_eq!(store.delete_old_results(86_400, 1).await.unwrap(), 1);
+    assert_eq!(
+        store
+            .delete_old_results(86_400, 1)
+            .await
+            .unwrap()
+            .results_deleted,
+        1
+    );
     assert_eq!(result_ids(&db), [1, 3]);
-    assert_eq!(store.delete_old_results(86_400, 1).await.unwrap(), 1);
-    assert_eq!(store.delete_old_results(86_400, 1).await.unwrap(), 0);
+    assert_eq!(
+        store
+            .delete_old_results(86_400, 1)
+            .await
+            .unwrap()
+            .results_deleted,
+        1
+    );
+    assert_eq!(
+        store
+            .delete_old_results(86_400, 1)
+            .await
+            .unwrap()
+            .results_deleted,
+        0
+    );
     assert_eq!(result_ids(&db), [1]);
 }
 
@@ -84,7 +126,14 @@ async fn expired_sessions_are_deleted_oldest_first_and_bounded() {
     let store = db.store();
 
     // The session batch does not count towards the returned result count.
-    assert_eq!(store.delete_old_results(86_400, 1).await.unwrap(), 1);
+    assert_eq!(
+        store
+            .delete_old_results(86_400, 1)
+            .await
+            .unwrap()
+            .results_deleted,
+        1
+    );
     let sessions = |db: &TestDb| -> Vec<String> {
         let connection = db.raw();
         let mut statement = connection
@@ -113,7 +162,11 @@ async fn databases_without_the_sessions_table_are_supported() {
     insert_result(&db, 1, 48 * 3600);
 
     assert_eq!(
-        db.store().delete_old_results(86_400, 1000).await.unwrap(),
+        db.store()
+            .delete_old_results(86_400, 1000)
+            .await
+            .unwrap()
+            .results_deleted,
         1
     );
 }
@@ -143,4 +196,85 @@ async fn invalid_retention_preserves_results_and_expired_sessions() {
             1
         );
     }
+}
+
+#[tokio::test]
+async fn invalid_batch_sizes_preserve_both_tables() {
+    for batch in [-1, 0, 1001, i64::MAX] {
+        let db = populated();
+        db.raw()
+            .execute(
+                "INSERT INTO django_session VALUES ('expired', '', '2000-01-01 00:00:00')",
+                [],
+            )
+            .unwrap();
+        assert!(
+            matches!(
+                db.store().delete_old_results(86_400, batch).await,
+                Err(nyxmon_store::StoreError::InvalidArgument(_))
+            ),
+            "batch {batch} must be rejected"
+        );
+        assert_eq!(result_ids(&db), [1, 2, 3]);
+        assert_eq!(
+            db.raw()
+                .query_row("SELECT COUNT(*) FROM django_session", [], |r| r
+                    .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+    }
+}
+
+#[tokio::test]
+async fn maximum_batch_preserves_live_rows_and_leaves_one_expired_row() {
+    let db = TestDb::new();
+    db.insert(row(1));
+    let mut connection = db.raw();
+    let tx = connection.transaction().unwrap();
+    for id in 1..=1001 {
+        tx.execute(
+            "INSERT INTO check_result (id, health_check_id, status, data, created_at) VALUES (?, 1, 'ok', '{}', '2000-01-01 00:00:00')",
+            [id],
+        )
+        .unwrap();
+        tx.execute(
+            "INSERT INTO django_session VALUES (?, '', '2000-01-01 00:00:00')",
+            [format!("expired-{id}")],
+        )
+        .unwrap();
+    }
+    tx.execute(
+        "INSERT INTO django_session VALUES ('live', '', '2999-01-01 00:00:00')",
+        [],
+    )
+    .unwrap();
+    tx.commit().unwrap();
+    insert_result(&db, 1002, 60);
+    assert_eq!(
+        db.store()
+            .delete_old_results(86400, 1000)
+            .await
+            .unwrap()
+            .results_deleted,
+        1000
+    );
+    assert_eq!(result_ids(&db), [1001, 1002]);
+    assert_eq!(
+        connection
+            .query_row("SELECT COUNT(*) FROM django_session", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        connection
+            .query_row(
+                "SELECT COUNT(*) FROM django_session WHERE session_key = 'live'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+        1
+    );
 }

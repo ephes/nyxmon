@@ -417,6 +417,10 @@ Never add DDL to the Python agent; a new required column raises
   the caller is cancelled. Where Python reads `time.time()` or
   `check_batch_size()` inside a repository method, the Rust method takes
   `now`/`batch_size` arguments. `StoreError::ActorDied` is fatal (exit 1).
+- Retention accepts a batch size of 1..=1000 at both the cleaner and store
+  boundary. `Store::delete_old_results` returns `CleanupBatch` with separate
+  result/session counts. A full count in either table continues the bounded
+  cycle; logs and cycle totals count only deleted results.
 - A `health_check.data` value that cannot be decoded reads as `PyJson::Null`
   (`nyxmon_store::data_is_undecodable`; valid `null` reads as `{}`, D-11).
   The runner reports such a check as `configuration_error` (D-8).

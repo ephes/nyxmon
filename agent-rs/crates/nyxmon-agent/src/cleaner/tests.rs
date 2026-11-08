@@ -28,14 +28,22 @@ impl FakeResults {
 }
 
 impl ResultsPruner for FakeResults {
-    async fn delete_old_results(&self, retention: i64, batch: i64) -> Result<usize, StoreError> {
+    async fn delete_old_results(
+        &self,
+        retention: i64,
+        batch: i64,
+    ) -> Result<CleanupBatch, StoreError> {
         self.calls.lock().unwrap().push((retention, batch));
         let mut counts = self.counts.lock().unwrap();
         if counts.is_empty() {
-            return Ok(0);
+            return Ok(CleanupBatch::default());
         }
         counts
             .remove(0)
+            .map(|results_deleted| CleanupBatch {
+                results_deleted,
+                sessions_deleted: 0,
+            })
             .map_err(|()| StoreError::Json("database is locked".to_owned()))
     }
 }
@@ -102,7 +110,7 @@ fn non_positive_limits_are_rejected() {
     let results = FakeResults::default();
     assert_eq!(
         Cleaner::new(results.clone(), 3600, 86400, 0, 100).err(),
-        Some(CleanerConfigError("batch_size must be at least 1"))
+        Some(CleanerConfigError("batch_size must be in 1..=1000"))
     );
     assert_eq!(
         Cleaner::new(results, 3600, 86400, 1, 0).err(),
@@ -184,5 +192,68 @@ fn invalid_retention_or_interval_never_reaches_the_pruner() {
         assert!(Cleaner::new(results.clone(), 3600, value, 100, 100).is_err());
         assert!(Cleaner::new(results.clone(), value, 86400, 100, 100).is_err());
     }
+    assert!(results.calls().is_empty());
+}
+
+#[tokio::test]
+async fn session_backlogs_drain_even_with_fewer_than_one_batch_of_results() {
+    for expired_results in [0, 1] {
+        for budget in [2, 10] {
+            let db = TestDb::new();
+            db.insert(&crate::testutil::check(1));
+            let mut connection = db.raw();
+            let tx = connection.transaction().unwrap();
+            for id in 0..7 {
+                tx.execute(
+                    "INSERT INTO django_session VALUES (?, '', '2000-01-01 00:00:00')",
+                    [format!("expired-{id}")],
+                )
+                .unwrap();
+            }
+            tx.execute(
+                "INSERT INTO django_session VALUES ('live', '', '2999-01-01 00:00:00')",
+                [],
+            )
+            .unwrap();
+            for id in 0..expired_results {
+                tx.execute(
+                    "INSERT INTO check_result (id, health_check_id, status, data, created_at) VALUES (?, 1, 'ok', '{}', '2000-01-01 00:00:00')",
+                    [id],
+                )
+                .unwrap();
+            }
+            tx.execute(
+                "INSERT INTO check_result (id, health_check_id, status, data, created_at) VALUES (99, 1, 'ok', '{}', '2999-01-01 00:00:00')",
+                [],
+            )
+            .unwrap();
+            tx.commit().unwrap();
+            let cleaner = Cleaner::new(db.store(), 3600, 86400, 2, budget).unwrap();
+            assert_eq!(
+                cleaner.run_cleanup_cycle().await.unwrap(),
+                expired_results as u64
+            );
+            let sessions: i64 = connection
+                .query_row("SELECT COUNT(*) FROM django_session", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(sessions, if budget == 2 { 4 } else { 1 });
+            assert_eq!(cleaner.run_cleanup_cycle().await.unwrap(), 0);
+            assert_eq!(
+                connection
+                    .query_row("SELECT session_key FROM django_session", [], |r| r
+                        .get::<_, String>(0))
+                    .unwrap(),
+                "live"
+            );
+            assert_eq!(db.results().len(), 1);
+        }
+    }
+}
+
+#[test]
+fn oversized_batches_are_rejected_before_pruning() {
+    let results = FakeResults::default();
+    assert!(Cleaner::new(results.clone(), 3600, 86400, 1001, 100).is_err());
+    assert!(Cleaner::new(results.clone(), 3600, 86400, 1000, 100).is_ok());
     assert!(results.calls().is_empty());
 }

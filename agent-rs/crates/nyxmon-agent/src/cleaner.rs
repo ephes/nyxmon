@@ -5,19 +5,19 @@ use std::fmt;
 use std::future::Future;
 
 use nyxmon_checks::ctx::Sleeper;
-use nyxmon_store::{Store, StoreError};
+use nyxmon_store::{CleanupBatch, MAX_CLEANUP_BATCH_SIZE, Store, StoreError};
 
 /// `DEFAULT_MAX_BATCHES_PER_CYCLE`.
 pub const DEFAULT_MAX_BATCHES_PER_CYCLE: i64 = 100;
 
 /// One cleaner batch of the store.
 pub trait ResultsPruner: Send + Sync + 'static {
-    /// `delete_old_results_async`: the number of deleted results.
+    /// `delete_old_results_async`: separate result and session deletion counts.
     fn delete_old_results(
         &self,
         retention_seconds: i64,
         batch_size: i64,
-    ) -> impl Future<Output = Result<usize, StoreError>> + Send;
+    ) -> impl Future<Output = Result<CleanupBatch, StoreError>> + Send;
 }
 
 impl ResultsPruner for Store {
@@ -25,7 +25,7 @@ impl ResultsPruner for Store {
         &self,
         retention_seconds: i64,
         batch_size: i64,
-    ) -> impl Future<Output = Result<usize, StoreError>> + Send {
+    ) -> impl Future<Output = Result<CleanupBatch, StoreError>> + Send {
         Store::delete_old_results(self, retention_seconds, batch_size)
     }
 }
@@ -55,7 +55,7 @@ impl<S: ResultsPruner> Cleaner<S> {
     /// `AsyncResultsCleaner(interval=..., retention_period=..., batch_size=...)`.
     ///
     /// # Errors
-    /// Any interval, retention or batch limit below 1.
+    /// Any interval, retention or batch limit below 1, or a batch size above 1000.
     pub fn new(
         store: S,
         interval: i64,
@@ -69,8 +69,8 @@ impl<S: ResultsPruner> Cleaner<S> {
         if interval < 1 {
             return Err(CleanerConfigError("interval must be at least 1"));
         }
-        if batch_size < 1 {
-            return Err(CleanerConfigError("batch_size must be at least 1"));
+        if !(1..=MAX_CLEANUP_BATCH_SIZE).contains(&batch_size) {
+            return Err(CleanerConfigError("batch_size must be in 1..=1000"));
         }
         if max_batches_per_cycle < 1 {
             return Err(CleanerConfigError(
@@ -87,23 +87,24 @@ impl<S: ResultsPruner> Cleaner<S> {
     }
 
     /// `run_cleanup_cycle`: delete expired results batch by batch until a
-    /// batch comes back short, at most `max_batches_per_cycle` batches.
+    /// both tables come back short, at most `max_batches_per_cycle` batches.
     ///
     /// # Errors
     /// The store error of a batch (the rows deleted before stay deleted).
     pub async fn run_cleanup_cycle(&self) -> Result<u64, StoreError> {
+        let batch_size = usize::try_from(self.batch_size).expect("validated batch size");
         let mut total_deleted: u64 = 0;
         let mut batches: i64 = 0;
         let mut drained = false;
         while batches < self.max_batches_per_cycle {
-            let deleted = self
+            let batch = self
                 .store
                 .delete_old_results(self.retention_period, self.batch_size)
                 .await?;
             batches += 1;
-            let deleted = u64::try_from(deleted).unwrap_or(u64::MAX);
+            let deleted = u64::try_from(batch.results_deleted).unwrap_or(u64::MAX);
             total_deleted = total_deleted.saturating_add(deleted);
-            if i128::from(deleted) < i128::from(self.batch_size) {
+            if batch.results_deleted < batch_size && batch.sessions_deleted < batch_size {
                 drained = true;
                 break;
             }

@@ -745,7 +745,8 @@ are part of the contract.
   delete up to `batch_size` expired sessions (`expire_date < datetime('now')`,
   oldest first) and commit; then select up to `batch_size` ids with
   `created_at < datetime('now', '-<retention> seconds') ORDER BY id`, delete
-  them, commit, return the count.
+  them, commit, return separate `CleanupBatch` result/session counts. Validate
+  `batch_size` in 1..=1000 before any deletion.
 
 ### 3.5 Reading rows
 
@@ -1438,13 +1439,15 @@ executor panics are caught inside the task so they pass the same gate. One `Batc
 Python creates its client only for batches with HTTP-family checks, which is
 not observable because the session opens no connection until used.
 
-### 5.10 Cleaner (`cleaner.py`)
+### 5.10 Cleaner (`cleaner.py` reference; Rust retention contract)
 
 First cycle immediately at start, then every `--cleanup-interval` s; per
-cycle up to 100 batches until a batch deletes fewer than `--batch-size`
-rows; yield between batches; log totals and the not-drained warning;
-`batch_size < 1` is rejected at startup (Python raises in the constructor →
-exit 1).
+cycle up to 100 batches until both result and session counts are below
+`--batch-size`; session counts never inflate reported result totals; yield between batches; log totals and the not-drained warning;
+`batch_size` outside 1..=1000 is rejected by both the constructor and store
+before any deletion. The default remains 1000. These Rust safety and session-drain rules intentionally
+differ from the retired Python cleaner (which has no upper batch limit and
+stops on a short result count); see D-21 in `docs/agent-rs.md`.
 
 ### 5.11 Notifiers (`notification.py`) — fixtures + fake HTTP servers
 

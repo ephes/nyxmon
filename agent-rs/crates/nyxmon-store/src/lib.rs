@@ -26,6 +26,7 @@ pub mod schema;
 
 pub use actor::{Store, StoreOptions};
 pub use checks::read_check;
+pub use cleaner::{CleanupBatch, MAX_CLEANUP_BATCH_SIZE};
 pub use error::StoreError;
 pub use lock::{AgentLock, LockError, agent_lock_path};
 pub use results::PersistRequest;
