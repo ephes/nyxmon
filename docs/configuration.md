@@ -108,14 +108,15 @@ Telegram notifications read:
   when its valid runtime cannot be derived from the standard timeout, retry, and
   retry-delay fields. Derived estimates are capped at `3600` seconds; set the
   global lease explicitly if a deliberately longer recovery window is required.
-- `NYXMON_CHECK_BATCH_SIZE`: Maximum checks claimed per collector iteration
-  (default `5`, clamped to `1`–`100`). With the default
+- `NYXMON_CHECK_BATCH_SIZE`: Requested maximum checks per collector iteration
+  (default `5`, parsed in `1`–`100`); Rust execution admission is further capped
+  at five, while stale recovery uses the configured value. With the default
   one-second collector interval, fast checks can drain about five due checks per
   second. Slow checks and serial notification I/O reduce that throughput.
   A batch additionally receives one minute per claimed check for serial result
   persistence and notification handling. Claims are
-  processed in configurable bounded batches (five by default), so the default
-  allowance is five minutes and scales with `NYXMON_CHECK_BATCH_SIZE`. With the
+  processed in bounded batches of at most five, so the result-handling
+  allowance is at most five minutes. With the
   default lease and batch size, a wedged batch therefore stops blocking lease
   recovery within twenty minutes. New executions
   stay paused while that single abandoned thread remains alive, and the pause is
@@ -1058,3 +1059,17 @@ into result history, so a late failure cannot replace a replacement run's health
 dashboard observation. The collector's stale-lease result remains the audit of
 expiry. Notification state and newer schedules remain untouched. This deliberately
 tightens historical Python parity; no schema migration is needed.
+
+### Rust fleet execution and held rechecks
+
+The Rust runner executes at most five checks at a time. Collector execution
+admission is `min(NYXMON_CHECK_BATCH_SIZE, 5)`; checks beyond that remain idle
+until later iterations, without consuming a lease while waiting for a slot.
+The existing largest-check lease estimate therefore still covers execution;
+there are no queued claimed waves to add to it. Stale recovery continues to
+use the configured batch size (1..100). Shutdown stops admitting tasks and
+releases unfinished owned claims without failure results. This deliberately
+tightens the retired Python runner's all-at-once behavior. Held-check rechecks
+deduplicate IDs and use chunks of at most 500 IDs, reduced further to leave two
+parameters below the SQLite connection limit. One transaction commits all
+chunks or rolls them all back; only idle, enabled, later-due checks change.

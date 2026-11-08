@@ -34,7 +34,7 @@ use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
 use crate::results::{HandlerError, ResultHandler};
-use crate::runner::{IntakeStop, run_batch};
+use crate::runner::{IntakeStop, MAX_ACTIVE_CHECKS, run_batch};
 use crate::sync::Flag;
 
 /// `SHUTDOWN_FLUSH_SECONDS`: after the grace period, how long the results
@@ -312,7 +312,10 @@ impl Collector {
         let now = self.handler.now();
         let checks = match self
             .store
-            .claim_due_checks(now, check_batch_size(&self.env))
+            .claim_due_checks(
+                now,
+                check_batch_size(&self.env).min(MAX_ACTIVE_CHECKS as i64),
+            )
             .await
         {
             Ok(checks) => checks,

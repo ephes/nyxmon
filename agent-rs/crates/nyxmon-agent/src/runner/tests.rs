@@ -560,3 +560,71 @@ async fn a_definition_edited_during_a_probe_cannot_publish_or_notify() {
         }
     }
 }
+
+#[tokio::test]
+async fn large_batch_bounds_active_checks_and_completes_each_once() {
+    let active = Arc::new(AtomicUsize::new(0));
+    let peak = Arc::new(AtomicUsize::new(0));
+    let executors = executors({
+        let active = active.clone();
+        let peak = peak.clone();
+        move |check| {
+            let active = active.clone();
+            let peak = peak.clone();
+            Box::pin(async move {
+                let count = active.fetch_add(1, Ordering::SeqCst) + 1;
+                peak.fetch_max(count, Ordering::SeqCst);
+                tokio::task::yield_now().await;
+                active.fetch_sub(1, Ordering::SeqCst);
+                Ok(ok(check.check_id))
+            })
+        }
+    });
+    let (received, receive) = recorder();
+    run_batch(&executors, (1..=100).map(check).collect(), None, receive).await;
+    assert!(peak.load(Ordering::SeqCst) <= 5);
+    assert_eq!(active.load(Ordering::SeqCst), 0);
+    let mut ids: Vec<_> = received.lock().unwrap().iter().map(|(id, _)| *id).collect();
+    ids.sort_unstable();
+    assert_eq!(ids, (1..=100).collect::<Vec<_>>());
+}
+
+#[tokio::test]
+async fn intake_stop_does_not_start_waiting_checks() {
+    let starts = Arc::new(AtomicUsize::new(0));
+    let full = Arc::new(Flag::new());
+    let executors = executors({
+        let starts = starts.clone();
+        let full = full.clone();
+        move |_| {
+            let starts = starts.clone();
+            let full = full.clone();
+            Box::pin(async move {
+                if starts.fetch_add(1, Ordering::SeqCst) + 1 == 5 {
+                    full.set();
+                }
+                std::future::pending().await
+            })
+        }
+    });
+    let stop = Arc::new(IntakeStop::default());
+    let (received, receive) = recorder();
+    let batch = tokio::spawn({
+        let stop = stop.clone();
+        async move {
+            run_batch(
+                &executors,
+                (1..=100).map(check).collect(),
+                Some(&stop),
+                receive,
+            )
+            .await;
+        }
+    });
+    full.wait().await;
+    stop.requested.set();
+    batch.await.unwrap();
+    assert_eq!(starts.load(Ordering::SeqCst), 5);
+    assert!(received.lock().unwrap().is_empty());
+    assert!(stop.drained.is_set());
+}
