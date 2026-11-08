@@ -507,7 +507,7 @@ exact text:
   `Telegram notifications enabled`; `Monitoring started with <n>s check interval`;
   `Received signal <n>, shutting down...`
 - `result handling failed for check_id=<id>`
-- `dropped late result for deleted check_id=<id>`;
+- `dropped superseded result for check_id=<id>` (edited or deleted definition);
   `dropped late result from superseded claim for check_id=<id>`
 - `notification state changed concurrently for check_id=<id>; retrying`;
   `notification state remained contended for check_id=<id>; persisting result without changing alert state`
@@ -697,22 +697,43 @@ are part of the contract.
   status=?, next_check_time=?, processing_started_at=? WHERE id=? AND
   ((status='processing' AND processing_started_at=:claim) OR (status<>'processing' AND :claim=0))`.
 - **Persist** (`_persist_check_result_async`), inside one `BEGIN IMMEDIATE`:
-  fence publication against the current executed definition; refuse edited or
-  deleted definitions, releasing only the matching old claim. If completing,
-  run Complete and refuse the result when no row matched. Refused lease samples
-  are logged but never inserted (a deliberate tightening of historical Python
-  parity). Otherwise insert the result; compare-and-swap the expected/next
-  notification state or stamp the hold marker; commit. A notification-state
-  conflict rolls back result, completion and state together.
+  1. fence publication against the current executed definition: if the row
+     is gone or its definition changed → if completing, release only the
+     matching old claim (`… WHERE id=? AND status='processing' AND
+     processing_started_at=:claim`); commit, log `dropped superseded result
+     for check_id=…`, return `false`;
+  2. if `complete_check`: run Complete; `completion_applied` = rowcount > 0;
+  3. if completing and completion not applied: log `dropped late result from
+     superseded claim for check_id=…`, commit without inserting the result,
+     return `false` (the notification state is not touched and nothing is
+     sent). Refusing the insert is a deliberate tightening of historical
+     Python parity, which stored the late sample: a late failure must not
+     become the dashboard's latest observation;
+  4. insert the result (`INSERT INTO check_result (health_check_id, status,
+     data, created_at) VALUES (?, ?, ?, datetime('now'))`);
+  5. if a transition `(expected, next)` is given: read the current state row
+     (`NotificationState.from_row`, missing row = all zeros); if it differs
+     from `expected` → rollback (result and completion included), raise
+     `NotificationStateConflict`; if `next != expected` → upsert all eight
+     columns;
+  6. else if `hold_marker` given → `_mark_held_since` (update where
+     `held_since = 0`; if no row updated and no row exists, insert a row with
+     only `held_since`);
+  7. commit, return `true`.
 - **Stale reclaim** (`reclaim_stale_checks_async`): reject nonpositive batch
-  sizes before SQL. Probe for expired or timestamp-less processing claims; no
-  candidates means no write transaction. In one IMMEDIATE transaction, release
-  expired positive-timestamp claims oldest-first up to the cap, then repair
-  legacy timestamps in ID order with the remaining allowance. At most `batch`
-  rows change. Legacy rows get a full lease from stamping time. Empty reclaim
-  output ends the collector sweep; later iterations continue repairs fairly.
-  Returned released rows have `claim_started_at = 0`, so their stale result
-  completes through the idle branch unless a newer claim exists.
+  sizes before SQL. Probe `status='processing' AND
+  (COALESCE(processing_started_at,0)=0 OR processing_started_at <=
+  now-lease)`; if none, return empty without writing. Otherwise, in one
+  IMMEDIATE transaction: `UPDATE … SET status='idle', processing_started_at=0
+  WHERE id IN (… processing_started_at > 0 AND <= :stale_before ORDER BY
+  processing_started_at ASC, id ASC LIMIT :batch) RETURNING …`; then stamp
+  `processing_started_at=now` on at most `batch - released` timestamp-less
+  processing rows in ID order (legacy claims get a full lease from stamping
+  time). At most `batch` rows change per transaction. Empty reclaim output
+  ends the collector sweep; later iterations continue repairs. Returned rows
+  have `processing_started_at = 0`, hence `claim_started_at = 0`, so their
+  later stale result completes through the `status<>'processing' AND 0=0`
+  branch unless a newer claim exists.
 - **Release on shutdown** (`release_claims_async`), one transaction: for each
   owned claim `UPDATE … SET status='idle', processing_started_at=0,
   next_check_time = :now + MAX(1, check_interval) WHERE id=? AND
