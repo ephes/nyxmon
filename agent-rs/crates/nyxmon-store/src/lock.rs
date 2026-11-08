@@ -1,21 +1,20 @@
 //! The agent lock (PLAN.md section 3.6, D-10).
 //!
-//! Both agents take a non-blocking exclusive `flock` on `<db path>.agent.lock`
-//! before touching the database and hold it until exit, so a second agent on
-//! the same database refuses to start. The Python side is
-//! `src/nyxmon/agent_lock.py`. The lock is a separate file: `flock` on the
-//! database itself would interfere with SQLite's own locks.
+//! The Rust agent resolves the existing regular database path before taking
+//! a stable sibling lock. Symlink/relative spellings therefore share ownership.
+//! The separate lock avoids interfering with SQLite's own locking.
 
+use rustix::fs::OFlags;
 use std::ffi::OsString;
 use std::fmt;
 use std::fs::{File, OpenOptions, TryLockError};
-use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
 /// Suffix appended to the database path.
 pub const LOCK_SUFFIX: &str = ".agent.lock";
 
-/// `<db path>.agent.lock`, derived from the path as given.
+/// Append the lock suffix to a database path. Acquisition supplies the canonical path.
 pub fn agent_lock_path(db_path: &Path) -> PathBuf {
     let mut path = OsString::from(db_path.as_os_str());
     path.push(LOCK_SUFFIX);
@@ -55,6 +54,7 @@ impl std::error::Error for LockError {}
 #[derive(Debug)]
 pub struct AgentLock {
     path: PathBuf,
+    database_path: PathBuf,
     _file: File,
 }
 
@@ -66,7 +66,23 @@ impl AgentLock {
     /// [`LockError::Held`] when another process (or another open of the
     /// file) holds it, [`LockError::Io`] otherwise.
     pub fn acquire(db_path: &Path) -> Result<AgentLock, LockError> {
-        let path = agent_lock_path(db_path);
+        // Missing files (including dangling aliases) are refused: initialize the
+        // database through Django before starting an agent.
+        let database_path = db_path.canonicalize().map_err(|source| LockError::Io {
+            path: db_path.to_owned(),
+            source,
+        })?;
+        let metadata = database_path.metadata().map_err(|source| LockError::Io {
+            path: database_path.clone(),
+            source,
+        })?;
+        if !metadata.is_file() || metadata.nlink() != 1 {
+            return Err(LockError::Io {
+                path: database_path,
+                source: std::io::Error::other("database must be a regular file with one hard link"),
+            });
+        }
+        let path = agent_lock_path(&database_path);
         let io_error = |source| LockError::Io {
             path: path.clone(),
             source,
@@ -78,15 +94,32 @@ impl AgentLock {
             .create(true)
             .truncate(false)
             .mode(0o600)
+            .custom_flags((OFlags::NOFOLLOW | OFlags::NONBLOCK).bits() as i32)
             .open(&path)
             .map_err(io_error)?;
+        let metadata = file.metadata().map_err(io_error)?;
+        if !metadata.is_file() || metadata.nlink() != 1 {
+            return Err(io_error(std::io::Error::other(
+                "agent lock must be a regular file with one hard link",
+            )));
+        }
         // `File::try_lock` is `flock(LOCK_EX | LOCK_NB)` on Unix, the same
         // lock Python's `fcntl.flock` takes.
         match file.try_lock() {
-            Ok(()) => Ok(AgentLock { path, _file: file }),
+            Ok(()) => Ok(AgentLock {
+                path,
+                database_path,
+                _file: file,
+            }),
             Err(TryLockError::WouldBlock) => Err(LockError::Held { path }),
             Err(TryLockError::Error(source)) => Err(io_error(source)),
         }
+    }
+
+    /// The admitted canonical database path, also used to open SQLite so the
+    /// caller's alias cannot be retargeted between locking and opening.
+    pub fn database_path(&self) -> &Path {
+        &self.database_path
     }
 
     /// The lock file path.

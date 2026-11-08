@@ -204,7 +204,15 @@ class TestServiceCrud:
 
     def test_update_post_saves_and_redirects(self, client, service):
         url = reverse("nyxboard:service_update", kwargs={"service_id": service.id})
-        response = client.post(url, {"name": "Renamed"})
+        response = client.post(
+            url,
+            {
+                "name": "Renamed",
+                "definition_revision": client.get(url)
+                .context["form"]["definition_revision"]
+                .value(),
+            },
+        )
         assert response.status_code == 302
         assert response["Location"] == reverse(
             "nyxboard:service_detail", kwargs={"service_id": service.id}

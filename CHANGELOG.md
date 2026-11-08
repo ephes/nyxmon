@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reserve dashboard/admin login budgets atomically in the database before password
   checks and settle completion/cancellation without losing concurrent failures.
   Apply migration `0014_login_throttle_bucket` before the dashboard update.
+- Resolve Rust agent database aliases before locking and opening SQLite. Require
+  existing single-link regular databases and stable regular no-follow lock files;
+  refuse missing/unsafe paths without modifying the retired Python agent.
+- Fence service edits against their loaded name and browser revision. Concurrent
+  deletion or rename returns a conflict without recreating the service or losing
+  submitted values; reload older open service forms before saving.
 
 - Pin notification intent/retry ownership across actual process death before
   sending and after fake-transport acceptance, including immediate cooldowns

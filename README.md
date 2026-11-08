@@ -414,3 +414,8 @@ password checking, shared across workers. Apply migration
 `0014_login_throttle_bucket` before starting the updated dashboard. See
 [failed login limits](docs/configuration.md#failed-login-limits) for fixed-window,
 cancellation and process-restart behavior.
+
+Service edits carry a browser revision and update only the loaded service name.
+A concurrent deletion or rename returns a conflict with the submitted name intact;
+reload and reconcile before saving. Older open forms must be reloaded once. The
+conditional update cannot reinsert a deleted service.

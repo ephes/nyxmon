@@ -72,8 +72,48 @@ def _url_password_target(url: object) -> tuple[str, str, int] | None:
     return (scheme, host, port)
 
 
+SERVICE_EDIT_CONFLICT = (
+    "This service changed or was deleted. Please reload and reconcile your edits."
+)
+
+
 class ServiceForm(forms.ModelForm):
     """Form for creating and updating Service objects."""
+
+    definition_revision = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    def __init__(self, *args, require_revision=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_name = self.instance.name
+        self._revision = salted_hmac(
+            "nyxboard.service-definition",
+            json.dumps([self.instance.pk, self._original_name]),
+            algorithm="sha256",
+        ).hexdigest()
+        self.fields["definition_revision"].initial = self._revision
+        self.fields["definition_revision"].required = bool(
+            require_revision and self.instance.pk
+        )
+
+    def clean_definition_revision(self):
+        revision = self.cleaned_data.get("definition_revision")
+        if revision and not constant_time_compare(revision, self._revision):
+            raise forms.ValidationError(SERVICE_EDIT_CONFLICT, code="conflict")
+        return revision
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            if instance._state.adding:
+                instance.save()
+            elif (
+                Service.objects.filter(pk=instance.pk, name=self._original_name).update(
+                    name=instance.name
+                )
+                != 1
+            ):
+                raise DefinitionConflict
+        return instance
 
     class Meta:
         model = Service

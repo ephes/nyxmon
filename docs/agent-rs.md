@@ -146,8 +146,13 @@ schema, a held agent lock or a fatal database error, 2 for usage errors.
 
 ### One agent per database
 
-Both implementations take an exclusive `flock` on `<db path>.agent.lock`
-before they touch the database; a second agent exits 1 with
+The Rust agent resolves the existing database path and takes an exclusive
+`flock` on `<canonical db path>.agent.lock` before opening SQLite through that
+same canonical path. Symlinked and relative spellings share ownership. Missing,
+non-regular and hard-linked databases are refused; initialize through Django
+migrations. Lock-file symlinks, FIFOs, directories and hard links are refused.
+Keep the state directory trusted and stable, and never delete the lock file.
+The retired Python agent does not gain these alias guarantees. A second Rust agent exits 1 with
 `another nyxmon agent holds <lock path>; refusing to start` (see "Operations:
 one agent per database" in {doc}`configuration`). A database copy has its
 own lock, so a `--shadow` run on a copy does not conflict with the

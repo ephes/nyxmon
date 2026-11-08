@@ -228,8 +228,10 @@ fn a_second_agent_on_the_same_database_exits_1() {
             break;
         }
     }
-    let lock = format!("{path}.agent.lock");
+    let lock = nyxmon_store::agent_lock_path(&db.path.canonicalize().unwrap());
+    let lock = lock.display();
     let (code, stderr) = run(&["--db", path]);
+    let output = terminate(first);
     assert_eq!(code, 1);
     assert!(
         stderr.contains(&format!(
@@ -237,7 +239,6 @@ fn a_second_agent_on_the_same_database_exits_1() {
         )),
         "{stderr}"
     );
-    let output = terminate(first);
     assert_eq!(output.status.code(), Some(0));
 }
 

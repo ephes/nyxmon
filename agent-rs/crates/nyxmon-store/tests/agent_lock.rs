@@ -112,7 +112,7 @@ fn database() -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("db.sqlite3");
     std::fs::write(&db, b"").unwrap();
-    (dir, db)
+    (dir, db.canonicalize().unwrap())
 }
 
 fn expected_message(db: &Path) -> String {
@@ -185,4 +185,61 @@ fn lock_file_is_private_and_next_to_the_database() {
         AgentLock::acquire(&db),
         Err(LockError::Held { .. })
     ));
+}
+
+#[test]
+fn aliases_share_one_process_lock_and_unrelated_databases_do_not() {
+    use std::os::unix::fs::symlink;
+
+    let (dir, db) = database();
+    let alias = dir.path().join("alias.sqlite3");
+    symlink(&db, &alias).unwrap();
+    let directory_alias = dir.path().join("linked-dir");
+    symlink(dir.path(), &directory_alias).unwrap();
+    let mut holder = hold(rust_child(&db));
+    for path in [
+        &alias,
+        &directory_alias.join("db.sqlite3"),
+        &dir.path().join(".").join("db.sqlite3"),
+    ] {
+        let (status, _) = contend(rust_child(path));
+        assert_eq!(status.code(), Some(1), "alias admitted: {}", path.display());
+    }
+    let mut relative = rust_child(Path::new("db.sqlite3"));
+    relative.current_dir(dir.path());
+    assert_eq!(contend(relative).0.code(), Some(1));
+    let other = dir.path().join("other.sqlite3");
+    std::fs::write(&other, b"").unwrap();
+    assert_eq!(contend(rust_child(&other)).0.code(), Some(0));
+    holder.kill().unwrap();
+    holder.wait().unwrap();
+    assert!(agent_lock_path(&db).exists());
+    assert_eq!(contend(rust_child(&alias)).0.code(), Some(0));
+}
+
+#[test]
+fn missing_database_and_unsafe_lock_files_are_rejected() {
+    use std::os::unix::fs::symlink;
+
+    let (dir, db) = database();
+    assert!(AgentLock::acquire(&dir.path().join("missing.sqlite3")).is_err());
+    let lock_path = agent_lock_path(&db);
+    let target = dir.path().join("target");
+    std::fs::write(&target, b"do not change").unwrap();
+    symlink(&target, &lock_path).unwrap();
+    assert!(AgentLock::acquire(&db).is_err(), "symlink lock admitted");
+    assert_eq!(std::fs::read(&target).unwrap(), b"do not change");
+    std::fs::remove_file(&lock_path).unwrap();
+    assert!(
+        Command::new("python3")
+            .args(["-c", "import os,sys; os.mkfifo(sys.argv[1], 0o600)"])
+            .arg(&lock_path)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(AgentLock::acquire(&db).is_err(), "FIFO lock admitted");
+    std::fs::remove_file(&lock_path).unwrap();
+    std::fs::create_dir(&lock_path).unwrap();
+    assert!(AgentLock::acquire(&db).is_err(), "directory lock admitted");
 }
