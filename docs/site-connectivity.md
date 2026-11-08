@@ -590,10 +590,12 @@ summaries, the dashboard shows a banner naming the affected paths with their
 state and `down_since`, noting when a recovery summary is still pending
 delivery, and adding that dependent alerts are held **only while the worker runs
 in `enforce` mode**. The banner also reports when the payload was last observed.
-If `observed_at` is more than ten minutes old, or is missing or unusable, it
-says so and adds that the observer may be stopped — which is what an `off` mode,
-a stopped worker or a stale persisted incident looks like from the dashboard. A
-malformed payload produces no banner rather than an error.
+Freshness requires an age from zero through ten minutes, inclusive, on the
+dashboard server clock; there is no future-clock-skew tolerance. If `observed_at`
+is in the future, more than ten minutes old, missing or unusable, the banner
+marks the observation stale and adds that the observer may be stopped. This
+also covers clock skew, `off` mode, and stale persisted incidents. A malformed
+payload produces no banner rather than an error.
 
 A check detail page reports a hold from the **newest stored result**, not from
 `held_since`:

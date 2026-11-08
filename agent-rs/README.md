@@ -421,6 +421,10 @@ Never add DDL to the Python agent; a new required column raises
   queued and subsequent calls receive `StoreError::ActorDied`, which is fatal
   (exit 1). Channel-gated SQLite regressions cover these cases and cancellation
   both before execution and during a transaction.
+- Shutdown uses a one-shot `sync::Flag`: all waiters observe set even when a
+  peer is cancelled, late waiters return immediately, and repeated sets are
+  harmless. Poll-driven and barrier-driven regressions exercise fan-out and
+  registration/check races without sleeps or OS signals.
 - Retention accepts a batch size of 1..=1000 at both the cleaner and store
   boundary. `Store::delete_old_results` returns `CleanupBatch` with separate
   result/session counts. A full count in either table continues the bounded
