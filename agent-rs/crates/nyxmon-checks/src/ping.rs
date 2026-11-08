@@ -28,6 +28,8 @@ use nyxmon_core::ping_text::{
 };
 use nyxmon_core::pyjson::{PyDict, PyJson, py_format_g};
 
+use tokio::io::{AsyncRead, AsyncReadExt};
+
 use crate::ctx::Sleeper;
 use crate::happy_eyeballs::c_name;
 use crate::idna2008::idna2008_resolve;
@@ -51,6 +53,8 @@ pub struct ProcessOutput {
 pub enum RunError {
     /// `TimeoutError`: the timeout expired and the process was killed.
     Timeout,
+    /// The combined or per-stream capture ceiling was exceeded.
+    OutputLimit,
     /// `FileNotFoundError` (`ENOENT`).
     NotFound(String),
     /// `PermissionError` (`EACCES`, `EPERM`).
@@ -106,31 +110,96 @@ pub async fn run_process(command: Vec<String>, timeout: f64) -> Result<ProcessOu
         return Err(RunError::Exception(PyException::VALUE_ERROR));
     }
     let limit = Duration::try_from_secs_f64(timeout).unwrap_or(Duration::MAX);
+    let child = tokio::process::Command::new(program)
+        .args(&command[1..])
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .process_group(0)
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|err| RunError::from_spawn(&err, program))?;
+    let mut owned = OwnedProcess {
+        group: rustix::process::Pid::from_raw(child.id().expect("spawned child") as i32),
+        child,
+    };
+    let stdout = owned.child.stdout.take().expect("piped stdout");
+    let stderr = owned.child.stderr.take().expect("piped stderr");
+    let total = std::sync::atomic::AtomicUsize::new(0);
     let run = async {
-        let child = tokio::process::Command::new(program)
-            .args(&command[1..])
-            .env("LC_ALL", "C")
-            .env("LANG", "C")
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .kill_on_drop(true)
-            .spawn()
-            .map_err(|err| RunError::from_spawn(&err, program))?;
-        let output = child
-            .wait_with_output()
+        let (stdout, stderr) = tokio::try_join!(capture(stdout, &total), capture(stderr, &total),)?;
+        let status = owned
+            .child
+            .wait()
             .await
             .map_err(|err| RunError::Os(os_error_str(&err)))?;
         Ok(ProcessOutput {
-            returncode: returncode(output.status),
-            stdout: decode_output(&output.stdout),
-            stderr: decode_output(&output.stderr),
+            returncode: returncode(status),
+            stdout: decode_output(&stdout),
+            stderr: decode_output(&stderr),
         })
     };
-    // Dropping the child on timeout kills it (`kill_on_drop`).
-    tokio::time::timeout(limit, run)
+    let result = tokio::time::timeout(limit, run)
         .await
-        .unwrap_or(Err(RunError::Timeout))
+        .unwrap_or(Err(RunError::Timeout));
+    // Terminate even descendants that closed their pipes; keep the stable group
+    // identity until cleanup. On cancellation Drop performs the same kill.
+    owned.terminate();
+    if result.is_err() {
+        let _ = tokio::time::timeout(Duration::from_secs(1), owned.child.wait()).await;
+    }
+    result
+}
+
+// A single ping response is tiny. Bound retained bytes and total work across
+// both independently drained pipes; reject before decoding or parsing output.
+const STREAM_BYTES: usize = 64 * 1024;
+const TOTAL_BYTES: usize = 96 * 1024;
+
+async fn capture(
+    mut pipe: impl AsyncRead + Unpin,
+    total: &std::sync::atomic::AtomicUsize,
+) -> Result<Vec<u8>, RunError> {
+    let mut bytes = Vec::new();
+    let mut chunk = [0; 4096];
+    loop {
+        let n = pipe
+            .read(&mut chunk)
+            .await
+            .map_err(|err| RunError::Os(os_error_str(&err)))?;
+        if n == 0 {
+            return Ok(bytes);
+        }
+        let seen = total.fetch_add(n, std::sync::atomic::Ordering::Relaxed) + n;
+        if bytes.len() + n > STREAM_BYTES || seen > TOTAL_BYTES {
+            return Err(RunError::OutputLimit);
+        }
+        bytes.extend_from_slice(&chunk[..n]);
+    }
+}
+
+struct OwnedProcess {
+    child: tokio::process::Child,
+    group: Option<rustix::process::Pid>,
+}
+
+impl OwnedProcess {
+    fn terminate(&mut self) {
+        if let Some(group) = self.group.take() {
+            let _ = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);
+        }
+        let _ = self.child.start_kill();
+    }
+}
+
+impl Drop for OwnedProcess {
+    fn drop(&mut self) {
+        // Nonblocking cancellation cleanup. Tokio's kill_on_drop also arranges
+        // direct-child reaping when this future is dropped at any await point.
+        self.terminate();
+    }
 }
 
 /// `inet_ntop` text of an IPv6 address: like Rust's, except that an
@@ -425,7 +494,10 @@ impl PingExecutor {
                 }
                 Err(failure) => failure,
             };
-            if matches!(failure.0, "permission_error" | "ping_unavailable") {
+            if matches!(
+                failure.0,
+                "permission_error" | "ping_unavailable" | "output_limit"
+            ) {
                 // Retrying cannot help.
                 let mut data = base;
                 data.extend(packet_stats(attempts.len() as i64, 0));
@@ -481,6 +553,13 @@ impl PingExecutor {
             Err(RunError::Timeout) => {
                 let message = format!("No reply within {}s", seconds_text(timeout));
                 return failed("timeout", "timeout", message);
+            }
+            Err(RunError::OutputLimit) => {
+                return failed(
+                    "error",
+                    "output_limit",
+                    "Ping output exceeded capture limit".to_owned(),
+                );
             }
             Err(RunError::NotFound(exc)) => {
                 let message = format!("ping binary not found: {exc}");

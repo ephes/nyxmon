@@ -614,3 +614,13 @@ The ignored `process_worker` test is a subprocess entry point launched explicitl
 by the crash parent. It returns harmlessly when invoked without the parent's
 inputs. `migrated_reminder_state` normally tests the committed migration projection;
 the local live-handoff check also runs it against the actual Django-migrated file.
+
+### Ping subprocess limits
+
+The Rust ping runner drains stdout and stderr concurrently. Each stream is
+limited to 64 KiB and their combined output to 96 KiB; overflow returns a single
+`output_limit` failure without retaining or logging rejected output or retrying.
+Each invocation owns a Unix process group. Timeout, overflow and task cancellation
+kill that group, including wrappers and descendants that hold capture pipes.
+Error cleanup waits at most one second for the direct child; cancellation uses
+Tokio kill-on-drop reaping. Normal ping parsing and locale remain unchanged.

@@ -493,3 +493,81 @@ fn which_skips_entries_that_are_not_utf8() {
     let found = which("sh", Some(&path));
     assert_eq!(found.as_deref(), Some("/bin/sh"));
 }
+
+#[tokio::test]
+async fn noisy_process_capture_is_rejected_without_deadlocking() {
+    for destination in ["", ">&2", "&"] {
+        let command = if destination == "&" {
+            "(i=0; while [ $i -lt 3500 ]; do printf '0123456789abcdef'; i=$((i+1)); done) & i=0; while [ $i -lt 3500 ]; do printf '0123456789abcdef' >&2; i=$((i+1)); done; wait".to_owned()
+        } else {
+            format!(
+                "i=0; while [ $i -lt 10000 ]; do printf '0123456789abcdef' {destination}; i=$((i+1)); done"
+            )
+        };
+        let result = run(&["sh", "-c", &command], 5.0).await;
+        assert!(result.is_err(), "noisy output must be rejected");
+    }
+}
+
+#[tokio::test]
+async fn overflow_is_one_failed_attempt_without_rejected_output() {
+    let check = check("127.0.0.1", r#"{"count":3,"interval":0}"#);
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter = calls.clone();
+    let executor = PingExecutor::default()
+        .with_binaries(Some("synthetic-ping"), None)
+        .with_runner(Arc::new(move |_, _| {
+            counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            Box::pin(run_process(
+                vec![
+                    "sh".into(),
+                    "-c".into(),
+                    "i=0; while [ $i -lt 10000 ]; do printf 'rejected-output!'; i=$((i+1)); done"
+                        .into(),
+                ],
+                5.0,
+            ))
+        }));
+    let result = executor.execute(&check).await.unwrap();
+    assert_eq!(result.status, ResultStatus::Error);
+    let data = data_json(&result);
+    assert!(data.contains("output_limit"));
+    assert_eq!(calls.load(std::sync::atomic::Ordering::Relaxed), 1);
+    assert!(!data.contains("rejected-output"));
+}
+
+#[tokio::test]
+async fn timeout_and_cancellation_kill_descendants_holding_pipes() {
+    for cancel in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let ready = dir.path().join("ready");
+        let escaped = dir.path().join("escaped");
+        // The child holds both capture pipes after its parent exits. If it
+        // survives cleanup, it creates independent, observable evidence.
+        let script = format!(
+            "(echo ready > '{}'; sleep 1; echo survived > '{}') & exit 0",
+            ready.display(),
+            escaped.display()
+        );
+        let task = tokio::spawn(run_process(
+            vec!["sh".into(), "-c".into(), script],
+            if cancel { 10.0 } else { 0.25 },
+        ));
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while !ready.exists() {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .expect("child started");
+        if cancel {
+            task.abort();
+            assert!(task.await.unwrap_err().is_cancelled());
+        } else {
+            assert_eq!(task.await.unwrap(), Err(RunError::Timeout));
+        }
+        assert!(run(&["sh", "-c", "echo next"], 2.0).await.is_ok());
+        tokio::time::sleep(Duration::from_millis(1200)).await;
+        assert!(!escaped.exists(), "descendant outlived the owned check");
+    }
+}
