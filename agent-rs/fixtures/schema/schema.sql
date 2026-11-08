@@ -43,6 +43,8 @@ CREATE TABLE collector_incident (
                             alert_count   INTEGER NOT NULL DEFAULT 0,
                             payload       TEXT    NOT NULL DEFAULT '{}'
                         );
+CREATE TABLE "login_throttle_bucket" ("key" varchar(100) NOT NULL PRIMARY KEY, "expires_at" real NOT NULL, "failures" integer unsigned NOT NULL CHECK ("failures" >= 0), "pending" integer unsigned NOT NULL CHECK ("pending" >= 0));
+CREATE INDEX "login_throttle_bucket_expires_at_2b29c04f" ON "login_throttle_bucket" ("expires_at");
 CREATE TABLE "django_session" ("session_key" varchar(40) NOT NULL PRIMARY KEY, "session_data" text NOT NULL, "expire_date" datetime NOT NULL);
 CREATE INDEX "django_session_expire_date_a5c62663" ON "django_session" ("expire_date");
 INSERT INTO django_migrations (app, name, applied) VALUES ('contenttypes', '0001_initial', '2000-01-01 00:00:00');
@@ -75,4 +77,5 @@ INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0010_alt
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0011_checknotificationstate', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0012_notification_reminder_timestamps', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0013_site_connectivity_state', '2000-01-01 00:00:00');
+INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0014_login_throttle_bucket', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('sessions', '0001_initial', '2000-01-01 00:00:00');

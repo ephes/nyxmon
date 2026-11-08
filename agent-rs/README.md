@@ -624,3 +624,12 @@ Each invocation owns a Unix process group. Timeout, overflow and task cancellati
 kill that group, including wrappers and descendants that hold capture pipes.
 Error cleanup waits at most one second for the direct child; cancellation uses
 Tokio kill-on-drop reaping. Normal ping parsing and locale remain unchanged.
+
+### DNS parsing work limit
+
+DNS names are limited to 255 expanded wire bytes, checked before allocating each
+label. Questions, records, labels and compression jumps share a budget of eight
+operations per packet byte, capped at 65,536 operations per response. Budget
+exhaustion uses the existing malformed-response classification. Ordinary compressed
+names and UDP-to-TCP truncation fallback are preserved; heavily amplified pointer
+ladders are refused even if their wire packet is otherwise valid.
