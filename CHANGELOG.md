@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reserve the escaped overflow summary in warning digests so every message fits
+  the 3,800-character budget with the exact omitted count.
+- Fence collector-incident acknowledgements with a fresh random delivery identity
+  as well as attempt number, preserving pending alerts across same-second reopen.
+  Requires a later owner-managed Rust binary rollout; no schema migration.
+
 - Read warning digest results and incident dates in one consistent bulk query,
   avoiding per-check queries and mixed incident generations.
 

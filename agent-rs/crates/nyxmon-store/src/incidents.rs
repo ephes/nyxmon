@@ -3,7 +3,8 @@
 
 use nyxmon_core::PyJson;
 use nyxmon_core::incident::{
-    DELIVERY_ATTEMPT_KEY, carry_delivery_markers, with_delivery_intent, without_delivery_markers,
+    DELIVERY_ATTEMPT_KEY, DELIVERY_GENERATION_KEY, carry_delivery_markers, with_delivery_intent,
+    without_delivery_markers,
 };
 use nyxmon_core::model::{CollectorIncident, CollectorIncidentAlert};
 use nyxmon_core::pyjson::{CmpOp, PyDict, py_cmp};
@@ -24,6 +25,19 @@ fn immediate(connection: &mut Connection) -> Result<Transaction<'_>, StoreError>
     Ok(connection.transaction_with_behavior(TransactionBehavior::Immediate)?)
 }
 
+// SQLite supplies the random delivery identity; no schema or timestamp dependency.
+fn delivery_intent(
+    connection: &Connection,
+    payload: &PyDict,
+    attempt: i64,
+) -> Result<PyDict, StoreError> {
+    let generation: String =
+        connection.query_row("SELECT lower(hex(randomblob(16)))", [], |row| row.get(0))?;
+    let mut marked = with_delivery_intent(payload, attempt);
+    marked.insert(DELIVERY_GENERATION_KEY.to_owned(), PyJson::Str(generation));
+    Ok(marked)
+}
+
 /// `_claim_collector_incident_alert_async`.
 fn claim_alert(
     connection: &mut Connection,
@@ -40,7 +54,7 @@ fn claim_alert(
                 opened_at: now,
                 last_alert_at: now,
                 alert_count: 1,
-                payload: with_delivery_intent(&payload.unwrap_or_default(), 1),
+                payload: delivery_intent(&transaction, &payload.unwrap_or_default(), 1)?,
             },
             true,
             true,
@@ -55,7 +69,7 @@ fn claim_alert(
             };
             let next_payload = payload.as_ref().unwrap_or(&existing.payload);
             let payload = if should_notify {
-                with_delivery_intent(next_payload, alert_count)
+                delivery_intent(&transaction, next_payload, alert_count)?
             } else {
                 carry_delivery_markers(next_payload, &existing.payload)
             };
@@ -146,17 +160,23 @@ fn open_incident(
 }
 
 /// `_acknowledge_collector_incident_delivery_async`: compare
-/// `delivery_attempt` and strip both markers in one write transaction.
+/// `delivery_attempt` and `delivery_generation`, then strip delivery markers in one write transaction.
 /// `between` runs after the read, before the write (tests).
 fn acknowledge_delivery(
     connection: &mut Connection,
     incident_key: &str,
     attempt: i64,
+    generation: Option<&str>,
     between: impl FnOnce(),
 ) -> Result<bool, StoreError> {
     let transaction = immediate(connection)?;
     let existing = select_incident(&transaction, incident_key)?;
     let matches = existing.as_ref().is_some_and(|incident| {
+        match (incident.payload.get(DELIVERY_GENERATION_KEY), generation) {
+            (None, None) => {} // Legacy payloads have no generation marker.
+            (Some(PyJson::Str(stored)), Some(expected)) if stored == expected => {}
+            _ => return false,
+        }
         // `payload.get(DELIVERY_ATTEMPT_KEY) != attempt` with Python `==`.
         incident
             .payload
@@ -259,10 +279,13 @@ impl Store {
         &self,
         incident_key: &str,
         attempt: i64,
+        generation: Option<String>,
     ) -> Result<bool, StoreError> {
         let key = incident_key.to_owned();
-        self.call(move |connection| acknowledge_delivery(connection, &key, attempt, || {}))
-            .await
+        self.call(move |connection| {
+            acknowledge_delivery(connection, &key, attempt, generation.as_deref(), || {})
+        })
+        .await
     }
 
     /// `set_collector_incident_payload`; `None` when no row exists.
@@ -330,7 +353,12 @@ mod tests {
         let competitor_path = path.clone();
         let mut raced = None;
         let mut competitor = None;
-        let acknowledged = acknowledge_delivery(&mut first, key, 1, || {
+        let generation = select_incident(&first, key).unwrap().unwrap().payload
+            [DELIVERY_GENERATION_KEY]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let acknowledged = acknowledge_delivery(&mut first, key, 1, Some(&generation), || {
             competitor = Some(std::thread::spawn(move || {
                 let mut second = Connection::open(&competitor_path).unwrap();
                 second.busy_timeout(Duration::from_secs(10)).unwrap();
@@ -351,8 +379,10 @@ mod tests {
         );
         let incident = select_incident(&first, key).unwrap().unwrap();
         assert_eq!(incident.alert_count, 2);
+        let mut payload = incident.payload.clone();
+        assert!(payload.shift_remove(DELIVERY_GENERATION_KEY).is_some());
         assert_eq!(
-            dump(&incident.payload).unwrap(),
+            dump(&payload).unwrap(),
             r#"{"reclaimed_count": 9, "delivery_pending": true, "delivery_attempt": 2}"#
         );
     }

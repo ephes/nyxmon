@@ -4,7 +4,25 @@
 
 mod common;
 
-use common::{TestDb, dict, dumps};
+use common::{TestDb, dict};
+use nyxmon_core::incident::DELIVERY_GENERATION_KEY;
+use nyxmon_core::model::CollectorIncident;
+use nyxmon_core::pyjson::{PyDict, PyJson};
+
+fn generation(incident: &CollectorIncident) -> Option<String> {
+    incident
+        .payload
+        .get(DELIVERY_GENERATION_KEY)
+        .and_then(PyJson::as_str)
+        .map(str::to_owned)
+}
+
+// Existing deterministic payload assertions omit the random token, tested below.
+fn payload_without_generation(payload: &PyDict) -> String {
+    let mut payload = payload.clone();
+    payload.shift_remove(DELIVERY_GENERATION_KEY);
+    common::dumps(&payload)
+}
 use nyxmon_store::Store;
 
 const KEY: &str = "collector:stale_processing_lease";
@@ -40,7 +58,7 @@ async fn collector_incident_lifecycle() {
         assert_eq!(repeat.incident.alert_count, 1);
         assert_eq!(repeat.incident.last_alert_at, 1_000);
         assert_eq!(
-            dumps(&repeat.incident.payload),
+            payload_without_generation(&repeat.incident.payload),
             r#"{"check_ids": [1, 2, 3], "delivery_pending": true, "delivery_attempt": 1}"#
         );
     }
@@ -142,7 +160,10 @@ async fn open_collector_incident_is_silent() {
         (opened.opened_at, opened.last_alert_at, opened.alert_count),
         (OPENED_AT, 0, 0)
     );
-    assert_eq!(dumps(&opened.payload), r#"{"paths": ["ipv4"]}"#);
+    assert_eq!(
+        payload_without_generation(&opened.payload),
+        r#"{"paths": ["ipv4"]}"#
+    );
 
     let refreshed = store
         .open_collector_incident(
@@ -160,7 +181,10 @@ async fn open_collector_incident_is_silent() {
         ),
         (OPENED_AT, 0, 0)
     );
-    assert_eq!(dumps(&refreshed.payload), r#"{"paths": ["ipv4", "dns"]}"#);
+    assert_eq!(
+        payload_without_generation(&refreshed.payload),
+        r#"{"paths": ["ipv4", "dns"]}"#
+    );
 
     let claimed = store
         .claim_collector_incident_alert(key, OPENED_AT + 900, 21_600, None)
@@ -172,7 +196,7 @@ async fn open_collector_incident_is_silent() {
         (OPENED_AT, 1)
     );
     assert_eq!(
-        dumps(&claimed.incident.payload),
+        payload_without_generation(&claimed.incident.payload),
         r#"{"paths": ["ipv4", "dns"], "delivery_pending": true, "delivery_attempt": 1}"#
     );
 
@@ -195,7 +219,7 @@ async fn claim_records_delivery_intent_and_markers_are_carried() {
         .unwrap();
     assert!(granted.should_notify);
     assert_eq!(
-        dumps(&granted.incident.payload),
+        payload_without_generation(&granted.incident.payload),
         r#"{"check_ids": [1], "delivery_pending": true, "delivery_attempt": 1}"#
     );
 
@@ -205,7 +229,11 @@ async fn claim_records_delivery_intent_and_markers_are_carried() {
         .unwrap();
     assert!(!refreshed.should_notify);
     assert_eq!(
-        dumps(&refreshed.incident.payload),
+        generation(&refreshed.incident),
+        generation(&granted.incident)
+    );
+    assert_eq!(
+        payload_without_generation(&refreshed.incident.payload),
         r#"{"check_ids": [1, 2], "delivery_pending": true, "delivery_attempt": 1}"#
     );
 
@@ -213,8 +241,9 @@ async fn claim_records_delivery_intent_and_markers_are_carried() {
         .open_collector_incident(key, 1_200, dict(r#"{"check_ids": [3]}"#))
         .await
         .unwrap();
+    assert_eq!(generation(&reopened), generation(&granted.incident));
     assert_eq!(
-        dumps(&reopened.payload),
+        payload_without_generation(&reopened.payload),
         r#"{"check_ids": [3], "delivery_pending": true, "delivery_attempt": 1}"#
     );
 
@@ -223,10 +252,16 @@ async fn claim_records_delivery_intent_and_markers_are_carried() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(dumps(&replaced.payload), r#"{"check_ids": [3]}"#);
+    assert_eq!(
+        payload_without_generation(&replaced.payload),
+        r#"{"check_ids": [3]}"#
+    );
     assert_eq!(replaced.alert_count, 1);
     let stored = store.get_collector_incident(key).await.unwrap().unwrap();
-    assert_eq!(dumps(&stored.payload), r#"{"check_ids": [3]}"#);
+    assert_eq!(
+        payload_without_generation(&stored.payload),
+        r#"{"check_ids": [3]}"#
+    );
 
     let reminder = store
         .claim_collector_incident_alert(key, 4_700, 3_600, None)
@@ -234,7 +269,7 @@ async fn claim_records_delivery_intent_and_markers_are_carried() {
         .unwrap();
     assert!(reminder.should_notify);
     assert_eq!(
-        dumps(&reminder.incident.payload),
+        payload_without_generation(&reminder.incident.payload),
         r#"{"check_ids": [3], "delivery_pending": true, "delivery_attempt": 2}"#
     );
     assert_eq!(
@@ -270,7 +305,7 @@ async fn delivery_intent_is_committed_with_the_claim() {
         .unwrap();
     assert_eq!((last_alert_at, alert_count), (1_000, 1));
     assert_eq!(
-        payload,
+        payload_without_generation(&dict(&payload)),
         r#"{"check_ids": [1], "delivery_pending": true, "delivery_attempt": 1}"#
     );
 }
@@ -279,7 +314,7 @@ async fn delivery_intent_is_committed_with_the_claim() {
 async fn acknowledgement_clears_only_the_delivery_markers() {
     let db = TestDb::new();
     let store = db.store();
-    store
+    let claimed = store
         .claim_collector_incident_alert(
             KEY,
             1_000,
@@ -291,14 +326,15 @@ async fn acknowledgement_clears_only_the_delivery_markers() {
 
     assert!(
         store
-            .acknowledge_collector_incident_delivery(KEY, 1)
+            .acknowledge_collector_incident_delivery(KEY, 1, generation(&claimed.incident))
             .await
             .unwrap()
     );
 
     let incident = store.get_collector_incident(KEY).await.unwrap().unwrap();
+    assert!(!incident.payload.contains_key(DELIVERY_GENERATION_KEY));
     assert_eq!(
-        dumps(&incident.payload),
+        payload_without_generation(&incident.payload),
         r#"{"reclaimed_count": 3, "check_ids": [1, 2]}"#
     );
     assert_eq!((incident.alert_count, incident.last_alert_at), (1, 1_000));
@@ -310,29 +346,29 @@ async fn acknowledgement_is_fenced_by_the_attempt() {
     let store = db.store();
     assert!(
         !store
-            .acknowledge_collector_incident_delivery(KEY, 1)
+            .acknowledge_collector_incident_delivery(KEY, 1, None)
             .await
             .unwrap()
     );
 
-    store
+    let _old = store
         .claim_collector_incident_alert(KEY, 1_000, 3_600, Some(dict(r#"{"n": 1}"#)))
         .await
         .unwrap();
-    store
+    let new = store
         .claim_collector_incident_alert(KEY, 9_000, 3_600, Some(dict(r#"{"n": 2}"#)))
         .await
         .unwrap();
 
     assert!(
         !store
-            .acknowledge_collector_incident_delivery(KEY, 1)
+            .acknowledge_collector_incident_delivery(KEY, 1, generation(&new.incident))
             .await
             .unwrap()
     );
     let incident = store.get_collector_incident(KEY).await.unwrap().unwrap();
     assert_eq!(
-        dumps(&incident.payload),
+        payload_without_generation(&incident.payload),
         r#"{"n": 2, "delivery_pending": true, "delivery_attempt": 2}"#
     );
 }
@@ -349,12 +385,12 @@ async fn acknowledgement_compares_with_python_equality() {
     // `2.0 == 2` in Python.
     assert!(
         store
-            .acknowledge_collector_incident_delivery(KEY, 2)
+            .acknowledge_collector_incident_delivery(KEY, 2, None)
             .await
             .unwrap()
     );
     let incident = store.get_collector_incident(KEY).await.unwrap().unwrap();
-    assert_eq!(dumps(&incident.payload), r#"{"x": 1}"#);
+    assert_eq!(payload_without_generation(&incident.payload), r#"{"x": 1}"#);
 }
 
 #[tokio::test]
@@ -390,7 +426,54 @@ async fn undecodable_payloads_read_as_empty() {
         .await
         .unwrap();
     assert_eq!(
-        dumps(&claimed.incident.payload),
+        payload_without_generation(&claimed.incident.payload),
         r#"{"delivery_pending": true, "delivery_attempt": 8}"#
+    );
+}
+
+#[tokio::test]
+async fn delayed_acknowledgement_cannot_clear_same_second_reopened_incident() {
+    let db = TestDb::new();
+    let store = db.store();
+    let old = store
+        .claim_collector_incident_alert(KEY, 1_000, 3600, None)
+        .await
+        .unwrap();
+    store.close_collector_incident(KEY).await.unwrap();
+    let new = store
+        .claim_collector_incident_alert(KEY, 1_000, 3600, None)
+        .await
+        .unwrap();
+    let old_generation = generation(&old.incident).unwrap();
+    let new_generation = generation(&new.incident).unwrap();
+    assert_eq!(new_generation.len(), 32);
+    assert_ne!(old_generation, new_generation);
+    assert_eq!(old.incident.alert_count, new.incident.alert_count);
+    assert_eq!(old.incident.opened_at, new.incident.opened_at);
+    assert!(
+        !store
+            .acknowledge_collector_incident_delivery(
+                KEY,
+                old.incident.alert_count,
+                generation(&old.incident)
+            )
+            .await
+            .unwrap()
+    );
+    assert_eq!(
+        store.get_collector_incident(KEY).await.unwrap().unwrap(),
+        new.incident
+    );
+    assert!(
+        !store
+            .acknowledge_collector_incident_delivery(KEY, 1, None)
+            .await
+            .unwrap()
+    );
+    assert!(
+        store
+            .acknowledge_collector_incident_delivery(KEY, 1, generation(&new.incident))
+            .await
+            .unwrap()
     );
 }
