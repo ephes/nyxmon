@@ -73,6 +73,11 @@ pub(crate) fn reclaim_stale_checks(
     lease_seconds: i64,
     batch_size: i64,
 ) -> Result<Vec<Check>, StoreError> {
+    if batch_size <= 0 {
+        return Err(StoreError::InvalidArgument(
+            "reclaim batch_size must be positive",
+        ));
+    }
     let stale_before = now.saturating_sub(lease_seconds);
     let candidate = connection
         .query_row(
@@ -89,15 +94,6 @@ pub(crate) fn reclaim_stale_checks(
         return Ok(Vec::new());
     }
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    // Legacy or malformed claims without a timestamp receive a full lease
-    // from first observation instead of being reclaimed immediately.
-    transaction.execute(
-        "UPDATE health_check
-            SET processing_started_at = ?
-            WHERE status = 'processing'
-              AND COALESCE(processing_started_at, 0) = 0",
-        [now],
-    )?;
     let reclaimed = {
         let mut statement = transaction.prepare(&format!(
             "UPDATE health_check
@@ -115,6 +111,21 @@ pub(crate) fn reclaim_stale_checks(
         let rows = statement.query_map(params![stale_before, batch_size], row_to_check)?;
         rows.collect::<rusqlite::Result<Vec<_>>>()?
     };
+    // Expired claims take priority; repair legacy rows by ID using the remaining
+    // write allowance. Empty reclaim output ends this collector sweep, but later
+    // iterations keep repairing the backlog without holding one unbounded lock.
+    transaction.execute(
+        "UPDATE health_check SET processing_started_at = ?
+         WHERE id IN (
+             SELECT id FROM health_check
+             WHERE status = 'processing' AND COALESCE(processing_started_at, 0) = 0
+             ORDER BY id ASC LIMIT ?
+         )",
+        params![
+            now,
+            batch_size - i64::try_from(reclaimed.len()).unwrap_or(batch_size)
+        ],
+    )?;
     transaction.commit()?;
     Ok(reclaimed)
 }

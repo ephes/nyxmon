@@ -222,7 +222,10 @@ The collector treats `processing` as a lease rather than a permanent state. A
 check still processing after `NYXMON_PROCESSING_LEASE_SECONDS` is released,
 records a `stale_processing_lease` result, and is scheduled again.
 Legacy processing rows without a claim timestamp receive one full lease from
-the time the collector first sees them before recovery, avoiding duplicate work.
+the time the collector stamps them before recovery, avoiding duplicate work.
+Rust reclaim and legacy timestamp repair share a positive batch-size write cap
+per transaction. Expired claims take priority; repairs proceed in ID order with
+the remaining allowance and continue on later collector iterations.
 That reclaimed result is kept in the check's history so the gap is explainable,
 but it never becomes a per-check notification: reclaiming a batch of checks
 after a restart is reported once, as a collector-level incident, not once per
@@ -265,9 +268,10 @@ maintenance suppression and stays visible even if every member of the abandoned
 batch is disabled. A failed send is retried after one minute instead of waiting
 out the full hour.
 After recording expiry, Nyxmon waits the check's normal interval before the
-replacement run. A late result from the expired claim is stored but cannot
-release or reschedule a newer active claim, change its notification streak, or
-trigger an alert.
+replacement run. A late result from an expired or superseded claim is discarded: it cannot
+replace the latest dashboard observation, release or reschedule a newer claim,
+change its notification streak, or trigger an alert. The stale-lease recovery
+result remains in history; the discarded execution is logged by check ID.
 Unexpected executor exceptions are likewise converted into ordinary error
 results so a single broken check cannot strand its batch; exception details stay
 in the worker log rather than the stored result.

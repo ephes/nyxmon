@@ -706,7 +706,7 @@ async fn stale_recovery_cannot_release_a_newer_claim() {
         setup.db.schedule(1),
         ("processing".to_owned(), T0 + 300, T0)
     );
-    assert_eq!(setup.db.results().len(), 1);
+    assert!(setup.db.results().is_empty());
     assert_eq!(setup.db.state(1), NotificationState::default());
     assert_eq!(notifier.count(), 0);
 }

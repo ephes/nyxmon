@@ -236,6 +236,47 @@ async fn stale_expectation_on_a_new_field_still_conflicts() {
 }
 
 #[tokio::test]
+async fn late_failure_cannot_replace_a_newer_healthy_observation() {
+    let db = TestDb::new();
+    db.insert(row(1));
+    let store = db.store();
+    let first = store.claim_due_checks(10_000, 1).await.unwrap().remove(0);
+    store.reclaim_stale_checks(10_301, 300, 1).await.unwrap();
+    let second = store.claim_due_checks(10_302, 1).await.unwrap().remove(0);
+    assert!(
+        store
+            .persist_check_result(request(
+                &completed(&second, 10_303),
+                result(1, ResultStatus::Ok),
+                None,
+            ))
+            .await
+            .unwrap()
+    );
+    let schedule = db.schedule(1);
+    assert!(
+        !store
+            .persist_check_result(request(&completed(&first, 10_304), error(1), None,))
+            .await
+            .unwrap()
+    );
+    // The dashboard uses this ordering. Refusal keeps both history and latest healthy.
+    let latest: String = db
+        .raw()
+        .query_row(
+            "SELECT status FROM check_result WHERE health_check_id = 1
+         ORDER BY created_at DESC, id DESC LIMIT 1",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(latest, "ok");
+    assert_eq!(db.results().len(), 1);
+    assert_eq!(db.schedule(1), schedule);
+    assert_eq!(db.state_row(1), None);
+}
+
+#[tokio::test]
 async fn late_completion_cannot_release_newer_claim() {
     let db = TestDb::new();
     db.insert(row(1));
@@ -277,7 +318,7 @@ async fn late_completion_cannot_release_newer_claim() {
         ))
     );
     assert_eq!(db.state_row(1), Some([4, 2, 123, 0, 0, 0, 0, 0]));
-    assert_eq!(db.results().len(), 1);
+    assert!(db.results().is_empty());
 }
 
 #[tokio::test]
@@ -322,7 +363,7 @@ async fn late_completion_cannot_override_reclaimed_idle_backoff() {
     assert!(!applied);
     assert_eq!(db.schedule(1).unwrap(), after_recovery);
     assert_eq!(db.state_row(1), Some([0, 0, 123, 0, 0, 0, 0, 0]));
-    assert_eq!(db.results().len(), 2);
+    assert_eq!(db.results().len(), 1);
 }
 
 #[tokio::test]
@@ -539,7 +580,7 @@ async fn a_stale_completion_marks_nothing() {
             .unwrap()
     );
 
-    assert_eq!(db.results().len(), 1);
+    assert!(db.results().is_empty());
     assert_eq!(db.state_row(1), None);
 }
 

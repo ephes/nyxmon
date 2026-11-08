@@ -96,7 +96,11 @@ Telegram notifications read:
   `processing` before it is reclaimed, recorded as a `stale_processing_lease`
   result, and scheduled again (default `900`, minimum `30`). Invalid values
   fall back to the default and emit a warning in the worker log. Legacy claims
-  without a timestamp receive a fresh full lease on first observation.
+  without a timestamp receive a fresh full lease when stamped. Reclaim and
+  timestamp repair share the positive batch-size cap in each Rust transaction;
+  expired claims take priority and remaining capacity repairs legacy rows in ID
+  order. Repair-only sweeps resume on subsequent collector iterations, allowing
+  other database writers to progress between batches.
   Nyxmon automatically raises the effective lease to its conservative estimate
   of the largest enabled check's timeout/retry budget and logs when it does so.
   This is a batch-wide safety bound: one unusually slow enabled check increases
@@ -1045,3 +1049,12 @@ semantic oracle independently, so the Python-only suite needs no Cargo. Locally,
 `just notification-handoff` also opens the actual migrated file through Rust;
 `just test` includes this live check and needs the pinned Rust toolchain. No
 external notification endpoint is contacted.
+
+### Superseded lease observations
+
+The Rust store discards results whose claim no longer owns completion, even if
+its check definition is unchanged. They are logged by check ID but never inserted
+into result history, so a late failure cannot replace a replacement run's healthy
+dashboard observation. The collector's stale-lease result remains the audit of
+expiry. Notification state and newer schedules remain untouched. This deliberately
+tightens historical Python parity; no schema migration is needed.

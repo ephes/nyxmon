@@ -638,3 +638,17 @@ operations per packet byte, capped at 65,536 operations per response. Budget
 exhaustion uses the existing malformed-response classification. Ordinary compressed
 names and UDP-to-TCP truncation fallback are preserved; heavily amplified pointer
 ladders are refused even if their wire packet is otherwise valid.
+
+## Lease result authority and bounded repair
+
+Superseded claim completions are refused before result insertion, including when
+a replacement claim has already finished. The stale-lease recovery result records
+the gap; the refused execution is logged by check ID. This intentionally tightens
+the historical Python audit-retention contract and keeps latest-result readers
+on authoritative observations without a schema change.
+
+Reclaim requires a positive batch size. Each transaction changes at most that
+many health-check rows across expired-claim release and legacy timestamp repair.
+Expired claims take priority; remaining slots stamp timestamp-less claims in ID
+order with a full lease from stamping time. Repair-only work continues on later
+collector iterations, releasing the writer lock between batches.
