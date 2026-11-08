@@ -137,4 +137,219 @@ mod tests {
         assert!(open_read_only(&path).is_err());
         assert!(!path.exists());
     }
+
+    /// Poll the real actor call once and acknowledge enqueueing before returning.
+    /// Every use holds the actor at a channel gate, so a reply cannot race this poll.
+    async fn enqueue<T: Send + 'static>(
+        store: &Store,
+        operation: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
+    ) -> tokio::task::JoinHandle<Result<T, StoreError>> {
+        use std::task::Poll;
+        let store = store.clone();
+        let (sent, queued) = tokio::sync::oneshot::channel();
+        let task = tokio::spawn(async move {
+            let call = store.call(operation);
+            tokio::pin!(call);
+            assert!(
+                std::future::poll_fn(|cx| Poll::Ready(call.as_mut().poll(cx)))
+                    .await
+                    .is_pending()
+            );
+            sent.send(()).unwrap();
+            call.await
+        });
+        bounded(queued).await.unwrap();
+        task
+    }
+
+    async fn bounded<T>(future: impl std::future::Future<Output = T>) -> T {
+        tokio::time::timeout(Duration::from_secs(5), future)
+            .await
+            .expect("actor must settle without a timing sleep")
+    }
+
+    #[tokio::test]
+    async fn cancelled_writes_commit_once_in_fifo_order() {
+        // Cancel both a queued job and a transaction paused just before commit.
+        for cancel_in_transaction in [false, true] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("db.sqlite3");
+            let raw = Connection::open(&path).unwrap();
+            raw.execute_batch("CREATE TABLE writes (value INTEGER);")
+                .unwrap();
+            let store = Store::open(&path).unwrap();
+            let (entered, started) = tokio::sync::oneshot::channel();
+            let (release, gate) = mpsc::channel();
+            let blocker = if cancel_in_transaction {
+                None
+            } else {
+                let blocker = enqueue(&store, move |_| {
+                    entered.send(()).unwrap();
+                    gate.recv().unwrap();
+                    Ok(())
+                })
+                .await;
+                bounded(started).await.unwrap();
+                Some((blocker, release))
+            };
+            let (entered_write, write_started) = tokio::sync::oneshot::channel();
+            let (release_write, write_gate) = mpsc::channel();
+            let write = enqueue(&store, move |connection| {
+                let tx = connection
+                    .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+                tx.execute("INSERT INTO writes VALUES (10)", [])?;
+                entered_write.send(()).unwrap();
+                write_gate.recv().unwrap();
+                tx.commit()?;
+                Ok(())
+            })
+            .await;
+            if let Some((blocker, release)) = blocker {
+                write.abort();
+                assert!(bounded(write).await.unwrap_err().is_cancelled());
+                // The caller is gone before the actor starts the write.
+                release.send(()).unwrap();
+                bounded(blocker).await.unwrap().unwrap();
+                bounded(write_started).await.unwrap();
+            } else {
+                bounded(write_started).await.unwrap();
+                write.abort();
+                assert!(bounded(write).await.unwrap_err().is_cancelled());
+            }
+            // Queue a sibling while the cancelled write still owns its transaction.
+            let later = enqueue(&store, |connection| {
+                connection.execute("INSERT INTO writes SELECT value + 1 FROM writes", [])?;
+                Ok(())
+            })
+            .await;
+            release_write.send(()).unwrap();
+            bounded(later).await.unwrap().unwrap();
+            let values = store.call(|connection| {
+                Ok(connection
+                    .prepare("SELECT value FROM writes ORDER BY rowid")?
+                    .query_map([], |r| r.get::<_, i64>(0))?
+                    .collect::<rusqlite::Result<Vec<_>>>()?)
+            });
+            assert_eq!(bounded(values).await.unwrap(), [10, 11]);
+            let count: i64 = raw
+                .query_row("SELECT COUNT(*) FROM writes", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(count, 2);
+        }
+    }
+
+    #[tokio::test]
+    async fn dropping_all_handles_drains_queued_work_and_closes_the_connection() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        let raw = Connection::open(&path).unwrap();
+        raw.busy_timeout(Duration::from_secs(5)).unwrap();
+        raw.execute_batch("CREATE TABLE writes (value INTEGER)")
+            .unwrap();
+        let store = Store::open(&path).unwrap();
+        let clone = store.clone();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, gate) = mpsc::channel();
+        let blocker = enqueue(&store, move |_| {
+            entered.send(()).unwrap();
+            gate.recv().unwrap();
+            Ok(())
+        })
+        .await;
+        bounded(started).await.unwrap();
+        let (done, completed) = tokio::sync::oneshot::channel();
+        // Use the existing private Job seam so no awaiting task holds a Store clone.
+        store
+            .jobs
+            .send(Box::new(move |connection| {
+                connection
+                    .execute_batch(
+                        "BEGIN IMMEDIATE; INSERT INTO writes VALUES (7); COMMIT; BEGIN IMMEDIATE;",
+                    )
+                    .unwrap();
+                done.send(()).unwrap();
+                // Leave a write lock behind: only closing the actor connection releases it.
+            }))
+            .unwrap();
+        // Cancelling the gate caller drops its clone, but its queued operation remains.
+        blocker.abort();
+        assert!(bounded(blocker).await.unwrap_err().is_cancelled());
+        drop(clone);
+        drop(store);
+        release.send(()).unwrap();
+        bounded(completed).await.unwrap();
+        raw.execute_batch("BEGIN IMMEDIATE")
+            .expect("last handle must close actor connection");
+        assert_eq!(
+            raw.query_row("SELECT value FROM writes", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            7
+        );
+        raw.execute_batch("ROLLBACK").unwrap();
+    }
+
+    #[tokio::test]
+    async fn panicking_transaction_rolls_back_and_rejects_queued_siblings() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        Connection::open(&path)
+            .unwrap()
+            .execute_batch("CREATE TABLE writes (value INTEGER)")
+            .unwrap();
+        let store = Store::open(&path).unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, gate) = mpsc::channel();
+        let panicking = enqueue(&store, move |connection| -> Result<(), StoreError> {
+            // Deliberately leave rollback to Connection's drop on actor-thread unwind.
+            connection.execute_batch("BEGIN IMMEDIATE; INSERT INTO writes VALUES (42)")?;
+            entered.send(()).unwrap();
+            gate.recv().unwrap();
+            panic!("synthetic transaction failure");
+        })
+        .await;
+        bounded(started).await.unwrap();
+        let mut siblings = Vec::new();
+        for _ in 0..3 {
+            siblings.push(
+                enqueue(&store, |connection| {
+                    connection.execute("INSERT INTO writes VALUES (99)", [])?;
+                    Ok(())
+                })
+                .await,
+            );
+        }
+        release.send(()).unwrap();
+        assert!(matches!(
+            bounded(panicking).await.unwrap(),
+            Err(StoreError::ActorDied)
+        ));
+        for sibling in siblings {
+            assert!(matches!(
+                bounded(sibling).await.unwrap(),
+                Err(StoreError::ActorDied)
+            ));
+        }
+        assert!(matches!(
+            bounded(store.call(|_| Ok(()))).await,
+            Err(StoreError::ActorDied)
+        ));
+        let raw = Connection::open(&path).unwrap();
+        assert_eq!(
+            raw.query_row("SELECT COUNT(*) FROM writes", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+        let restarted = Store::open(&path).unwrap();
+        bounded(restarted.call(|connection| {
+            connection.execute("INSERT INTO writes VALUES (7)", [])?;
+            Ok(())
+        }))
+        .await
+        .unwrap();
+        assert_eq!(
+            raw.query_row("SELECT value FROM writes", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            7
+        );
+    }
 }

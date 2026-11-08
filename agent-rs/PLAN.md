@@ -653,6 +653,14 @@ transaction and no agent delete has FK children), opened with
 `db_path.exists()` check in `cli.py:start_agent`). A panicking closure or a
 dead actor thread is fatal: log and exit 1 (systemd restarts the unit).
 
+A sent operation finishes in FIFO order even if its awaiting task is cancelled,
+including cancellation during an open transaction. Dropping the final handle
+drains queued work before closing the connection. A panicking operation instead
+unwinds the actor thread: its open transaction rolls back on connection drop,
+and queued and subsequent callers receive `StoreError::ActorDied`. Restarting
+with a new actor can safely write again. Gated, isolated SQLite tests pin these
+contracts without scheduler sleeps.
+
 ### 3.3 Journal mode and locking
 
 The production database is in `journal_mode=delete`, set by nobody (SQLite
