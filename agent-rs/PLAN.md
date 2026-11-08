@@ -1402,6 +1402,12 @@ abandoned batch always runs the grace and flush windows.
 
 **Shutdown** (`_async_start` + `shutdown_deadline` + `request_stop`):
 
+The shared `sync::Flag` is a one-shot event. Setting it wakes all registered
+waiters; cancelled waiters cannot consume another waiter's notification. Late
+waiters return immediately and repeated sets are harmless. Poll-driven fan-out
+and cancellation tests and barrier-driven registration/check interleavings pin
+this contract without signal or platform dependencies.
+
 - SIGTERM/SIGINT → log `Received signal <n>, shutting down...` → request
   stop (no new claims).
 - If at that moment an active batch exists or an abandoned batch is still

@@ -91,10 +91,10 @@ def site_connectivity_banner():
         of every path that is down or recovering), ``active``,
         ``summary_pending``, ``incident_id``, the formatted ``observed_at`` of
         the last probe round and ``stale`` (the round is more than
-        :data:`SITE_OBSERVATION_STALE_SECONDS` old, or its timestamp is
-        unusable, so the observer may be stopped); or ``None`` when there is no
-        row, nothing to report, or the payload is malformed. Nothing in here
-        raises: a payload the dashboard cannot read simply produces no banner.
+        :data:`SITE_OBSERVATION_STALE_SECONDS` old, in the future, or its
+        timestamp is unusable, so the observer may be stopped or clocks skewed);
+        or ``None`` when there is no row, nothing to report, or the payload is
+        malformed. Nothing in here raises: a payload the dashboard cannot read simply produces no banner.
     """
     try:
         incident = CollectorIncident.objects.filter(
@@ -132,8 +132,11 @@ def site_connectivity_banner():
             )
 
     incident_id = payload.get("incident_id")
-    observed_at = _usable_epoch(payload.get("observed_at"))
-    stale = observed_at is None or time() - observed_at > SITE_OBSERVATION_STALE_SECONDS
+    observed_at = payload.get("observed_at")
+    # Validate before arithmetic, retaining subsecond precision for clock skew.
+    stale = _usable_epoch(observed_at) is None or not (
+        0 <= time() - observed_at <= SITE_OBSERVATION_STALE_SECONDS
+    )
     return {
         "active": active,
         "summary_pending": summary_pending,

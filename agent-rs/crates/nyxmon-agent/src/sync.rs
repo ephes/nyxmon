@@ -68,4 +68,81 @@ mod tests {
         flag.wait().await;
         assert!(flag.is_set());
     }
+
+    fn poll_once<F: std::future::Future>(
+        future: std::pin::Pin<&mut F>,
+    ) -> std::task::Poll<F::Output> {
+        future.poll(&mut std::task::Context::from_waker(std::task::Waker::noop()))
+    }
+
+    #[test]
+    fn preset_and_repeated_set_return_immediately_for_late_waiters() {
+        let flag = Flag::new();
+        flag.set();
+        flag.set();
+        for _ in 0..32 {
+            let mut waiter = Box::pin(flag.wait());
+            assert!(poll_once(waiter.as_mut()).is_ready());
+        }
+        assert!(flag.is_set());
+    }
+
+    #[test]
+    fn fanout_survives_cancellation_before_and_after_notification() {
+        for cancel_after_set in [false, true] {
+            let flag = Flag::new();
+            let mut waiters: Vec<_> = (0..32).map(|_| Box::pin(flag.wait())).collect();
+            for waiter in &mut waiters {
+                assert!(poll_once(waiter.as_mut()).is_pending());
+            }
+            if cancel_after_set {
+                flag.set();
+            }
+            drop(waiters.remove(0));
+            if !cancel_after_set {
+                flag.set();
+            }
+            // Polling a pending future resumes its real Notify await; checking
+            // readiness directly fails instead of hanging if a wakeup was lost.
+            for waiter in &mut waiters {
+                assert!(poll_once(waiter.as_mut()).is_ready());
+            }
+            flag.set();
+            assert!(poll_once(Box::pin(flag.wait()).as_mut()).is_ready());
+        }
+    }
+
+    #[test]
+    fn set_racing_registration_and_check_keeps_all_waiters_ready() {
+        // Half the waiters are registered already; the rest race their first
+        // poll with set on another thread. No scheduler yields or sleeps.
+        for _ in 0..128 {
+            let flag = Flag::new();
+            let barrier = std::sync::Barrier::new(2);
+            let mut early: Vec<_> = (0..8).map(|_| Box::pin(flag.wait())).collect();
+            for waiter in &mut early {
+                assert!(poll_once(waiter.as_mut()).is_pending());
+            }
+            drop(early.remove(0));
+            let mut racing: Vec<_> = (0..8).map(|_| Box::pin(flag.wait())).collect();
+            let mut pending = Vec::new();
+            std::thread::scope(|scope| {
+                let setter = scope.spawn(|| {
+                    barrier.wait();
+                    flag.set();
+                });
+                barrier.wait();
+                for mut waiter in racing.drain(..) {
+                    if poll_once(waiter.as_mut()).is_pending() {
+                        pending.push(waiter);
+                    }
+                }
+                setter.join().unwrap();
+            });
+            for waiter in early.iter_mut().chain(pending.iter_mut()) {
+                assert!(poll_once(waiter.as_mut()).is_ready());
+            }
+            assert!(poll_once(Box::pin(flag.wait()).as_mut()).is_ready());
+        }
+    }
 }

@@ -152,6 +152,32 @@ class TestDashboardBanner:
         # The old, unconditional claim must be gone.
         assert "<code>site_dependency</code> are held." not in content
 
+    @pytest.mark.parametrize("phase", ["active", "idle"])
+    @pytest.mark.parametrize(
+        ("age", "stale"),
+        [(-86400, True), (-0.001, True), (0, False), (600, False), (600.001, True)],
+    )
+    def test_observation_freshness_requires_a_nonnegative_age(
+        self, client, monkeypatch, phase, age, stale
+    ):
+        _freeze(monkeypatch, OBSERVED_AT)
+        _incident(
+            _active_payload(
+                observed_at=OBSERVED_AT - age,
+                phase=phase,
+                summaries=[{"incident_id": 1757123456, "attempt_at": 0}],
+            )
+        )
+        response = client.get(reverse("nyxboard:dashboard"))
+        assert response.status_code == 200
+        banner = response.context["site_connectivity"]
+        assert banner["stale"] is stale
+        assert banner["observed_at"] is not None
+        content = response.content.decode()
+        assert ("the observer may be stopped" in content) is stale
+        if phase == "idle":
+            assert "recovery summary is still pending delivery" in content
+
     def test_banner_reports_a_fresh_observation_time(self, client, monkeypatch):
         _freeze(monkeypatch, OBSERVED_AT + SITE_OBSERVATION_STALE_SECONDS)
         _incident(_active_payload())
