@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site connectivity observation enabled, a malformed persisted site lifecycle
   now fails startup; repair the row or set `NYXMON_SITE_CONNECTIVITY_MODE=off`
   before the rollout.
+- Security: update rusqlite to 0.41.1 with libsqlite3-sys 0.39.1 (bundled
+  SQLite 3.54.0, RUSTSEC-2026-0459 / C SQLite CVE-2026-119375 for databases
+  and `-wal` files written by a less trusted party) and rustix to 1.1.6
+  (RUSTSEC-2026-0486, unsound zero-length xattr buffers), so `cargo deny`
+  passes again. Nyxmon's database is written only by its own service users,
+  so the exposure was low; both ship in `agent-rs-v0.1.3`.
 
 ### Fixed
 
