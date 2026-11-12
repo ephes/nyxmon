@@ -18,6 +18,6 @@
 The scout report (`scout-round84.md`) was not available when B35/B36 were
 implemented; their scope was reconstructed from the slugs and verified
 against the code. The behaviour is documented in `agent-rs/PLAN.md` 5.5,
-`docs/configuration.md` and the Unreleased changelog. None of the four
-bundles is in `agent-rs-v0.1.3`; the Rust agent needs a release or a new
-pin before production runs them.
+`docs/configuration.md` and the Unreleased changelog. B33 shipped in
+`agent-rs-v0.1.3`; B34–B36 ship in `agent-rs-v0.1.4`, and production runs
+them once ops-control pins that release.

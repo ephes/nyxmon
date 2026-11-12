@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent 0.1.4
+
+- Release the Rust agent as `agent-rs-v0.1.4` (crate version 0.1.4, tag
+  2026-11-12). Compared with `agent-rs-v0.1.3` (`291a7e5`) it contains these
+  Rust agent changes, each with its own entry below: at most five checks
+  execute at once and collector admission is `min(NYXMON_CHECK_BATCH_SIZE,
+  5)`; held-check rechecks are deduplicated and chunked below the SQLite
+  parameter limit in one transaction; http, json-http and json-metrics
+  checks keep their cookies per check execution; every whole HTTP attempt,
+  redirects and the json-metrics body read included, is bounded by the
+  configured `timeout`; json-metrics `timeout`, `retry_delay` (finite, at most
+  300 s) and `retries` (at most 100) are bounded, and json-metrics retries stop
+  once they would exceed the check's runtime estimate. The agent needs no new
+  schema: its minimum stays `nyxboard.0013_site_connectivity_state`. Upgrade
+  note: a json-metrics check with an infinite, NaN or out-of-range `timeout`,
+  `retry_delay` or `retries` now fails with `configuration_error`; correct such
+  checks before the rollout.
+
 ### Rust agent 0.1.3
 
 - Release the Rust agent as `agent-rs-v0.1.3` (crate version 0.1.3, tag
@@ -40,29 +58,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   must be finite and at most 300 s, `retry_delay` finite and at most 300 s,
   `retries` at most 100 (the HTTP check's bounds). `Infinity`, `NaN` and huge
   numbers, which Python accepted and which could make a check wait or retry
-  without end, now fail with `configuration_error`. (After
-  `agent-rs-v0.1.3`; not in that tag.)
+  without end, now fail with `configuration_error`. (Ships in
+  `agent-rs-v0.1.4`.)
 - Stop json-metrics retries once another delay plus a whole attempt would
   exceed the check's runtime estimate (explicit `max_runtime_seconds`
   included, at most one hour), so retries never outlast the processing lease.
-  (After `agent-rs-v0.1.3`; not in that tag.)
+  (Ships in `agent-rs-v0.1.4`.)
 - Keep HTTP cookies per check execution in the Rust agent: http, json-http and
   json-metrics checks no longer share the batch-wide cookie jar, so a session
   cookie set for one check is never sent by another check of the batch.
   Cookies still follow the redirects and retries of the same execution.
-  (After `agent-rs-v0.1.3`; not in that tag.)
+  (Ships in `agent-rs-v0.1.4`.)
 - Bound each whole Rust http/json-http/json-metrics attempt, every redirect
   hop and the json-metrics body read included, by the configured `timeout`.
   A server dripping bytes or chaining slow redirects now fails with `timeout`
-  instead of keeping the check beyond its runtime estimate. (After
-  `agent-rs-v0.1.3`; not in that tag.)
+  instead of keeping the check beyond its runtime estimate. (Ships in
+  `agent-rs-v0.1.4`.)
 - Chunk Rust held-check rechecks below the connection's SQLite parameter limit,
   deduplicate IDs and preserve atomic rollback and exact changed-row counts.
-  (After `agent-rs-v0.1.3`; not in that tag.)
+  (Ships in `agent-rs-v0.1.4`.)
 - Limit Rust check execution to five active tasks and collector admission to
   `min(NYXMON_CHECK_BATCH_SIZE, 5)`. Waiting fleet checks remain unclaimed,
   preserving the per-check lease estimate and shutdown release semantics.
-  (After `agent-rs-v0.1.3`; not in that tag.)
+  (Ships in `agent-rs-v0.1.4`.)
 
 - Discard superseded Rust lease completions before inserting results, keeping
   late failures from replacing healthy dashboard observations. Retain the
