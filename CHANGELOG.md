@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent 0.1.3
+
+- Release the Rust agent as `agent-rs-v0.1.3` (crate version 0.1.3, tag
+  2026-11-12). Compared with `agent-rs-v0.1.2` (`cb3928b`) it contains these
+  Rust agent changes, each with its own entry below:
+  superseded lease completions and edited check definitions no longer
+  publish results; bounded stale-reclaim and legacy-timestamp repair; bounded
+  HTTP decoding, mail responses and lifetimes, DNS parsing and ping capture
+  (owned process group); bounded notifier calls and response bodies;
+  sanitized single-line logging-notifier output; random collector-incident
+  delivery identities; payload-free panic logs and task supervision (an
+  unexpectedly ended collector, observer or cleaner now stops the agent with
+  a failure exit); strictly positive `--interval`, `--cleanup-interval` and
+  `--retention-period`; a cleanup batch size of 1..=1000; database alias
+  resolution with a regular, single-link database and lock file. The agent
+  needs no new schema: its minimum stays `nyxboard.0013_site_connectivity_state`
+  (`0014_login_throttle_bucket` is for the dashboard only). Upgrade note: with
+  site connectivity observation enabled, a malformed persisted site lifecycle
+  now fails startup; repair the row or set `NYXMON_SITE_CONNECTIVITY_MODE=off`
+  before the rollout.
+
 ### Fixed
 
 - Discard superseded Rust lease completions before inserting results, keeping

@@ -405,8 +405,9 @@ An edit or deletion during a probe supersedes its completion: the old sample is
 discarded and cannot change alert state or send a notification. Only the matching
 old claim is released; an operator's schedule or newer claim is preserved.
 Probes run outside database write transactions. Edits after publication do not
-revoke an already committed notification intent. Adopting this behavior in
-production requires a later owner-managed Rust binary release and rollout.
+revoke an already committed notification intent. This ships in Rust agent
+`agent-rs-v0.1.3`; production adopts it with the owner-managed ops-control pin
+and rollout.
 
 The warning digest selects each enabled check's latest result by timestamp,
 then ID for ties, matching the dashboard. A later-inserted backdated warning

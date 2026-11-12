@@ -14,7 +14,8 @@ contributors.
 
 ```{note}
 Production runs the Rust agent since 2026-10-16 (cutover with release
-`agent-rs-v0.1.0`; macmini runs `agent-rs-v0.1.1` since 2026-10-21). Before
+`agent-rs-v0.1.0`; the release macmini runs is the ops-control pin
+`nyxmon_agent_rust_version`, see `agent-rs/README.md` for the releases). Before
 the switch the binary was validated by the process tests, an offline parity
 harness and a shadow run on the production host. After a clean 7-day soak the
 Python fallback was retired on 2026-10-25: the deployment no longer offers a

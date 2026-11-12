@@ -2,8 +2,8 @@
 
 A Rust port of the nyxmon monitoring agent (`start-agent`). The contract is
 [`PLAN.md`](PLAN.md). **Production (macmini) runs this agent since
-2026-10-16** (release `agent-rs-v0.1.0`, slice S16; `agent-rs-v0.1.1` since
-2026-10-21): the ops-library `nyxmon_deploy` role installs a pinned release
+2026-10-16** (release `agent-rs-v0.1.0`, slice S16; later releases are
+pinned in ops-control): the ops-library `nyxmon_deploy` role installs a pinned release
 binary and runs it (PLAN.md 8). rsync and git deploys still ship `src/`
 only; `agent-rs/` reaches the host only as a release.
 
@@ -14,9 +14,15 @@ shadow-run tools and the fixture drift test with its generators) was removed;
 see git history. The Python agent stays in `src/nyxmon` but is not deployed;
 removing it together with its `_ensure_schema` DDL is a separate follow-up.
 
-The current published security release is [`agent-rs-v0.1.1`](https://github.com/ephes/nyxmon/releases/tag/agent-rs-v0.1.1),
+Releases are cut from the commit that sets the crate version (see
+"Releases" below): `agent-rs-v0.1.3` (2026-11-12) follows
+`agent-rs-v0.1.2` (2026-11-02, `cb3928b`, warning digest delivery mode) and
+the eMudhra security patch
+[`agent-rs-v0.1.1`](https://github.com/ephes/nyxmon/releases/tag/agent-rs-v0.1.1),
 published on 2026-10-21 from `c578530b64561c43ea56eb4377a9a03dd2131ddc`.
-Publication is separate from the managed deployment and running-process proof.
+Publication is separate from the managed deployment and running-process proof:
+the version macmini runs is the ops-control pin
+(`nyxmon_agent_rust_version`).
 
 Status: slice S1 (foundations): workspace, CI, recipes, the `pyjson`
 module, the fixture pipeline, the environment readers, the domain types and
@@ -513,8 +519,8 @@ lines per reply, in addition to its existing 8,192-byte line limit. Boundaries
 are inclusive. Exceeding a limit closes the connection and records a controlled
 protocol error without echoing the oversized payload. Normal UID selection,
 targeted expunge, EHLO parsing and accepted-DATA classification are unchanged.
-These limits require a future Rust-agent release and rollout; none is performed
-as part of this change.
+These limits ship in `agent-rs-v0.1.3`; production adopts them with the
+owner-managed ops-control pin and rollout.
 
 ### Mail attempt deadlines and resolver capacity
 
@@ -538,7 +544,8 @@ is bounded by the per-operation `timeout`; hostname discovery is inside the
 SMTP attempt deadline. If all slots remain occupied, later callers time out
 without queuing more blocking jobs. Capacity returns when those jobs finish;
 libc calls cannot be cancelled. Other check executors' resolver paths are
-unchanged. These changes require a future Rust-agent release and rollout.
+unchanged. These changes ship in `agent-rs-v0.1.3` (production: the
+ops-control pin and rollout).
 
 Scheduling and retention flags (`--interval`, `--cleanup-interval`,
 `--retention-period`) accept strictly positive signed 64-bit seconds (1 through
@@ -586,8 +593,8 @@ Network probes and notification delivery run outside the write transaction.
 Publication is the fence: a later edit does not revoke delivery already granted
 by a committed notification intent. Unchanged definitions retain normal
 completion, stale-lease recovery and late-claim behavior. The Python fallback
-remains retired. Production adoption needs a later binary release/rollout;
-this change does not perform one.
+remains retired. This ships in `agent-rs-v0.1.3`; production adopts it with
+the ops-control pin and rollout.
 
 Collector-incident acknowledgements compare both the attempt count and the random
 `delivery_generation` payload token assigned by the store to each send intent.
