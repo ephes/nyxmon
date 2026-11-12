@@ -1,9 +1,11 @@
 //! The `json-metrics` executor (`executors/json_metrics_executor.py`).
 //!
 //! The evaluation is pure ([`nyxmon_core::metrics_eval`]); this module does
-//! the fetch with the shared batch session: redirects followed, basic auth,
-//! the body of an error response not read, the body cap applied to the
-//! decoded bytes, and `json.loads` on the raw bytes.
+//! the fetch on the check's own session copy (its own cookie jar):
+//! redirects followed, basic auth, the body of an error response not read,
+//! the body cap applied to the decoded bytes, and `json.loads` on the raw
+//! bytes. Each attempt, redirects and body read included, is bounded by the
+//! configured timeout as a whole ([`attempt_deadline`]).
 
 use std::time::Instant;
 
@@ -18,8 +20,8 @@ use nyxmon_core::pyjson::{PyDict, PyJson, loads_bytes, py_type_name as type_name
 
 use crate::ctx::BatchCtx;
 use crate::http_client::{
-    BodyError, BodyLimit, GetRequest, HttpError, HttpErrorKind, basic_authorization, read_body,
-    timeout_duration,
+    BodyError, BodyLimit, GetRequest, HttpError, HttpErrorKind, HttpSession, attempt_deadline,
+    basic_authorization, read_body, timeout_duration,
 };
 
 fn error(check: &Check, error_type: &str, msg: impl Into<String>) -> CheckResult {
@@ -68,7 +70,7 @@ enum Fetched {
 }
 
 async fn fetch(
-    ctx: &BatchCtx,
+    http: &HttpSession,
     config: &JsonMetricsConfig,
     url: &str,
     auth: Option<HeaderValue>,
@@ -80,22 +82,24 @@ async fn fetch(
         authorization: auth,
         timeout_overflows: config.timeout_overflows,
     };
-    let response = match ctx.http.get(&request).await {
-        Ok(response) => response,
-        Err(err) => return Fetched::Failed(err),
+    let attempt = async {
+        let response = http.get(&request).await?;
+        let status = response.status;
+        if status >= 400 {
+            return Ok(Fetched::Body(status, Vec::new()));
+        }
+        let limit = BodyLimit {
+            limit: &config.max_body_bytes,
+        };
+        match read_body(response, Some(limit)).await {
+            Ok(body) => Ok(Fetched::Body(status, body)),
+            Err(BodyError::TooLarge(message)) => Ok(Fetched::TooLarge(message)),
+            Err(BodyError::Http(err)) => Err(err),
+        }
     };
-    let status = response.status;
-    if status >= 400 {
-        return Fetched::Body(status, Vec::new());
-    }
-    let limit = BodyLimit {
-        limit: &config.max_body_bytes,
-    };
-    match read_body(response, Some(limit)).await {
-        Ok(body) => Fetched::Body(status, body),
-        Err(BodyError::TooLarge(message)) => Fetched::TooLarge(message),
-        Err(BodyError::Http(err)) => Fetched::Failed(err),
-    }
+    attempt_deadline(request.timeout, attempt)
+        .await
+        .unwrap_or_else(Fetched::Failed)
 }
 
 /// `JsonMetricsExecutor.execute`.
@@ -117,6 +121,7 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
     let attempts = (retries + BigInt::from(1)).to_u64().unwrap_or(u64::MAX);
     let may_retry = |attempt: u64| BigInt::from(attempt) < *retries;
     let mut last_error = None;
+    let http = ctx.http.for_check();
 
     for attempt in 0..attempts {
         let start = Instant::now();
@@ -135,7 +140,7 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
                 ),
             ));
         };
-        let (status, raw_body) = match fetch(ctx, &config, url, auth).await {
+        let (status, raw_body) = match fetch(&http, &config, url, auth).await {
             Fetched::Body(status, body) => (status, body),
             Fetched::TooLarge(message) => return Ok(error(check, "body_too_large", message)),
             Fetched::Failed(err) => {

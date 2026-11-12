@@ -395,8 +395,11 @@ Never add DDL to the Python agent; a new required column raises
   httpx (PLAN.md 5.5): URLs parsed and joined like httpx
   (`nyxmon_checks::httpx_url`, so the request target is httpx's `raw_path`),
   per-read/per-write timeouts, redirects and `Authorization` stripping,
-  `Content-Encoding` decoding, anyio's Happy Eyeballs connects, and a batch
-  cookie jar ordered like `http.cookiejar`. A plain reqwest client cannot express the per-read
+  `Content-Encoding` decoding, anyio's Happy Eyeballs connects, and a cookie
+  jar ordered like `http.cookiejar`. Unlike httpx, every check execution
+  gets its own jar (`HttpSession::for_check`), so cookies never cross from
+  one check to another, and the check executors bound each whole attempt,
+  redirects and body included, by the configured `timeout`. A plain reqwest client cannot express the per-read
   timeouts or the request target. Proxy environment variables are not read
   (none is set for the production agent, PLAN.md D-15). Retry delays go through
   `nyxmon_checks::ctx::Sleeper` so tests can record them.

@@ -5,12 +5,16 @@
 //! - URLs are parsed and joined like httpx ([`crate::httpx_url`]); the
 //!   request target is httpx's `raw_path`;
 //! - httpx timeouts: `timeout=t` bounds connecting (DNS and TCP), the TLS
-//!   handshake, and every single socket read and write separately; a
-//!   response arriving in slow pieces is fine as long as no read waits
-//!   longer than `t`;
-//! - one [`HttpSession`] per batch with one cookie jar (httpx keeps one jar
-//!   per `AsyncClient`, and the runner creates one client per batch); the
-//!   `Cookie` header lists longer paths first like `http.cookiejar`;
+//!   handshake, and every single socket read and write separately; the
+//!   check executors additionally bound each whole attempt (redirects and
+//!   body included) by `t` with [`attempt_deadline`], so a response
+//!   arriving in slow pieces cannot outlive the runtime estimate;
+//! - one cookie jar per [`HttpSession`]; the batch keeps one session for
+//!   the shared TLS configuration and every check execution works on its
+//!   own [`HttpSession::for_check`] copy with an empty jar, so cookies set
+//!   for one check are never sent by another (Python's batch-wide
+//!   `AsyncClient` jar shared them). The `Cookie` header lists longer paths
+//!   first like `http.cookiejar`;
 //! - httpx's default headers, its User-Agent (Q2) and HTTP/1.1 only;
 //! - redirects followed by hand like `AsyncClient._send_handling_redirects`
 //!   (at most 20, each redirect body closed without reading before following,
@@ -353,6 +357,20 @@ async fn bounded<F: Future>(timeout: Option<Duration>, future: F) -> Result<F::O
     }
 }
 
+/// Bound one whole check attempt (connect, redirects and any body read) by
+/// `timeout`; an expired attempt is a timeout (`httpx.TimeoutException`).
+/// `None` (no timeout) leaves the attempt unbounded, as the per-operation
+/// timeouts do.
+///
+/// # Errors
+/// The attempt's own error, or a timeout when the deadline expires.
+pub async fn attempt_deadline<T, F>(timeout: Option<Duration>, attempt: F) -> Result<T, HttpError>
+where
+    F: Future<Output = Result<T, HttpError>>,
+{
+    bounded(timeout, attempt).await?
+}
+
 /// A response with its body unread. Dropping it closes the connection.
 pub struct HttpResponse {
     pub status: u16,
@@ -404,6 +422,18 @@ impl HttpSession {
             jar: Mutex::new(CookieStore::new()),
             tls: tokio_rustls::TlsConnector::from(Arc::new(tls)),
             overrides: Vec::new(),
+        }
+    }
+
+    /// A session for one check execution: the same TLS configuration and
+    /// test routes, but its own empty cookie jar, so no cookie (a session
+    /// credential) crosses from one check to another of the batch.
+    #[must_use]
+    pub fn for_check(&self) -> Self {
+        HttpSession {
+            jar: Mutex::new(CookieStore::new()),
+            tls: self.tls.clone(),
+            overrides: self.overrides.clone(),
         }
     }
 

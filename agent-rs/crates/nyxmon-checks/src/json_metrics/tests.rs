@@ -136,3 +136,45 @@ async fn a_timeout_beyond_float_range_is_an_unexpected_error() {
     let result = execute(&check(&data), &ctx).await.unwrap();
     assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
 }
+
+#[tokio::test]
+async fn the_timeout_bounds_the_whole_attempt_including_the_body() {
+    // The body drips in 100 ms apart; every read is fast, the attempt is not.
+    let mut step = vec![Action::Write(head(200, &[("Content-Length", "10")]))];
+    for _ in 0..10 {
+        step.push(Action::Sleep(std::time::Duration::from_millis(100)));
+        step.push(Action::Write(b" ".to_vec()));
+    }
+    let server = FakeServer::start(vec![step]).await;
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "timeout": 0.4, "retries": 0}}"#,
+        server.port()
+    );
+    let started = std::time::Instant::now();
+    let result = execute(&check(&data), &ctx()).await.unwrap();
+    assert_eq!(
+        result.data["error_type"].as_str(),
+        Some("timeout"),
+        "{result:?}"
+    );
+    assert!(started.elapsed() < std::time::Duration::from_millis(800));
+}
+
+#[tokio::test]
+async fn cookies_never_cross_from_one_check_to_another_of_the_batch() {
+    let server = FakeServer::start(vec![
+        crate::testutil::respond(200, &[("Set-Cookie", "sid=secret; Path=/")], br#"{"a": 1}"#),
+        crate::testutil::respond(200, &[], br#"{"a": 1}"#),
+    ])
+    .await;
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}}}"#,
+        server.port()
+    );
+    let batch = ctx();
+    for _ in 0..2 {
+        let result = execute(&check(&data), &batch).await.unwrap();
+        assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
+    }
+    assert_eq!(server.requests()[1].header("cookie"), None);
+}

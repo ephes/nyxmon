@@ -73,10 +73,9 @@ async fn a_stalled_redirect_body_is_closed_before_following() {
     assert_eq!(server.requests().len(), 2);
 }
 
-#[tokio::test]
-async fn the_timeout_bounds_each_read_not_the_whole_request() {
-    // Header pieces arrive 200 ms apart; a 0.5 s per-read timeout allows
-    // the complete head even though the total exceeds 0.5 s.
+/// A head that arrives in pieces 200 ms apart (about one second in total):
+/// every single read finishes well inside a 0.5 s timeout.
+fn dripped_head() -> Vec<Action> {
     let mut step = Vec::new();
     for piece in [
         b"HTTP/1.1 ".as_slice(),
@@ -89,11 +88,105 @@ async fn the_timeout_bounds_each_read_not_the_whole_request() {
         step.push(Action::Write(piece.to_vec()));
     }
     step.push(Action::Hold);
-    let server = FakeServer::start(vec![step]).await;
+    step
+}
+
+#[tokio::test]
+async fn the_timeout_bounds_the_whole_attempt_not_only_each_read() {
+    // httpx would accept this head (no single read waits 0.5 s); the
+    // attempt deadline keeps the check inside its runtime estimate.
+    let server = FakeServer::start(vec![dripped_head()]).await;
     let url = format!("http://127.0.0.1:{}/", server.port());
+    let started = Instant::now();
     let result = execute(&check(&url, r#"{"timeout": 0.5}"#), &ctx()).await;
+    assert_eq!(
+        result.data["error_type"].as_str(),
+        Some("timeout"),
+        "{result:?}"
+    );
+    assert!(started.elapsed() < Duration::from_millis(900));
+    // A timeout long enough for the whole head still succeeds.
+    let server = FakeServer::start(vec![dripped_head()]).await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let result = execute(&check(&url, r#"{"timeout": 3}"#), &ctx()).await;
     assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
-    assert_eq!(server.requests().len(), 1);
+}
+
+#[tokio::test]
+async fn the_attempt_deadline_covers_every_redirect_hop() {
+    // Each hop answers after 150 ms; four hops exceed a 0.4 s attempt even
+    // though every hop alone is fast enough.
+    let hop = |location: &str| {
+        let mut step = vec![Action::Sleep(Duration::from_millis(150))];
+        step.extend(crate::testutil::redirect(302, location));
+        step
+    };
+    let server = FakeServer::start(vec![
+        hop("/1"),
+        hop("/2"),
+        hop("/3"),
+        respond(200, &[], b""),
+    ])
+    .await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let started = Instant::now();
+    let result = execute(&check(&url, r#"{"timeout": 0.4}"#), &ctx()).await;
+    assert_eq!(
+        result.data["error_type"].as_str(),
+        Some("timeout"),
+        "{result:?}"
+    );
+    assert!(started.elapsed() < Duration::from_millis(550));
+    assert!(server.requests().len() < 4);
+}
+
+#[tokio::test]
+async fn cookies_never_cross_from_one_check_to_another_of_the_batch() {
+    let server = FakeServer::start(vec![
+        respond(200, &[("Set-Cookie", "sid=secret; Path=/")], b""),
+        respond(200, &[], b""),
+        respond(200, &[], b""),
+    ])
+    .await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let batch = ctx();
+    // The first check logs in; the other check of the same batch and the
+    // next execution of the first one start without its cookie.
+    assert_eq!(
+        execute(&check(&url, "{}"), &batch).await.status,
+        ResultStatus::Ok
+    );
+    assert_eq!(
+        execute(&check(&url, "{}"), &batch).await.status,
+        ResultStatus::Ok
+    );
+    assert_eq!(
+        execute(&check(&url, "{}"), &batch).await.status,
+        ResultStatus::Ok
+    );
+    let cookies: Vec<Option<String>> = server
+        .requests()
+        .iter()
+        .map(|r| r.header("cookie").map(str::to_owned))
+        .collect();
+    assert_eq!(cookies, [None, None, None]);
+}
+
+#[tokio::test]
+async fn cookies_still_follow_the_redirects_of_one_check() {
+    let server = FakeServer::start(vec![
+        respond(
+            302,
+            &[("Location", "/next"), ("Set-Cookie", "a=1; Path=/")],
+            b"",
+        ),
+        respond(200, &[], b""),
+    ])
+    .await;
+    let url = format!("http://127.0.0.1:{}/", server.port());
+    let result = execute(&check(&url, "{}"), &ctx()).await;
+    assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
+    assert_eq!(server.requests()[1].header("cookie"), Some("a=1"));
 }
 
 #[tokio::test]
