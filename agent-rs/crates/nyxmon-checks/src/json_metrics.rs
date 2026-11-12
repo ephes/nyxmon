@@ -6,14 +6,20 @@
 //! the body cap applied to the decoded bytes, and `json.loads` on the raw
 //! bytes. Each attempt, redirects and body read included, is bounded by the
 //! configured timeout as a whole ([`attempt_deadline`]).
+//!
+//! Retries stay inside the check's execution budget: the runtime estimate
+//! the collector sizes the processing lease with
+//! ([`estimated_check_runtime_seconds`], capped at
+//! [`MAX_DERIVED_PROCESSING_LEASE_SECONDS`]). A retry starts only while its
+//! delay plus a whole attempt still fit into that budget; otherwise the
+//! last failure is the result.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use hyper::header::HeaderValue;
-use num_bigint::BigInt;
-use num_traits::ToPrimitive;
 use nyxmon_core::config::json_metrics::JsonMetricsConfig;
 use nyxmon_core::config::{ConfigError, PyException};
+use nyxmon_core::lease::{MAX_DERIVED_PROCESSING_LEASE_SECONDS, estimated_check_runtime_seconds};
 use nyxmon_core::metrics_eval::{evaluate, failure_status, failure_summary};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
 use nyxmon_core::pyjson::{PyDict, PyJson, loads_bytes, py_type_name as type_name};
@@ -80,7 +86,6 @@ async fn fetch(
         timeout: timeout_duration(config.timeout),
         follow_redirects: true,
         authorization: auth,
-        timeout_overflows: config.timeout_overflows,
     };
     let attempt = async {
         let response = http.get(&request).await?;
@@ -116,10 +121,16 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
         }
         Err(ConfigError::Exception(exc)) => return Err(exc),
     };
-    let retries = &config.retries;
-    // `range(retries + 1)`; beyond u64 the loop is endless in practice.
-    let attempts = (retries + BigInt::from(1)).to_u64().unwrap_or(u64::MAX);
-    let may_retry = |attempt: u64| BigInt::from(attempt) < *retries;
+    let attempts = config.retries + 1;
+    let started = Instant::now();
+    let budget = execution_budget(check);
+    // `attempt < retries`, and the delay plus one more whole attempt still
+    // fit into the execution budget.
+    let may_retry = |attempt: u32| {
+        attempt < config.retries
+            && started.elapsed().as_secs_f64() + config.retry_delay + config.timeout
+                <= budget.as_secs_f64()
+    };
     let mut last_error = None;
     let http = ctx.http.for_check();
 
@@ -195,6 +206,16 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
         return Ok(CheckResult::new(check.check_id, status, data));
     }
     Ok(last_error.unwrap_or_else(|| error(check, "unexpected_error", "metrics check failed")))
+}
+
+/// The wall-clock budget of one execution: the check's runtime estimate
+/// (an explicit `max_runtime_seconds`, else retries, delays and timeouts
+/// plus a margin), never above the largest derived processing lease.
+fn execution_budget(check: &Check) -> Duration {
+    let estimate =
+        estimated_check_runtime_seconds(check.check_id, &check.check_type, &check.data, None)
+            .clamp(0, MAX_DERIVED_PROCESSING_LEASE_SECONDS);
+    Duration::from_secs(u64::try_from(estimate).unwrap_or(0))
 }
 
 #[cfg(test)]

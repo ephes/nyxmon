@@ -691,6 +691,14 @@ response is stopped once its inflated size passes the cap. Error responses
 (status 400 and above) are not read. The dashboard form has no field
 for the cap; a value set in the stored JSON is kept when the check is edited.
 
+`timeout` must be a finite number greater than zero, at most 300 seconds;
+`retry_delay` finite between 0 and 300 seconds; `retries` between 0 and 100.
+Other values, such as `Infinity`, `NaN` or huge numbers, fail with
+`error_type="configuration_error"` before any request. Retries also stop once
+another delay plus a whole attempt would exceed the check's runtime budget
+(its `max_runtime_seconds`, or the estimate from timeout and retries, at most
+one hour); the result is then the last failure.
+
 `timeout` bounds each whole attempt, redirects and body read included, not
 only every single read: a body that arrives too slowly fails the attempt with
 `error_type="timeout"`. Cookies set by the endpoint stay with this check

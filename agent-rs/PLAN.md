@@ -1193,9 +1193,10 @@ raised). Any error in this function is logged as
   (`http_client::attempt_deadline`, a timeout → `timeout`), so a peer that
   drips bytes or chains slow redirects cannot keep a check past the
   per-attempt `timeout` that the runtime estimate (5.8) assumes. The
-  suppression fetch keeps the per-operation timeouts only. An integer
-  timeout beyond float range fails like httpcore (`OverflowError` →
-  `unexpected_error`).
+  suppression fetch keeps the per-operation timeouts only. The
+  json-metrics config rejects infinite, NaN and huge timeouts (finite clock
+  domain, below), so httpcore's `OverflowError` for an integer timeout
+  beyond float range cannot occur.
 - Default request headers as httpx: `Accept: */*`,
   `Accept-Encoding: gzip, deflate`, `Connection: keep-alive`, and the
   User-Agent `python-httpx/0.28.1` (Q2). HTTP/1.1 only.
@@ -1217,7 +1218,19 @@ raised). Any error in this function is logged as
   CPython (4.2); `retries` default **1**, `int()` on the raw value (strings,
   floats, bools accepted as Python does), `retry_delay` via `float()`;
   `validate` raises `TypeError` for string timeouts (→ `executor_exception`) —
-  fixture. Path resolution with `[n]` → `.n` normalisation
+  fixture. **Finite clock domain (intentional difference):** after Python's
+  checks, `timeout` must be finite and at most 300 s, `retries` at most 100
+  and `retry_delay` finite and at most 300 s (the HTTP check's bounds), else
+  `configuration_error` ("timeout must be finite and at most 300 seconds",
+  "retries must be at most 100", "retry_delay must be finite and at most 300
+  seconds"); Python accepted `inf`/`NaN`/huge integers and any retry count,
+  so a check could wait or retry without end. The fixture tests map the
+  affected Python outcomes to these errors explicitly. **Retry execution
+  budget (intentional difference):** a retry starts only while the elapsed
+  time plus `retry_delay` plus one whole attempt (`timeout`) fit into the
+  check's runtime estimate (5.8, explicit `max_runtime_seconds` included,
+  capped at `MAX_DERIVED_PROCESSING_LEASE_SECONDS`); otherwise the last
+  failure is the result, so retries never outlast the processing lease. Path resolution with `[n]` → `.n` normalisation
   (`_resolve_path`), evaluation with `py_cmp`, failure records and summary as
   1.6 — fixture.
 

@@ -29,7 +29,7 @@ Key details:
 - Check type: `json-metrics`
 - Auth: optional HTTP basic auth (`auth: {username, password}`)
 - Path resolver: simple `$.field.subfield` or list indices (`$.items.0.value`); no wildcards or escaped dots
-- Retries: configurable `retries` + `retry_delay` for transient HTTP/timeout failures (defaults: 1 retry, 2s delay)
+- Retries: configurable `retries` + `retry_delay` for transient HTTP/timeout failures (defaults: 1 retry, 2s delay; at most 100 retries, `timeout` and `retry_delay` finite and at most 300s; retries stop when the check's runtime budget is spent)
 - Operators: `<`, `<=`, `>`, `>=`, `==`, `!=`
 - Missing paths: a rule whose path is absent fails for every operator (`"reason": "path_missing"`), so `$.status != "error"` does not pass when `status` disappears
 - Body cap: `max_body_bytes` (default 1 MiB); larger bodies fail with `error_type=body_too_large`

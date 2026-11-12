@@ -6,6 +6,13 @@
 //! `url` or `auth` member, a non-string check `path`). The fields that can
 //! carry such values stay raw [`PyJson`] here and the executor reproduces
 //! those failures at the point Python raises them.
+//!
+//! Intentional difference: the clock values must lie in a finite domain the
+//! executor and the runtime estimate can honour. `timeout` must be at most
+//! [`MAX_TIMEOUT_SECONDS`] and finite, `retry_delay` finite and at most
+//! [`MAX_RETRY_DELAY_SECONDS`], and `retries` at most [`MAX_RETRIES`] (the
+//! bounds of the HTTP check). Python accepted `inf`/`NaN`, huge integers
+//! and any retry count, which let a check wait or retry without end.
 
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
@@ -19,6 +26,12 @@ pub const ALLOWED_OPERATORS: [&str; 6] = ["<", "<=", ">", ">=", "==", "!="];
 pub const ALLOWED_SEVERITIES: [&str; 2] = ["warning", "critical"];
 /// `DEFAULT_MAX_BODY_BYTES`.
 pub const DEFAULT_MAX_BODY_BYTES: i64 = 1024 * 1024;
+/// Largest accepted `timeout` in seconds (as for HTTP checks).
+pub const MAX_TIMEOUT_SECONDS: f64 = 300.0;
+/// Largest accepted `retry_delay` in seconds (as for HTTP checks).
+pub const MAX_RETRY_DELAY_SECONDS: f64 = 300.0;
+/// Largest accepted `retries` (as for HTTP checks).
+pub const MAX_RETRIES: u32 = 100;
 
 /// A threshold severity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,17 +66,14 @@ pub struct JsonMetricsConfig {
     /// Truthy, but of any JSON type (the executor fails on a non-string).
     pub url: PyJson,
     pub checks: Vec<MetricCheck>,
-    /// Seconds; positive, possibly `inf` (a huge integer), `NaN` passes too.
+    /// Seconds; finite, `0 < timeout <= MAX_TIMEOUT_SECONDS`.
     pub timeout: f64,
-    /// The timeout is an integer too large for a float: httpx fails with
-    /// `OverflowError` when it first uses it (every fetch attempt).
-    pub timeout_overflows: bool,
     /// `None` or a value containing `"username"` and `"password"` (a dict,
     /// list or string, as Python's `in` allows).
     pub auth: Option<PyJson>,
-    /// `int(data["retries"])`, `>= 0`.
-    pub retries: BigInt,
-    /// `float(data["retry_delay"])`, `>= 0` or NaN.
+    /// `int(data["retries"])`, `0..=MAX_RETRIES`.
+    pub retries: u32,
+    /// `float(data["retry_delay"])`, finite, `0..=MAX_RETRY_DELAY_SECONDS`.
     pub retry_delay: f64,
     /// Positive.
     pub max_body_bytes: BigInt,
@@ -148,13 +158,25 @@ impl JsonMetricsConfig {
             return Err(ConfigError::invalid("check.path is required"));
         }
 
-        let timeout_overflows = matches!(get_or(map, "timeout", &ten), PyJson::BigInt(n)
-            if !n.to_f64().is_some_and(f64::is_finite));
+        // The finite clock domain (intentional difference), after every
+        // Python check so Python's own errors keep precedence.
+        if !timeout.is_finite() || timeout > MAX_TIMEOUT_SECONDS {
+            return Err(ConfigError::invalid(
+                "timeout must be finite and at most 300 seconds",
+            ));
+        }
+        let Some(retries) = retries.to_u32().filter(|r| *r <= MAX_RETRIES) else {
+            return Err(ConfigError::invalid("retries must be at most 100"));
+        };
+        if !retry_delay.is_finite() || retry_delay > MAX_RETRY_DELAY_SECONDS {
+            return Err(ConfigError::invalid(
+                "retry_delay must be finite and at most 300 seconds",
+            ));
+        }
         Ok(JsonMetricsConfig {
             url: url.clone(),
             checks,
             timeout,
-            timeout_overflows,
             auth,
             retries,
             retry_delay,

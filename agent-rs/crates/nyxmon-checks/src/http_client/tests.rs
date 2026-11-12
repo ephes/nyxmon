@@ -16,7 +16,6 @@ fn get(url: &str, follow: bool) -> GetRequest<'_> {
         timeout: Some(Duration::from_secs(5)),
         follow_redirects: follow,
         authorization: None,
-        timeout_overflows: false,
     }
 }
 
@@ -272,26 +271,6 @@ async fn the_timeout_resets_with_every_read() {
     let err = session().get(&request).await.unwrap_err();
     assert_eq!(err.kind, HttpErrorKind::Timeout);
     assert_eq!(err.message, "");
-}
-
-#[tokio::test]
-async fn a_timeout_beyond_float_range_fails_after_the_scheme_check() {
-    let request = GetRequest {
-        timeout_overflows: true,
-        ..get("http://127.0.0.1:9/", true)
-    };
-    assert_eq!(
-        session().get(&request).await.unwrap_err().kind,
-        HttpErrorKind::Unexpected
-    );
-    let request = GetRequest {
-        timeout_overflows: true,
-        ..get("ftp://127.0.0.1:9/", true)
-    };
-    assert_eq!(
-        session().get(&request).await.unwrap_err().kind,
-        HttpErrorKind::Request
-    );
 }
 
 #[tokio::test]

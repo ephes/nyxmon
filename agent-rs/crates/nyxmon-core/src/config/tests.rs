@@ -72,7 +72,7 @@ fn metrics_outcome(data: &PyJson) -> PyJson {
                 ),
                 ("timeout", PyJson::Float(c.timeout)),
                 ("auth", c.auth.clone().unwrap_or(PyJson::Null)),
-                ("retries", PyJson::from_bigint(c.retries.clone())),
+                ("retries", PyJson::Int(i64::from(c.retries))),
                 ("retry_delay", PyJson::Float(c.retry_delay)),
                 (
                     "max_body_bytes",
@@ -104,6 +104,16 @@ fn sorted(value: &PyJson) -> PyJson {
 }
 
 fn check_cases(file: &str, outcome: fn(&PyJson) -> PyJson) {
+    check_cases_with(file, outcome, |_, python| python.clone());
+}
+
+/// Like [`check_cases`], with `expected(data, python_outcome)` mapping the
+/// Python outcome to the intended Rust outcome.
+fn check_cases_with(
+    file: &str,
+    outcome: fn(&PyJson) -> PyJson,
+    expected: impl Fn(&PyJson, &PyJson) -> PyJson,
+) {
     let fixture = load(file);
     let cases = fixture.list_field("cases");
     assert!(cases.len() > 100, "fixture has {} cases", cases.len());
@@ -111,10 +121,49 @@ fn check_cases(file: &str, outcome: fn(&PyJson) -> PyJson) {
         let data = case.field("data");
         assert_eq!(
             sorted(&outcome(data)),
-            sorted(case.field("outcome")),
+            sorted(&expected(data, case.field("outcome"))),
             "data: {data:?}"
         );
     }
+}
+
+/// The intentional finite clock domain of the json-metrics config: a
+/// configuration Python accepted with an infinite, NaN or too large
+/// `timeout`, too many `retries` or an infinite, NaN or too large
+/// `retry_delay` is a configuration error (checked in that order).
+fn metrics_domain(_data: &PyJson, python: &PyJson) -> PyJson {
+    let Some(ok) = python.get("ok") else {
+        return python.clone();
+    };
+    let float = |key: &str| match ok.get(key) {
+        Some(PyJson::Float(value)) => *value,
+        Some(PyJson::Int(value)) => *value as f64,
+        other => panic!("{key}: {other:?}"),
+    };
+    let retries_ok = matches!(ok.get("retries"), Some(PyJson::Int(r)) if *r <= 100);
+    let in_domain = |value: f64| value.is_finite() && value <= 300.0;
+    let message = if !in_domain(float("timeout")) {
+        "timeout must be finite and at most 300 seconds"
+    } else if !retries_ok {
+        "retries must be at most 100"
+    } else if !in_domain(float("retry_delay")) {
+        "retry_delay must be finite and at most 300 seconds"
+    } else {
+        return python.clone();
+    };
+    dict(vec![("error", PyJson::from(message))])
+}
+
+#[test]
+fn python_errors_take_precedence_over_the_finite_clock_domain() {
+    let data = crate::pyjson::loads(
+        r#"{"url": "u", "timeout": Infinity, "checks": [{"path": "", "op": "<", "value": 1, "severity": "warning"}]}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        metrics_outcome(&data),
+        dict(vec![("error", PyJson::from("check.path is required"))])
+    );
 }
 
 #[test]
@@ -127,9 +176,10 @@ fn http_config_matches_python() {
 
 #[test]
 fn json_metrics_config_matches_python() {
-    check_cases(
+    check_cases_with(
         include_str!("../../../../fixtures/config_json_metrics.json"),
         metrics_outcome,
+        metrics_domain,
     );
 }
 

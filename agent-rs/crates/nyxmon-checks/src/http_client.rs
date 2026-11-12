@@ -252,12 +252,8 @@ pub fn webpki_roots() -> Arc<RootCertStore> {
 #[derive(Clone, Debug)]
 pub struct GetRequest<'a> {
     pub url: &'a str,
-    /// `None`: no timeout (an infinite or huge Python timeout).
+    /// `None`: no timeout (an infinite or huge timeout).
     pub timeout: Option<Duration>,
-    /// The Python timeout is an integer beyond float range: httpcore raises
-    /// `OverflowError` (not a `RequestError`) once it uses the timeout,
-    /// after the URL and scheme checks and before connecting.
-    pub timeout_overflows: bool,
     pub follow_redirects: bool,
     /// The `auth=` of the request; sent on the first request and kept on
     /// redirects per [`keeps_authorization`]. Without it, credentials in
@@ -577,13 +573,6 @@ impl HttpSession {
     /// `Location` headers as `Request` errors, invalid URLs as `Unexpected`.
     pub async fn get(&self, request: &GetRequest<'_>) -> Result<HttpResponse, HttpError> {
         let mut url = request_url(request.url)?;
-        if request.timeout_overflows {
-            check_scheme(&url)?;
-            return Err(HttpError::new(
-                HttpErrorKind::Unexpected,
-                "int too large to convert to float",
-            ));
-        }
         let mut authorization = request.authorization.clone();
         if authorization.is_none() && !url.userinfo.is_empty() {
             authorization = Some(basic_authorization(&url.username(), &url.password()));

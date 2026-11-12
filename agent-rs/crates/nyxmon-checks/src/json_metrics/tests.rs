@@ -16,12 +16,31 @@ async fn executor_cases_match_python() {
     .unwrap();
     let cases = fixture.get("executor_cases").unwrap().as_list().unwrap();
     assert!(cases.len() >= 50);
+    let mut outside_domain = 0;
     for case in cases {
+        let data = case.get("data").unwrap();
+        // Intentional difference: Python ran with a 10**300 s timeout; the
+        // finite clock domain rejects it before any request.
+        if matches!(data.get("timeout"), Some(PyJson::BigInt(_))) {
+            outside_domain += 1;
+            let result = execute(&check_with(data.clone()), &ctx()).await.unwrap();
+            assert_eq!(
+                result.data["error_type"].as_str(),
+                Some("configuration_error"),
+                "{data:?}"
+            );
+            continue;
+        }
         run_fixture_case(case, Executor::JsonMetrics, "metrics.test").await;
     }
+    assert_eq!(outside_domain, 1);
 }
 
 fn check(data: &str) -> Check {
+    check_with(loads(data).unwrap())
+}
+
+fn check_with(data: PyJson) -> Check {
     Check {
         check_id: 3,
         service_id: 1,
@@ -33,7 +52,7 @@ fn check(data: &str) -> Check {
         processing_started_at: 0,
         status: "idle".to_owned(),
         disabled: false,
-        data: loads(data).unwrap(),
+        data,
         claim_started_at: 0,
     }
 }
@@ -112,29 +131,116 @@ async fn transport_errors_are_request_errors_and_retried() {
 }
 
 #[tokio::test]
-async fn a_timeout_beyond_float_range_is_an_unexpected_error() {
-    // httpcore raises OverflowError ("int too large to convert to float")
-    // when it first uses the timeout: no request, no retry.
+async fn clock_values_outside_the_finite_domain_are_configuration_errors() {
+    // Python accepted these and then waited or retried without end; they
+    // fail before any request or delay.
     let server = FakeServer::start(vec![]).await;
     let (sleeper, delays) = Sleeper::recording();
     let ctx = BatchCtx {
         http: HttpSession::new(),
         sleeper,
     };
-    let data = format!(
-        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "timeout": 1{}}}"#,
-        server.port(),
-        "0".repeat(400)
-    );
-    let result = execute(&check(&data), &ctx).await.unwrap();
-    assert_eq!(result.data["error_type"].as_str(), Some("unexpected_error"));
+    let huge = format!("1{}", "0".repeat(400));
+    for (field, message) in [
+        (
+            format!(r#""timeout": {huge}"#),
+            "timeout must be finite and at most 300 seconds",
+        ),
+        (
+            r#""timeout": Infinity"#.to_owned(),
+            "timeout must be finite and at most 300 seconds",
+        ),
+        (
+            r#""timeout": NaN"#.to_owned(),
+            "timeout must be finite and at most 300 seconds",
+        ),
+        (
+            r#""timeout": 301"#.to_owned(),
+            "timeout must be finite and at most 300 seconds",
+        ),
+        (
+            r#""retry_delay": "inf""#.to_owned(),
+            "retry_delay must be finite and at most 300 seconds",
+        ),
+        (
+            r#""retry_delay": NaN"#.to_owned(),
+            "retry_delay must be finite and at most 300 seconds",
+        ),
+        (
+            r#""retries": 101"#.to_owned(),
+            "retries must be at most 100",
+        ),
+        (
+            format!(r#""retries": {huge}"#),
+            "retries must be at most 100",
+        ),
+    ] {
+        let data = format!(
+            r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, {field}}}"#,
+            server.port()
+        );
+        let result = execute(&check(&data), &ctx).await.unwrap();
+        assert_eq!(
+            result.data["error_type"].as_str(),
+            Some("configuration_error"),
+            "{field}"
+        );
+        assert_eq!(result.data["error_msg"].as_str(), Some(message), "{field}");
+    }
     assert!(server.requests().is_empty());
     assert!(delays.lock().unwrap().is_empty());
-    // 10**300 still fits a float: effectively no timeout.
-    let data = data.replace(&"0".repeat(400), &"0".repeat(300));
-    server.set_script(vec![crate::testutil::respond(200, &[], br#"{"a": 1}"#)]);
+}
+
+#[tokio::test]
+async fn retries_stop_when_the_execution_budget_is_spent() {
+    // A 1 s budget: after the first fast 503 the delay plus a whole attempt
+    // (0.3 + 0.5 s) still fit, after the second (at about 0.3 s) they no
+    // longer do. Without the budget all six attempts would run.
+    let busy = || crate::testutil::respond(503, &[], b"");
+    let server = FakeServer::start((0..6).map(|_| busy()).collect()).await;
+    let ctx = BatchCtx {
+        http: HttpSession::new(),
+        sleeper: Sleeper::real(),
+    };
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "timeout": 0.5,
+             "retries": 5, "retry_delay": 0.3, "max_runtime_seconds": 1}}"#,
+        server.port()
+    );
+    let started = std::time::Instant::now();
     let result = execute(&check(&data), &ctx).await.unwrap();
-    assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
+    assert_eq!(
+        result.data["error_msg"].as_str(),
+        Some("HTTP 503"),
+        "{result:?}"
+    );
+    assert_eq!(server.requests().len(), 2);
+    assert!(started.elapsed() < std::time::Duration::from_secs(1));
+}
+
+#[tokio::test]
+async fn retries_within_the_derived_budget_are_unchanged() {
+    // Without max_runtime_seconds the budget is the derived estimate, which
+    // covers every configured retry.
+    let busy = || crate::testutil::respond(503, &[], b"");
+    let server = FakeServer::start((0..4).map(|_| busy()).collect()).await;
+    let (sleeper, delays) = Sleeper::recording();
+    let ctx = BatchCtx {
+        http: HttpSession::new(),
+        sleeper,
+    };
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "retries": 3}}"#,
+        server.port()
+    );
+    let result = execute(&check(&data), &ctx).await.unwrap();
+    assert_eq!(
+        result.data["error_msg"].as_str(),
+        Some("HTTP 503"),
+        "{result:?}"
+    );
+    assert_eq!(server.requests().len(), 4);
+    assert_eq!(*delays.lock().unwrap(), vec![2.0, 2.0, 2.0]);
 }
 
 #[tokio::test]

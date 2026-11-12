@@ -58,7 +58,6 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> CheckResult {
         timeout: timeout_duration(config.timeout),
         follow_redirects: config.follow_redirects,
         authorization: None,
-        timeout_overflows: false,
     };
     let http = ctx.http.for_check();
     for attempt in 1..=attempts {
