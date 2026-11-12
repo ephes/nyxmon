@@ -1,6 +1,6 @@
 //! The check runner (`adapters/runner/async_runner.py`, PLAN.md 3.7, 5.9).
 //!
-//! Every check of a batch starts at once; finished results are handed to
+//! Up to five checks execute at once; finished results are handed to
 //! the result handler one at a time, in completion order, while the other
 //! checks keep running. A shutdown intake stop cancels the checks still
 //! running, hands over the results that finished before it, and reports
@@ -21,6 +21,10 @@ use nyxmon_store::data_is_undecodable;
 use tokio::task::{JoinError, JoinSet};
 
 use crate::sync::{Flag, wait_for};
+
+/// Active task ceiling; collector admission uses the same cap so no claimed
+/// check waits for an execution slot while its lease runs down.
+pub const MAX_ACTIVE_CHECKS: usize = 5;
 
 /// `domain/commands.py:IntakeStop`.
 #[derive(Debug, Default)]
@@ -152,15 +156,7 @@ pub async fn run_batch<F, Fut>(
     let cutoff = Arc::new(AtomicBool::new(false));
     let mut running = JoinSet::new();
     let mut claimed: HashMap<tokio::task::Id, Check> = HashMap::new();
-    for check in checks {
-        let handle = running.spawn(run_gated(
-            executors.clone(),
-            check.clone(),
-            batch.clone(),
-            cutoff.clone(),
-        ));
-        claimed.insert(handle.id(), check);
-    }
+    let mut waiting = checks.into_iter();
     // The intake stop: results finishing from now on are discarded.
     let stop_intake = |running: &mut JoinSet<Option<CheckResult>>| {
         cutoff.store(true, Ordering::SeqCst);
@@ -169,6 +165,22 @@ pub async fn run_batch<F, Fut>(
     let requested = intake_stop.map(|stop| &stop.requested);
     let mut stopped = false;
     loop {
+        if !stopped && requested.is_some_and(Flag::is_set) {
+            stop_intake(&mut running);
+            stopped = true;
+        }
+        if !stopped {
+            while running.len() < MAX_ACTIVE_CHECKS {
+                let Some(check) = waiting.next() else { break };
+                let handle = running.spawn(run_gated(
+                    executors.clone(),
+                    check.clone(),
+                    batch.clone(),
+                    cutoff.clone(),
+                ));
+                claimed.insert(handle.id(), check);
+            }
+        }
         let joined = if stopped {
             // Only results that already finished are handed over.
             match running.try_join_next_with_id() {
