@@ -36,6 +36,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject json-metrics clock values the Rust agent cannot honour: `timeout`
+  must be finite and at most 300 s, `retry_delay` finite and at most 300 s,
+  `retries` at most 100 (the HTTP check's bounds). `Infinity`, `NaN` and huge
+  numbers, which Python accepted and which could make a check wait or retry
+  without end, now fail with `configuration_error`. (After
+  `agent-rs-v0.1.3`; not in that tag.)
+- Stop json-metrics retries once another delay plus a whole attempt would
+  exceed the check's runtime estimate (explicit `max_runtime_seconds`
+  included, at most one hour), so retries never outlast the processing lease.
+  (After `agent-rs-v0.1.3`; not in that tag.)
+- Keep HTTP cookies per check execution in the Rust agent: http, json-http and
+  json-metrics checks no longer share the batch-wide cookie jar, so a session
+  cookie set for one check is never sent by another check of the batch.
+  Cookies still follow the redirects and retries of the same execution.
+  (After `agent-rs-v0.1.3`; not in that tag.)
+- Bound each whole Rust http/json-http/json-metrics attempt, every redirect
+  hop and the json-metrics body read included, by the configured `timeout`.
+  A server dripping bytes or chaining slow redirects now fails with `timeout`
+  instead of keeping the check beyond its runtime estimate. (After
+  `agent-rs-v0.1.3`; not in that tag.)
 - Chunk Rust held-check rechecks below the connection's SQLite parameter limit,
   deduplicate IDs and preserve atomic rollback and exact changed-row counts.
   (After `agent-rs-v0.1.3`; not in that tag.)

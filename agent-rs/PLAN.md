@@ -1147,11 +1147,16 @@ raised). Any error in this function is logged as
 
 - One HTTP "session" per batch, dropped when the batch ends
   (`_async_run_batch` creates one `httpx.AsyncClient` per batch, shared by
-  the http, json-http and json-metrics executors), **with one batch-scoped
-  cookie jar**: httpx keeps one cookie jar per client, so a cookie set by
-  one check's response (or redirect) is sent by later requests of other
-  checks in the same batch to the matching domain; the `Cookie` header lists
-  longer paths first like `http.cookiejar`.
+  the http, json-http and json-metrics executors). **Cookies are per check
+  execution** (intentional difference): httpx keeps one cookie jar per
+  client, so in Python a cookie set by one check's response (or redirect)
+  was sent by later requests of other checks in the same batch to the
+  matching domain, leaking a session credential across checks. Rust gives
+  every http/json-http/json-metrics execution its own
+  `HttpSession::for_check` copy (same TLS configuration, empty jar): cookies
+  still follow the redirects and retries of that one execution, never
+  another check. The `Cookie` header lists longer paths first like
+  `http.cookiejar`.
 - The session (`nyxmon-checks/src/http_client.rs`) is an HTTP/1.1 client on
   hyper's connection API, one connection per request, no proxy support
   (no proxy variable is set for the production agent); TCP connects use
@@ -1182,8 +1187,16 @@ raised). Any error in this function is logged as
 - httpx timeout semantics: `timeout=t` bounds connect (incl. DNS), the TLS
   handshake, each read and each write separately — not the whole request.
   Rust: the socket is wrapped so every read and write that waits longer than
-  `t` fails; no total timeout. An integer timeout beyond float range fails
-  like httpcore (`OverflowError` → `unexpected_error`).
+  `t` fails, and (intentional difference) the http/json-http and
+  json-metrics executors also bound each whole attempt — connect, every
+  redirect hop and the json-metrics body read — by `t`
+  (`http_client::attempt_deadline`, a timeout → `timeout`), so a peer that
+  drips bytes or chains slow redirects cannot keep a check past the
+  per-attempt `timeout` that the runtime estimate (5.8) assumes. The
+  suppression fetch keeps the per-operation timeouts only. The
+  json-metrics config rejects infinite, NaN and huge timeouts (finite clock
+  domain, below), so httpcore's `OverflowError` for an integer timeout
+  beyond float range cannot occur.
 - Default request headers as httpx: `Accept: */*`,
   `Accept-Encoding: gzip, deflate`, `Connection: keep-alive`, and the
   User-Agent `python-httpx/0.28.1` (Q2). HTTP/1.1 only.
@@ -1205,7 +1218,19 @@ raised). Any error in this function is logged as
   CPython (4.2); `retries` default **1**, `int()` on the raw value (strings,
   floats, bools accepted as Python does), `retry_delay` via `float()`;
   `validate` raises `TypeError` for string timeouts (→ `executor_exception`) —
-  fixture. Path resolution with `[n]` → `.n` normalisation
+  fixture. **Finite clock domain (intentional difference):** after Python's
+  checks, `timeout` must be finite and at most 300 s, `retries` at most 100
+  and `retry_delay` finite and at most 300 s (the HTTP check's bounds), else
+  `configuration_error` ("timeout must be finite and at most 300 seconds",
+  "retries must be at most 100", "retry_delay must be finite and at most 300
+  seconds"); Python accepted `inf`/`NaN`/huge integers and any retry count,
+  so a check could wait or retry without end. The fixture tests map the
+  affected Python outcomes to these errors explicitly. **Retry execution
+  budget (intentional difference):** a retry starts only while the elapsed
+  time plus `retry_delay` plus one whole attempt (`timeout`) fit into the
+  check's runtime estimate (5.8, explicit `max_runtime_seconds` included,
+  capped at `MAX_DERIVED_PROCESSING_LEASE_SECONDS`); otherwise the last
+  failure is the result, so retries never outlast the processing lease. Path resolution with `[n]` → `.n` normalisation
   (`_resolve_path`), evaluation with `py_cmp`, failure records and summary as
   1.6 — fixture.
 
@@ -2529,8 +2554,9 @@ Acceptance criteria per slice (in addition to the green checks):
   shadow run on the real host and network, and D-9.
 - **R2 httpx semantics that are easy to get subtly wrong** (per-phase
   timeouts, redirect handling and intentional body refusal, Authorization on
-  https upgrades, decoding and the caps, `Accept-Encoding`, User-Agent, the
-  batch-wide cookie jar shared by all HTTP-family checks of a batch).
+  https upgrades, decoding and the caps, `Accept-Encoding`, User-Agent; the
+  batch-wide cookie jar and the missing total timeout are intentionally not
+  reproduced, see 5.5).
   Mitigated by reimplementing redirects/decoding explicitly (5.5), fake-server
   tests per rule, the offline parity harness and the shadow comparison.
 - **R3 Python quirks reproduced on purpose** might be mistaken for bugs by

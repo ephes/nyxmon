@@ -1,25 +1,33 @@
 //! The `json-metrics` executor (`executors/json_metrics_executor.py`).
 //!
 //! The evaluation is pure ([`nyxmon_core::metrics_eval`]); this module does
-//! the fetch with the shared batch session: redirects followed, basic auth,
-//! the body of an error response not read, the body cap applied to the
-//! decoded bytes, and `json.loads` on the raw bytes.
+//! the fetch on the check's own session copy (its own cookie jar):
+//! redirects followed, basic auth, the body of an error response not read,
+//! the body cap applied to the decoded bytes, and `json.loads` on the raw
+//! bytes. Each attempt, redirects and body read included, is bounded by the
+//! configured timeout as a whole ([`attempt_deadline`]).
+//!
+//! Retries stay inside the check's execution budget: the runtime estimate
+//! the collector sizes the processing lease with
+//! ([`estimated_check_runtime_seconds`], capped at
+//! [`MAX_DERIVED_PROCESSING_LEASE_SECONDS`]). A retry starts only while its
+//! delay plus a whole attempt still fit into that budget; otherwise the
+//! last failure is the result.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use hyper::header::HeaderValue;
-use num_bigint::BigInt;
-use num_traits::ToPrimitive;
 use nyxmon_core::config::json_metrics::JsonMetricsConfig;
 use nyxmon_core::config::{ConfigError, PyException};
+use nyxmon_core::lease::{MAX_DERIVED_PROCESSING_LEASE_SECONDS, estimated_check_runtime_seconds};
 use nyxmon_core::metrics_eval::{evaluate, failure_status, failure_summary};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
 use nyxmon_core::pyjson::{PyDict, PyJson, loads_bytes, py_type_name as type_name};
 
 use crate::ctx::BatchCtx;
 use crate::http_client::{
-    BodyError, BodyLimit, GetRequest, HttpError, HttpErrorKind, basic_authorization, read_body,
-    timeout_duration,
+    BodyError, BodyLimit, GetRequest, HttpError, HttpErrorKind, HttpSession, attempt_deadline,
+    basic_authorization, read_body, timeout_duration,
 };
 
 fn error(check: &Check, error_type: &str, msg: impl Into<String>) -> CheckResult {
@@ -68,7 +76,7 @@ enum Fetched {
 }
 
 async fn fetch(
-    ctx: &BatchCtx,
+    http: &HttpSession,
     config: &JsonMetricsConfig,
     url: &str,
     auth: Option<HeaderValue>,
@@ -78,24 +86,25 @@ async fn fetch(
         timeout: timeout_duration(config.timeout),
         follow_redirects: true,
         authorization: auth,
-        timeout_overflows: config.timeout_overflows,
     };
-    let response = match ctx.http.get(&request).await {
-        Ok(response) => response,
-        Err(err) => return Fetched::Failed(err),
+    let attempt = async {
+        let response = http.get(&request).await?;
+        let status = response.status;
+        if status >= 400 {
+            return Ok(Fetched::Body(status, Vec::new()));
+        }
+        let limit = BodyLimit {
+            limit: &config.max_body_bytes,
+        };
+        match read_body(response, Some(limit)).await {
+            Ok(body) => Ok(Fetched::Body(status, body)),
+            Err(BodyError::TooLarge(message)) => Ok(Fetched::TooLarge(message)),
+            Err(BodyError::Http(err)) => Err(err),
+        }
     };
-    let status = response.status;
-    if status >= 400 {
-        return Fetched::Body(status, Vec::new());
-    }
-    let limit = BodyLimit {
-        limit: &config.max_body_bytes,
-    };
-    match read_body(response, Some(limit)).await {
-        Ok(body) => Fetched::Body(status, body),
-        Err(BodyError::TooLarge(message)) => Fetched::TooLarge(message),
-        Err(BodyError::Http(err)) => Fetched::Failed(err),
-    }
+    attempt_deadline(request.timeout, attempt)
+        .await
+        .unwrap_or_else(Fetched::Failed)
 }
 
 /// `JsonMetricsExecutor.execute`.
@@ -112,11 +121,18 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
         }
         Err(ConfigError::Exception(exc)) => return Err(exc),
     };
-    let retries = &config.retries;
-    // `range(retries + 1)`; beyond u64 the loop is endless in practice.
-    let attempts = (retries + BigInt::from(1)).to_u64().unwrap_or(u64::MAX);
-    let may_retry = |attempt: u64| BigInt::from(attempt) < *retries;
+    let attempts = config.retries + 1;
+    let started = Instant::now();
+    let budget = execution_budget(check);
+    // `attempt < retries`, and the delay plus one more whole attempt still
+    // fit into the execution budget.
+    let may_retry = |attempt: u32| {
+        attempt < config.retries
+            && started.elapsed().as_secs_f64() + config.retry_delay + config.timeout
+                <= budget.as_secs_f64()
+    };
     let mut last_error = None;
+    let http = ctx.http.for_check();
 
     for attempt in 0..attempts {
         let start = Instant::now();
@@ -135,7 +151,7 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
                 ),
             ));
         };
-        let (status, raw_body) = match fetch(ctx, &config, url, auth).await {
+        let (status, raw_body) = match fetch(&http, &config, url, auth).await {
             Fetched::Body(status, body) => (status, body),
             Fetched::TooLarge(message) => return Ok(error(check, "body_too_large", message)),
             Fetched::Failed(err) => {
@@ -190,6 +206,16 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
         return Ok(CheckResult::new(check.check_id, status, data));
     }
     Ok(last_error.unwrap_or_else(|| error(check, "unexpected_error", "metrics check failed")))
+}
+
+/// The wall-clock budget of one execution: the check's runtime estimate
+/// (an explicit `max_runtime_seconds`, else retries, delays and timeouts
+/// plus a margin), never above the largest derived processing lease.
+fn execution_budget(check: &Check) -> Duration {
+    let estimate =
+        estimated_check_runtime_seconds(check.check_id, &check.check_type, &check.data, None)
+            .clamp(0, MAX_DERIVED_PROCESSING_LEASE_SECONDS);
+    Duration::from_secs(u64::try_from(estimate).unwrap_or(0))
 }
 
 #[cfg(test)]

@@ -3,6 +3,10 @@
 //! The check fetches the status line and headers only: the final response
 //! body is never read (`_fetch_headers` streams and closes), redirect bodies
 //! are (httpx reads them before following).
+//!
+//! Each attempt, redirects included, is bounded by the configured timeout
+//! as a whole ([`attempt_deadline`]), and the check uses its own cookie jar
+//! ([`crate::http_client::HttpSession::for_check`]).
 
 use std::time::Instant;
 
@@ -12,7 +16,9 @@ use nyxmon_core::model::{Check, CheckResult, ResultStatus};
 use nyxmon_core::pyjson::{PyDict, PyJson};
 
 use crate::ctx::BatchCtx;
-use crate::http_client::{GetRequest, HttpErrorKind, header_text, timeout_duration};
+use crate::http_client::{
+    GetRequest, HttpErrorKind, attempt_deadline, header_text, timeout_duration,
+};
 
 fn result(check: &Check, status: ResultStatus, entries: Vec<(&str, PyJson)>) -> CheckResult {
     let data: PyDict = entries
@@ -52,11 +58,11 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> CheckResult {
         timeout: timeout_duration(config.timeout),
         follow_redirects: config.follow_redirects,
         authorization: None,
-        timeout_overflows: false,
     };
+    let http = ctx.http.for_check();
     for attempt in 1..=attempts {
         let start = Instant::now();
-        let response = match ctx.http.get(&request).await {
+        let response = match attempt_deadline(request.timeout, http.get(&request)).await {
             Ok(response) => response,
             Err(err) => {
                 let error_type = match err.kind {

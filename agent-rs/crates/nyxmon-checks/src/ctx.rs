@@ -52,7 +52,9 @@ impl Sleeper {
 }
 
 /// What one batch shares (`_async_run_batch`): the HTTP session of the
-/// HTTP-family checks and the sleeper for retry delays.
+/// HTTP-family checks (each check execution takes its own
+/// [`HttpSession::for_check`] copy, so cookies stay per check) and the
+/// sleeper for retry delays.
 pub struct BatchCtx {
     pub http: HttpSession,
     pub sleeper: Sleeper,

@@ -513,6 +513,12 @@ JSON integer between 0 and 100. `expected_status` (when present and non-null)
 and each `retry_status_codes` entry must be JSON integers between 100 and 599;
 fractional and integer-valued floats such as `200.0` are rejected.
 
+`timeout` bounds every connect, TLS handshake, read and write, and also each
+whole attempt including all redirect hops: a server that drips its response
+or chains slow redirects fails the attempt with `timeout` once `timeout`
+seconds have passed. Each check execution keeps its own cookies; a cookie set
+for one check (for example a login session) is never sent by another check.
+
 Canonical redirects can be checked without following them by setting
 `follow_redirects` to `false`, `expected_status` to the required 3xx response,
 and `expected_location` to the exact absolute `Location` value. For example:
@@ -684,6 +690,19 @@ bytes, checked chunk by chunk as httpx decompresses the stream, so a compressed
 response is stopped once its inflated size passes the cap. Error responses
 (status 400 and above) are not read. The dashboard form has no field
 for the cap; a value set in the stored JSON is kept when the check is edited.
+
+`timeout` must be a finite number greater than zero, at most 300 seconds;
+`retry_delay` finite between 0 and 300 seconds; `retries` between 0 and 100.
+Other values, such as `Infinity`, `NaN` or huge numbers, fail with
+`error_type="configuration_error"` before any request. Retries also stop once
+another delay plus a whole attempt would exceed the check's runtime budget
+(its `max_runtime_seconds`, or the estimate from timeout and retries, at most
+one hour); the result is then the last failure.
+
+`timeout` bounds each whole attempt, redirects and body read included, not
+only every single read: a body that arrives too slowly fails the attempt with
+`error_type="timeout"`. Cookies set by the endpoint stay with this check
+execution and are never sent by other checks.
 
 ### Ping Checks
 

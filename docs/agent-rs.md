@@ -50,7 +50,10 @@ persistence, notification, acknowledgement), as in Python. See
 {doc}`concurrency-overview` for both runtimes.
 
 HTTP checks use a small HTTP/1.1 client that reproduces httpx (URL handling,
-per-read timeouts, redirects, cookies, decoding); TLS is rustls with the
+per-read timeouts, redirects, cookies, decoding). Two deliberate differences:
+each check keeps its cookies to itself (no jar shared across the checks of a
+batch), and the configured `timeout` also bounds each whole attempt,
+redirects and body included. TLS is rustls with the
 system roots (TLS 1.2+). The binary is built for `x86_64-unknown-linux-gnu`
 against glibc 2.35 or older, so names resolve through `getaddrinfo` and
 `nsswitch.conf` exactly like Python (PLAN.md 8.1).
