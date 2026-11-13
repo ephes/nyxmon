@@ -240,17 +240,26 @@ async fn expect_smtp_reply<S: AsyncRead + AsyncWrite + Unpin>(
     stage: &str,
 ) -> Result<(), DialogueError> {
     let mut lines = Vec::new();
+    let mut reply_code: Option<String> = None;
     loop {
         let line = reader.readline().await?;
         let code: String = line.chars().take(3).collect();
         let separator: String = line.chars().skip(3).take(1).collect();
         lines.push(line);
-        if code != expected_code || !matches!(separator.as_str(), "" | " " | "-") {
+        let ascii_code = code.len() == 3 && code.bytes().all(|byte| byte.is_ascii_digit());
+        let consistent = reply_code.as_deref().is_none_or(|first| first == code);
+        if !ascii_code || !consistent || !matches!(separator.as_str(), "" | " " | "-") {
             return Err(starttls_rejected(stage, &lines).into());
         }
+        reply_code.get_or_insert(code);
         if separator != "-" {
             break;
         }
+    }
+    // A consistent multiline reply is read completely, so a rejection carries
+    // the whole diagnostic like Python's reader.
+    if reply_code.as_deref() != Some(expected_code) {
+        return Err(starttls_rejected(stage, &lines).into());
     }
     Ok(())
 }

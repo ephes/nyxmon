@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bound Rust TCP TLS cleanup to one second, preserving certificate/probe outcomes
   with a separate fixed cleanup diagnostic; reject inconsistent SMTP STARTTLS
-  multiline reply codes before TLS negotiation.
+  multiline reply codes before TLS negotiation while still reading consistent
+  multiline rejections completely for their diagnostic.
 
 ### Rust agent 0.1.4
 

@@ -258,3 +258,32 @@ async fn smtp_every_line_belongs_to_the_expected_stage() {
         }
     }
 }
+
+#[tokio::test]
+async fn a_consistent_multiline_smtp_rejection_is_read_completely() {
+    let config = config_for(
+        &loads(r#"{"protocol": "smtp", "read_greeting": false, "command_json": "\"\""}"#).unwrap(),
+    );
+    let mut stream = ScriptedStream {
+        chunks: VecDeque::from([b"554-mail.example rejects you\r\n554 go away\r\n".to_vec()]),
+        reset_at_end: false,
+        sent: Vec::new(),
+    };
+    let result = send_starttls_command(&mut stream, &config, Duration::from_secs(1)).await;
+    let Err(AttemptError::Check(error)) = result else {
+        panic!("accepted a 554 greeting")
+    };
+    assert_eq!(error.error_type, "starttls_rejected");
+    assert_eq!(
+        error.data.get("starttls_stage").and_then(PyJson::as_str),
+        Some("greeting")
+    );
+    let response = error
+        .data
+        .get("starttls_response")
+        .and_then(PyJson::as_str)
+        .unwrap();
+    assert!(response.contains("rejects you"), "{response}");
+    assert!(response.contains("554 go away"), "{response}");
+    assert!(stream.sent.is_empty());
+}

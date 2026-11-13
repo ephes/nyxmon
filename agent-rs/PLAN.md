@@ -1613,11 +1613,15 @@ stops on a short result count); see D-21 in `docs/agent-rs.md`.
   never changes a completed success/certificate outcome or triggers retries.
   A failed close adds `tls_close_error` (`timeout`, `transport_error` or
   `application_data_after_close_notify`) rather than peer-controlled text.
-- SMTP STARTTLS replies require the expected three ASCII digits on **every**
-  continuation/final line (220 greeting, 250 EHLO, 220 STARTTLS), retaining
-  dialogue byte/time caps. This deliberately rejects malformed mixed/Unicode
-  codes accepted by Python. `starttls_text.json` retains the Python oracle and
-  records explicit `rust_outcome`/`rust_sent` overrides for these cases.
+- SMTP STARTTLS replies require one three-ASCII-digit code on **every**
+  continuation/final line, the first line's code; the complete reply must then
+  carry the stage's expected code (220 greeting, 250 EHLO, 220 STARTTLS),
+  retaining dialogue byte/time caps. A consistent multiline rejection (e.g.
+  `554-...` / `554 ...`) is read to its final line like Python, so the
+  diagnostic keeps every line. Malformed mixed/Unicode codes, which Python
+  accepts, are deliberately rejected at the first inconsistent line.
+  `starttls_text.json` retains the Python oracle and records explicit
+  `rust_outcome`/`rust_sent` overrides for these cases.
 
 ### 5.13 Ping (`ping_executor.py`)
 
