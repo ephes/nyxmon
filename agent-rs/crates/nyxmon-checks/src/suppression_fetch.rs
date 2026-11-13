@@ -14,7 +14,7 @@
 //! open.
 //!
 //! The requests use the httpx timeout semantics of [`HttpSession`]
-//! (connect, every read and every write bounded separately).
+//! (connect/read/write separately), plus one total monotonic fetch deadline.
 
 use hyper::header::{self, HeaderValue};
 use num_bigint::BigInt;
@@ -52,11 +52,19 @@ pub async fn fetch_payload_with(
     session: &HttpSession,
     request: &SuppressionRequest,
 ) -> Option<PyJson> {
-    // `socket.settimeout(nan)` raises ValueError before connecting.
-    if request.timeout.is_nan() {
-        return None;
-    }
-    let timeout = timeout_duration(request.timeout);
+    // Unusable budgets fail open, never create an unbounded suppression wait.
+    let timeout = timeout_duration(request.timeout)?;
+    tokio::time::timeout(timeout, fetch_inner(session, request, timeout))
+        .await
+        .ok()
+        .flatten()
+}
+
+async fn fetch_inner(
+    session: &HttpSession,
+    request: &SuppressionRequest,
+    timeout: std::time::Duration,
+) -> Option<PyJson> {
     let mut url = request_url(&request.url).ok()?;
     let identity = [(
         header::ACCEPT_ENCODING,
@@ -68,7 +76,7 @@ pub async fn fetch_payload_with(
     for _ in 0..=MAX_SUPPRESSION_REDIRECTS {
         let authorization = request_auth(hop_auth, &url).or_else(|| carried.clone());
         let response = session
-            .send_once(&url, timeout, authorization.as_ref(), &identity)
+            .send_once(&url, Some(timeout), authorization.as_ref(), &identity)
             .await
             .ok()?;
         if let Some(next) = redirect_target(&url, &response).ok()? {

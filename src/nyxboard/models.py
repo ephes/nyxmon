@@ -18,7 +18,7 @@ class Service(models.Model):
         """
         Calculate the overall status of the service based on its health checks.
         """
-        # Set only on the dashboard's request-local prefetched instances.
+        # Set only on status pages' request-local prefetched instances.
         if hasattr(self, "dashboard_status"):
             return self.dashboard_status
         health_checks = self.healthcheck_set.all()
@@ -126,10 +126,10 @@ class HealthCheck(models.Model):
         """
         Calculate status from five recent results, newest timestamp then id first.
         """
-        # Set only on the dashboard's request-local prefetched instances.
+        # Set only on status pages' request-local prefetched instances.
         if hasattr(self, "dashboard_status"):
             return self.dashboard_status
-        # Use recent_results if it's available (set by the dashboard view)
+        # Use recent_results if available (set by status-page views)
         # Otherwise, query the database
         if hasattr(self, "recent_results"):
             recent_results = self.recent_results

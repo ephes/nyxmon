@@ -2,9 +2,9 @@
 //! (`tcp_executor.py:_send_starttls_command`, `_LineReader`, `_starttls_*`).
 //!
 //! On success the server has accepted STARTTLS and the next bytes on the
-//! stream belong to the TLS handshake. Every byte limit, regex and message
-//! is Python's; `fixtures/starttls_text.json` replays scripted dialogues
-//! through both implementations.
+//! stream belong to the TLS handshake. Byte limits and regexes follow Python;
+//! SMTP additionally requires consistent ASCII stage codes (PLAN.md 5.12).
+//! `fixtures/starttls_text.json` retains explicit parity exceptions.
 
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -240,21 +240,17 @@ async fn expect_smtp_reply<S: AsyncRead + AsyncWrite + Unpin>(
     stage: &str,
 ) -> Result<(), DialogueError> {
     let mut lines = Vec::new();
-    let code = loop {
+    loop {
         let line = reader.readline().await?;
         let code: String = line.chars().take(3).collect();
         let separator: String = line.chars().skip(3).take(1).collect();
         lines.push(line);
-        let numeric = !code.is_empty() && code.chars().all(py_isdigit);
-        if !numeric || !matches!(separator.as_str(), "" | " " | "-") {
+        if code != expected_code || !matches!(separator.as_str(), "" | " " | "-") {
             return Err(starttls_rejected(stage, &lines).into());
         }
         if separator != "-" {
-            break code;
+            break;
         }
-    };
-    if code != expected_code {
-        return Err(starttls_rejected(stage, &lines).into());
     }
     Ok(())
 }

@@ -173,12 +173,22 @@ async fn scripted_dialogues_match() {
         };
         let outcome = send_starttls_command(&mut stream, &config, Duration::from_secs(10)).await;
         let context = format!("{case:?}");
-        let sent: Vec<Vec<u8>> = list(case, "sent")
-            .iter()
-            .map(|s| hex(s.as_str().unwrap()))
-            .collect();
+        let sent: Vec<Vec<u8>> = list(
+            case,
+            if case.get("rust_sent").is_some() {
+                "rust_sent"
+            } else {
+                "sent"
+            },
+        )
+        .iter()
+        .map(|s| hex(s.as_str().unwrap()))
+        .collect();
         assert_eq!(stream.sent, sent, "{context}");
-        let expected = case.get("outcome").unwrap();
+        let expected = case
+            .get("rust_outcome")
+            .or_else(|| case.get("outcome"))
+            .unwrap();
         match (text(expected, "kind"), outcome) {
             ("ok", Ok(())) => {}
             ("error", Err(AttemptError::Check(err))) => {
@@ -216,4 +226,35 @@ async fn a_silent_server_times_out() {
     assert_eq!(err.error_type, "starttls_timeout");
     assert_eq!(err.message, "Timed out waiting for STARTTLS response");
     assert!(err.retryable);
+}
+
+#[tokio::test]
+async fn smtp_every_line_belongs_to_the_expected_stage() {
+    let config = config_for(
+        &loads(r#"{"protocol": "smtp", "read_greeting": false, "command_json": "\"\""}"#).unwrap(),
+    );
+    for (stage, prefix, expected_code, commands) in [
+        ("greeting", "", "220", 0),
+        ("ehlo", "220 ready\r\n", "250", 1),
+        ("starttls", "220 ready\r\n250 ready\r\n", "220", 2),
+    ] {
+        for bad in ["500-bad", "22", "２２０-bad", "220!bad"] {
+            let reply = format!("{prefix}{bad}\r\n{expected_code} ready\r\n");
+            let mut stream = ScriptedStream {
+                chunks: VecDeque::from([reply.into_bytes()]),
+                reset_at_end: false,
+                sent: Vec::new(),
+            };
+            let result = send_starttls_command(&mut stream, &config, Duration::from_secs(1)).await;
+            let Err(AttemptError::Check(error)) = result else {
+                panic!("accepted {stage}/{bad}")
+            };
+            assert_eq!(error.error_type, "starttls_rejected");
+            assert_eq!(
+                error.data.get("starttls_stage").and_then(PyJson::as_str),
+                Some(stage)
+            );
+            assert_eq!(stream.sent.len(), commands, "must stop before next stage");
+        }
+    }
 }

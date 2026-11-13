@@ -33,12 +33,27 @@ from django.contrib.auth.views import redirect_to_login
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import resolve_url
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.cache import add_never_cache_headers
 
 ViewFunc = Callable[..., HttpResponse]
 
 #: Attribute set on every wrapped view so tests can prove that each NyxBoard
 #: URL pattern is covered by the login requirement.
 LOGIN_GUARD_ATTR = "nyxboard_login_guarded"
+
+
+class PrivateResponseMiddleware:
+    """Keep guarded responses private, including middleware/view rejections."""
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+        match = request.resolver_match
+        if match is not None and getattr(match.func, LOGIN_GUARD_ATTR, False):
+            add_never_cache_headers(response)
+        return response
 
 
 def login_required_enabled() -> bool:

@@ -12,6 +12,7 @@
         <h2>Delete Service</h2>
     </div>
     
+    {% if conflict %}<p role="alert" class="warning-message">{{ conflict }}</p>{% endif %}
     <div class="warning-message">
         <p><strong>Warning:</strong> You are about to delete this service. This action cannot be undone.</p>
         <p>All health checks associated with this service will also be deleted.</p>
@@ -20,12 +21,22 @@
     <div class="list-data">
         <h3>Service: {{ service.name }}</h3>
         <p>ID: {{ service.id }}</p>
+        <ul>
+            {% for check in service.healthcheck_set.all %}
+            <li><a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}">{{ check.name }}</a> — {{ check.get_check_type_display }}: {{ check.url }}</li>
+            {% empty %}<li>No health checks.</li>{% endfor %}
+        </ul>
     </div>
     
     <form method="post" class="form">
         {% csrf_token %}
+        <input type="hidden" name="definition_revision" value="{{ definition_revision }}">
         <div class="form-actions">
+            {% if conflict %}
+            <a href="{% url 'nyxboard:service_delete' service_id=service.id %}" class="btn btn-secondary">Reload confirmation</a>
+            {% else %}
             <button type="submit" class="btn btn-danger">Confirm Delete</button>
+            {% endif %}
             <a href="{% url 'nyxboard:service_detail' service_id=service.id %}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>

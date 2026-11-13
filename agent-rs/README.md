@@ -678,3 +678,13 @@ tightens the retired Python runner's all-at-once behavior. Held-check rechecks
 deduplicate IDs and use chunks of at most 500 IDs, reduced further to leave two
 parameters below the SQLite connection limit. One transaction commits all
 chunks or rolls them all back; only idle, enabled, later-due checks change.
+
+TCP TLS shutdown is best effort with a one-second total limit. A cleanup failure
+adds a fixed `tls_close_error` diagnostic and preserves the completed probe or
+certificate result. SMTP STARTTLS requires one expected ASCII reply code across
+all lines of each stage; malformed replies never advance to TLS negotiation.
+
+Maintenance suppression has one configured total timeout across redirects,
+headers and body; unavailable evidence fails open for normal alert delivery.
+The local DNS executor journey covers cancelled/EOF/timed-out partial TCP
+fallback frames and subsequent successful resolution with synthetic peers.

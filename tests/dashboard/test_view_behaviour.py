@@ -237,7 +237,8 @@ class TestServiceCrud:
 
     def test_delete_post_cascades_to_checks(self, client, service, check):
         url = reverse("nyxboard:service_delete", kwargs={"service_id": service.id})
-        response = client.post(url)
+        revision = client.get(url).context["definition_revision"]
+        response = client.post(url, {"definition_revision": revision})
         assert response.status_code == 302
         assert response["Location"] == reverse("nyxboard:service_list")
         assert not Service.objects.filter(id=service.id).exists()
@@ -452,9 +453,9 @@ class TestHealthCheckDelete:
 
     def test_post_deletes_check_and_results(self, client, check, service):
         Result.objects.create(health_check=check, status=ResultStatus.OK, data={})
-        response = client.post(
-            reverse("nyxboard:healthcheck_delete", kwargs={"check_id": check.id})
-        )
+        url = reverse("nyxboard:healthcheck_delete", kwargs={"check_id": check.id})
+        revision = client.get(url).context["definition_revision"]
+        response = client.post(url, {"definition_revision": revision})
         assert response.status_code == 302
         assert response["Location"] == reverse(
             "nyxboard:service_detail", kwargs={"service_id": service.id}
