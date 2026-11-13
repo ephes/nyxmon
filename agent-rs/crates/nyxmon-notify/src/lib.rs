@@ -49,13 +49,10 @@ impl Delivery {
     }
 }
 
-/// A Python exception that escapes `notify_check_failed`.
+/// A notifier/payload-construction exception, retaining the public API.
 ///
-/// The only one is the `OverflowError` of an `OPSGATE_TICKET_EXPIRES_SECONDS`
-/// so large that the ticket expiry leaves Python's `datetime` range: it is
-/// raised before the OpsGate submit and before the Telegram send, so the
-/// caller's "result handling failed" path runs instead of a delivery
-/// outcome.
+/// Ticket expiry construction can return `OverflowError`; TelegramNotifier
+/// handles it as an optional ticket failure and continues primary delivery.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NotifyRaised {
     /// The Python exception class.

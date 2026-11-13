@@ -43,6 +43,7 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 url = "2"
 webpki-roots = "1"
 rand = "0.10"
+serde_json = "1"
 regex = "1"
 cookie_store = { version = "0.22", default-features = false, features = ["preserve_order"] }
 flate2 = "1"

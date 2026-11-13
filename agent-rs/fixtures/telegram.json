@@ -153,8 +153,8 @@
    },
    "telegram": [
     {
-     "body": "",
-     "status": 204
+     "body": "{\"ok\":true,\"result\":{\"message_id\":1}}",
+     "status": 200
     }
    ]
   },
@@ -799,6 +799,10 @@
    "label": "ticket created",
    "logs": [
     [
+     "ERROR",
+     "OpsGate ticket submit succeeded with invalid ticket id for check_id=11"
+    ],
+    [
      "INFO",
      "Telegram notification delivered"
     ]
@@ -829,7 +833,7 @@
      }
     },
     {
-     "body": "chat_id=-100123&text=%F0%9F%94%B4+%2ACheck+Failed+%5C%28Critical%5C%29%2A%0AName%3A+Disk+Pressure%0AURL%3A+https%3A%2F%2Fexample%5C.internal%2Fhealth%0AStatus%3A+500%0AError+Type%3A+threshold%0AError%3A+Disk+full%0A%0A%F0%9F%9B%A0+%2AOpsGate+Approval+Needed%2A%0ATicket%3A+%60T%5C-1%5C_a%5C.b%60%0A%5BOpen+approval+page%5D%28https%3A%2F%2Fapprove.example%2Ftickets%2FT-1_a.b%29&disable_notification=false&parse_mode=MarkdownV2",
+     "body": "chat_id=-100123&text=%F0%9F%94%B4+%2ACheck+Failed+%5C%28Critical%5C%29%2A%0AName%3A+Disk+Pressure%0AURL%3A+https%3A%2F%2Fexample%5C.internal%2Fhealth%0AStatus%3A+500%0AError+Type%3A+threshold%0AError%3A+Disk+full%0A%0A%F0%9F%9B%A0+%2AOpsGate%2A%0ATicket+creation+failed%3B+please+create+one+manually%5C.&disable_notification=false&parse_mode=MarkdownV2",
      "headers": {
       "accept": "*/*",
       "content-type": "application/x-www-form-urlencoded",
@@ -878,6 +882,10 @@
    "label": "ticket id needs link escaping",
    "logs": [
     [
+     "ERROR",
+     "OpsGate ticket submit succeeded with invalid ticket id for check_id=11"
+    ],
+    [
      "INFO",
      "Telegram notification delivered"
     ]
@@ -908,7 +916,7 @@
      }
     },
     {
-     "body": "chat_id=-100123&text=%F0%9F%94%B4+%2ACheck+Failed+%5C%28Critical%5C%29%2A%0AName%3A+Disk+Pressure%0AURL%3A+https%3A%2F%2Fexample%5C.internal%2Fhealth%0AStatus%3A+500%0AError+Type%3A+threshold%0AError%3A+Disk+full%0A%0A%F0%9F%9B%A0+%2AOpsGate+Approval+Needed%2A%0ATicket%3A+%60id%5C%29%5C%5Cx%60%0A%5BOpen+approval+page%5D%28https%3A%2F%2Fapprove.example%2Ftickets%2Fid%5C%29%5C%5Cx%29&disable_notification=false&parse_mode=MarkdownV2",
+     "body": "chat_id=-100123&text=%F0%9F%94%B4+%2ACheck+Failed+%5C%28Critical%5C%29%2A%0AName%3A+Disk+Pressure%0AURL%3A+https%3A%2F%2Fexample%5C.internal%2Fhealth%0AStatus%3A+500%0AError+Type%3A+threshold%0AError%3A+Disk+full%0A%0A%F0%9F%9B%A0+%2AOpsGate%2A%0ATicket+creation+failed%3B+please+create+one+manually%5C.&disable_notification=false&parse_mode=MarkdownV2",
      "headers": {
       "accept": "*/*",
       "content-type": "application/x-www-form-urlencoded",
@@ -1036,6 +1044,10 @@
    "label": "ticket id is null",
    "logs": [
     [
+     "ERROR",
+     "OpsGate ticket submit succeeded with invalid ticket id for check_id=11"
+    ],
+    [
      "INFO",
      "Telegram notification delivered"
     ]
@@ -1066,7 +1078,7 @@
      }
     },
     {
-     "body": "chat_id=-100123&text=%F0%9F%94%B4+%2ACheck+Failed+%5C%28Critical%5C%29%2A%0AName%3A+Disk+Pressure%0AURL%3A+https%3A%2F%2Fexample%5C.internal%2Fhealth%0AStatus%3A+500%0AError+Type%3A+threshold%0AError%3A+Disk+full%0A%0A%F0%9F%9B%A0+%2AOpsGate+Approval+Needed%2A%0ATicket%3A+%60None%60%0A%5BOpen+approval+page%5D%28https%3A%2F%2Fapprove.example%2Ftickets%2FNone%29&disable_notification=false&parse_mode=MarkdownV2",
+     "body": "chat_id=-100123&text=%F0%9F%94%B4+%2ACheck+Failed+%5C%28Critical%5C%29%2A%0AName%3A+Disk+Pressure%0AURL%3A+https%3A%2F%2Fexample%5C.internal%2Fhealth%0AStatus%3A+500%0AError+Type%3A+threshold%0AError%3A+Disk+full%0A%0A%F0%9F%9B%A0+%2AOpsGate%2A%0ATicket+creation+failed%3B+please+create+one+manually%5C.&disable_notification=false&parse_mode=MarkdownV2",
      "headers": {
       "accept": "*/*",
       "content-type": "application/x-www-form-urlencoded",
@@ -1116,7 +1128,7 @@
    "logs": [
     [
      "ERROR",
-     "OpsGate ticket submit succeeded without ticket id for check_id=11"
+     "OpsGate ticket submit succeeded with invalid ticket id for check_id=11"
     ],
     [
      "INFO",
@@ -1199,7 +1211,7 @@
    "logs": [
     [
      "ERROR",
-     "OpsGate ticket submit succeeded without ticket id for check_id=11"
+     "OpsGate ticket submit succeeded with invalid ticket id for check_id=11"
     ],
     [
      "INFO",
@@ -1282,7 +1294,7 @@
    "logs": [
     [
      "ERROR",
-     "OpsGate ticket submit succeeded without ticket id for check_id=11"
+     "OpsGate ticket submit succeeded with invalid ticket id for check_id=11"
     ],
     [
      "INFO",
@@ -2016,6 +2028,7 @@
     "service_id": 22,
     "url": "https://example.internal/health"
    },
+   "delivered": true,
    "env": {
     "OPSGATE_APPROVAL_BASE_URL": "https://approve.example/",
     "OPSGATE_SUBMIT_BASE_URL": "https://opsgate.example",
@@ -2025,17 +2038,48 @@
     "TELEGRAM_BOT_TOKEN": "123456:SECRET-bot_token~x",
     "TELEGRAM_CHAT_ID": "-100123"
    },
-   "label": "expiry overflow raises",
-   "logs": [],
+   "label": "expiry overflow keeps the primary alert",
+   "logs": [
+    [
+     "ERROR",
+     "OpsGate ticket payload construction failed for check_id=11: invalid expiry"
+    ],
+    [
+     "INFO",
+     "Telegram notification delivered"
+    ]
+   ],
    "opsgate": [],
-   "raised": "OverflowError",
-   "requests": [],
+   "requests": [
+    {
+     "body": "chat_id=-100123&text=%F0%9F%94%B4+%2ACheck+Failed+%5C%28Critical%5C%29%2A%0AName%3A+Disk+Pressure%0AURL%3A+https%3A%2F%2Fexample%5C.internal%2Fhealth%0AStatus%3A+500%0AError+Type%3A+threshold%0AError%3A+Disk+full%0A%0A%F0%9F%9B%A0+%2AOpsGate%2A%0ATicket+creation+failed%3B+please+create+one+manually%5C.&disable_notification=false&parse_mode=MarkdownV2",
+     "headers": {
+      "accept": "*/*",
+      "content-type": "application/x-www-form-urlencoded",
+      "user-agent": "python-httpx/0.28.1"
+     },
+     "kind": "telegram",
+     "method": "POST",
+     "path": "/bot123456:SECRET-bot_token~x/sendMessage",
+     "timeout": {
+      "connect": 10.0,
+      "pool": 10.0,
+      "read": 10.0,
+      "write": 10.0
+     }
+    }
+   ],
    "result": {
     "check_id": 11,
     "data": "{\"error_msg\": \"Disk full\", \"error_type\": \"threshold\", \"status_code\": 500}",
     "status": "error"
    },
-   "telegram": []
+   "telegram": [
+    {
+     "body": "{\"ok\":true,\"result\":{\"message_id\":1}}",
+     "status": 200
+    }
+   ]
   },
   {
    "check": {
@@ -3090,7 +3134,7 @@
     "data": "{\"error_msg\": \"Disk full\", \"error_type\": \"threshold\"}",
     "status": "error"
    },
-   "text": "\ud83d\udd34 *Check Failed \\(Critical\\)*\nName: Disk Pressure\nURL: https://example\\.internal/health\nError Type: threshold\nError: Disk full\n\n\ud83d\udee0 *OpsGate Approval Needed*\nTicket: `id\\)\\\\x`\n[Open approval page](https://approve.example/base/tickets/id\\)\\\\x)",
+   "text": "\ud83d\udd34 *Check Failed \\(Critical\\)*\nName: Disk Pressure\nURL: https://example\\.internal/health\nError Type: threshold\nError: Disk full\n\n\ud83d\udee0 *OpsGate Approval Needed*\nTicket: `id\\)\\\\x`\n[Open approval page](https://approve.example/base/tickets/id\\)%5Cx)",
    "ticket": {
     "status": "created",
     "ticket_id": "id)\\x"
@@ -3136,7 +3180,7 @@
     "data": "{\"error_msg\": \"Disk full\", \"error_type\": \"threshold\"}",
     "status": "warning"
    },
-   "text": "\u26a0\ufe0f *Check Warning*\nName: Disk Pressure\nURL: https://example\\.internal/health\nError Type: threshold\nError: Disk full\n\n\ud83d\udee0 *OpsGate Approval Needed*\nTicket: `id\\)\\\\x`\n[Open approval page](https://approve.example/base/tickets/id\\)\\\\x)",
+   "text": "\u26a0\ufe0f *Check Warning*\nName: Disk Pressure\nURL: https://example\\.internal/health\nError Type: threshold\nError: Disk full\n\n\ud83d\udee0 *OpsGate Approval Needed*\nTicket: `id\\)\\\\x`\n[Open approval page](https://approve.example/base/tickets/id\\)%5Cx)",
    "ticket": {
     "status": "created",
     "ticket_id": "id)\\x"

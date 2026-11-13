@@ -145,7 +145,7 @@ async fn serve(
         }
         Some(Reply::Dribble { gap }) => {
             let response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
-                            Content-Length: 11\r\nConnection: close\r\n\r\n{\"ok\":true}";
+                            Content-Length: 37\r\nConnection: close\r\n\r\n{\"ok\":true,\"result\":{\"message_id\":1}}";
             for piece in response.as_bytes().chunks(16) {
                 tokio::time::sleep(gap).await;
                 if stream.write_all(piece).await.is_err() {

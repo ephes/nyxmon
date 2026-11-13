@@ -27,6 +27,26 @@ pub enum TicketOutcome {
     Error,
 }
 
+/// Provider ticket IDs: 1..=128 ASCII alphanumeric, `_`, `-`, `.` bytes,
+/// starting with an alphanumeric byte. Positive integer IDs remain supported.
+pub(crate) fn ticket_id(value: &PyJson) -> Option<String> {
+    let id = match value {
+        PyJson::Str(id) => id.clone(),
+        PyJson::Int(id) if *id > 0 => id.to_string(),
+        PyJson::BigInt(id) if id > &BigInt::from(0) => id.to_string(),
+        _ => return None,
+    };
+    if id.len() > 128
+        || !id.as_bytes().first().is_some_and(u8::is_ascii_alphanumeric)
+        || !id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_-.".contains(&b))
+    {
+        return None;
+    }
+    Some(id)
+}
+
 /// `_is_internal_alert`: the collector-incident row (`check_id == 0`,
 /// `check_type == "internal"`).
 pub fn is_internal_alert(check: &Check) -> bool {

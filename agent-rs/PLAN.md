@@ -370,6 +370,17 @@ section 3.6); no other new variable is introduced by the port.
   with the defaults. Production uses the default lease and decodable data.
   Pinned by `collector/reliability_tests.rs::a_lease_sqlite_cannot_bind_fails_the_reclaim`.
 
+- **D-22 Notification boundaries.** Both notifier credentials and their encoded
+  forms are redacted before diagnostic truncation/formatting. Ticket success
+  requires the bounded scalar-ID grammar documented in `docs/configuration.md`,
+  and approval links use URL path segments. Optional ticket construction errors
+  become a ticket-error notice rather than escaping before primary delivery.
+  Telegram requires strict JSON with `ok: true` and a positive integer
+  `result.message_id` before delivery acknowledgement; malformed/negative 2xx
+  responses return `Failed` with no body diagnostic and no immediate resend.
+  Frozen Rust-owned notifier fixtures and `nyxmon-notify/src/tests/http.rs`
+  cover these changes from the retired Python behavior.
+
 ### 1.6 Result `data` shapes per check type (P1)
 
 Order of keys as written. `[x]` = present only under the stated condition.

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Redact Telegram and OpsGate submit credentials, including encoded forms,
+  before truncating notification diagnostics. Validate bounded scalar ticket IDs
+  and construct approval links with URL path segments.
+- Keep primary Telegram alerts when optional ticket expiry/payload construction
+  fails. Require a bounded valid Telegram success envelope with a message ID
+  before acknowledging delivery; malformed replies retain normal retry behavior.
+
 - Give Rust maintenance-suppression fetches one total timeout across redirects
   and body reads; keep notification delivery fail-open on unavailable evidence.
   Add a local UDP/TCP DNS cancellation, EOF, deadline and recovery journey.

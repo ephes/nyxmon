@@ -57,7 +57,7 @@ fn ticket_of(spec: &PyJson) -> Option<TicketOutcome> {
 }
 
 #[test]
-fn alert_messages_match_python() {
+fn alert_messages_match_contract() {
     let fixture = telegram();
     let cases = list_field(&fixture, "messages");
     assert!(cases.len() > 50);
