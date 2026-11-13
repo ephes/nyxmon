@@ -481,7 +481,10 @@ short or invalid headers fall back to `REMOTE_ADDR`.
 #### Theme preferences
 
 `POST /set-theme/` accepts a JSON object with `theme` set to `light` or `dark`.
-Malformed JSON, other shapes, missing themes and unsupported values return 400.
+The body is limited to 4096 bytes. Malformed/oversized JSON, decoding resource
+errors, invalid UTF-8 and duplicate object members return the fixed 400
+`Invalid JSON` envelope without changing the session. Other shapes, missing
+themes and unsupported values return 400 (`Theme must be light or dark`).
 Dark mode is stored in the session; light mode removes the preference and does
 not create a session for a new visitor. Other session values are preserved.
 
@@ -1092,3 +1095,35 @@ tightens the retired Python runner's all-at-once behavior. Held-check rechecks
 deduplicate IDs and use chunks of at most 500 IDs, reduced further to leave two
 parameters below the SQLite connection limit. One transaction commits all
 chunks or rolls them all back; only idle, enabled, later-due checks change.
+
+### Private dashboard responses and deletion confirmations
+
+Dashboard, service/check lists, details, forms and HTMX fragments always use
+Django's private/no-store/no-cache response policy (including redirects, JSON
+rejections, missing IDs and method errors). This also applies when login is
+disabled and the reverse proxy controls access. Public health endpoints keep
+their separate cache contract. Logout followed by another private read must
+reauthenticate when login is enabled; the browser must not reuse a stored card.
+
+Deletion confirmation pages carry an opaque signed definition fingerprint.
+Deleting a check requires its current definition; deleting a service also
+requires its current name and complete ordered child-check definitions and IDs.
+Added, removed, moved or edited children make an old confirmation return 409.
+Reload the confirmation and review the linked checks before confirming again.
+Missing or altered confirmations also return 409. Agent status, claim, schedule
+and result updates do not invalidate confirmation. The final comparison and
+cascade share a short database write transaction (SQLite reserves its writer
+before reading the definition), with no network work inside it.
+
+Service lists/details and the check list share the dashboard's request-local
+five-result prefetch, ordered by descending timestamp then result ID. Their
+status query counts stay constant as the number of checks grows (three queries
+for service pages, two for the check list, excluding authentication). Check
+detail retains its ten-sample history. No status cache is shared across requests.
+
+The Rust maintenance-suppression fetch uses its configured timeout as one total
+monotonic budget across redirects, response headers and the capped body. A
+slow-drip response cannot extend it through activity. Timeout/unavailable
+evidence fails open: the alert proceeds under ordinary notification policy.
+Every owned response/session is dropped, retaining the existing redirect
+credential rules. This intentionally tightens the retired Python per-read limit.

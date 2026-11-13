@@ -102,3 +102,10 @@ focus back from an unrelated input/card.
 A rejected mutation resumes a due component poll that it superseded. Run now
 participates in the same pending/error ownership, rather than inheriting a poll
 strategy that could silently discard the action.
+
+All private pages and HTMX fragments, including errors, use private/no-store
+headers. Deletion requires the current signed definition confirmation; a 409
+keeps the definition and results intact and offers a fresh confirmation link.
+Service confirmation lists the affected check names and links for review.
+List/detail status rendering reuses the dashboard's five-result bounded prefetch
+and timestamp/ID tie ordering without a cross-request cache.

@@ -1048,3 +1048,57 @@ async fn a_raising_notifier_fails_the_result_handling_without_ack() {
     assert_eq!(setup.db.results().len(), 1);
     assert_eq!(setup.db.state(1).attempt_at, T0);
 }
+
+#[tokio::test]
+async fn suppression_total_deadline_preserves_and_delivers_the_original_alert() {
+    use std::time::{Duration, Instant};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}/maintenance", listener.local_addr().unwrap());
+    let peer = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut request = Vec::new();
+        let mut buffer = [0u8; 4096];
+        while !request.ends_with(b"\r\n\r\n") {
+            let received = stream.read(&mut buffer).await.unwrap();
+            assert!(received > 0);
+            request.extend_from_slice(&buffer[..received]);
+        }
+        stream
+            .write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+            .await
+            .unwrap();
+        for byte in br#"{"last_status":"running"}"# {
+            if stream.write_all(&[*byte]).await.is_err() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    });
+    let setup = Setup::new();
+    let handler = setup
+        .handler(&[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")])
+        .with_suppression_fetch(http_suppression_fetch());
+    let check = stored(
+        &setup,
+        1,
+        &format!(r#"{{"notification_suppression": {{"url": "{url}", "timeout": 0.15}}}}"#),
+    );
+    let started = Instant::now();
+    assert!(
+        submit_data(
+            &handler,
+            &check,
+            ERROR,
+            r#"{"error_type":"synthetic_failure"}"#
+        )
+        .await
+    );
+    assert!(started.elapsed() < Duration::from_millis(450));
+    assert_eq!(setup.notifier.count(), 1);
+    assert_eq!(
+        setup.db.results()[0].2,
+        r#"{"error_type": "synthetic_failure"}"#
+    );
+    peer.await.unwrap();
+}

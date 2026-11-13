@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Give Rust maintenance-suppression fetches one total timeout across redirects
+  and body reads; keep notification delivery fail-open on unavailable evidence.
+  Add a local UDP/TCP DNS cancellation, EOF, deadline and recovery journey.
+- Apply private/no-store handling to dashboard pages, forms, fragments and
+  errors. Bound theme JSON to 4096 bytes and normalize resource/duplicate-member
+  refusals without session changes. Require current signed definitions and
+  child sets for deletion, with reloadable 409 conflicts. Reuse bounded latest
+  results for constant-query service/check list and service-detail statuses.
+
+- Bound Rust TCP TLS cleanup to one second, preserving certificate/probe outcomes
+  with a separate fixed cleanup diagnostic; reject inconsistent SMTP STARTTLS
+  multiline reply codes before TLS negotiation while still reading consistent
+  multiline rejections completely for their diagnostic.
+
 ### Rust agent 0.1.4
 
 - Release the Rust agent as `agent-rs-v0.1.4` (crate version 0.1.4, tag

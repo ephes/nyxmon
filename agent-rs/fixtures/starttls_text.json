@@ -745,7 +745,18 @@
    "read_greeting": false,
    "sent": [
     "45484c4f206e79786d6f6e2e696e76616c69640d0a"
-   ]
+   ],
+   "rust_outcome": {
+    "kind": "error",
+    "error_type": "starttls_rejected",
+    "message": "STARTTLS rejected at greeting: \u00b2\u00b2\u00b2-a",
+    "retryable": false,
+    "data": {
+     "starttls_response": "\u00b2\u00b2\u00b2-a",
+     "starttls_stage": "greeting"
+    }
+   },
+   "rust_sent": []
   },
   {
    "chunks": [

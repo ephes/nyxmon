@@ -132,6 +132,8 @@ fn pki_for(subject_alt_names: Vec<SanType>) -> Pki {
 enum AfterHandshake {
     /// Answer the client's `close_notify` with one.
     CloseNotify,
+    Silent,
+    ResetConnection,
     /// Close the TCP connection without `close_notify`.
     DropConnection,
     /// Send a greeting first, then answer `close_notify`.
@@ -165,6 +167,18 @@ async fn serve_tls(
     let mut buffer = [0u8; 64];
     while matches!(tls.read(&mut buffer).await, Ok(n) if n > 0) {}
     match after {
+        AfterHandshake::Silent => {
+            let mut socket = tls.into_inner().0;
+            assert_eq!(socket.read(&mut buffer).await.unwrap(), 0);
+        }
+        AfterHandshake::ResetConnection => {
+            let socket =
+                tokio::net::TcpSocket::from_std_stream(tls.into_inner().0.into_std().unwrap());
+            // Zero linger forces RST immediately; it never waits on drop.
+            #[allow(deprecated)]
+            socket.set_linger(Some(Duration::ZERO)).unwrap();
+            drop(socket);
+        }
         AfterHandshake::DropConnection => drop(tls.into_inner().0),
         _ => {
             let _ = tls.shutdown().await;
@@ -678,54 +692,56 @@ async fn a_silent_server_is_a_tls_timeout() {
 }
 
 #[tokio::test]
-async fn closing_without_close_notify_is_an_unexpected_error() {
-    let pki = pki();
-    let (addr, _, _server) = tls_server(&pki, AfterHandshake::DropConnection).await;
-    let data = format!(
-        r#"{{"port": {}, "tls_mode": "implicit", "verify": false, "retries": 2}}"#,
-        addr.port()
-    );
-    let result = executor(&Sleeps::default())
-        .execute(&check(&data, "127.0.0.1"))
-        .await
-        .unwrap();
-    assert_eq!(result.status, ResultStatus::Error);
-    assert_eq!(
-        keys(&result.data),
-        [
-            "error_type",
-            "error_msg",
-            "host",
-            "port",
-            "tls_mode",
-            "attempt",
-            "attempts"
-        ]
-    );
-    assert_eq!(text(&result.data, "error_type"), "unexpected_error");
-    assert_eq!(text(&result.data, "error_msg"), "");
-    assert_eq!(int(&result.data, "attempt"), 1);
-}
-
-#[tokio::test]
-async fn application_data_before_close_notify_is_an_unexpected_error() {
-    let pki = pki();
-    let (addr, _, _server) = tls_server(&pki, AfterHandshake::SendData).await;
-    let data = format!(
-        r#"{{"port": {}, "tls_mode": "implicit", "verify": false, "check_cert_expiry": true, "min_cert_days": 999}}"#,
-        addr.port()
-    );
-    let result = executor(&Sleeps::default())
-        .execute(&check(&data, "127.0.0.1"))
-        .await
-        .unwrap();
-    // The failing close replaces even the cert_expiry outcome.
-    assert_eq!(text(&result.data, "error_type"), "unexpected_error");
-    assert!(
-        text(&result.data, "error_msg").contains("APPLICATION_DATA_AFTER_CLOSE_NOTIFY"),
-        "{:?}",
-        result.data
-    );
+async fn tls_cleanup_is_bounded_and_preserves_the_measurement() {
+    for after in [
+        AfterHandshake::Silent,
+        AfterHandshake::DropConnection,
+        AfterHandshake::ResetConnection,
+        AfterHandshake::SendData,
+    ] {
+        for expired in [false, true] {
+            let pki = pki();
+            let (addr, _, server) = tls_server(&pki, after).await;
+            let data = format!(
+                r#"{{"port": {}, "tls_mode": "implicit", "verify": false, "check_cert_expiry": true, "min_cert_days": 0, "retries": 2}}"#,
+                addr.port()
+            );
+            let sleeps = Sleeps::default();
+            let probe_executor = executor(&sleeps)
+                .with_wall_clock(clock_days_before_expiry(if expired { -1.5 } else { 10.5 }));
+            let result = tokio::time::timeout(
+                Duration::from_secs(2),
+                probe_executor.execute(&check(&data, "127.0.0.1")),
+            )
+            .await
+            .expect("TLS cleanup must finish")
+            .unwrap();
+            assert_eq!(
+                result.status,
+                if expired {
+                    ResultStatus::Error
+                } else {
+                    ResultStatus::Ok
+                }
+            );
+            if expired {
+                assert_eq!(text(&result.data, "error_type"), "cert_expiry");
+                assert_eq!(text(&result.data, "severity"), "warning");
+            }
+            assert!(result.data.contains_key("tls_close_error"));
+            assert_eq!(int(&result.data, "attempt"), 1);
+            assert!(sleeps.calls().is_empty());
+            // The serial peer must observe EOF and serve the next connection.
+            let followup = tokio::time::timeout(
+                Duration::from_secs(2),
+                probe_executor.execute(&check(&data, "127.0.0.1")),
+            )
+            .await;
+            assert!(followup.is_ok(), "previous socket must be released");
+            server.abort();
+            let _ = server.await;
+        }
+    }
 }
 
 async fn run_dialogue(
@@ -1108,4 +1124,34 @@ async fn a_scoped_ipv6_host_follows_the_platform_resolver() {
         text(&result.data, "error_msg"),
         format!("TLS handshake failed: {UNVERIFIABLE_NAME}")
     );
+}
+
+#[tokio::test]
+async fn mixed_smtp_codes_never_negotiate_tls() {
+    fn mixed_ehlo(_: &[u8]) -> (&'static [u8], bool) {
+        (b"500-bad\r\n250 ready\r\n", false)
+    }
+    fn mixed_starttls(line: &[u8]) -> (&'static [u8], bool) {
+        if line == b"STARTTLS\r\n" {
+            (b"500-bad\r\n220 ready\r\n", true)
+        } else {
+            smtp(line)
+        }
+    }
+    let cases: [(&str, &[u8], Responder, usize); 3] = [
+        ("greeting", b"500-bad\r\n220 ready\r\n", smtp, 0),
+        ("ehlo", SMTP_GREETING, mixed_ehlo, 1),
+        ("starttls", SMTP_GREETING, mixed_starttls, 2),
+    ];
+    for (stage, greeting, responder, commands) in cases {
+        let (result, observed) =
+            run_dialogue(greeting, responder, r#", "starttls_protocol": "smtp""#).await;
+        assert_eq!(text(&result.data, "error_type"), "starttls_rejected");
+        assert_eq!(text(&result.data, "starttls_stage"), stage);
+        assert_eq!(observed.lines.lock().unwrap().len(), commands);
+        assert!(
+            observed.sni.lock().unwrap().is_empty(),
+            "must not negotiate TLS"
+        );
+    }
 }

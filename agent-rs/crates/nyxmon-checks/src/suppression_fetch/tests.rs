@@ -210,3 +210,62 @@ async fn a_connection_failure_fails_open() {
         None
     );
 }
+
+#[tokio::test]
+async fn one_deadline_spans_redirects_headers_and_dripping_body() {
+    let delay = Action::Sleep(Duration::from_millis(100));
+    let mut redirect = vec![delay.clone()];
+    redirect.extend(respond(302, &[("Location", "/final")], b""));
+    let mut body = vec![delay.clone(), Action::Write(head(200, &[]))];
+    // Every chunk arrives within the inactivity budget, but not the total one.
+    for chunk in [br#"{"last_status":""#.as_slice(), b"running", br#""}"#] {
+        body.push(delay.clone());
+        body.push(Action::Write(chunk.to_vec()));
+    }
+    let server = FakeServer::start(vec![redirect, body, respond(200, &[], b"{}")]).await;
+    let url = format!("http://127.0.0.1:{}/maintenance", server.port());
+    let started = Instant::now();
+    let payload = fetch_payload_with(&HttpSession::new(), &request(&url, 0.35)).await;
+    assert_eq!(payload, None, "unavailable evidence must fail open");
+    assert!(started.elapsed() < Duration::from_millis(480));
+    assert_eq!(server.requests().len(), 2);
+    assert!(
+        fetch_payload_with(&HttpSession::new(), &request(&url, 1.0))
+            .await
+            .is_some()
+    );
+}
+
+#[tokio::test]
+async fn total_deadline_closes_the_socket_while_headers_are_incomplete() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}/maintenance", listener.local_addr().unwrap());
+    let peer = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut buffer = [0u8; 1024];
+        let mut request = Vec::new();
+        while !request.ends_with(b"\r\n\r\n") {
+            let received = stream.read(&mut buffer).await.unwrap();
+            assert!(received > 0);
+            request.extend_from_slice(&buffer[..received]);
+        }
+        stream
+            .write_all(b"HTTP/1.1 200 OK\r\nX-Drip: ")
+            .await
+            .unwrap();
+        for _ in 0..4 {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            stream.write_all(b"x").await.unwrap();
+        }
+        let closed = tokio::time::timeout(Duration::from_millis(200), stream.read(&mut buffer))
+            .await
+            .expect("total deadline must close the pre-response socket");
+        assert!(
+            matches!(closed, Ok(0))
+                || closed.is_err_and(|error| error.kind() == std::io::ErrorKind::ConnectionReset)
+        );
+    });
+    assert_eq!(fetch_payload(&request(&url, 0.3)).await, None);
+    peer.await.unwrap();
+}

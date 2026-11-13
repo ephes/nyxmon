@@ -486,3 +486,120 @@ async fn responses_from_other_addresses_are_ignored() {
         PyJson::List(vec![PyJson::from("192.0.2.1")])
     );
 }
+
+/// Real UDP -> framed TCP journey, including ownership at every partial read.
+#[tokio::test]
+async fn tcp_fallback_partial_frames_cancel_eof_deadline_and_recover() {
+    for boundary in [0, 1, 2, 3, 12] {
+        for ending in ["cancel", "eof", "deadline"] {
+            let udp = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            let port = udp.local_addr().unwrap().port();
+            let tcp = TcpListener::bind(("127.0.0.1", port)).await.unwrap();
+            let directory = tempfile::tempdir().unwrap();
+            let path = directory.path().join("resolv.conf");
+            std::fs::write(&path, "nameserver 127.0.0.1\n").unwrap();
+            let settings = DnsSettings {
+                port,
+                resolv_conf: path,
+            };
+            let udp_task = tokio::spawn(async move {
+                for _ in 0..2 {
+                    let mut buffer = [0u8; 512];
+                    let (n, peer) = udp.recv_from(&mut buffer).await.unwrap();
+                    // Correct source, ID and question, but TC forces TCP.
+                    buffer[2..4].copy_from_slice(&0x8380u16.to_be_bytes());
+                    udp.send_to(&buffer[..n], peer).await.unwrap();
+                }
+            });
+            let (ready, reached) = tokio::sync::oneshot::channel();
+            let tcp_task = tokio::spawn(async move {
+                let mut ready = Some(ready);
+                for attempt in 0..2 {
+                    let (mut stream, _) = tcp.accept().await.unwrap();
+                    let mut length = [0u8; 2];
+                    stream.read_exact(&mut length).await.unwrap();
+                    let mut answer = vec![0u8; usize::from(u16::from_be_bytes(length))];
+                    stream.read_exact(&mut answer).await.unwrap();
+                    answer[2..4].copy_from_slice(&0x8180u16.to_be_bytes());
+                    answer[6..8].copy_from_slice(&1u16.to_be_bytes());
+                    answer.extend_from_slice(&[
+                        0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 192, 0, 2, 1,
+                    ]);
+                    let mut frame = u16::try_from(answer.len()).unwrap().to_be_bytes().to_vec();
+                    frame.extend(answer);
+                    if attempt == 0 {
+                        stream.write_all(&frame[..boundary]).await.unwrap();
+                        ready.take().unwrap().send(()).unwrap();
+                        if ending == "eof" {
+                            stream.shutdown().await.unwrap();
+                        }
+                    } else {
+                        // Valid split length and body must work after recovery.
+                        for part in [&frame[..1], &frame[1..3], &frame[3..]] {
+                            stream.write_all(part).await.unwrap();
+                            tokio::task::yield_now().await;
+                        }
+                    }
+                    let mut byte = [0u8; 1];
+                    let closed =
+                        tokio::time::timeout(Duration::from_secs(2), stream.read(&mut byte))
+                            .await
+                            .expect("executor must release its socket");
+                    assert!(
+                        matches!(closed, Ok(0))
+                            || closed.is_err_and(
+                                |error| error.kind() == std::io::ErrorKind::ConnectionReset
+                            )
+                    );
+                }
+            });
+            let data =
+                loads(r#"{"dns_server":"127.0.0.1","expected_ips":["192.0.2.1"],"timeout":0.15}"#)
+                    .unwrap();
+            let probe = check("synthetic.test", data);
+            let task_probe = probe.clone();
+            let task_settings = settings.clone();
+            let attempt = tokio::spawn(async move { execute(&task_probe, &task_settings).await });
+            tokio::time::timeout(Duration::from_secs(2), reached)
+                .await
+                .unwrap()
+                .unwrap();
+            if ending == "cancel" {
+                assert!(
+                    !attempt.is_finished(),
+                    "partial frame must never publish OK"
+                );
+                attempt.abort();
+                assert!(attempt.await.unwrap_err().is_cancelled());
+            } else {
+                let result = tokio::time::timeout(Duration::from_secs(2), attempt)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(result.status, ResultStatus::Error, "{ending}/{boundary}");
+                assert_eq!(
+                    result.data.get("error_type").and_then(PyJson::as_str),
+                    Some(if ending == "deadline" {
+                        "timeout"
+                    } else {
+                        "unexpected_error"
+                    })
+                );
+            }
+            let recovered =
+                tokio::time::timeout(Duration::from_secs(2), execute(&probe, &settings))
+                    .await
+                    .unwrap();
+            assert_eq!(
+                recovered.status,
+                ResultStatus::Ok,
+                "{ending}/{boundary}: {recovered:?}"
+            );
+            tokio::time::timeout(Duration::from_secs(2), tcp_task)
+                .await
+                .unwrap()
+                .unwrap();
+            udp_task.await.unwrap();
+        }
+    }
+}

@@ -3,12 +3,8 @@
 //! certificate expiry, retries. PLAN.md sections 1.6 (result shapes) and
 //! 5.12.
 //!
-//! Python closes the stream of every attempt with anyio's standard TLS
-//! closing handshake (`TLSStream.aclose`): it sends `close_notify` and then
-//! waits, without a time limit, for the peer's `close_notify`. A peer that
-//! closes the connection without one, resets it or sends application data
-//! first makes that close raise, which replaces the attempt's outcome with
-//! `unexpected_error`. [`close_tls`] reproduces this.
+//! TLS cleanup is best effort: at most one second, with a fixed diagnostic
+//! separate from the completed measurement (deliberate Python divergence).
 
 use std::future::Future;
 use std::pin::Pin;
@@ -271,19 +267,30 @@ impl TcpExecutor {
         let (tls_stream, tls_handshake_ms) = self.negotiate_tls(stream, host, config).await?;
         let outcome =
             self.check_certificate(&tls_stream, config, connect_time_ms, tls_handshake_ms);
-        // `finally: await current_stream.aclose()`: a failing close replaces
-        // the outcome.
-        close_tls(tls_stream)
-            .await
-            .map_err(AttemptError::Unexpected)?;
-        let cert_days_remaining = outcome?;
-        Ok(success_data(
+        let cleanup = close_tls(tls_stream).await.err();
+        let cert_days_remaining = match outcome {
+            Ok(days) => days,
+            Err(AttemptError::Check(mut error)) => {
+                if let Some(diagnostic) = cleanup {
+                    error
+                        .data
+                        .insert("tls_close_error".to_owned(), PyJson::Str(diagnostic));
+                }
+                return Err(error.into());
+            }
+            Err(error) => return Err(error),
+        };
+        let mut data = success_data(
             host,
             config,
             connect_time_ms,
             Some(tls_handshake_ms),
             cert_days_remaining,
-        ))
+        );
+        if let Some(diagnostic) = cleanup {
+            data.insert("tls_close_error".to_owned(), PyJson::Str(diagnostic));
+        }
+        Ok(data)
     }
 
     /// `_negotiate_tls` after the optional STARTTLS dialogue: the handshake
@@ -541,29 +548,29 @@ async fn connect(host: &PyJson, config: &TcpConfig) -> Result<(TcpStream, i64), 
     bounded_connect(host, config, open(host, port)).await
 }
 
-/// anyio's `TLSStream.aclose` with `standard_compatible=True`: send
-/// `close_notify`, then read until the peer's `close_notify`.
+/// Maximum best-effort TLS shutdown time, independent of peer cooperation.
+pub const TLS_CLOSE_TIMEOUT: Duration = Duration::from_secs(1);
+
+/// Send close_notify and await its peer, dropping the owned socket on all exits.
 ///
 /// # Errors
-/// `str(exc)` of what Python raises: an empty text (`BrokenResourceError`)
-/// when the peer closes or resets the connection without `close_notify`, the
-/// OpenSSL error for application data, the TLS error otherwise.
+/// A fixed, bounded cleanup diagnostic; never replaces the probe outcome.
 pub async fn close_tls<S: AsyncRead + AsyncWrite + Unpin>(
     mut stream: TlsStream<S>,
 ) -> Result<(), String> {
-    stream.get_mut().1.send_close_notify();
-    if stream.flush().await.is_err() {
-        return Err(String::new());
-    }
-    let mut buffer = [0u8; 4096];
-    match stream.read(&mut buffer).await {
-        Ok(0) => Ok(()),
-        Ok(_) => Err(
-            "[SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify"
-                .to_owned(),
-        ),
-        Err(err) if err.kind() == std::io::ErrorKind::InvalidData => Err(err.to_string()),
-        Err(_) => Err(String::new()),
+    let closing = async {
+        stream.get_mut().1.send_close_notify();
+        stream.flush().await.map_err(|_| "transport_error")?;
+        let mut buffer = [0u8; 4096];
+        match stream.read(&mut buffer).await {
+            Ok(0) => Ok(()),
+            Ok(_) => Err("application_data_after_close_notify"),
+            Err(_) => Err("transport_error"),
+        }
+    };
+    match tokio::time::timeout(TLS_CLOSE_TIMEOUT, closing).await {
+        Err(_) => Err("timeout".to_owned()),
+        Ok(outcome) => outcome.map_err(str::to_owned),
     }
 }
 

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from time import time
 
 from .auth import nyxboard_login_required
+from .deletion import DELETE_CONFLICT, delete_confirmed, deletion_revision
 from .timestamps import usable_epoch as _usable_epoch
 from .models import (
     CheckNotificationState,
@@ -165,25 +166,35 @@ def _site_connectivity_badge(result):
     return "held" if metadata.get("held") is True else "observed"
 
 
-@nyxboard_login_required
-def dashboard(request):
-    """
-    Function-based view to display the dashboard of services and their health checks.
-    """
-    # A sliced prefetch uses a window per check, fetching only its five samples.
-    # Enrich the same instances that service summaries and cards will render.
-    services = Service.objects.prefetch_related(
+def _checks_with_recent_results():
+    # A window per check fetches at most five samples, including timestamp ties.
+    return HealthCheck.objects.prefetch_related(
         Prefetch(
-            "healthcheck_set",
-            queryset=HealthCheck.objects.prefetch_related(
-                Prefetch(
-                    "results",
-                    queryset=Result.objects.order_by("-created_at", "-id")[:5],
-                    to_attr="recent_results",
-                )
-            ),
+            "results",
+            queryset=Result.objects.order_by("-created_at", "-id")[:5],
+            to_attr="recent_results",
         )
     )
+
+
+def _services_with_recent_results():
+    return Service.objects.prefetch_related(
+        Prefetch("healthcheck_set", queryset=_checks_with_recent_results())
+    )
+
+
+def _project_service_statuses(services):
+    for service in services:
+        for check in service.healthcheck_set.all():
+            check.dashboard_status = check.get_status()
+        service.dashboard_status = service.get_status()
+
+
+@nyxboard_login_required
+def dashboard(request):
+    """Display services and checks using bounded request-local evidence."""
+    services = _services_with_recent_results()
+    _project_service_statuses(services)
 
     # Dictionary to map check IDs to their last result
     check_results = {}
@@ -191,7 +202,6 @@ def dashboard(request):
     current_time = time()
     for service in services:
         for check in service.healthcheck_set.all():
-            check.dashboard_status = check.get_status()
             check.check_mode = (
                 "due" if check.next_check_time <= current_time else "normal"
             )
@@ -206,7 +216,6 @@ def dashboard(request):
                     "timestamp": int(check.last_result.created_at.timestamp()),
                     "status": check.last_result.status,
                 }
-        service.dashboard_status = service.get_status()
 
     # Create a JSON object with only the essential check result data
     check_results_json = {}
@@ -233,7 +242,8 @@ def service_list(request):
     """
     Display a list of all services.
     """
-    services = Service.objects.all()
+    services = _services_with_recent_results()
+    _project_service_statuses(services)
     return render(request, "nyxboard/service_list.html", {"services": services})
 
 
@@ -242,7 +252,8 @@ def service_detail(request, service_id):
     """
     Display details of a specific service.
     """
-    service = get_object_or_404(Service, id=service_id)
+    service = get_object_or_404(_services_with_recent_results(), id=service_id)
+    _project_service_statuses([service])
     health_checks = service.healthcheck_set.all()
     return render(
         request,
@@ -326,13 +337,26 @@ def service_delete(request, service_id):
     """
     Delete a service.
     """
-    service = get_object_or_404(Service, id=service_id)
-
+    conflict = False
     if request.method == "POST":
-        service.delete()
-        return redirect("nyxboard:service_list")
-
-    return render(request, "nyxboard/service_confirm_delete.html", {"service": service})
+        service, deleted = delete_confirmed(
+            Service, service_id, request.POST.get("definition_revision")
+        )
+        if deleted:
+            return redirect("nyxboard:service_list")
+        conflict = True
+    else:
+        service = get_object_or_404(Service, id=service_id)
+    return render(
+        request,
+        "nyxboard/service_confirm_delete.html",
+        {
+            "service": service,
+            "definition_revision": deletion_revision(service),
+            "conflict": DELETE_CONFLICT if conflict else None,
+        },
+        status=409 if conflict else 200,
+    )
 
 
 # HealthCheck CRUD views
@@ -341,7 +365,7 @@ def healthcheck_list(request):
     """
     Display a list of all health checks.
     """
-    health_checks = HealthCheck.objects.all()
+    health_checks = _checks_with_recent_results().select_related("service")
     return render(
         request, "nyxboard/healthcheck_list.html", {"health_checks": health_checks}
     )
@@ -531,17 +555,27 @@ def healthcheck_delete(request, check_id):
     """
     Delete a health check.
     """
-    health_check = get_object_or_404(HealthCheck, id=check_id)
-
+    conflict = False
     if request.method == "POST":
-        service_id = health_check.service.id
-        health_check.delete()
-        return redirect("nyxboard:service_detail", service_id=service_id)
-
+        health_check, deleted = delete_confirmed(
+            HealthCheck, check_id, request.POST.get("definition_revision")
+        )
+        if deleted:
+            return redirect(
+                "nyxboard:service_detail", service_id=health_check.service_id
+            )
+        conflict = True
+    else:
+        health_check = get_object_or_404(HealthCheck, id=check_id)
     return render(
         request,
         "nyxboard/healthcheck_confirm_delete.html",
-        {"health_check": health_check},
+        {
+            "health_check": health_check,
+            "definition_revision": deletion_revision(health_check),
+            "conflict": DELETE_CONFLICT if conflict else None,
+        },
+        status=409 if conflict else 200,
     )
 
 
@@ -674,6 +708,18 @@ def healthcheck_toggle_disabled(request, check_id):
     return render(request, template_name, context)
 
 
+THEME_BODY_LIMIT = 4096
+
+
+def _unique_json_object(pairs):
+    data = {}
+    for key, value in pairs:
+        if key in data:
+            raise ValueError("duplicate JSON member")
+        data[key] = value
+    return data
+
+
 @nyxboard_login_required(json=True)
 @require_POST
 def set_theme(request):
@@ -681,7 +727,10 @@ def set_theme(request):
     Set the theme preference in the session.
     """
     try:
-        data = json.loads(request.body)
+        body = request.read(THEME_BODY_LIMIT + 1)
+        if len(body) > THEME_BODY_LIMIT:
+            raise ValueError("theme body too large")
+        data = json.loads(body, object_pairs_hook=_unique_json_object)
         if not isinstance(data, dict) or data.get("theme") not in ("light", "dark"):
             return JsonResponse(
                 {"status": "error", "message": "Theme must be light or dark"},
@@ -694,5 +743,5 @@ def set_theme(request):
         else:
             request.session["theme"] = theme
         return JsonResponse({"status": "success", "theme": theme})
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError, RecursionError):
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)

@@ -426,7 +426,7 @@ Runner-level (`adapters/runner/async_runner.py:_run_one`):
 **tcp** (`executors/tcp_executor.py`):
 
 - config error: `error_type`, `error_msg`; missing host: `error_msg="host is required (set check.url or data.host)"`.
-- OK: `host, port, tls_mode, [starttls_protocol if tls_mode=starttls], connect_time_ms, [tls_handshake_ms], [cert_days_remaining], attempt, attempts`.
+- OK: `host, port, tls_mode, [starttls_protocol if tls_mode=starttls], connect_time_ms, [tls_handshake_ms], [cert_days_remaining], [tls_close_error], attempt, attempts`.
 - structured error: `error_type, error_msg, host, port, tls_mode, attempt, attempts, [starttls_protocol]`, then the error's own data in order
   (`connect_time_ms, tls_handshake_ms` for `cert_missing`;
   `severity="warning", cert_days_remaining, connect_time_ms, tls_handshake_ms`
@@ -437,8 +437,9 @@ Runner-level (`adapters/runner/async_runner.py:_run_one`):
   `tls_timeout`, `tls_error` ("TLS handshake failed: …", retryable),
   `starttls_timeout`, `starttls_connection_closed` (retryable),
   `starttls_rejected`, `starttls_protocol_error`, `cert_missing`,
-  `cert_expiry` (not retryable), `unexpected_error` (`host, port, tls_mode, A`;
-  also when the TLS close fails, 5.12).
+  `cert_expiry` (not retryable), `unexpected_error` (`host, port, tls_mode, A`).
+  Best-effort TLS closing never replaces these outcomes: a fixed optional
+  `tls_close_error` is appended to success/certificate data (5.12).
 
 **dns** (`executors/dns_executor.py`):
 
@@ -1121,9 +1122,11 @@ raised). Any error in this function is logged as
   and no automatic decompression (the client only decodes when asked to read
   a body, and the fetch refuses every encoding but identity before reading);
   redirects via `redirect_target`/`keeps_authorization`; the body is read
-  with `read_body` under the 256 KiB cap. Each request uses the httpx
-  timeout semantics of 5.5 (a NaN timeout fails before connecting, like
-  `socket.settimeout(nan)`). The sync `httpx.Client` connects to the
+  with `read_body` under the 256 KiB cap. In addition to per-operation limits,
+  Rust carries one monotonic `timeout` across all redirects, headers and body.
+  On expiry, the owned response driver is aborted and the socket released;
+  unavailable evidence fails open. Unrepresentable/nonfinite budgets fail open
+  before connecting. This deliberately tightens Python's per-read policy. The sync `httpx.Client` connects to the
   resolved addresses one after the other, while the session uses anyio's
   Happy Eyeballs: only the time to the same outcome differs (P2). Proxy
   variables are not read (D-15). Pinned by `suppression_fetch.json` (the
@@ -1235,6 +1238,13 @@ raised). Any error in this function is logged as
   1.6 — fixture.
 
 ### 5.6 DNS (`dns_executor.py`)
+
+The local executor journey `tcp_fallback_partial_frames_cancel_eof_deadline_and_recover`
+proves correct-source truncated UDP -> TCP fallback, cancellation at zero/one/two
+length bytes and partial body boundaries, EOF and total deadline. Peers observe
+EOF/reset, server tasks are joined, and a subsequent split-frame resolution
+succeeds. This adds an integration oracle without changing DNS answer policy.
+
 
 Implemented in S5b as an own stub resolver (`nyxmon-checks/src/dns.rs`,
 wire format and texts in `dns/wire.rs`, config in
@@ -1597,16 +1607,21 @@ stops on a short result count); see D-21 in `docs/agent-rs.md`.
   tested.
 - Certificate expiry from the peer leaf certificate even when not verifying:
   `floor((notAfter - now) / 86400)`; missing certificate → `cert_missing`.
-- Closing (`finally: await current_stream.aclose()`): a TLS stream is closed
-  with anyio's standard TLS closing handshake — send `close_notify`, then
-  wait **without a time limit** for the peer's `close_notify`. A peer that
-  closes or resets the connection without one (`BrokenResourceError`,
-  `error_msg` `""`) or sends application data first (an IMAPS/SMTPS banner:
-  OpenSSL `APPLICATION_DATA_AFTER_CLOSE_NOTIFY`) makes the close raise, which
-  replaces the attempt's outcome (also `cert_expiry`/`cert_missing`) with
-  `unexpected_error`, not retried. Verified against Python with local TLS
-  servers; the production TCP checks (port 443 web servers) answer
-  `close_notify`. A plain TCP stream closes without effect.
+- TLS closing deliberately differs from retired Python: best-effort
+  `close_notify` and peer read have one **one-second total deadline**. Dropping
+  the owned stream releases the socket on success, error or timeout. Cleanup
+  never changes a completed success/certificate outcome or triggers retries.
+  A failed close adds `tls_close_error` (`timeout`, `transport_error` or
+  `application_data_after_close_notify`) rather than peer-controlled text.
+- SMTP STARTTLS replies require one three-ASCII-digit code on **every**
+  continuation/final line, the first line's code; the complete reply must then
+  carry the stage's expected code (220 greeting, 250 EHLO, 220 STARTTLS),
+  retaining dialogue byte/time caps. A consistent multiline rejection (e.g.
+  `554-...` / `554 ...`) is read to its final line like Python, so the
+  diagnostic keeps every line. Malformed mixed/Unicode codes, which Python
+  accepts, are deliberately rejected at the first inconsistent line.
+  `starttls_text.json` retains the Python oracle and records explicit
+  `rust_outcome`/`rust_sent` overrides for these cases.
 
 ### 5.13 Ping (`ping_executor.py`)
 
