@@ -691,6 +691,27 @@ Searches a mailbox for recent messages by subject and optionally deletes them:
 
 On success returns `matched_uids` and `latest_internaldate`; empty searches are retried according to `retries`/`retry_delay` before returning `no_recent_message`, and other failures include `error_type` values such as `tls_error`, `timeout` or `execution_error`. Implicit TLS and STARTTLS always verify the certificate and hostname unless `verify` is set to `false`. `no_recent_message_severity` defaults to `critical`; set it to `warning` for third-party forwarded loopback checks that should not page on forwarding gaps.
 
+The Rust agent treats `search_subject` as one literal quoted search argument,
+escaping quotes and backslashes. Only printable ASCII is supported; control
+characters and non-ASCII subjects fail with `execution_error` before SEARCH.
+Search syntax in a subject never adds another criterion.
+
+Freshness is checked again after all metadata FETCHes, immediately before
+selecting successful UIDs and deleting them. Messages that age past
+`max_age_minutes` during the scan are excluded; if none remain, the normal
+`no_recent_message` retry/severity policy applies. INTERNALDATE may be at most
+60 seconds ahead of that current clock (inclusive). A date further ahead fails
+the attempt with `invalid_message_date`, with no deletion, even when another
+matching message is recent. This is a clock/evidence error, not a no-recent retry.
+
+A scan admits at most 256 distinct positive UIDs and fetches metadata in batches
+of 32. All FETCH replies together have an 8 MiB incoming-byte budget (including
+unsolicited data and literals), in addition to the per-command limits. An
+oversized or malformed selection returns `incomplete_scan`, without a partial
+healthy result, STORE or EXPUNGE. Reduce the matching backlog before retrying;
+these errors do not take the no-recent-message retry path. Results contain at
+most 256 `matched_uids`; cleanup remains scoped to the selected UIDs.
+
 ### JSON Metrics Checks
 
 Fetches a JSON endpoint (e.g., `/.well-known/health`) and evaluates threshold rules:

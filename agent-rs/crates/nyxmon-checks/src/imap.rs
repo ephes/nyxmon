@@ -3,13 +3,13 @@
 //! and argument quoting, the response parser with its untagged-response
 //! store, and the same exceptions (PLAN.md section 5.14).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
 use indexmap::IndexMap;
 use nyxmon_core::config::imap::{
-    ImapConfig, ImapTls, InternalDate, fetch_uid, iso_utc, parse_internaldate, search_ids,
+    ImapConfig, ImapTls, InternalDate, fetch_uid, iso_utc, parse_internaldate,
 };
 use nyxmon_core::config::{ConfigError, PyException};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
@@ -30,6 +30,10 @@ const MAX_LINE: usize = 1_000_000;
 const MAX_LITERAL: usize = 1 << 20;
 const MAX_RESPONSE_BYTES: usize = 8 << 20;
 const MAX_RESPONSES: usize = 1024;
+const MAX_MATCH_UIDS: usize = 256;
+const FETCH_BATCH_SIZE: usize = 32;
+const MAX_FETCH_BYTES: usize = 8 << 20;
+const MAX_CLOCK_SKEW_SECONDS: f64 = 60.0;
 
 /// An exception raised inside the session, by the class the executor's
 /// `except` chain distinguishes.
@@ -37,6 +41,10 @@ const MAX_RESPONSES: usize = 1024;
 enum ImapExc {
     /// `ImapCheckError` (`_run_checked`): `execution_error`.
     Check(String),
+    /// The scan cannot safely certify the complete selected set.
+    Incomplete(String),
+    /// A server timestamp cannot provide plausible current evidence.
+    Observation(String),
     /// `ssl.SSLError`: `tls_error`.
     Tls(String),
     /// `imaplib.error`/`abort`/`readonly`; `command: X => ` wrapping
@@ -278,6 +286,7 @@ struct Imap {
     tls_established: bool,
     response_bytes: usize,
     response_count: usize,
+    fetch_bytes_remaining: Option<usize>,
 }
 
 impl Imap {
@@ -307,6 +316,7 @@ impl Imap {
             tls_established: false,
             response_bytes: 0,
             response_count: 0,
+            fetch_bytes_remaining: None,
         };
         imap.connect().await?;
         Ok(imap)
@@ -351,6 +361,15 @@ impl Imap {
     }
 
     fn charge_response(&mut self, bytes: usize, count: usize) -> Result<(), ImapExc> {
+        if let Some(remaining) = self.fetch_bytes_remaining.as_mut() {
+            if bytes > *remaining {
+                self.conn = None;
+                return Err(ImapExc::Incomplete(
+                    "IMAP scan incomplete: fetch byte limit exceeded".to_owned(),
+                ));
+            }
+            *remaining -= bytes;
+        }
         if self.response_bytes > MAX_RESPONSE_BYTES
             || self.response_count > MAX_RESPONSES
             || bytes > MAX_RESPONSE_BYTES.saturating_sub(self.response_bytes)
@@ -805,47 +824,78 @@ async fn search_recent(
     max_age_minutes: i64,
     env: &impl MailEnv,
 ) -> Result<Vec<(String, i64)>, ImapExc> {
-    let criterion = ascii(&format!("\"{}\"", py_str(subject)))?;
+    let text = py_str(subject);
+    if !text.is_ascii() || text.bytes().any(|b| b.is_ascii_control()) {
+        return Err(ImapExc::Check(
+            "IMAP subject must contain only printable ASCII characters".to_owned(),
+        ));
+    }
+    let criterion = quote(&PyJson::Str(text))?;
     let args = ["NOT", "DELETED", "HEADER", "SUBJECT"]
         .iter()
         .map(|a| a.as_bytes().to_vec())
         .chain([criterion])
         .collect();
     let data = checked("uid", imap.uid("SEARCH", args).await?)?;
-    let ids: Vec<String> = match data.first() {
-        Some(Some(Datum::Bytes(bytes))) if !bytes.is_empty() => {
-            search_ids(bytes).map_err(ImapExc::Other)?
-        }
-        Some(Some(Datum::Literal(..))) => {
-            return Err(ImapExc::Other(
-                "'tuple' object has no attribute 'decode'".to_owned(),
+    // Check cardinality before allocating a String for each UID. Admit only
+    // distinct positive protocol UIDs, never server-supplied sequence syntax.
+    let mut ids = Vec::new();
+    let mut seen = HashSet::new();
+    for datum in data.iter().flatten() {
+        let Datum::Bytes(bytes) = datum else {
+            return Err(ImapExc::Incomplete(
+                "IMAP scan incomplete: invalid SEARCH response".to_owned(),
             ));
+        };
+        for id in bytes
+            .split(u8::is_ascii_whitespace)
+            .filter(|id| !id.is_empty())
+        {
+            if ids.len() == MAX_MATCH_UIDS {
+                return Err(ImapExc::Incomplete(
+                    "IMAP scan incomplete: selected UID limit exceeded".to_owned(),
+                ));
+            }
+            let valid = id.iter().all(u8::is_ascii_digit)
+                && id.first() != Some(&b'0')
+                && std::str::from_utf8(id)
+                    .ok()
+                    .and_then(|s| s.parse::<u32>().ok())
+                    .is_some();
+            if !valid || !seen.insert(id) {
+                return Err(ImapExc::Incomplete(
+                    "IMAP scan incomplete: invalid or duplicate UID".to_owned(),
+                ));
+            }
+            ids.push(String::from_utf8(id.to_vec()).expect("ASCII UID"));
         }
-        _ => Vec::new(),
-    };
+    }
     if ids.is_empty() {
         return Ok(Vec::new());
     }
-    // `datetime.now()` is read after the SEARCH completed.
     let cutoff = env.now() - (max_age_minutes * 60) as f64;
     let mut messages = Vec::new();
-    for id in ids {
-        let args = vec![ascii(&id)?, b"(INTERNALDATE)".to_vec()];
+    imap.fetch_bytes_remaining = Some(MAX_FETCH_BYTES);
+    for batch in ids.chunks(FETCH_BATCH_SIZE) {
+        let args = vec![ascii(&batch.join(","))?, b"(INTERNALDATE)".to_vec()];
         let data = checked("uid", imap.uid("FETCH", args).await?)?;
-        let raw = data.iter().find_map(|entry| {
-            let candidate = match entry {
-                Some(Datum::Bytes(b)) | Some(Datum::Literal(b, _)) => b,
-                None => return None,
-            };
-            (fetch_uid(candidate) == Some(id.as_bytes())).then_some(candidate)
-        });
-        let Some(raw) = raw else { continue };
-        match parse_internaldate(raw) {
-            InternalDate::At(at) if (at as f64) >= cutoff => messages.push((id, at)),
-            InternalDate::At(_) | InternalDate::Missing => {}
-            InternalDate::Error(text) => return Err(ImapExc::Other(text)),
+        for id in batch {
+            let raw = data.iter().find_map(|entry| {
+                let candidate = match entry {
+                    Some(Datum::Bytes(b)) | Some(Datum::Literal(b, _)) => b,
+                    None => return None,
+                };
+                (fetch_uid(candidate) == Some(id.as_bytes())).then_some(candidate)
+            });
+            let Some(raw) = raw else { continue };
+            match parse_internaldate(raw) {
+                InternalDate::At(at) if (at as f64) >= cutoff => messages.push((id.clone(), at)),
+                InternalDate::At(_) | InternalDate::Missing => {}
+                InternalDate::Error(text) => return Err(ImapExc::Other(text)),
+            }
         }
     }
+    imap.fetch_bytes_remaining = None;
     Ok(messages)
 }
 
@@ -939,6 +989,21 @@ async fn session(
 ) -> Result<(Vec<String>, i64), AttemptError> {
     let mut messages =
         search_recent(imap, &config.search_subject, config.max_age_minutes, env).await?;
+    // FETCH can take long enough to age previously admitted messages out.
+    // Settle against one current clock reading immediately before selection
+    // and destructive cleanup; never allow implausible future evidence to pass.
+    let now = env.now();
+    if messages
+        .iter()
+        .any(|(_, at)| (*at as f64) > now + MAX_CLOCK_SKEW_SECONDS)
+    {
+        return Err(ImapExc::Observation(
+            "IMAP INTERNALDATE exceeds the 60-second clock-skew allowance".to_owned(),
+        )
+        .into());
+    }
+    let cutoff = now - (config.max_age_minutes * 60) as f64;
+    messages.retain(|(_, at)| (*at as f64) >= cutoff);
     if messages.is_empty() {
         return Err(AttemptError::NoRecent(format!(
             "No messages with subject '{}' within {} minutes",
@@ -1004,6 +1069,8 @@ pub async fn execute(check: &Check, env: &impl MailEnv) -> Result<CheckResult, P
             Err(AttemptError::Exc(exc)) => {
                 let (kind, text) = match exc {
                     ImapExc::Check(text) => ("execution_error", text),
+                    ImapExc::Incomplete(text) => ("incomplete_scan", text),
+                    ImapExc::Observation(text) => ("invalid_message_date", text),
                     ImapExc::Tls(text) => ("tls_error", text),
                     ImapExc::Lib(text) | ImapExc::Other(text) => ("unexpected_error", text),
                 };

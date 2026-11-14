@@ -66,22 +66,8 @@
       "* 1 FETCH (UID 20 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
      ],
      [
-      "tagged",
-      "OK FETCH completed"
-     ],
-     [
-      "recv"
-     ],
-     [
       "send",
       "* 2 FETCH (INTERNALDATE \"09-Oct-2025 10:45:00 +0200\" UID 30)\r\n"
-     ],
-     [
-      "tagged",
-      "OK FETCH completed"
-     ],
-     [
-      "recv"
      ],
      [
       "send",
@@ -140,9 +126,7 @@
      "LOGIN monitor \"secret\"",
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
-     "UID FETCH 20 (INTERNALDATE)",
-     "UID FETCH 30 (INTERNALDATE)",
-     "UID FETCH 40 (INTERNALDATE)",
+     "UID FETCH 20,30,40 (INTERNALDATE)",
      "UID STORE 30,20 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "UID EXPUNGE 30,20",
@@ -2230,8 +2214,8 @@
    "name": "non_ascii_subject",
    "result": {
     "attempts": 1,
-    "error_msg": "'ascii' codec can't encode character '\\xfc' in position 3: ordinal not in range(128)",
-    "error_type": "unexpected_error"
+    "error_msg": "IMAP subject must contain only printable ASCII characters",
+    "error_type": "execution_error"
    },
    "scripts": [
     [
@@ -2347,7 +2331,7 @@
     [
      "LOGIN monitor \"secret\"",
      "SELECT INBOX",
-     "UID SEARCH NOT DELETED HEADER SUBJECT \"say \"hi\"\"",
+     "UID SEARCH NOT DELETED HEADER SUBJECT \"say \\\"hi\\\"\"",
      "LOGOUT"
     ]
    ]
@@ -2477,8 +2461,8 @@
    "name": "search_with_literal_data",
    "result": {
     "attempts": 1,
-    "error_msg": "'tuple' object has no attribute 'decode'",
-    "error_type": "unexpected_error"
+    "error_msg": "IMAP scan incomplete: invalid SEARCH response",
+    "error_type": "incomplete_scan"
    },
    "scripts": [
     [
@@ -2882,13 +2866,6 @@
       "* 1 FETCH (UID 11 INTERNALDATE \"09-Oct-2025 10:45:00 +0200\")\r\n"
      ],
      [
-      "tagged",
-      "OK Fetch completed (0.001 + 0.000 secs)."
-     ],
-     [
-      "recv"
-     ],
-     [
       "send",
       "* 2 FETCH (UID 12 INTERNALDATE \"09-Oct-2025 08:50:00 +0000\")\r\n"
      ],
@@ -2953,8 +2930,7 @@
      "LOGIN monitor \"secret\"",
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
-     "UID FETCH 11 (INTERNALDATE)",
-     "UID FETCH 12 (INTERNALDATE)",
+     "UID FETCH 11,12 (INTERNALDATE)",
      "UID STORE 11,12 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "UID EXPUNGE 11,12",
