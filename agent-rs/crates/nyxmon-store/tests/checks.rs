@@ -473,3 +473,71 @@ async fn reclaim_rejects_nonpositive_batch_sizes_without_writes() {
         assert_eq!(db.schedule(1).unwrap().2, 0);
     }
 }
+
+#[tokio::test]
+async fn scheduling_rejects_invalid_domains_without_writes() {
+    use nyxmon_store::StoreError;
+    for cap in [i64::MIN, -1, 0, 101, i64::MAX] {
+        let db = TestDb::new();
+        db.insert(row(1));
+        db.insert(row(2).processing(9_999));
+        let before = std::fs::read(db.path()).unwrap();
+        let store = db.store();
+        assert!(matches!(
+            store.claim_due_checks(10_000, cap).await,
+            Err(StoreError::InvalidArgument(_))
+        ));
+        assert!(matches!(
+            store.reclaim_stale_checks(10_000, 300, cap).await,
+            Err(StoreError::InvalidArgument(_))
+        ));
+        assert_eq!(std::fs::read(db.path()).unwrap(), before);
+    }
+    for lease in [i64::MIN, -1, 0, 29] {
+        let db = TestDb::new();
+        db.insert(row(1).processing(9_999));
+        let before = std::fs::read(db.path()).unwrap();
+        assert!(matches!(
+            db.store().reclaim_stale_checks(10_000, lease, 1).await,
+            Err(StoreError::InvalidArgument(_))
+        ));
+        assert_eq!(std::fs::read(db.path()).unwrap(), before);
+    }
+}
+
+#[tokio::test]
+async fn scheduling_admits_runner_boundaries_and_saturating_leases() {
+    for cap in [1, 100] {
+        let db = TestDb::new();
+        for id in 1..=101 {
+            db.insert(row(id));
+        }
+        let store = db.store();
+        assert_eq!(
+            store.claim_due_checks(10_000, cap).await.unwrap().len(),
+            cap as usize
+        );
+        assert!(
+            store
+                .reclaim_stale_checks(10_000, 30, cap)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            store
+                .reclaim_stale_checks(i64::MIN, i64::MAX, cap)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            store
+                .reclaim_stale_checks(10_030, 30, cap)
+                .await
+                .unwrap()
+                .len(),
+            cap as usize
+        );
+    }
+}

@@ -500,7 +500,10 @@ pair limit to 0 disables throttling; the address limit and window must remain
 positive. Negative limits or proxy hops are rejected at settings load. Run
 `manage.py migrate` before starting the updated dashboard: migration
 `0014_login_throttle_bucket` creates database-backed fixed-window counters.
-Admission reserves both budgets atomically before password work, across workers;
+Admission acquires the database writer before reading the decision timestamp,
+so a lock wait cannot age a newly reserved window. The same timestamp governs
+expiry cleanup and both reservations. It reserves both budgets atomically before
+password work, across workers;
 no database lock is held while checking a password. Completed failures consume
 the reservation, successful authentication releases it and resets completed pair
 failures, and exceptions/cancellation release it. Other in-flight checks still
@@ -1200,3 +1203,22 @@ slow-drip response cannot extend it through activity. Timeout/unavailable
 evidence fails open: the alert proceeds under ordinary notification policy.
 Every owned response/session is dropped, retaining the existing redirect
 credential rules. This intentionally tightens the retired Python per-read limit.
+
+### Current dashboard card state
+
+Both the quick `disabled` POST to the check edit route and the HTMX toggle route
+require `definition_revision`, an opaque signed revision covering the check's
+name, service, type, URL, configuration, interval and disabled flag. The same
+conditional UPDATE checks all loaded definition fields, including exact stored
+JSON after semantic comparison. A stale, absent or altered revision changes no
+activation state and returns HTTP 409 with the current card and a reload message.
+HTMX accepts only a matching card fragment for that conflict. Review the current
+definition before trying again; an old card cannot repeat its toggle. Agent
+scheduling, lease and result changes remain independent of the definition.
+
+Status polls, Run now and toggle responses load the check (including its service)
+and at most five results ordered by timestamp and ID in one SQLite read
+transaction. Inputs are fully materialized before rendering outside that
+transaction. A completion committed between the reads cannot mix a prior lease
+or schedule with its new result. Disabled checks remain in normal card mode;
+processing enabled checks remain due even if their schedule is in the future.

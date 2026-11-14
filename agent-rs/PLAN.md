@@ -584,10 +584,15 @@ journal_mode=…`. At startup, before taking any claim, `nyxmon-store` verifies:
 2. `django_migrations` exists and contains
    `('nyxboard', '0013_site_connectivity_state')` (the minimum migration
    level, constant `MIN_NYXBOARD_MIGRATION` in `nyxmon-store`).
-3. `django_session` is optional (the cleaner probes for it every cycle, like
+3. Public SQLite schema introspection verifies exact single-column primary keys:
+   service/check/result `id`, notification `check_id`, incident `incident_key`.
+   Required foreign keys are check → service and result → check (NO ACTION),
+   notification → check (ON DELETE CASCADE). Additive columns/indexes are allowed;
+   missing constraints are refused read-only, with no agent repair of restored DDL.
+4. `django_session` is optional (the cleaner probes for it every cycle, like
    `delete_old_results_async`).
 
-On failure the agent logs one error naming every missing table/column/
+On failure the agent logs one error naming every missing table/column/constraint/
 migration and the remedy (`manage.py migrate`) and exits with status 1
 before claiming anything. `nyxmon-agent --check-schema --db PATH` runs only
 this verification (read-only open) and exits 0/1; the deploy role runs it

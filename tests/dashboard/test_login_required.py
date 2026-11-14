@@ -14,6 +14,7 @@ from django.urls import URLPattern, get_resolver, reverse
 
 from nyxboard import urls as nyxboard_urls
 from nyxboard.auth import LOGIN_GUARD_ATTR
+from nyxboard.forms import check_definition_revision
 from nyxboard.models import HealthCheck, Service
 
 LOGIN_URL = "/accounts/login/"
@@ -236,6 +237,7 @@ class TestLoginRequired:
             reverse(
                 "nyxboard:healthcheck_toggle_disabled", kwargs={"check_id": check.id}
             ),
+            {"definition_revision": check_definition_revision(check)},
             headers={"HX-Request": "true"},
         )
         assert response.status_code == 200

@@ -1,4 +1,5 @@
-{% load static %}
+{% load static check_definitions %}
+{% check_definition_revision check as definition_revision %}
 
 {# This template partial displays a single health check with improved card design #}
 <health-check role="listitem"
@@ -18,6 +19,7 @@
         hx-swap="outerHTML"
     {% endif %}>
     
+    {% if conflict %}<p role="alert">{{ conflict }}</p>{% endif %}
     <div class="health-check-header">
         <h3 id="check-title-{{ check.id }}" class="health-check-title">{{ check.name }}</h3>
         {% if check.url|slice:":4" == "http" %}
@@ -78,6 +80,7 @@
                     <input hx-sync="closest health-check:queue last" id="check-{{ check.id }}-disabled" data-check-toggle data-confirmed-disabled="{{ check.disabled|yesno:'true,false' }}" type="checkbox" aria-label="Disable check {{ check.name }}"
                            {% if check.disabled %}checked{% endif %}
                            hx-post="{% url 'nyxboard:healthcheck_toggle_disabled' check_id=check.id %}"
+                           hx-vals='{"definition_revision":"{{ definition_revision }}"}'
                            hx-swap="outerHTML"
                            hx-target="#check-{{ check.id }}">
                     <span class="toggle-slider" aria-hidden="true"></span>

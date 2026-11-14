@@ -2,12 +2,16 @@
 //! (PLAN.md section 3.2).
 
 use std::path::Path;
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
 use rusqlite::{Connection, OpenFlags};
+use tokio::sync::Semaphore;
 
 use crate::error::StoreError;
+
+/// Maximum queued plus running operations per store actor.
+pub const MAX_PENDING_JOBS: usize = 32;
 
 type Job = Box<dyn FnOnce(&mut Connection) + Send>;
 
@@ -37,6 +41,7 @@ impl Default for StoreOptions {
 #[derive(Clone, Debug)]
 pub struct Store {
     jobs: mpsc::Sender<Job>,
+    admission: Arc<Semaphore>,
 }
 
 impl Store {
@@ -68,7 +73,10 @@ impl Store {
                 }
             })
             .map_err(StoreError::Io)?;
-        Ok(Store { jobs })
+        Ok(Store {
+            jobs,
+            admission: Arc::new(Semaphore::new(MAX_PENDING_JOBS)),
+        })
     }
 
     /// Run `operation` on the actor thread and await its result.
@@ -77,8 +85,15 @@ impl Store {
         T: Send + 'static,
         F: FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
     {
+        let permit = self
+            .admission
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|_| StoreError::ActorDied)?;
         let (reply, response) = tokio::sync::oneshot::channel();
         let job: Job = Box::new(move |connection| {
+            let _permit = permit;
             // The receiver is gone when the caller was cancelled; the
             // operation has completed either way.
             let _ = reply.send(operation(connection));
@@ -111,6 +126,56 @@ pub(crate) fn open_read_only(path: &Path) -> Result<Connection, StoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn pending_jobs_are_bounded_and_cancellation_keeps_admitted_writes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        let raw = Connection::open(&path).unwrap();
+        raw.execute_batch(include_str!("../../../fixtures/schema/schema.sql"))
+            .unwrap();
+        raw.execute("INSERT INTO service (id, name) VALUES (1, 'synthetic')", [])
+            .unwrap();
+        for id in 1..=64 {
+            raw.execute("INSERT INTO health_check (id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled, data) VALUES (?, 1, 'synthetic', 'http', 'https://example.test', 300, 1000, 0, 'idle', 0, '{}')", [id]).unwrap();
+        }
+        let store = Store::open(&path).unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, gate) = mpsc::channel();
+        let blocker = enqueue(&store, move |_| {
+            entered.send(()).unwrap();
+            gate.recv().unwrap();
+            Ok(())
+        })
+        .await;
+        bounded(started).await.unwrap();
+        let mut calls = Vec::new();
+        for id in 1..=64 {
+            let handle = store.clone();
+            let mut call = Box::pin(async move { handle.reschedule_checks(&[id], 100).await });
+            assert!(
+                std::future::poll_fn(|cx| std::task::Poll::Ready(call.as_mut().poll(cx)))
+                    .await
+                    .is_pending()
+            );
+            calls.push(call);
+        }
+        drop(calls); // unadmitted calls disappear; admitted writes must finish
+        release.send(()).unwrap();
+        bounded(blocker).await.unwrap().unwrap();
+        // This FIFO read follows all the writes that were actually accepted.
+        let checks = bounded(store.list_checks()).await.unwrap();
+        let changed: Vec<_> = checks
+            .iter()
+            .filter(|c| c.next_check_time == 100)
+            .map(|c| c.check_id)
+            .collect();
+        assert_eq!(changed, (1..=31).collect::<Vec<_>>());
+        assert_eq!(
+            bounded(store.reschedule_checks(&[64], 100)).await.unwrap(),
+            1
+        );
+    }
 
     #[tokio::test]
     async fn a_panicking_operation_kills_the_actor() {

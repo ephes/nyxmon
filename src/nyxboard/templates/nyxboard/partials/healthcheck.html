@@ -17,6 +17,7 @@
         hx-trigger="every 1s"
         hx-swap="outerHTML"
     {% endif %}>
+    {% if conflict %}<p role="alert">{{ conflict }}</p>{% endif %}
     <div class="health-check-main">
         <div class="health-check-info">
             <div class="health-check-id">

@@ -333,7 +333,13 @@ Django migrations own the schema (PLAN.md section 2). The Rust agent runs no
 DDL: at startup it checks that every table and column it uses exists and that
 `nyxboard.0013_site_connectivity_state` (`MIN_NYXBOARD_MIGRATION`) is
 recorded, and refuses to start otherwise (`nyxmon_store::check_schema` is the
-core of `--check-schema`). `fixtures/generate_schema.py` migrates a temporary
+core of `--check-schema`). Public SQLite introspection also checks the exact
+single-column primary keys on service/check/result/notification/incident identity
+and the service/check/result foreign keys (including notification-state `ON DELETE
+CASCADE`). Additive columns and indexes are allowed. Missing constraints produce
+bounded contract diagnostics; the agent never repairs a restored schema. Restore
+a valid Django-generated schema and data before retrying; migrations alone may
+not repair an already-recorded but manually rebuilt table. `fixtures/generate_schema.py` migrates a temporary
 database with the test settings and writes `fixtures/schema/schema.sql` (DDL
 plus `django_migrations` rows; every store test builds its database from it)
 and `fixtures/schema/agent_tables.json` (the agent tables' columns and the
@@ -719,3 +725,12 @@ suppression evidence stores only the HTTP(S) origin and bounded scalar diagnosti
 The TCP executor cancellation oracle injects deferred connectors around the real
 Happy Eyeballs race, holds three local sockets, and proves peer EOF after timeout,
 parent cancellation and late winners, followed by a successful normal check.
+
+The store validates claim/reclaim batches against `MAX_CHECK_BATCH_SIZE` (1..100)
+and reclaim leases against `MIN_PROCESSING_LEASE_SECONDS` (30..i64::MAX), before
+any SQL. Accepted timestamp arithmetic remains saturating. The DB actor uses
+async semaphore admission (`MAX_PENDING_JOBS = 32`, queued plus running), without
+blocking Tokio threads. Cancelling before admission sends no operation; after
+sending, the closure retains its permit through completion, even if its reply is
+no longer wanted. Waiting callers still own their input payloads, so producers
+must also bound their own task fanout.
