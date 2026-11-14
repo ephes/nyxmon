@@ -16,6 +16,7 @@ from django.urls import reverse
 
 from nyxmon.domain import CheckStatus, ResultStatus
 from nyxboard.models import HealthCheck, Result, Service
+from nyxboard.forms import check_definition_revision
 
 CARD_PARTIAL = "nyxboard/partials/healthcheck-card.html"
 LIST_PARTIAL = "nyxboard/partials/healthcheck.html"
@@ -386,7 +387,12 @@ class TestHealthCheckUpdate:
         check.disabled = not expected
         check.save()
         response = client.post(
-            self.url(check), {"disabled": value, "csrfmiddlewaretoken": "x"}
+            self.url(check),
+            {
+                "disabled": value,
+                "csrfmiddlewaretoken": "x",
+                "definition_revision": check_definition_revision(check),
+            },
         )
         assert response.status_code == 302
         assert response["Location"] == reverse("nyxboard:dashboard")
@@ -397,7 +403,11 @@ class TestHealthCheckUpdate:
         referer = "http://testserver" + reverse("nyxboard:healthcheck_list")
         response = client.post(
             self.url(check),
-            {"disabled": "1", "csrfmiddlewaretoken": "x"},
+            {
+                "disabled": "1",
+                "csrfmiddlewaretoken": "x",
+                "definition_revision": check_definition_revision(check),
+            },
             HTTP_REFERER=referer,
         )
         assert response.status_code == 302
@@ -406,7 +416,11 @@ class TestHealthCheckUpdate:
     def test_quick_toggle_returns_to_same_host_relative_referer(self, client, check):
         response = client.post(
             self.url(check),
-            {"disabled": "1", "csrfmiddlewaretoken": "x"},
+            {
+                "disabled": "1",
+                "csrfmiddlewaretoken": "x",
+                "definition_revision": check_definition_revision(check),
+            },
             HTTP_REFERER="/healthchecks/",
         )
         assert response["Location"] == "/healthchecks/"
@@ -423,7 +437,11 @@ class TestHealthCheckUpdate:
     def test_quick_toggle_ignores_foreign_referer(self, client, check, referer):
         response = client.post(
             self.url(check),
-            {"disabled": "1", "csrfmiddlewaretoken": "x"},
+            {
+                "disabled": "1",
+                "csrfmiddlewaretoken": "x",
+                "definition_revision": check_definition_revision(check),
+            },
             HTTP_REFERER=referer,
         )
         assert response.status_code == 302
@@ -434,7 +452,11 @@ class TestHealthCheckUpdate:
     def test_quick_toggle_https_request_rejects_http_referer(self, client, check):
         response = client.post(
             self.url(check),
-            {"disabled": "1", "csrfmiddlewaretoken": "x"},
+            {
+                "disabled": "1",
+                "csrfmiddlewaretoken": "x",
+                "definition_revision": check_definition_revision(check),
+            },
             HTTP_REFERER="http://testserver/healthchecks/",
             secure=True,
         )
@@ -478,7 +500,11 @@ class TestPartialSwitch:
         url = reverse(name, kwargs={"check_id": check.id})
         if name == "nyxboard:healthcheck_update_status":
             return client.get(url, headers=headers)
-        return client.post(url, headers=headers)
+        return client.post(
+            url,
+            {"definition_revision": check_definition_revision(check)},
+            headers=headers,
+        )
 
     @pytest.mark.parametrize("name", PARTIAL_VIEWS)
     def test_card_partial_by_default(self, client, check, name):
@@ -563,7 +589,9 @@ class TestTrigger:
     def test_post_makes_check_due_now(self, client, check):
         Result.objects.create(health_check=check, status=ResultStatus.OK, data={})
         before = int(time())
-        response = client.post(self.url(check))
+        response = client.post(
+            self.url(check), {"definition_revision": check_definition_revision(check)}
+        )
         assert response.status_code == 200
         assert response.context["check_mode"] == "due"
         assert response.context["last_result"] is not None
@@ -588,7 +616,9 @@ class TestToggleDisabled:
 
     def test_disabling_resets_schedule_and_shows_normal(self, client, check):
         before = int(time())
-        response = client.post(self.url(check))
+        response = client.post(
+            self.url(check), {"definition_revision": check_definition_revision(check)}
+        )
         assert response.status_code == 200
         assert response.context["check_mode"] == "normal"
         check.refresh_from_db()
@@ -599,7 +629,9 @@ class TestToggleDisabled:
         check.disabled = True
         check.next_check_time = 0
         check.save()
-        response = client.post(self.url(check))
+        response = client.post(
+            self.url(check), {"definition_revision": check_definition_revision(check)}
+        )
         assert response.context["check_mode"] == "due"
         check.refresh_from_db()
         assert check.disabled is False
@@ -609,7 +641,9 @@ class TestToggleDisabled:
         check.disabled = True
         check.save()
         scheduled = check.next_check_time
-        response = client.post(self.url(check))
+        response = client.post(
+            self.url(check), {"definition_revision": check_definition_revision(check)}
+        )
         assert response.context["check_mode"] == "normal"
         check.refresh_from_db()
         assert check.disabled is False
@@ -712,9 +746,12 @@ def test_ui_mutation_preserves_concurrent_agent_update(
         return stale
 
     monkeypatch.setattr(views, "get_object_or_404", read_then_agent_update)
-    response = client.post(reverse(name, kwargs={"check_id": check.pk}))
+    response = client.post(
+        reverse(name, kwargs={"check_id": check.pk}),
+        {"definition_revision": check_definition_revision(check)},
+    )
     assert injected
-    assert response.status_code == 200
+    assert response.status_code == (409 if name.endswith("toggle_disabled") else 200)
     check.refresh_from_db()
     for current in (check, response.context["check"]):
         assert current.status == CheckStatus.PROCESSING
@@ -725,29 +762,32 @@ def test_ui_mutation_preserves_concurrent_agent_update(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("initial_disabled", [False, True])
-def test_interleaved_toggles_each_invert_current_state(
+def test_interleaved_toggles_refuse_the_stale_definition(
     client, check, monkeypatch, initial_disabled
 ):
     from nyxboard import views
 
     HealthCheck.objects.filter(pk=check.pk).update(disabled=initial_disabled)
-    original = views.get_object_or_404
+    check.refresh_from_db()
+    data = {"definition_revision": check_definition_revision(check)}
+    original = views._quick_toggle
     interleaved = False
     url = reverse("nyxboard:healthcheck_toggle_disabled", kwargs={"check_id": check.pk})
 
-    def read_then_toggle(*args, **kwargs):
+    def toggle_after_another_card(*args, **kwargs):
         nonlocal interleaved
-        stale = original(*args, **kwargs)
         if not interleaved:
             interleaved = True
-            assert client.post(url).status_code == 200
-        return stale
+            assert client.post(url, data).status_code == 200
+        return original(*args, **kwargs)
 
-    monkeypatch.setattr(views, "get_object_or_404", read_then_toggle)
-    response = client.post(url)
+    monkeypatch.setattr(views, "_quick_toggle", toggle_after_another_card)
+    response = client.post(url, data)
     assert interleaved
+    assert response.status_code == 409
     check.refresh_from_db()
-    assert check.disabled is initial_disabled
-    label = "Disabled" if initial_disabled else "Enabled"
+    assert check.disabled is not initial_disabled
+    label = "Enabled" if initial_disabled else "Disabled"
     assert f'class="toggle-label">{label}</span>' in response.content.decode()
-    assert check.next_check_time <= int(time())
+    if not initial_disabled:
+        assert check.next_check_time <= int(time())

@@ -437,3 +437,19 @@ Service edits carry a browser revision and update only the loaded service name.
 A concurrent deletion or rename returns a conflict with the submitted name intact;
 reload and reconcile before saving. Older open forms must be reloaded once. The
 conditional update cannot reinsert a deleted service.
+
+Rust store scheduling accepts batch sizes 1..100 and reclaim leases of at least
+30 seconds (the runner's bounds); invalid calls return `InvalidArgument` before
+SQL. The DB actor admits at most 32 queued/running operations. Calls waiting for
+admission are cancellable; sent operations retain their slot until completion,
+even when their caller is cancelled. Startup and `--check-schema` also verify
+primary keys and foreign keys, so restored tables with only matching column
+names are refused without repair. See [the schema contract](agent-rs/README.md#schema-contract).
+
+Dashboard quick toggles require the card's signed definition revision, just like
+full edits. A stale or missing revision returns a fresh 409 conflict card without
+changing enablement; reload and review it before toggling again. Runtime agent
+updates alone do not invalidate a revision. Status, Run now and toggle fragments
+load the check and its five latest results in one SQLite read snapshot after any
+mutation, then render outside the transaction. Login windows start after writer
+admission, so database lock waits cannot create already-expired reservations.

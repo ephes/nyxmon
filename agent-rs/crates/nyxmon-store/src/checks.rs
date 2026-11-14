@@ -1,6 +1,7 @@
 //! Check scheduling: claims, stale reclaim, release, holds
 //! (`SqliteCheckRepository`; PLAN.md section 3.4).
 
+use nyxmon_core::env::{MAX_CHECK_BATCH_SIZE, MIN_PROCESSING_LEASE_SECONDS};
 use nyxmon_core::model::{Check, HeldCheck, NotificationState};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params, params_from_iter};
 
@@ -10,6 +11,13 @@ use crate::rows::{
     CHECK_COLUMNS, decode_check_data, int_or_zero, row_to_check, select_notification_state,
     text_or_empty, truthy,
 };
+
+fn validate_batch_size(batch_size: i64) -> Result<(), StoreError> {
+    if !(1..=MAX_CHECK_BATCH_SIZE).contains(&batch_size) {
+        return Err(StoreError::InvalidArgument("batch_size must be in 1..=100"));
+    }
+    Ok(())
+}
 
 /// `list_async`: every check, in table order.
 pub(crate) fn list_checks(connection: &Connection) -> Result<Vec<Check>, StoreError> {
@@ -38,6 +46,7 @@ pub(crate) fn claim_due_checks(
     now: i64,
     batch_size: i64,
 ) -> Result<Vec<Check>, StoreError> {
+    validate_batch_size(batch_size)?;
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let claimed = {
         let mut statement = transaction.prepare(&format!(
@@ -73,9 +82,10 @@ pub(crate) fn reclaim_stale_checks(
     lease_seconds: i64,
     batch_size: i64,
 ) -> Result<Vec<Check>, StoreError> {
-    if batch_size <= 0 {
+    validate_batch_size(batch_size)?;
+    if lease_seconds < MIN_PROCESSING_LEASE_SECONDS {
         return Err(StoreError::InvalidArgument(
-            "reclaim batch_size must be positive",
+            "lease_seconds must be at least 30",
         ));
     }
     let stale_before = now.saturating_sub(lease_seconds);

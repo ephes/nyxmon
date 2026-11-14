@@ -75,6 +75,8 @@ pub struct SchemaReport {
     pub missing_tables: Vec<String>,
     /// Required `(table, column)` pairs missing from existing tables.
     pub missing_columns: Vec<(String, String)>,
+    /// Required identity or relationship constraints absent from restored tables.
+    pub missing_constraints: Vec<String>,
     /// Whether the `django_migrations` table is missing.
     pub missing_migrations_table: bool,
     /// Whether [`MIN_NYXBOARD_MIGRATION`] is not recorded.
@@ -86,7 +88,10 @@ pub struct SchemaReport {
 impl SchemaReport {
     /// Whether the database satisfies the contract.
     pub fn is_ok(&self) -> bool {
-        self.missing_tables.is_empty() && self.missing_columns.is_empty() && !self.missing_migration
+        self.missing_tables.is_empty()
+            && self.missing_columns.is_empty()
+            && self.missing_constraints.is_empty()
+            && !self.missing_migration
     }
 
     /// The single error line naming every problem and the remedy, `None`
@@ -120,6 +125,12 @@ impl fmt::Display for SchemaReport {
                 .collect();
             problems.push(format!("missing columns: {}", columns.join(", ")));
         }
+        if !self.missing_constraints.is_empty() {
+            problems.push(format!(
+                "missing constraints: {}",
+                self.missing_constraints.join(", ")
+            ));
+        }
         if self.missing_migration {
             let (app, name) = MIN_NYXBOARD_MIGRATION;
             let detail = if self.missing_migrations_table {
@@ -144,6 +155,69 @@ fn table_columns(connection: &Connection, table: &str) -> Result<Vec<String>, St
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+// Exact single-column primary keys also provide the UNIQUE identity used by
+// result IDs and ON CONFLICT notification/incident writes. Extra composite or
+// partial unique indexes cannot substitute for these keys.
+fn missing_constraints(connection: &Connection) -> Result<Vec<String>, StoreError> {
+    let mut missing = Vec::new();
+    for (table, column) in [
+        ("service", "id"),
+        ("health_check", "id"),
+        ("check_result", "id"),
+        ("check_notification_state", "check_id"),
+        ("collector_incident", "incident_key"),
+    ] {
+        // Tables/columns have their own diagnostics.
+        if table != "service" && table_columns(connection, table)?.is_empty() {
+            continue;
+        }
+        let mut statement =
+            connection.prepare("SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk")?;
+        let keys = statement
+            .query_map([table], |row| row.get::<_, String>(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        if keys != [column] {
+            missing.push(format!("{table} PRIMARY KEY ({column})"));
+        }
+    }
+    for (table, column, parent, target, on_delete) in [
+        ("health_check", "service_id", "service", "id", "NO ACTION"),
+        (
+            "check_result",
+            "health_check_id",
+            "health_check",
+            "id",
+            "NO ACTION",
+        ),
+        (
+            "check_notification_state",
+            "check_id",
+            "health_check",
+            "id",
+            "CASCADE",
+        ),
+    ] {
+        if table_columns(connection, table)?.is_empty() {
+            continue;
+        }
+        let present: bool = connection.query_row(
+            r#"SELECT EXISTS(
+                SELECT 1 FROM pragma_foreign_key_list(?1) AS fk
+                WHERE fk."from" = ?2 AND fk."table" = ?3 AND fk."to" = ?4
+                  AND fk.on_delete = ?5
+                  AND (SELECT COUNT(*) FROM pragma_foreign_key_list(?1) AS other WHERE other.id = fk.id) = 1
+            )"#,
+            [table, column, parent, target, on_delete], |row| row.get(0)
+        )?;
+        if !present {
+            missing.push(format!(
+                "{table}.{column} REFERENCES {parent}({target}) ON DELETE {on_delete}"
+            ));
+        }
+    }
+    Ok(missing)
+}
+
 /// Verify the contract on `connection` (read-only: no DDL, no pragma writes).
 pub(crate) fn verify_schema(connection: &Connection) -> Result<SchemaReport, StoreError> {
     let mut missing_tables = Vec::new();
@@ -161,6 +235,7 @@ pub(crate) fn verify_schema(connection: &Connection) -> Result<SchemaReport, Sto
             }
         }
     }
+    let missing_constraints = missing_constraints(connection)?;
     let missing_migrations_table = table_columns(connection, "django_migrations")?.is_empty();
     let missing_migration = missing_migrations_table || {
         let (app, name) = MIN_NYXBOARD_MIGRATION;
@@ -177,6 +252,7 @@ pub(crate) fn verify_schema(connection: &Connection) -> Result<SchemaReport, Sto
     Ok(SchemaReport {
         missing_tables,
         missing_columns,
+        missing_constraints,
         missing_migrations_table,
         missing_migration,
         journal_mode,

@@ -176,3 +176,50 @@ print(len(calls))
         )
         counts.append(int(result.stdout.strip()))
     assert counts == [1, 1, 0]
+
+
+def test_waiting_writer_starts_window_at_admission(admission_db, monkeypatch):
+    from nyxboard import login_throttle
+
+    user, buckets = admission_db
+    path = connections[buckets.db].settings_dict["NAME"]
+    clock = [1000.0]
+    monkeypatch.setattr(login_throttle.time, "time", lambda: clock[0])
+    waiting = threading.Event()
+
+    def reserve():
+        conn = connections[buckets.db]
+
+        def before_write(execute, sql, params, many, context):
+            if sql.startswith(("DELETE", "UPDATE")):
+                waiting.set()
+            return execute(sql, params, many, context)
+
+        try:
+            with conn.execute_wrapper(before_write):
+                return login_throttle._reserve(
+                    RequestFactory().post("/"), user.username
+                )
+        finally:
+            conn.close()
+
+    writer = sqlite3.connect(path)
+    writer.execute("BEGIN IMMEDIATE")
+    with ThreadPoolExecutor(1) as pool:
+        pending = pool.submit(reserve)
+        try:
+            assert waiting.wait(5)
+            clock[0] = 2000.0  # blocked across the whole old 900-second window
+        finally:
+            writer.commit()
+            writer.close()
+        reservation = pending.result(5)
+    assert {expiry for _, expiry in reservation[1]} == {2900.0}
+    assert list(buckets.values_list("pending", flat=True)) == [1, 1]
+    # The occupied slots still bound further admissions in the new window.
+    current = login_throttle._reserve(RequestFactory().post("/"), user.username)
+    from django.core.exceptions import PermissionDenied
+
+    with pytest.raises(PermissionDenied):
+        login_throttle._reserve(RequestFactory().post("/"), user.username)
+    assert current[1] == reservation[1]

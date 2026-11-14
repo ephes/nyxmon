@@ -1,3 +1,5 @@
+from django.db import transaction
+from django.utils.crypto import constant_time_compare
 from django.db.models import Case, F, PositiveIntegerField, Prefetch, When
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
@@ -20,6 +22,9 @@ from .models import (
     StatusChoices,
 )
 from .forms import (
+    DEFINITION_FIELDS,
+    check_definition_revision,
+    current_definition_rows,
     DefinitionConflict,
     EDIT_CONFLICT,
     SERVICE_EDIT_CONFLICT,
@@ -467,6 +472,30 @@ def healthcheck_create(request, service_id=None):
     )
 
 
+def _quick_toggle(health_check, submitted_revision, *, disabled=None):
+    """Compare the signed definition and make exactly one narrow update."""
+    current = check_definition_revision(health_check)
+    if not submitted_revision or not constant_time_compare(submitted_revision, current):
+        return False
+    definition = {name: getattr(health_check, name) for name in DEFINITION_FIELDS}
+    try:
+        candidates = current_definition_rows(health_check, definition)
+    except DefinitionConflict:
+        return False
+    if disabled is not None:
+        return bool(candidates.update(disabled=disabled))
+    return bool(
+        candidates.update(
+            disabled=~F("disabled"),
+            next_check_time=Case(
+                When(disabled=False, then=int(time())),
+                default=F("next_check_time"),
+                output_field=PositiveIntegerField(),
+            ),
+        )
+    )
+
+
 @nyxboard_login_required
 def healthcheck_update(request, check_id):
     """
@@ -488,11 +517,13 @@ def healthcheck_update(request, check_id):
 
     if request.method == "POST":
         # Check if this is a quick-toggle of the disabled flag from the card
-        if (
-            "disabled" in request.POST and len(request.POST) == 2
-        ):  # Just disabled and csrf token
-            new_disabled_value = request.POST.get("disabled") == "1"
-            HealthCheck.objects.filter(pk=check_id).update(disabled=new_disabled_value)
+        if "disabled" in request.POST and "name" not in request.POST:
+            if not _quick_toggle(
+                health_check,
+                request.POST.get("definition_revision"),
+                disabled=request.POST.get("disabled") == "1",
+            ):
+                return _card_response(request, check_id, conflict=True)
 
             # Redirect back to the referring page when it is on this host;
             # an external or missing referrer falls back to the dashboard.
@@ -579,133 +610,65 @@ def healthcheck_delete(request, check_id):
     )
 
 
-# HTMX-enabled views for health check updates
-@nyxboard_login_required
-def healthcheck_update_status(request, check_id):
+def _card_response(request, check_id, *, conflict=False):
+    """Materialize the small card projection in one SQLite read snapshot.
+
+    Mutations have already committed. Evaluate bounded result inputs inside
+    the read transaction; rendering and response work retain no writer lock.
     """
-    Update the status of a health check for HTMX updates.
-    This view is called periodically to check if a health check's status has changed.
-    """
-    health_check = get_object_or_404(HealthCheck, id=check_id)
-    recent_results = health_check.results.order_by("-created_at", "-id")[:5]
-
-    # Attach needed data to the health check for the template
-    health_check.recent_results = recent_results
-
-    # Determine if it's still due or back to normal
-    current_time = time()
-
-    # Set last_result regardless of status
-    last_result = recent_results[0] if recent_results else None
-
-    if health_check.status == CheckStatus.PROCESSING:
-        # If it's being processed, keep in due mode
-        check_mode = "due"
-    elif health_check.next_check_time <= current_time:
-        # If it's past next check time, it's still due
-        check_mode = "due"
-    else:
-        # If next check time is in the future, it's back to normal
+    alias = HealthCheck.objects.db
+    with transaction.atomic(using=alias):
+        health_check = get_object_or_404(
+            _checks_with_recent_results().select_related("service"), pk=check_id
+        )
+        last_result = (
+            health_check.recent_results[0] if health_check.recent_results else None
+        )
         check_mode = "normal"
-
-    # Determine which template to use based on what partial was requested
+        if not health_check.disabled and (
+            health_check.status == CheckStatus.PROCESSING
+            or health_check.next_check_time <= time()
+        ):
+            check_mode = "due"
     template_name = "nyxboard/partials/healthcheck-card.html"
     if "healthcheck.html" in request.headers.get("HX-Request-URL", ""):
         template_name = "nyxboard/partials/healthcheck.html"
+    return render(
+        request,
+        template_name,
+        {
+            "check": health_check,
+            "check_mode": check_mode,
+            "last_result": last_result,
+            "theme": request.session.get("theme", "light"),
+            "conflict": EDIT_CONFLICT if conflict else None,
+        },
+        status=409 if conflict else 200,
+    )
 
-    context = {
-        "check": health_check,
-        "check_mode": check_mode,
-        "last_result": last_result,
-        "theme": request.session.get("theme", "light"),
-    }
 
-    return render(request, template_name, context)
+@nyxboard_login_required
+def healthcheck_update_status(request, check_id):
+    return _card_response(request, check_id)
 
 
 @nyxboard_login_required
 def healthcheck_trigger(request, check_id):
-    """
-    Manually trigger a health check to be run now.
-    This marks the check as due immediately.
-    """
     if request.method != "POST":
         return redirect("nyxboard:dashboard")
-
-    health_check = get_object_or_404(HealthCheck, id=check_id)
-
-    # Scheduling must not overwrite an agent's active lease or configuration.
+    health_check = get_object_or_404(HealthCheck, pk=check_id)
+    # Scheduling must not overwrite an active lease or configuration.
     HealthCheck.objects.filter(pk=health_check.pk).update(next_check_time=int(time()))
-    health_check.refresh_from_db()
-
-    recent_results = list(health_check.results.order_by("-created_at", "-id")[:5])
-    last_result = recent_results[0] if recent_results else None
-    health_check.recent_results = recent_results
-
-    # Determine which template to use based on what partial was requested
-    template_name = "nyxboard/partials/healthcheck-card.html"
-    if "healthcheck.html" in request.headers.get("HX-Request-URL", ""):
-        template_name = "nyxboard/partials/healthcheck.html"
-
-    context = {
-        "check": health_check,
-        "check_mode": "due",
-        "last_result": last_result,  # Use the stored last_result variable
-        "theme": request.session.get("theme", "light"),
-    }
-
-    return render(request, template_name, context)
+    return _card_response(request, check_id)
 
 
 @nyxboard_login_required
 def healthcheck_toggle_disabled(request, check_id):
-    """
-    Toggle the disabled status of a health check.
-    Uses HTMX to update the check card.
-    """
     if request.method != "POST":
         return redirect("nyxboard:dashboard")
-
-    health_check = get_object_or_404(HealthCheck, id=check_id)
-
-    # Each request inverts the database value once, even if reads interleave.
-    # CASE uses the old disabled value; only disabling resets the schedule.
-    HealthCheck.objects.filter(pk=health_check.pk).update(
-        disabled=~F("disabled"),
-        next_check_time=Case(
-            When(disabled=False, then=int(time())),
-            default=F("next_check_time"),
-            output_field=PositiveIntegerField(),
-        ),
-    )
-    health_check.refresh_from_db()
-
-    recent_results = list(health_check.results.order_by("-created_at", "-id")[:5])
-    last_result = recent_results[0] if recent_results else None
-    health_check.recent_results = recent_results
-
-    # Determine check mode based on current status
-    current_time = time()
-    if health_check.disabled:
-        check_mode = "normal"  # Don't show due status for disabled checks
-    elif health_check.next_check_time <= current_time:
-        check_mode = "due"
-    else:
-        check_mode = "normal"
-
-    # Determine which template to use based on what partial was requested
-    template_name = "nyxboard/partials/healthcheck-card.html"
-    if "healthcheck.html" in request.headers.get("HX-Request-URL", ""):
-        template_name = "nyxboard/partials/healthcheck.html"
-
-    context = {
-        "check": health_check,
-        "check_mode": check_mode,
-        "last_result": last_result,
-        "theme": request.session.get("theme", "light"),
-    }
-
-    return render(request, template_name, context)
+    health_check = get_object_or_404(HealthCheck, pk=check_id)
+    changed = _quick_toggle(health_check, request.POST.get("definition_revision"))
+    return _card_response(request, check_id, conflict=not changed)
 
 
 THEME_BODY_LIMIT = 4096

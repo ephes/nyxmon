@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Start login windows after writer admission, fence both quick toggle paths with
+  the current signed definition, and return reloadable 409 conflict cards. Read
+  status/trigger/toggle card inputs in one SQLite snapshot before rendering.
+
+- Validate Rust store scheduling batches and leases before SQL, bound queued and
+  running DB actor jobs to 32 while preserving accepted writes after cancellation,
+  and reject restored schemas missing required primary/foreign-key constraints.
+
 - Recheck IMAP message age after all FETCHes before selecting/deleting matches.
   Preserve empty-result retries; refuse dates over 60 seconds in the future as
   `invalid_message_date` without deleting any matches.

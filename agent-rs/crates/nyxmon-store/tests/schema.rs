@@ -157,3 +157,65 @@ fn check_schema_opens_read_only_and_never_creates() {
     assert!(check_schema(&missing).is_err());
     assert!(!missing.exists());
 }
+
+#[test]
+fn restored_schemas_must_retain_identity_and_relationship_constraints() {
+    for (from, to) in [
+        (
+            "CREATE TABLE \"service\" (\"id\" integer NOT NULL PRIMARY KEY AUTOINCREMENT",
+            "CREATE TABLE \"service\" (\"id\" integer NOT NULL",
+        ),
+        (
+            "CREATE TABLE \"health_check\" (\"id\" integer NOT NULL PRIMARY KEY AUTOINCREMENT",
+            "CREATE TABLE \"health_check\" (\"id\" integer NOT NULL",
+        ),
+        (
+            "CREATE TABLE \"check_result\" (\"id\" integer NOT NULL PRIMARY KEY AUTOINCREMENT",
+            "CREATE TABLE \"check_result\" (\"id\" integer NOT NULL",
+        ),
+        ("check_id INTEGER PRIMARY KEY", "check_id INTEGER"),
+        ("incident_key  TEXT    PRIMARY KEY", "incident_key  TEXT"),
+        ("REFERENCES \"health_check\" (\"id\")", ""),
+        ("REFERENCES \"service\" (\"id\")", ""),
+        (
+            "REFERENCES health_check(id) ON DELETE CASCADE",
+            "REFERENCES health_check(id)",
+        ),
+    ] {
+        let schema = SCHEMA_SQL.replace(from, to);
+        assert_ne!(schema, SCHEMA_SQL);
+        // A deliberately broken parent key cannot accept fixture inserts with
+        // FK enforcement on. Only the synthetic restore builder disables it.
+        let db = TestDb::with_schema(&format!("PRAGMA foreign_keys = OFF;{schema}"));
+        let before = std::fs::read(db.path()).unwrap();
+        let report = check_schema(db.path()).unwrap();
+        assert!(!report.is_ok(), "accepted missing {from}");
+        assert!(report.error_message().unwrap().contains("constraint"));
+        assert_eq!(std::fs::read(db.path()).unwrap(), before);
+    }
+}
+
+#[test]
+fn additive_columns_and_indexes_keep_the_contract() {
+    let db = TestDb::new();
+    db.raw().execute_batch("ALTER TABLE health_check ADD COLUMN extra TEXT; CREATE INDEX extra_idx ON health_check(extra)").unwrap();
+    assert!(check_schema(db.path()).unwrap().is_ok());
+}
+
+#[test]
+fn composite_or_partial_identity_keys_cannot_replace_required_keys() {
+    let composite = SCHEMA_SQL
+        .replace("incident_key  TEXT    PRIMARY KEY", "incident_key TEXT")
+        .replace(
+            "payload       TEXT    NOT NULL DEFAULT '{}'",
+            "payload TEXT NOT NULL DEFAULT '{}', PRIMARY KEY(incident_key, opened_at)",
+        );
+    let partial = format!(
+        "{}; CREATE UNIQUE INDEX partial_identity ON check_notification_state(check_id) WHERE failure_count > 0;",
+        SCHEMA_SQL.replace("check_id INTEGER PRIMARY KEY", "check_id INTEGER")
+    );
+    for schema in [composite, partial] {
+        let db = TestDb::with_schema(&schema);
+        assert!(!check_schema(db.path()).unwrap().is_ok());
+    }
+}

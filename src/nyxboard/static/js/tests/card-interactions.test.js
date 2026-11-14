@@ -91,6 +91,23 @@ it('binds GET response identity to its request card even when a header retargets
   expect(detail.shouldSwap).toBe(false);
 });
 
+it('replaces a stale-definition conflict with its current server card', () => {
+  const checkbox = render();
+  const xhr = { status: 409 };
+  checkbox.checked = true;
+  event('htmx:beforeRequest', checkbox, { xhr, requestConfig: { headers: {} } });
+  const card = document.getElementById('check-1');
+  const detail = { xhr, target: card, shouldSwap: false, isError: true, serverResponse: fixtures.fragments['1-True'] };
+  const swap = new CustomEvent('htmx:beforeSwap', { bubbles: true, detail });
+  card.dispatchEvent(swap);
+  expect(detail.shouldSwap).toBe(true);
+  expect(detail.isError).toBe(false);
+  card.outerHTML = fixtures.fragments['1-True'];
+  event('htmx:afterRequest', document.getElementById('check-1'), { xhr, successful: false });
+  expect(document.querySelector('#check-1 input').checked).toBe(true);
+  expect(document.querySelector('#check-1 input').disabled).toBe(false);
+});
+
 it('reconciles a successful no-swap mutation and keeps controls locked if GET also has no swap', async () => {
   const checkbox = render(); const xhr = { status: 204 };
   const ajax = vi.spyOn(window.htmx, 'ajax').mockResolvedValue();

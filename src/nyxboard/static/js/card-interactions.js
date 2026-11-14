@@ -125,7 +125,7 @@ document.addEventListener('htmx:afterRequest', event => {
   // HTMX handles authentication navigation before beforeSwap.
   if (event.detail.xhr.getResponseHeader?.('HX-Redirect')) return;
   const fresh = confirmedReplacement(state.card, event.detail.xhr);
-  if (event.detail.successful && fresh) {
+  if ((event.detail.successful || event.detail.xhr.status === 409) && fresh) {
     pending.delete(state.card.id);
     busy(fresh, false);
   } else {
@@ -148,10 +148,15 @@ document.addEventListener('htmx:afterRequest', event => {
 document.addEventListener('htmx:beforeSwap', event => {
   const { xhr, target, elt, serverResponse, shouldSwap } = event.detail;
   const card = requests.get(xhr) || mutations.get(xhr)?.card || cardFor(elt) || cardFor(target);
-  if (card && shouldSwap) {
+  const conflict = xhr.status === 409 && mutations.has(xhr);
+  if (card && (shouldSwap || conflict)) {
     if (target !== card || !validFragment(serverResponse, card)) {
       event.detail.shouldSwap = false;
       return;
+    }
+    if (conflict) {
+      event.detail.shouldSwap = true;
+      event.detail.isError = false;
     }
     validated.set(xhr, card);
   }

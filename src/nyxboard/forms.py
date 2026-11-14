@@ -139,6 +139,34 @@ class DefinitionConflict(Exception):
     """An edit lost its definition compare-and-swap."""
 
 
+def check_definition_revision(instance):
+    """Opaque revision shared by edit forms and quick card mutations."""
+    definition = {name: getattr(instance, name) for name in DEFINITION_FIELDS}
+    return salted_hmac(
+        "nyxboard.check-definition",
+        json.dumps([instance.pk, definition], sort_keys=True),
+        algorithm="sha256",
+    ).hexdigest()
+
+
+def current_definition_rows(instance, definition):
+    """Fence the eventual UPDATE against every loaded definition field.
+
+    Compare decoded JSON semantics, then include the exact stored text in the
+    conditional update, accepting compact JSON from the Rust writer.
+    """
+    candidates = HealthCheck.objects.filter(
+        pk=instance.pk,
+        **{key: value for key, value in definition.items() if key != "data"},
+    ).annotate(definition_data_text=Cast("data", TextField()))
+    stored_data = candidates.values_list("definition_data_text", flat=True).first()
+    if stored_data is None or json.dumps(
+        json.loads(stored_data), sort_keys=True
+    ) != json.dumps(definition["data"], sort_keys=True):
+        raise DefinitionConflict(EDIT_CONFLICT)
+    return candidates.filter(definition_data_text=stored_data)
+
+
 class HealthCheckForm(forms.ModelForm):
     """Base form for all health checks.
 
@@ -158,11 +186,7 @@ class HealthCheckForm(forms.ModelForm):
         }
         self._schedule = self.instance.next_check_time
         self._claim = self.instance.processing_started_at
-        revision = salted_hmac(
-            "nyxboard.check-definition",
-            json.dumps([self.instance.pk, self._definition], sort_keys=True),
-            algorithm="sha256",
-        ).hexdigest()
+        revision = check_definition_revision(self.instance)
         self._revision = revision
         self.fields["definition_revision"].initial = revision
         self.fields["definition_revision"].required = bool(
@@ -193,22 +217,9 @@ class HealthCheckForm(forms.ModelForm):
                 default=F("next_check_time"),
                 output_field=PositiveIntegerField(),
             )
-        # Compare decoded JSON for semantics, but fence the UPDATE against the
-        # exact stored text. JSONField equality alone serializes the operand,
-        # which rejects unchanged rows written with other JSON whitespace.
-        candidates = HealthCheck.objects.filter(
-            pk=instance.pk,
-            **{key: value for key, value in self._definition.items() if key != "data"},
-        ).annotate(definition_data_text=Cast("data", TextField()))
-        stored_data = candidates.values_list("definition_data_text", flat=True).first()
-        if stored_data is None or json.dumps(
-            json.loads(stored_data), sort_keys=True
-        ) != json.dumps(self._definition["data"], sort_keys=True):
-            raise DefinitionConflict(EDIT_CONFLICT)
+        candidates = current_definition_rows(instance, self._definition)
         with transaction.atomic():
-            changed = candidates.filter(definition_data_text=stored_data).update(
-                **values
-            )
+            changed = candidates.update(**values)
             if not changed:
                 raise DefinitionConflict(EDIT_CONFLICT)
             instance.refresh_from_db()

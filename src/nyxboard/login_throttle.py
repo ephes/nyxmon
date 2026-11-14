@@ -60,7 +60,6 @@ def _reserve(request, username: str) -> tuple[str, tuple[tuple[str, float], ...]
     """Atomically reserve both budgets, without holding locks during hashing."""
     alias = router.db_for_write(LoginThrottleBucket)
     buckets = LoginThrottleBucket.objects.using(alias)
-    now = time.time()
     limits = dict(
         zip(
             _keys(request, username),
@@ -72,8 +71,11 @@ def _reserve(request, username: str) -> tuple[str, tuple[tuple[str, float], ...]
     )
     owned = []
     with transaction.atomic(using=alias):
-        # The first statement is a write, including on SQLite (where row locks
-        # do not exist). Bound expiry cleanup and acquire the writer before reads.
+        # Reserve SQLite's writer before reading the decision clock. Even an
+        # empty UPDATE acquires it; waiting cannot age the new window.
+        buckets.filter(key__in=limits).update(pending=F("pending"))
+        now = time.time()
+        # Bound cleanup using the same post-admission timestamp.
         expired = buckets.filter(expires_at__lte=now).values("key")[:100]
         buckets.filter(key__in=expired).delete()
         # Address first: a locked address cannot create arbitrary username rows.

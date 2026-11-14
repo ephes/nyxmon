@@ -24,7 +24,7 @@ mod results;
 mod rows;
 pub mod schema;
 
-pub use actor::{Store, StoreOptions};
+pub use actor::{MAX_PENDING_JOBS, Store, StoreOptions};
 pub use checks::read_check;
 pub use cleaner::{CleanupBatch, MAX_CLEANUP_BATCH_SIZE};
 pub use error::StoreError;

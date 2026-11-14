@@ -296,3 +296,20 @@ test('authentication HX-Redirect navigates without starting reconciliation', asy
   await expect(page).toHaveURL(`${server.url}/synthetic-login/`);
   expect(gets).toBe(0);
 });
+
+test('stale definition swaps the current conflict card and sends its revision', async ({ page }) => {
+  let submitted;
+  const conflict = fixtures.fragments['1-True'].replace('<div class="health-check-header">', '<p role="alert">Definition changed; reload and review.</p><div class="health-check-header">');
+  await page.route('**/healthchecks/1/toggle-disabled/', route => {
+    submitted = new URLSearchParams(route.request().postData());
+    return route.fulfill({ status: 409, contentType: 'text/html', body: conflict });
+  });
+  await page.goto(server.url);
+  const oldRevision = await page.locator('#check-1 [data-check-toggle]').getAttribute('hx-vals');
+  await page.getByRole('checkbox', { name: 'Disable check Alpha', exact: true }).press('Space');
+  await expect(page.locator('#check-1 [role=alert]')).toContainText('Definition changed');
+  await expect(page.locator('#check-1 [data-check-toggle]')).toBeChecked();
+  await expect(page.locator('#check-1 [data-check-toggle]')).toBeEnabled();
+  expect(submitted.get('definition_revision')).toBe(JSON.parse(oldRevision).definition_revision);
+  expect(await page.locator('#check-1 [data-check-toggle]').getAttribute('hx-vals')).not.toBe(oldRevision);
+});
