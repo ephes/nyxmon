@@ -1217,7 +1217,9 @@ async fn tcp_connect_race_releases_live_attempts_on_timeout_cancel_and_late_winn
             };
             let probe = check(
                 &format!(
-                    r#"{{"host":"127.0.0.1", "port":{}, "connect_timeout":1}}"#,
+                    // retries 0: a retried timeout would start a second race
+                    // whose sockets this test would never observe.
+                    r#"{{"host":"127.0.0.1", "port":{}, "connect_timeout":1, "retries":0}}"#,
                     addr.port()
                 ),
                 "",
@@ -1236,6 +1238,8 @@ async fn tcp_connect_race_releases_live_attempts_on_timeout_cancel_and_late_winn
                     let result = task.await.unwrap();
                     assert_eq!(result.status, ResultStatus::Error);
                     assert_eq!(text(&result.data, "error_type"), "connect_timeout");
+                    // Exactly one race ran: no further attempt was started.
+                    assert!(starts.try_recv().is_err(), "a second race started");
                 }
                 "cancel" => {
                     task.abort();
@@ -1256,6 +1260,10 @@ async fn tcp_connect_race_releases_live_attempts_on_timeout_cancel_and_late_winn
             }
             finished.sort_unstable();
             assert_eq!(finished, [0, 1, 2]);
+            assert!(
+                drops.try_recv().is_err(),
+                "{outcome}: unexpected extra attempt"
+            );
             for mut peer in peers {
                 assert_eq!(
                     peer.read(&mut [0u8; 1]).await.unwrap(),
