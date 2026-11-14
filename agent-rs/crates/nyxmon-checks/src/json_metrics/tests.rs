@@ -284,3 +284,50 @@ async fn cookies_never_cross_from_one_check_to_another_of_the_batch() {
     }
     assert_eq!(server.requests()[1].header("cookie"), None);
 }
+
+#[tokio::test]
+async fn external_metrics_reject_ambiguous_members_and_nonfinite_numbers() {
+    for body in [
+        r#"{"a":100,"a":1}"#,
+        r#"{"healthy":false,"healthy":true,"a":1}"#,
+        r#"{"nested":{"count":100,"count":1},"a":1}"#,
+        r#"{"a":1,"other":NaN}"#,
+        r#"{"a":1,"other":Infinity}"#,
+        r#"{"a":1,"other":-Infinity}"#,
+        r#"{"a":1,"other":1e999}"#,
+        r#"{"a":1,"items":[{"ok":false,"\u006fk":true}]}"#,
+    ] {
+        let server = FakeServer::start(vec![vec![
+            Action::Write(head(200, &[("Content-Length", &body.len().to_string())])),
+            Action::Write(body.as_bytes().to_vec()),
+        ]])
+        .await;
+        let data = format!(
+            r#"{{"url":"http://127.0.0.1:{}/m","checks":{RULES}}}"#,
+            server.port()
+        );
+        let result = execute(&check(&data), &ctx()).await.unwrap();
+        assert_eq!(result.status, ResultStatus::Error, "{body}");
+        assert_eq!(
+            result.data["error_type"].as_str(),
+            Some("json_error"),
+            "{body}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn finite_nested_metrics_keep_their_threshold_results() {
+    let body = r#"{"a":1,"healthy":true,"nested":{"count":2.5},"items":[null,{},false,-1e20]}"#;
+    let server = FakeServer::start(vec![vec![
+        Action::Write(head(200, &[("Content-Length", &body.len().to_string())])),
+        Action::Write(body.as_bytes().to_vec()),
+    ]])
+    .await;
+    let data = format!(
+        r#"{{"url":"http://127.0.0.1:{}/m","checks":{RULES}}}"#,
+        server.port()
+    );
+    let result = execute(&check(&data), &ctx()).await.unwrap();
+    assert_eq!(result.status, ResultStatus::Ok);
+}

@@ -157,10 +157,7 @@ class ProgressRing extends HTMLElement {
     this.style.setProperty('--progress-ring-bg', ringBgColor);
     
     // Force a redraw when theme changes
-    this.updateProgressRing(this.calculateProgress(
-      this.getAttribute('next-check'),
-      this.getAttribute('check-interval')
-    ));
+    this.updateProgress();
     
     if (this.debug) {
       console.log(`Applied theme to progress-ring: ${isDark ? 'dark' : 'light'}`);
@@ -216,7 +213,12 @@ class ProgressRing extends HTMLElement {
     const checkInterval = this.getAttribute('check-interval');
     const mode = this.getAttribute('mode');
     
-    if (!nextCheck || !checkInterval) return;
+    if (!nextCheck || !checkInterval) {
+      this.cancelDueEvent();
+      this.progressRing.classList.remove('due');
+      this.updateProgressRing(0);
+      return;
+    }
     
     // If in "due" mode, always show 100%
     if (mode === 'due') {

@@ -3,8 +3,8 @@
 //! The evaluation is pure ([`nyxmon_core::metrics_eval`]); this module does
 //! the fetch on the check's own session copy (its own cookie jar):
 //! redirects followed, basic auth, the body of an error response not read,
-//! the body cap applied to the decoded bytes, and `json.loads` on the raw
-//! bytes. Each attempt, redirects and body read included, is bounded by the
+//! the body cap applied to the decoded bytes, and strict metrics admission
+//! (unique object members and finite numbers) on the raw bytes. Each attempt, redirects and body read included, is bounded by the
 //! configured timeout as a whole ([`attempt_deadline`]).
 //!
 //! Retries stay inside the check's execution budget: the runtime estimate
@@ -22,7 +22,7 @@ use nyxmon_core::config::{ConfigError, PyException};
 use nyxmon_core::lease::{MAX_DERIVED_PROCESSING_LEASE_SECONDS, estimated_check_runtime_seconds};
 use nyxmon_core::metrics_eval::{evaluate, failure_status, failure_summary};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
-use nyxmon_core::pyjson::{PyDict, PyJson, loads_bytes, py_type_name as type_name};
+use nyxmon_core::pyjson::{PyDict, PyJson, loads_metrics_bytes, py_type_name as type_name};
 
 use crate::ctx::BatchCtx;
 use crate::http_client::{
@@ -180,7 +180,7 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
             }
             return Ok(failure);
         }
-        let body = match loads_bytes(&raw_body) {
+        let body = match loads_metrics_bytes(&raw_body) {
             Ok(body) => body,
             Err(err) if err.is_value_error() => {
                 return Ok(error(check, "json_error", err.to_string()));

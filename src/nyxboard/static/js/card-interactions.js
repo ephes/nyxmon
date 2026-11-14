@@ -3,6 +3,7 @@ const pending = new Map();
 const mutations = new WeakMap();
 const focus = new WeakMap();
 const validated = new WeakMap();
+const replacements = new WeakMap();
 const requests = new WeakMap();
 
 function validFragment(html, card) {
@@ -18,8 +19,9 @@ function validFragment(html, card) {
     template.content.querySelectorAll('health-check').length === 1;
 }
 function confirmedReplacement(card, xhr) {
-  const fresh = document.getElementById(card.id);
-  return validated.get(xhr) === card && fresh && fresh !== card && !card.isConnected &&
+  const fresh = replacements.get(xhr);
+  return validated.get(xhr) === card && fresh && document.getElementById(card.id) === fresh &&
+    fresh !== card && !card.isConnected &&
     fresh.matches('health-check') && fresh.getAttribute('check-id') === card.getAttribute('check-id') ? fresh : null;
 }
 
@@ -63,8 +65,25 @@ function restoreConfirmed(state) {
   const label = state.card.querySelector('.toggle-label');
   if (label) label.textContent = state.confirmed ? 'Disabled' : 'Enabled';
 }
+function owns(state) { return pending.get(state.card.id) === state; }
+function release(state) { if (owns(state)) pending.delete(state.card.id); }
+function canComplete(state, xhr, fresh) {
+  return owns(state) || (fresh && state.swapXhr === xhr && !pending.has(state.card.id));
+}
+
+// HTMX emits this for each element it cleans. Child cleanup does not end a card lease.
+document.addEventListener('htmx:beforeCleanupElement', event => {
+  const card = event.detail.elt;
+  const state = pending.get(card?.id);
+  if (!state || state.card !== card) return;
+  release(state);
+  for (const xhr of [state.xhr, state.reconcileXhr]) {
+    if (xhr && xhr !== state.swapXhr) focus.delete(xhr);
+  }
+});
+
 async function reconcile(state) {
-  if (state.reconciling) return;
+  if (!owns(state) || !state.card.isConnected || state.reconciling) return;
   state.reconciling = true;
   const ownedFocus = state.card.contains(document.activeElement) ||
     (document.activeElement === document.body && Boolean(state.focus));
@@ -73,17 +92,20 @@ async function reconcile(state) {
   try {
     // Let HTMX release the completed POST's synchronization lock first.
     await Promise.resolve();
+    if (!owns(state) || !state.card.isConnected) return;
     await window.htmx.ajax('GET', state.url, {
       source: state.card, target: `#${state.card.id}`, swap: 'outerHTML',
       headers: { 'X-Nyxmon-Reconcile': '1' },
     });
     const fresh = confirmedReplacement(state.card, state.reconcileXhr);
+    if (!canComplete(state, state.reconcileXhr, fresh)) return;
     if (!fresh) throw new Error('No confirmed card');
-    pending.delete(state.card.id);
+    release(state);
     busy(fresh, false);
     feedback(fresh, 'Request response failed; server state refreshed and confirmed.');
     restoreFocus(state.focus);
   } catch {
+    if (!owns(state) || !state.card.isConnected) return;
     state.card.setAttribute('aria-busy', 'false');
     restoreConfirmed(state);
     const message = feedback(state.card, 'State is uncertain. Refresh status before changing again. ');
@@ -101,7 +123,7 @@ document.addEventListener('htmx:beforeRequest', event => {
   if (!card) return;
   const existing = pending.get(card.id);
   if (existing) {
-    if (existing.reconciling && requestConfig?.headers?.['X-Nyxmon-Reconcile'] === '1') {
+    if (existing.card === card && existing.reconciling && requestConfig?.headers?.['X-Nyxmon-Reconcile'] === '1') {
       existing.reconcileXhr = xhr;
       requests.set(xhr, card);
     }
@@ -125,14 +147,15 @@ document.addEventListener('htmx:afterRequest', event => {
   // HTMX handles authentication navigation before beforeSwap.
   if (event.detail.xhr.getResponseHeader?.('HX-Redirect')) return;
   const fresh = confirmedReplacement(state.card, event.detail.xhr);
+  if (!canComplete(state, event.detail.xhr, fresh)) return;
   if ((event.detail.successful || event.detail.xhr.status === 409) && fresh) {
-    pending.delete(state.card.id);
+    release(state);
     busy(fresh, false);
   } else {
     restoreConfirmed(state);
     const code = event.detail.xhr.status;
     if (!event.detail.successful && code >= 400 && code < 500 && code !== 408) {
-      pending.delete(state.card.id);
+      release(state);
       busy(state.card, false);
       feedback(state.card, 'Request rejected; previous server state restored. Try again.');
       restoreFocus(state.focus);
@@ -150,7 +173,8 @@ document.addEventListener('htmx:beforeSwap', event => {
   const card = requests.get(xhr) || mutations.get(xhr)?.card || cardFor(elt) || cardFor(target);
   const conflict = xhr.status === 409 && mutations.has(xhr);
   if (card && (shouldSwap || conflict)) {
-    if (target !== card || !validFragment(serverResponse, card)) {
+    if (!card.isConnected || document.getElementById(card.id) !== card ||
+        target !== card || !validFragment(serverResponse, card)) {
       event.detail.shouldSwap = false;
       return;
     }
@@ -159,12 +183,23 @@ document.addEventListener('htmx:beforeSwap', event => {
       event.detail.isError = false;
     }
     validated.set(xhr, card);
+    const state = pending.get(card.id);
+    if (state?.card === card && (state.xhr === xhr || state.reconcileXhr === xhr)) {
+      state.swapXhr = xhr;
+    }
   }
   const saved = captureFocus(card);
   if (saved) focus.set(event.detail.xhr, saved);
 });
 document.addEventListener('htmx:afterSwap', event => {
+  const card = validated.get(event.detail.xhr);
+  const fresh = cardFor(event.target);
+  if (card && fresh && !card.isConnected && fresh.id === card.id &&
+      fresh.getAttribute('check-id') === card.getAttribute('check-id')) {
+    replacements.set(event.detail.xhr, fresh);
+  }
   const saved = focus.get(event.detail.xhr);
   focus.delete(event.detail.xhr);
-  restoreFocus(saved);
+  const state = saved && pending.get(saved.cardId);
+  if (!state || state.xhr === event.detail.xhr || state.reconcileXhr === event.detail.xhr) restoreFocus(saved);
 });

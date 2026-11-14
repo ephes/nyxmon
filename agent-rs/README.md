@@ -734,3 +734,30 @@ blocking Tokio threads. Cancelling before admission sends no operation; after
 sending, the closure retains its permit through completion, even if its reply is
 no longer wanted. Waiting callers still own their input payloads, so producers
 must also bound their own task fanout.
+
+### JSON-metrics admission and diagnostic limits
+
+External JSON-metrics bodies use `loads_metrics_bytes`: duplicate members at any
+depth (after unescaping keys) and non-finite numbers, including exponent overflow,
+return `json_error`. Byte encoding/integer admission otherwise follows the
+compatible decoder. General `loads`/`loads_bytes` keep Python's duplicate-member
+and NaN/Infinity behavior for configuration, storage and compatibility fixtures.
+The NaN endpoint case in `fixtures/config_json_metrics.json` now deliberately
+expects `json_error` instead of the historical Python threshold warning.
+
+Metric paths strip one leading `$.` only; later `$` segments are literal object
+members. `a.$.b` differs from `a.b`. `$` alone is the root, and dotted/bracket array
+indices retain their existing behavior. `fixtures/metrics_eval.json` explicitly
+marks `$.$.a` and `$.a.$.b` missing for the historical payload and adds
+explicit literal-dollar identity cases. The strict endpoint fixture also covers
+contradictory health/count members.
+
+Diagnostic serialization uses the existing iterative serializer with a stopping
+writer and lazy container traversal. Each actual value gets at most 200 code
+points plus an ellipsis. Each evaluation shares 16,384 code points of diagnostic
+work/output, including truncation lookahead, excluding markers; later diagnostics
+may be shorter or just an ellipsis. Exact small values, including non-finite
+values passed to the pure evaluator, retain their representation while budget
+remains. Threshold decisions still run for all rules. This is a deliberate
+bounded-work difference from the retired Python executor; ordinary oracle cases
+remain unchanged. No active Python-agent behavior is changed.

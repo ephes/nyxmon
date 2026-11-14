@@ -133,3 +133,56 @@ fn evaluate_matches_python() {
         }
     }
 }
+
+#[test]
+fn repeated_root_diagnostics_share_one_output_allowance() {
+    let payload = PyJson::Str("x".repeat(1_000_000));
+    let config = JsonMetricsConfig::from_data(
+        &crate::pyjson::loads(
+            r#"{"url":"u","checks":[{"path":"$","op":"==","value":false,"severity":"critical"}]}"#,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let checks = vec![config.checks[0].clone(); 1000];
+    let failures = evaluate(&payload, &checks).unwrap();
+    assert_eq!(failures.len(), 1000);
+    let chars: usize = failures
+        .iter()
+        .map(|failure| {
+            assert_eq!(failure.get("actual_truncated"), Some(&PyJson::Bool(true)));
+            failure
+                .get("actual")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .chars()
+                .count()
+        })
+        .sum();
+    assert!(
+        chars <= 16_384 + failures.len(),
+        "diagnostics retained {chars} chars"
+    );
+}
+
+#[test]
+fn only_a_leading_root_prefix_is_removed() {
+    let payload =
+        crate::pyjson::loads(r#"{"a":{"b":false,"$":{"b":true}},"items":[{"ok":true}]}"#).unwrap();
+    for (path, expected) in [
+        ("a.b", false),
+        ("$.a.b", false),
+        ("a.$.b", true),
+        ("$.a.$.b", true),
+        ("$.items[0].ok", true),
+        ("items.0.ok", true),
+    ] {
+        assert_eq!(
+            resolve_path(&payload, path).unwrap(),
+            Some(&PyJson::Bool(expected)),
+            "{path}"
+        );
+    }
+    assert_eq!(resolve_path(&payload, "$.a.$.missing").unwrap(), None);
+}

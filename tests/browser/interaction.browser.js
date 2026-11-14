@@ -313,3 +313,37 @@ test('stale definition swaps the current conflict card and sends its revision', 
   expect(submitted.get('definition_revision')).toBe(JSON.parse(oldRevision).definition_revision);
   expect(await page.locator('#check-1 [data-check-toggle]').getAttribute('hx-vals')).not.toBe(oldRevision);
 });
+
+test('HTMX cleanup retires a detached pending owner without affecting a replacement mutation', async ({ page }) => {
+  let releaseOld, releaseNew, posts = 0;
+  const oldGate = new Promise(resolve => { releaseOld = resolve; });
+  const newGate = new Promise(resolve => { releaseNew = resolve; });
+  await page.route('**/healthchecks/1/toggle-disabled/', async route => {
+    const attempt = ++posts;
+    await (attempt === 1 ? oldGate : newGate);
+    await route.fulfill({ contentType: 'text/html', body: fixtures.fragments['1-True'] });
+  });
+  await page.goto(server.url);
+  const checkbox = page.getByRole('checkbox', { name: 'Disable check Alpha', exact: true });
+  await checkbox.click();
+  await expect(checkbox).toBeDisabled();
+  await expect.poll(() => posts).toBe(1);
+  await page.evaluate(html => {
+    const old = document.getElementById('check-1');
+    const parent = old.parentNode;
+    window.htmx.remove(old);
+    parent.insertAdjacentHTML('afterbegin', html);
+    window.htmx.process(document.getElementById('check-1'));
+  }, fixtures.fragments['1-False']);
+  await checkbox.click();
+  await expect.poll(() => posts).toBe(2);
+  await expect(checkbox).toBeDisabled();
+  const oldResponse = page.waitForResponse(response => response.url().includes('toggle-disabled'));
+  releaseOld();
+  await oldResponse;
+  await expect(checkbox).toBeDisabled();
+  await expect(page.locator('#check-1 [data-toggle-feedback]')).toHaveText('Saving check state…');
+  releaseNew();
+  await expect(checkbox).toBeEnabled();
+  await expect(checkbox).toBeChecked();
+});

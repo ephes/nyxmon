@@ -214,6 +214,10 @@ class CheckTimer extends HTMLElement {
 
         // Always update countdown
         this.nextCheckCountdown.textContent = this.formatTimeRemaining(nextCheck);
+      } else {
+        this.nextCheckTime.textContent = '';
+        this.nextCheckCountdown.textContent = '';
+        this.checkStatus.textContent = '';
       }
     }
   }

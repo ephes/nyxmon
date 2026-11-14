@@ -754,13 +754,30 @@ Fetches a JSON endpoint (e.g., `/.well-known/health`) and evaluates threshold ru
 }
 ```
 
-Supports operators `<`, `<=`, `>`, `>=`, `==`, `!=`; severities `warning`/`critical`; simple path resolver `$.field.subfield` or `$.items.0.value`. Failures return `error_type="threshold_failed"` with all failing rules.
+The active Rust agent admits external metrics JSON only with unique object
+members at every depth and finite numbers. Duplicates (including escaped key
+aliases), `NaN`, `Infinity`, `-Infinity` and exponent overflow return `json_error`
+before threshold evaluation. Ordinary nested objects/arrays and finite numbers
+retain their behavior. This deliberately tightens the retired Python executor;
+the general Python-compatible decoder used for stored/configuration data is
+unchanged.
+
+Supports operators `<`, `<=`, `>`, `>=`, `==`, `!=`; severities `warning`/`critical`; simple path resolver `$.field.subfield`, `$.items.0.value` or `$.items[0].value`.
+Only one leading `$.` is stripped; later `$` segments name literal object keys:
+`a.$.b` and `$.a.$.b` both select `b` under `a`'s `$` member. `$` alone selects
+the whole payload. Failures return `error_type="threshold_failed"` with all failing rules.
 
 A rule whose `path` does not exist in the response always fails, whatever its
 operator; the failure records `"actual": null` and `"reason": "path_missing"`.
 A field that is present with the JSON value `null` is compared normally. An
 `actual` value whose JSON form is longer than 200 characters is stored cut
-down to 200 characters with `"actual_truncated": true`.
+down to 200 characters plus an ellipsis with `"actual_truncated": true`.
+Serialization stops at that prefix without cloning/rendering the full subtree.
+All diagnostics in one evaluation share a 16,384-character work/output allowance,
+including truncation lookahead; ellipsis markers are extra. Once exhausted,
+further actual values are represented by an ellipsis with `actual_truncated`.
+Small values remain exact while the allowance permits them. Rule evaluation and
+failure status still include every check.
 
 `max_body_bytes` (default `1048576`, 1 MiB) caps how much of the response body
 is read. A larger body, or a `Content-Length` above the cap, fails with

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Bound Rust metric diagnostic serialization to 200 characters per value and a
+  shared 16,384-character evaluation allowance. Stop traversal at the writer
+  boundary instead of rendering complete subtrees before truncation.
+- Reject duplicate object members and non-finite numbers in external Rust
+  JSON-metrics responses as `json_error`; retain the general Python-compatible
+  decoder. Strip only one leading `$.` path prefix, preserving literal `$` keys.
+- Retire pending card mutations through HTMX cleanup and fence late callbacks
+  by ownership, so replacement cards with the same ID can act independently.
+
+- Cap fallback status fragments at 128 KiB before DOM parsing, retaining the card
+  and retry feedback on overflow. Clear child countdown, progress and health
+  attributes when removed from their card, cancelling obsolete due callbacks.
+
 - Start login windows after writer admission, fence both quick toggle paths with
   the current signed definition, and return reloadable 409 conflict cards. Read
   status/trigger/toggle card inputs in one SQLite snapshot before rendering.
