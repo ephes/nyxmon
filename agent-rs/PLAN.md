@@ -324,7 +324,15 @@ section 3.6); no other new variable is introduced by the port.
   `/usr/bin`, `/usr/sbin` fallbacks still apply. Pinned by
   `ping/tests.rs::which_skips_entries_that_are_not_utf8`.
 
-- **D-18 IMAP exotic inputs.** A truthy `host` that is a JSON list or
+- **D-18 IMAP exotic inputs.** Since 2026-11-14 the Rust agent also differs
+  from Python by design: `search_subject` is one quoted literal with escaped
+  quotes/backslashes and must be printable ASCII (non-ASCII subjects and
+  subjects that would need literal SEARCH data are `execution_error` before
+  SEARCH); UID FETCH runs in batches of 32 over at most 256 distinct UIDs with
+  an 8 MiB reply budget (`incomplete_scan` beyond that); ages are rechecked
+  after all FETCHes, and an INTERNALDATE more than 60 s in the future is
+  `invalid_message_date`. The dialogue fixture records these differences.
+  A truthy `host` that is a JSON list or
   object is a `configuration_error` ("host is not supported by the Rust
   agent: not a string"); Python accepts it and fails later in ways that
   depend on its contents. An INTERNALDATE whose UTC year leaves 1..=9999 is
@@ -1751,10 +1759,12 @@ the connection, including before oversized literal bodies are read; see README.
   ...). `nyxmon-core/src/config/imap.rs` holds the configuration, host
   normalisation (`pyurl`), UID match, `Internaldate2tuple` + conversion and
   the `SEARCH` split. Pinned by `config_imap.json`, `imap_text.json` and
-  `imap_dialogues.json`, the last being 46 dialogues of the real Python
-  executor against scripted servers (Dovecot- and Gmail-like sessions,
-  every error path above) replayed byte for byte by the Rust tests; TLS
-  paths are Rust-only fake-server tests. Divergences: D-18.
+  `imap_dialogues.json`, the last being 46 dialogues recorded from the real
+  Python executor against scripted servers (Dovecot- and Gmail-like
+  sessions, every error path above) replayed byte for byte by the Rust
+  tests; since 2026-11-14 the fixture is hand-edited for the intentional
+  differences listed under D-18 (it can no longer be regenerated verbatim
+  from Python). TLS paths are Rust-only fake-server tests. Divergences: D-18.
 
 ---
 

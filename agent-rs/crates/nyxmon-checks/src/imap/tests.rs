@@ -1,7 +1,8 @@
 //! The IMAP executor against scripted fake servers: the dialogues of
-//! `fixtures/imap_dialogues.json` (the Python executor with the real
-//! `imaplib` against the same scripts), and Rust-only tests for TLS and
-//! timeouts. Transcripts drop the random tag prefix `imaplib` uses.
+//! `fixtures/imap_dialogues.json` (recorded from the Python executor with the
+//! real `imaplib` against the same scripts, hand-edited for the intentional
+//! differences of PLAN.md D-18), and Rust-only tests for TLS and timeouts.
+//! Transcripts drop the random tag prefix `imaplib` uses.
 
 use std::time::Duration;
 

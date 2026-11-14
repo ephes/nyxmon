@@ -786,6 +786,9 @@ impl Imap {
 
     /// `IMAP4.logout()`.
     async fn logout(&mut self) -> Result<(), ImapExc> {
+        // A FETCH loop that ended early (error, dropped on timeout) must not
+        // charge the LOGOUT reply against its leftover reply budget.
+        self.fetch_bytes_remaining = None;
         self.state = "LOGOUT";
         self.simple_command("LOGOUT", &[]).await?;
         self.conn = None;
@@ -876,26 +879,35 @@ async fn search_recent(
     let cutoff = env.now() - (max_age_minutes * 60) as f64;
     let mut messages = Vec::new();
     imap.fetch_bytes_remaining = Some(MAX_FETCH_BYTES);
-    for batch in ids.chunks(FETCH_BATCH_SIZE) {
-        let args = vec![ascii(&batch.join(","))?, b"(INTERNALDATE)".to_vec()];
-        let data = checked("uid", imap.uid("FETCH", args).await?)?;
-        for id in batch {
-            let raw = data.iter().find_map(|entry| {
-                let candidate = match entry {
-                    Some(Datum::Bytes(b)) | Some(Datum::Literal(b, _)) => b,
-                    None => return None,
-                };
-                (fetch_uid(candidate) == Some(id.as_bytes())).then_some(candidate)
-            });
-            let Some(raw) = raw else { continue };
-            match parse_internaldate(raw) {
-                InternalDate::At(at) if (at as f64) >= cutoff => messages.push((id.clone(), at)),
-                InternalDate::At(_) | InternalDate::Missing => {}
-                InternalDate::Error(text) => return Err(ImapExc::Other(text)),
+    // The budget covers the FETCH loop only: reset it on every exit, not just
+    // on success (LOGOUT also clears it if this future is dropped).
+    let outcome: Result<(), ImapExc> = async {
+        for batch in ids.chunks(FETCH_BATCH_SIZE) {
+            let args = vec![ascii(&batch.join(","))?, b"(INTERNALDATE)".to_vec()];
+            let data = checked("uid", imap.uid("FETCH", args).await?)?;
+            for id in batch {
+                let raw = data.iter().find_map(|entry| {
+                    let candidate = match entry {
+                        Some(Datum::Bytes(b)) | Some(Datum::Literal(b, _)) => b,
+                        None => return None,
+                    };
+                    (fetch_uid(candidate) == Some(id.as_bytes())).then_some(candidate)
+                });
+                let Some(raw) = raw else { continue };
+                match parse_internaldate(raw) {
+                    InternalDate::At(at) if (at as f64) >= cutoff => {
+                        messages.push((id.clone(), at))
+                    }
+                    InternalDate::At(_) | InternalDate::Missing => {}
+                    InternalDate::Error(text) => return Err(ImapExc::Other(text)),
+                }
             }
         }
+        Ok(())
     }
+    .await;
     imap.fetch_bytes_remaining = None;
+    outcome?;
     Ok(messages)
 }
 

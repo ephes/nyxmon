@@ -289,10 +289,11 @@ Current fixtures:
 - `config_imap.json`: `ImapCheckConfig.from_dict` + `validate` over a data
   corpus. `imap_text.json`: `_normalize_host`, the UID match and
   INTERNALDATE conversion of `_fetch_internaldate`, and the `SEARCH` result
-  split. `imap_dialogues.json`: the real IMAP executor (`imaplib`) against
-  scripted servers on 127.0.0.1 (script, result, retry delays, wire
-  transcript without the random tag), which the Rust tests replay against
-  the same scripts.
+  split. `imap_dialogues.json`: recorded from the real IMAP executor
+  (`imaplib`) against scripted servers on 127.0.0.1 (script, result, retry
+  delays, wire transcript without the random tag), which the Rust tests
+  replay against the same scripts; hand-edited since 2026-11-14 for the
+  intentional Rust differences (PLAN.md D-18).
 - `unicode_nonprintable.json`: the code points `str.isprintable()` rejects.
   `nyxmon-core` embeds it, so `repr(str)` escapes exactly what the oracle's
   Unicode database (15.1 for CPython 3.13) escapes.
