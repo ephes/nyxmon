@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Recheck IMAP message age after all FETCHes before selecting/deleting matches.
+  Preserve empty-result retries; refuse dates over 60 seconds in the future as
+  `invalid_message_date` without deleting any matches.
+
+- Escape IMAP subject quotes/backslashes as one literal search argument and
+  refuse unsupported/control characters. Bound scans to 256 distinct UIDs,
+  batches of 32 and 8 MiB of total FETCH replies; report `incomplete_scan`
+  without partial success or deletion when admission/work limits are exceeded.
+
 - Redact Telegram and OpsGate submit credentials, including encoded forms,
   before truncating notification diagnostics. Validate bounded scalar ticket IDs
   and construct approval links with URL path segments. With an unusable approval
