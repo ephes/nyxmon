@@ -220,6 +220,26 @@ and neither does a type mismatch such as `true <= 24`. A suppression payload
 larger than 256 KiB, a compressed response, more than five redirects, or a
 payload that fails to load or parse suppresses nothing.
 
+The Rust agent also fails open on suppression configuration or path conversion
+errors: it stores the original check result and continues the usual notification
+policy, with a fixed diagnostic containing only the check ID and error class.
+A malformed rule cannot discard a completed check or interrupt sibling results.
+`active_for_seconds` uses one wall-clock reading after the maintenance fetch
+finishes; a grace window that expires during the request no longer suppresses
+the failure. The exact expiry second remains included in the window.
+
+Rust `notification_suppressed` evidence keeps `source_url` as the HTTP(S)
+origin only (scheme, host and optional port); credentials, path, query and fragment
+are discarded. Invalid or opaque sources use `<invalid-url>`. Matching still
+uses the complete in-memory payload and configured transport/authentication.
+Stored reason, status and matched-rule fields are scalar diagnostics: strings
+are retained only up to 128 UTF-8 bytes without control characters; larger or
+control-bearing strings become `<string>`, objects `<object>`, arrays `<array>`,
+and nonfinite or larger-than-256-bit numbers `<number>`. Short scalar values,
+rule path/operator and ordinary expiry numbers remain available for provenance.
+This applies to new Rust results; existing history is not rewritten. Avoid putting
+secrets in configured reasons, rule paths or short scalar status/value fields.
+
 #### Per-Check Notification Policy
 
 A single check can override the global thresholds through a

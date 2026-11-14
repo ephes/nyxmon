@@ -931,6 +931,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "tracing",
+ "url",
 ]
 
 [[package]]

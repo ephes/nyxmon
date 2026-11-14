@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Store Rust suppression sources as credential-free HTTP(S) origins and bound
+  evidence to scalar diagnostics; keep private transport fields and large
+  payload objects out of new result history without changing rule matching.
+- Add a local TCP executor cancellation oracle with three live connection
+  attempts, covering timeout, task cancellation, late winners, peer EOF and
+  subsequent recovery; retain the existing Happy Eyeballs cleanup policy.
+
+- Preserve Rust check results and normal alert delivery on suppression conversion
+  errors, logging only a bounded diagnostic. Evaluate maintenance grace expiry
+  after fetching evidence, so expired windows cannot silence current failures.
+
 - Give Rust maintenance-suppression fetches one total timeout across redirects
   and body reads; keep notification delivery fail-open on unavailable evidence.
   Add a local UDP/TCP DNS cancellation, EOF, deadline and recovery journey.

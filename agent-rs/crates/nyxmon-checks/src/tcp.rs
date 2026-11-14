@@ -139,7 +139,16 @@ pub struct TcpExecutor {
     sleep: Sleep,
     /// Trust anchors for `verify=true`; the system store when `None`.
     roots: Option<Arc<RootCertStore>>,
+    #[cfg(test)]
+    connection: Option<TestConnection>,
 }
+
+#[cfg(test)]
+type TestConnection = Arc<
+    dyn Fn() -> Pin<Box<dyn Future<Output = Result<TcpStream, ConnectFailure>> + Send>>
+        + Send
+        + Sync,
+>;
 
 impl Default for TcpExecutor {
     fn default() -> Self {
@@ -147,6 +156,8 @@ impl Default for TcpExecutor {
             wall_clock: system_wall_clock(),
             sleep: tokio_sleep(),
             roots: None,
+            #[cfg(test)]
+            connection: None,
         }
     }
 }
@@ -255,7 +266,7 @@ impl TcpExecutor {
         host: &PyJson,
         config: &TcpConfig,
     ) -> Result<PyDict, AttemptError> {
-        let (mut stream, connect_time_ms) = connect(host, config).await?;
+        let (mut stream, connect_time_ms) = self.connect(host, config).await?;
         if config.tls_mode == TlsMode::None {
             drop(stream);
             return Ok(success_data(host, config, connect_time_ms, None, None));
@@ -291,6 +302,18 @@ impl TcpExecutor {
             data.insert("tls_close_error".to_owned(), PyJson::Str(diagnostic));
         }
         Ok(data)
+    }
+
+    async fn connect(
+        &self,
+        host: &PyJson,
+        config: &TcpConfig,
+    ) -> Result<(TcpStream, i64), AttemptError> {
+        #[cfg(test)]
+        if let Some(connection) = &self.connection {
+            return bounded_connect(host, config, connection()).await;
+        }
+        connect(host, config).await
     }
 
     /// `_negotiate_tls` after the optional STARTTLS dialogue: the handshake

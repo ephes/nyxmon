@@ -1155,3 +1155,121 @@ async fn mixed_smtp_codes_never_negotiate_tls() {
         );
     }
 }
+
+/// A pending connector owns a real local socket until it is cancelled or wins.
+struct LiveAttempt {
+    stream: Option<TcpStream>,
+    index: usize,
+    dropped: tokio::sync::mpsc::UnboundedSender<usize>,
+}
+
+impl Drop for LiveAttempt {
+    fn drop(&mut self) {
+        let _ = self.dropped.send(self.index);
+    }
+}
+
+#[tokio::test]
+async fn tcp_connect_race_releases_live_attempts_on_timeout_cancel_and_late_winner() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tokio::sync::{Notify, mpsc};
+
+    // Exercise execute -> bounded_connect -> the actual Happy Eyeballs JoinSet.
+    // Only resolution/individual connect completion are injected; every attempt
+    // holds an established loopback socket, so peer EOF proves resource release.
+    for outcome in ["timeout", "cancel", "winner"] {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let gates: Arc<Vec<Notify>> = Arc::new((0..3).map(|_| Notify::new()).collect());
+            let (started, mut starts) = mpsc::unbounded_channel();
+            let (dropped, mut drops) = mpsc::unbounded_channel();
+            let releases = gates.clone();
+            let executor = TcpExecutor {
+                connection: Some(Arc::new(move || {
+                    let started = started.clone();
+                    let dropped = dropped.clone();
+                    let gates = gates.clone();
+                    let index = AtomicUsize::new(0);
+                    Box::pin(async move {
+                        happy_eyeballs::connect_addresses_with(vec![addr; 3], move |addr| {
+                            let index = index.fetch_add(1, Ordering::SeqCst);
+                            let started = started.clone();
+                            let dropped = dropped.clone();
+                            let gates = gates.clone();
+                            async move {
+                                let stream = TcpStream::connect(addr).await?;
+                                let mut owned = LiveAttempt {
+                                    stream: Some(stream),
+                                    index,
+                                    dropped,
+                                };
+                                started.send(index).unwrap();
+                                gates[index].notified().await;
+                                Ok(owned.stream.take().unwrap())
+                            }
+                        })
+                        .await
+                        .map_err(ConnectFailure::Connect)
+                    })
+                })),
+                ..TcpExecutor::default()
+            };
+            let probe = check(
+                &format!(
+                    r#"{{"host":"127.0.0.1", "port":{}, "connect_timeout":1}}"#,
+                    addr.port()
+                ),
+                "",
+            );
+            let task = tokio::spawn({
+                let probe = probe.clone();
+                async move { executor.execute(&probe).await.unwrap() }
+            });
+            let mut peers = Vec::new();
+            for index in 0..3 {
+                assert_eq!(starts.recv().await, Some(index));
+                peers.push(listener.accept().await.unwrap().0);
+            }
+            match outcome {
+                "timeout" => {
+                    let result = task.await.unwrap();
+                    assert_eq!(result.status, ResultStatus::Error);
+                    assert_eq!(text(&result.data, "error_type"), "connect_timeout");
+                }
+                "cancel" => {
+                    task.abort();
+                    assert!(task.await.unwrap_err().is_cancelled());
+                }
+                "winner" => {
+                    // Let two late attempts finish together, leaving the first
+                    // pending and potentially a successful loser in the JoinSet.
+                    releases[1].notify_one();
+                    releases[2].notify_one();
+                    assert_eq!(task.await.unwrap().status, ResultStatus::Ok);
+                }
+                _ => unreachable!(),
+            }
+            let mut finished = Vec::new();
+            for _ in 0..3 {
+                finished.push(drops.recv().await.unwrap());
+            }
+            finished.sort_unstable();
+            assert_eq!(finished, [0, 1, 2]);
+            for mut peer in peers {
+                assert_eq!(
+                    peer.read(&mut [0u8; 1]).await.unwrap(),
+                    0,
+                    "{outcome}: socket survived"
+                );
+            }
+            // No live attempt or stale winner interferes with the next probe.
+            let next = TcpExecutor::default().execute(&probe).await.unwrap();
+            assert_eq!(next.status, ResultStatus::Ok, "{outcome}: recovery failed");
+            let (mut peer, _) = listener.accept().await.unwrap();
+            assert_eq!(peer.read(&mut [0u8; 1]).await.unwrap(), 0);
+        })
+        .await
+        .unwrap_or_else(|_| panic!("{outcome}: attempts/resources did not settle"));
+    }
+}

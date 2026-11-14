@@ -1097,6 +1097,17 @@ raised). Any error in this function is logged as
 
 ### 5.4 Maintenance suppression (`notification_suppression.py`) — fixture + fake server
 
+Current Rust reliability/privacy refinements deliberately tighten the historical
+Python fixtures: result handling catches suppression conversion errors and
+continues unsuppressed, logging only the check ID and error class. The evaluation
+clock is sampled once after the fetch. Durable evidence stores the HTTP(S) origin
+only and bounds scalar strings to 128 UTF-8 bytes without controls and integers
+to 256 bits; collections, excess strings and unusable numbers become fixed type
+markers. Matching retains the original full payload/configuration. Existing
+history is not rewritten; see `docs/configuration.md` for the evidence contract.
+The parity test preserves the historical fixture and explicitly adjusts only its
+source URL expectation to the new origin-only policy.
+
 - Config object `notification_suppression`; empty/missing `url` → none.
   `timeout` via `_timeout_seconds` (non-numeric → 3, ≤ 0 → 3, cap 30).
 - Fetch: GET with `Accept-Encoding: identity`, redirects followed by hand up

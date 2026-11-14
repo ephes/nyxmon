@@ -690,3 +690,12 @@ Maintenance suppression has one configured total timeout across redirects,
 headers and body; unavailable evidence fails open for normal alert delivery.
 The local DNS executor journey covers cancelled/EOF/timed-out partial TCP
 fallback frames and subsequent successful resolution with synthetic peers.
+
+Maintenance suppression conversion errors fail open: the original result and
+notification policy continue with a bounded check-ID/error-class diagnostic.
+Grace expiry is evaluated after fetching, using one evaluation instant. New
+suppression evidence stores only the HTTP(S) origin and bounded scalar diagnostics
+(see `docs/configuration.md`); full payloads remain available only for matching.
+The TCP executor cancellation oracle injects deferred connectors around the real
+Happy Eyeballs race, holds three local sockets, and proves peer EOF after timeout,
+parent cancellation and late winners, followed by a successful normal check.

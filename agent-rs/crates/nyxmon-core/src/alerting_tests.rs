@@ -329,11 +329,21 @@ fn suppression_rules_match_python() {
             assert_eq!(auth, *expected.field("auth"), "{case:?}");
         }
         match actual {
-            Ok(details) => assert_eq!(
-                details.as_ref().map(dumps_dict).as_deref(),
-                case.opt_str("details_json"),
-                "{case:?}"
-            ),
+            Ok(details) => {
+                // Python fixtures still pin matching and all other fields. Rust
+                // deliberately stores only the source origin (privacy contract).
+                let expected = case.opt_str("details_json").map(|text| {
+                    let mut expected = loads(text).unwrap().as_dict().unwrap().clone();
+                    let source = match expected["source_url"].as_str().unwrap() {
+                        "https://maint.example/status" => "https://maint.example",
+                        "123" | "['u']" => "<invalid-url>",
+                        other => panic!("unclassified fixture source: {other}"),
+                    };
+                    expected.insert("source_url".to_owned(), PyJson::from(source));
+                    expected
+                });
+                assert_eq!(details, expected, "{case:?}");
+            }
             Err(error) => assert_eq!(Some(error.python_class()), case.opt_str("error")),
         }
     }

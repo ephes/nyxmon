@@ -90,9 +90,22 @@ pub async fn resolve(target: &ConnectTarget, port: u16) -> Result<Vec<SocketAddr
 /// # Errors
 /// [`ConnectError::AllFailed`] when no attempt connected.
 pub async fn connect_addresses(addrs: Vec<SocketAddr>) -> Result<TcpStream, ConnectError> {
+    connect_addresses_with(addrs, TcpStream::connect).await
+}
+
+/// Shared race owner; the connector seam lets local tests hold live sockets
+/// at precise attempt boundaries without relying on unroutable networks.
+pub(crate) async fn connect_addresses_with<F>(
+    addrs: Vec<SocketAddr>,
+    mut connector: impl FnMut(SocketAddr) -> F,
+) -> Result<TcpStream, ConnectError>
+where
+    F: std::future::Future<Output = io::Result<TcpStream>> + Send + 'static,
+{
     let mut attempts = JoinSet::new();
     for (index, addr) in addrs.into_iter().enumerate() {
-        attempts.spawn(async move { (index, TcpStream::connect(addr).await) });
+        let connection = connector(addr);
+        attempts.spawn(async move { (index, connection.await) });
         let delay = tokio::time::sleep(HAPPY_EYEBALLS_DELAY);
         tokio::pin!(delay);
         loop {
