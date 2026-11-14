@@ -21,6 +21,33 @@ pub const MAX_SUPPRESSION_REDIRECTS: usize = 5;
 
 static NONE: PyJson = PyJson::Null;
 
+/// Durable evidence is a diagnostic, never a copy of the maintenance payload.
+fn diagnostic(value: &PyJson) -> PyJson {
+    match value {
+        PyJson::Null | PyJson::Bool(_) | PyJson::Int(_) => value.clone(),
+        PyJson::Float(number) if number.is_finite() => value.clone(),
+        PyJson::BigInt(number) if number.bits() <= 256 => value.clone(),
+        PyJson::Str(text) if text.len() <= 128 && !text.chars().any(char::is_control) => {
+            value.clone()
+        }
+        PyJson::Str(_) => PyJson::from("<string>"),
+        PyJson::List(_) => PyJson::from("<array>"),
+        PyJson::Dict(_) => PyJson::from("<object>"),
+        _ => PyJson::from("<number>"),
+    }
+}
+
+/// Keep only the HTTP(S) origin: userinfo, paths, queries and fragments may
+/// all contain transport secrets. Invalid/opaque URLs are never echoed.
+fn source_identifier(raw: &str) -> PyJson {
+    let source = url::Url::parse(raw)
+        .ok()
+        .filter(|url| matches!(url.scheme(), "http" | "https") && url.host().is_some())
+        .map(|url| url.origin().ascii_serialization())
+        .filter(|origin| origin.len() <= 256);
+    PyJson::from(source.as_deref().unwrap_or("<invalid-url>"))
+}
+
 /// `_lookup`: the value at `path`, `Ok(None)` when the path does not exist
 /// (Python's `MISSING`, distinct from a JSON `null`).
 ///
@@ -216,12 +243,12 @@ pub fn evaluate(
 
     let status_path = str_or(config.get("status_path"), "$.last_status");
     let status = resolve_path(payload, &status_path)?;
-    let reason = |default: &str| PyJson::Str(str_or(config.get("reason"), default));
+    let reason = |default: &str| diagnostic(&PyJson::Str(str_or(config.get("reason"), default)));
     let details = |default: &str| {
         let mut details = PyDict::new();
         details.insert("reason".to_owned(), reason(default));
-        details.insert("source_url".to_owned(), PyJson::from(url));
-        details.insert("source_status".to_owned(), status.clone());
+        details.insert("source_url".to_owned(), source_identifier(url));
+        details.insert("source_status".to_owned(), diagnostic(status));
         details
     };
 
@@ -247,7 +274,7 @@ pub fn evaluate(
             if rule_matches(payload, rule)? {
                 let mut matched = PyDict::new();
                 for key in ["path", "op", "value"] {
-                    matched.insert(key.to_owned(), rule.get(key).unwrap_or(&NONE).clone());
+                    matched.insert(key.to_owned(), diagnostic(rule.get(key).unwrap_or(&NONE)));
                 }
                 let mut details = details("maintenance_active");
                 details.insert("matched_rule".to_owned(), PyJson::Dict(matched));
@@ -268,10 +295,13 @@ pub fn evaluate(
     let age = BigInt::from(now) - &finished;
     if active_for > BigInt::ZERO && age >= BigInt::ZERO && age <= active_for {
         let mut details = details("maintenance_recently_finished");
-        details.insert("finished_epoch".to_owned(), PyJson::from_bigint(finished));
+        details.insert(
+            "finished_epoch".to_owned(),
+            diagnostic(&PyJson::from_bigint(finished)),
+        );
         details.insert(
             "active_for_seconds".to_owned(),
-            PyJson::from_bigint(active_for),
+            diagnostic(&PyJson::from_bigint(active_for)),
         );
         return Ok(Some(details));
     }
@@ -298,4 +328,65 @@ pub fn notification_suppression_details(
     };
     let config = suppression_config(data).expect("checked by suppression_request");
     evaluate(config, &request.url, &payload, now)
+}
+
+#[cfg(test)]
+mod evidence_tests {
+    use super::*;
+    use crate::pyjson::loads;
+
+    #[test]
+    fn evidence_scalars_follow_byte_and_numeric_limits() {
+        for value in [
+            PyJson::from("é".repeat(65).as_str()),
+            PyJson::from("private\nstatus"),
+        ] {
+            assert_eq!(diagnostic(&value), PyJson::from("<string>"));
+        }
+        let boundary = PyJson::from("é".repeat(64).as_str());
+        assert_eq!(diagnostic(&boundary), boundary);
+        assert_eq!(
+            diagnostic(&loads("[1,2]").unwrap()),
+            PyJson::from("<array>")
+        );
+        assert_eq!(diagnostic(&loads("{}").unwrap()), PyJson::from("<object>"));
+        for text in [
+            "NaN".to_owned(),
+            "Infinity".to_owned(),
+            format!("1{}", "0".repeat(400)),
+        ] {
+            assert_eq!(diagnostic(&loads(&text).unwrap()), PyJson::from("<number>"));
+        }
+        for text in [
+            "null",
+            "true",
+            "42",
+            "1.5",
+            "1000000000000000000000000000000",
+        ] {
+            let value = loads(text).unwrap();
+            assert_eq!(diagnostic(&value), value);
+        }
+    }
+
+    #[test]
+    fn sources_keep_only_an_http_origin_or_a_fixed_marker() {
+        for (source, expected) in [
+            (
+                "https://user:secret@example.test:8443/private?token=secret#secret",
+                "https://example.test:8443",
+            ),
+            ("http://user:secret@[::1]:8080/private", "http://[::1]:8080"),
+            ("https://example.test:443/private", "https://example.test"),
+            (
+                "https://example.test/private?broken=%",
+                "https://example.test",
+            ),
+            ("not a URL with secret", "<invalid-url>"),
+            ("file:///private/secret", "<invalid-url>"),
+            ("data:text/plain,secret", "<invalid-url>"),
+        ] {
+            assert_eq!(source_identifier(source).as_str(), Some(expected));
+        }
+    }
 }

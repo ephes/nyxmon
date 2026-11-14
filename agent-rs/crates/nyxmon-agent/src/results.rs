@@ -248,7 +248,6 @@ impl<S: ResultStore> ResultHandler<S> {
         let Some(request) = suppression_request(&check.data)? else {
             return Ok(None);
         };
-        let now = self.now();
         let url = request.url.clone();
         let Some(payload) = (self.fetch)(request).await else {
             return Ok(None);
@@ -260,15 +259,15 @@ impl<S: ResultStore> ResultHandler<S> {
         else {
             return Ok(None);
         };
-        evaluate(config, &url, &payload, now)
+        evaluate(config, &url, &payload, self.now())
     }
 
     /// `add_check_result`: persist the sample and alert about it when policy
     /// and site state allow. Returns whether a notification was triggered.
     ///
     /// # Errors
-    /// Store failures (other than an exhausted notification-state conflict),
-    /// exceptions of the suppression configuration and a raising notifier;
+    /// Store failures (other than an exhausted notification-state conflict)
+    /// and a raising notifier. Suppression conversion errors fail open;
     /// a failed acknowledgement is only logged.
     pub async fn add_check_result(
         &self,
@@ -279,12 +278,24 @@ impl<S: ResultStore> ResultHandler<S> {
         if matches!(result.status, ResultStatus::Error | ResultStatus::Warning)
             && !force_notification
             && !result.data.get("collector_internal").is_some_and(py_truthy)
-            && let Some(details) = self.suppression_details(check).await?
-            && !details.is_empty()
         {
-            result
-                .data
-                .insert("notification_suppressed".to_owned(), PyJson::Dict(details));
+            match self.suppression_details(check).await {
+                Ok(Some(details)) if !details.is_empty() => {
+                    result
+                        .data
+                        .insert("notification_suppressed".to_owned(), PyJson::Dict(details));
+                }
+                Err(err) => {
+                    // Never copy configuration, payloads or exception text to logs.
+                    tracing::warn!(
+                        target: "nyxmon.service_layer.handlers",
+                        "suppression evaluation failed for check_id={}; continuing unsuppressed ({})",
+                        check.check_id,
+                        err.python_class(),
+                    );
+                }
+                _ => {}
+            }
         }
         let retry_seconds = delivery_retry_seconds(&self.env);
         let mut should_notify = false;
