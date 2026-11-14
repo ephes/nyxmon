@@ -373,7 +373,9 @@ JSON integer or a string of 1..128 ASCII bytes matching
 whitespace, null, containers, booleans, fractions and URL delimiters are refused.
 Approval URLs append `tickets` and the ID through URL path segments, preserving
 the configured base path and removing query/fragment components. A malformed
-approval base produces the ticket-error notice instead of a broken link.
+approval base (not http(s), or without a host) never produces a broken link: the
+alert still names the created ticket and says the approval link is unavailable, so
+check `OPSGATE_APPROVAL_BASE_URL` instead of creating a duplicate ticket by hand.
 
 Notification diagnostics scrub both `TELEGRAM_BOT_TOKEN` and
 `OPSGATE_SUBMIT_TOKEN`, including URL/form and JSON/diagnostic-escaped forms,

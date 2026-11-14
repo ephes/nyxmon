@@ -796,7 +796,7 @@
     "TELEGRAM_BOT_TOKEN": "123456:SECRET-bot_token~x",
     "TELEGRAM_CHAT_ID": "-100123"
    },
-   "label": "ticket created",
+   "label": "padded ticket id refused",
    "logs": [
     [
      "ERROR",
@@ -879,7 +879,7 @@
     "TELEGRAM_BOT_TOKEN": "123456:SECRET-bot_token~x",
     "TELEGRAM_CHAT_ID": "-100123"
    },
-   "label": "ticket id needs link escaping",
+   "label": "ticket id with link metacharacters refused",
    "logs": [
     [
      "ERROR",

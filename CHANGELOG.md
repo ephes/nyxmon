@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Redact Telegram and OpsGate submit credentials, including encoded forms,
   before truncating notification diagnostics. Validate bounded scalar ticket IDs
-  and construct approval links with URL path segments.
+  and construct approval links with URL path segments. With an unusable approval
+  base URL the alert keeps the created ticket ID and says the link is unavailable.
 - Keep primary Telegram alerts when optional ticket expiry/payload construction
   fails. Require a bounded valid Telegram success envelope with a message ID
   before acknowledging delivery; malformed replies retain normal retry behavior.

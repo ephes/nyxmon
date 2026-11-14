@@ -178,3 +178,19 @@ fn prompt_boundary_is_unpredictable() {
         );
     }
 }
+
+#[test]
+fn created_ticket_with_unusable_approval_base_keeps_the_ticket_id() {
+    for base in [
+        "ftp://approve.example/base",
+        "not a url",
+        "file:///tmp/base",
+    ] {
+        let mut text = String::new();
+        append_ticket_notice(&mut text, &TicketOutcome::Created("T-42".to_string()), base);
+        assert!(text.contains("Ticket: `T\\-42`"), "{base}: {text}");
+        assert!(text.contains("Approval link unavailable"), "{base}: {text}");
+        assert!(!text.contains("creation failed"), "{base}: {text}");
+        assert!(!text.contains("]("), "{base}: {text}");
+    }
+}

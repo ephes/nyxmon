@@ -1998,7 +1998,7 @@ level, stable inputs, injected clocks/nonces/env via monkeypatching):
 | `metrics_eval.json` (S5) | `JsonMetricsExecutor._evaluate`, `_resolve_path`, `_build_failure_summary`, `_bounded_actual` | payload × checks → failures/status/summary |
 | `lease.json` | `estimated_check_runtime_seconds` | check data → seconds + warnings |
 | `incident_payloads.json` | `_merge_stale_batch_payload`, `_stale_batch_message`, `_paused_batch_message`, delivery-marker helpers | |
-| `telegram.json` | `escape_markdown_v2`, `markdown_v2_to_plain_text`, `_truncate`, the message builder of `async_notify_check_failed` (OpsGate stubbed) | |
+| `telegram.json` | `escape_markdown_v2`, `markdown_v2_to_plain_text`, `_truncate`, the message builder of `async_notify_check_failed` (OpsGate stubbed) | Rust-owned since D-22: edited by hand, not regenerated from Python |
 | `opsgate.json` | `_build_opsgate_ticket_payload`, `_build_opsgate_prompt`, `sanitize_untrusted_data`, `_opsgate_task_ref` (nonce and time injected; incl. `tests/unit/fixtures/opsgate_prompt_injection.json`) | |
 | `ping_text.json` | `build_ping_command`, `parse_rtt_ms`, `is_permission_failure`, `_error_detail`, `_packet_stats`, RTT statistics, output decoding, scripted executor runs (stub runner/resolver/sleep) | |
 | `ping_unicode.json` | `re` `\w`/`\s`, `IGNORECASE` letter classes, `str.splitlines` separators | embedded `\w` table for the ping parsers |

@@ -8,7 +8,10 @@
 //!
 //! The pure parts (message text, MarkdownV2 escaping, the OpsGate payload and
 //! prompt, sanitizing of endpoint data) are pinned byte for byte by the
-//! Python-generated fixtures `telegram.json` and `opsgate.json`.
+//! fixtures `telegram.json` and `opsgate.json`. `telegram.json` started as a
+//! Python-generated fixture and is now a Rust-owned contract (malformed ticket
+//! IDs are refused, a valid Telegram envelope is required): edit it by hand,
+//! never regenerate it from the Python notifier.
 
 use std::fmt;
 use std::future::Future;
