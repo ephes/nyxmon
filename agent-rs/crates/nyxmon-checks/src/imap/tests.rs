@@ -70,10 +70,10 @@ fn keys(data: &PyDict) -> Vec<&str> {
     data.keys().map(String::as_str).collect()
 }
 
-/// Every scripted dialogue gives Python's result (status, data, key order),
-/// retry delays and wire transcript.
+/// Historical Python dialogues, updated for safe subject admission and bounded
+/// UID batches. Results, retry delays and exact wire transcripts remain covered.
 #[tokio::test]
-async fn dialogues_match_the_python_executor() {
+async fn dialogues_preserve_results_with_bounded_uid_batches() {
     let fixture = loads(include_str!("../../../../fixtures/imap_dialogues.json")).unwrap();
     let now = match fixture.get("now") {
         Some(PyJson::Float(now)) => *now,
@@ -651,4 +651,364 @@ async fn imap_attempt_deadline_preserves_no_recent_retries_when_logout_drips() {
     assert_eq!(result.data["attempts"], PyJson::Int(2));
     assert_eq!(env.sleeps(), [Duration::from_secs(7)]);
     assert_eq!(server.transcripts().await.len(), 2);
+}
+
+fn r90_start(ids: &str) -> Vec<Step> {
+    let mut script = vec![send(GREETING)];
+    script.extend(login_select());
+    script.extend([
+        Step::Recv,
+        send(&format!("* SEARCH {ids}\r\n")),
+        tagged("OK searched"),
+    ]);
+    script
+}
+
+fn r90_finish(script: &mut Vec<Step>, delete: bool) {
+    if delete {
+        script.extend([
+            Step::Recv,
+            tagged("OK stored"),
+            Step::Recv,
+            send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
+            tagged("OK capabilities"),
+            Step::Recv,
+            tagged("OK expunged"),
+        ]);
+    }
+    script.extend([Step::Recv, tagged("OK logout")]);
+}
+
+#[tokio::test]
+async fn r90_subject_is_one_literal_search_argument() {
+    let subject = r#"report " OR ALL HEADER SUBJECT " \ end"#;
+    let mut script = r90_start("5");
+    script.extend([
+        Step::Recv,
+        send("* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n"),
+        tagged("OK fetched"),
+    ]);
+    r90_finish(&mut script, true);
+    let server = ScriptServer::start(vec![script], false).await;
+    let mut check = check(server.port, "");
+    check
+        .data
+        .as_dict_mut()
+        .unwrap()
+        .insert("search_subject".into(), PyJson::from(subject));
+    let result = execute(&check, &TestEnv::new()).await.unwrap();
+    assert_eq!(result.status, ResultStatus::Ok);
+    let wire = untag(server.transcripts().await.remove(0));
+    assert_eq!(
+        wire[2],
+        r#"UID SEARCH NOT DELETED HEADER SUBJECT "report \" OR ALL HEADER SUBJECT \" \\ end""#
+    );
+    assert_eq!(wire[4], "UID STORE 5 +FLAGS (\\Deleted)");
+    assert_eq!(wire[6], "UID EXPUNGE 5");
+}
+
+#[tokio::test]
+async fn r90_subject_controls_are_refused_before_search() {
+    for subject in ["a\0b", "a\rb", "a\nb", "a\tb", "a\u{7f}b", "café"] {
+        let mut script = vec![send(GREETING)];
+        script.extend(login_select());
+        script.extend([Step::Recv, tagged("OK done")]);
+        let server = ScriptServer::start(vec![script], false).await;
+        let mut check = check(server.port, "");
+        check
+            .data
+            .as_dict_mut()
+            .unwrap()
+            .insert("search_subject".into(), PyJson::from(subject));
+        let result = execute(&check, &TestEnv::new()).await.unwrap();
+        assert_eq!(result.status, ResultStatus::Error, "{subject:?}");
+        let wire = untag(server.transcripts().await.remove(0));
+        assert_eq!(wire[2], "LOGOUT", "{subject:?}: {wire:?}");
+    }
+}
+
+#[tokio::test]
+async fn r90_excess_search_matches_refuse_without_fetch_or_cleanup() {
+    let ids = (1..=257)
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let mut script = r90_start(&ids);
+    r90_finish(&mut script, false);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new())
+        .await
+        .unwrap();
+    let wire = untag(server.transcripts().await.remove(0));
+    assert_eq!(result.data["error_type"], PyJson::from("incomplete_scan"));
+    assert_eq!(wire.len(), 4);
+    assert_eq!(wire[3], "LOGOUT");
+    assert!(PyJson::Dict(result.data).to_json_string().unwrap().len() < 300);
+}
+
+#[tokio::test]
+async fn r90_fetches_are_batched_and_attributed_by_uid() {
+    let ids = (1..=256).map(|id| id.to_string()).collect::<Vec<_>>();
+    let mut script = r90_start(&ids.join(" "));
+    for batch in ids.chunks(32) {
+        script.push(Step::Recv);
+        // Unsolicited UID and UID-less lines must never become selected matches.
+        script.push(send("* 900 FETCH (UID 999 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n* 901 FETCH (INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n"));
+        for id in batch.iter().rev() {
+            script.push(send(&format!(
+                "* 1 FETCH (UID {id} INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n"
+            )));
+        }
+        script.push(tagged("OK fetched"));
+    }
+    r90_finish(&mut script, true);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new())
+        .await
+        .unwrap();
+    let wire = untag(server.transcripts().await.remove(0));
+    assert_eq!(result.status, ResultStatus::Ok, "{:?}", result.data);
+    assert_eq!(
+        result.data["matched_uids"],
+        PyJson::List(ids.iter().cloned().map(PyJson::Str).collect())
+    );
+    for (i, batch) in ids.chunks(32).enumerate() {
+        assert_eq!(
+            wire[3 + i],
+            format!("UID FETCH {} (INTERNALDATE)", batch.join(","))
+        );
+    }
+    assert_eq!(wire.len(), 15);
+    assert_eq!(
+        wire[11],
+        format!("UID STORE {} +FLAGS (\\Deleted)", ids.join(","))
+    );
+}
+
+#[tokio::test]
+async fn r90_fetch_bytes_are_bounded_across_batches_without_partial_cleanup() {
+    let ids = (1..=256).map(|id| id.to_string()).collect::<Vec<_>>();
+    let mut script = r90_start(&ids.join(" "));
+    for batch in ids.chunks(32) {
+        script.push(Step::Recv);
+        for id in batch {
+            script.push(send(&format!(
+                "* 1 FETCH (UID {id} INTERNALDATE \"09-Oct-2025 08:53:00 +0000\" X {})\r\n",
+                "x".repeat(40_000)
+            )));
+        }
+        script.push(tagged("OK fetched"));
+    }
+    r90_finish(&mut script, true);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new())
+        .await
+        .unwrap();
+    let wire = untag(server.transcripts().await.remove(0));
+    assert_eq!(result.data["error_type"], PyJson::from("incomplete_scan"));
+    assert!(wire.len() <= 10, "{wire:?}");
+    assert!(
+        !wire
+            .iter()
+            .any(|line| line.contains("STORE") || line.contains("EXPUNGE"))
+    );
+}
+
+/// SEARCH observes the initial time; settlement observes time after all FETCHes.
+struct ScanClock {
+    inner: TestEnv,
+    reads: std::sync::atomic::AtomicUsize,
+}
+
+impl MailEnv for ScanClock {
+    fn now(&self) -> f64 {
+        let read = self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.inner.now + if read == 0 { 0.0 } else { 120.0 }
+    }
+    fn token(&self) -> String {
+        self.inner.token()
+    }
+    fn message_id(&self, domain: &str) -> String {
+        self.inner.message_id(domain)
+    }
+    async fn sleep(&self, delay: Duration) {
+        self.inner.sleep(delay).await;
+    }
+    async fn local_hostname(&self) -> String {
+        self.inner.local_hostname().await
+    }
+    fn log(&self) -> &dyn nyxmon_core::log::LogSink {
+        self.inner.log()
+    }
+}
+
+fn r90_aging_scan(fresh_last: bool) -> Vec<Step> {
+    let ids = (1..=33).map(|id| id.to_string()).collect::<Vec<_>>();
+    let mut script = r90_start(&ids.join(" "));
+    for batch in ids.chunks(32) {
+        script.push(Step::Recv);
+        for id in batch {
+            let date = if fresh_last && id == "33" {
+                "09-Oct-2025 08:55:00 +0000"
+            } else {
+                "09-Oct-2025 08:53:00 +0000"
+            };
+            script.push(send(&format!(
+                "* 1 FETCH (UID {id} INTERNALDATE \"{date}\")\r\n"
+            )));
+        }
+        script.push(tagged("OK fetched"));
+    }
+    r90_finish(&mut script, fresh_last);
+    script
+}
+
+#[tokio::test]
+async fn r90_age_is_rechecked_after_all_fetches_and_still_retries() {
+    let script = r90_aging_scan(false);
+    let mut empty = r90_start("");
+    r90_finish(&mut empty, false);
+    let server = ScriptServer::start(vec![script, empty], false).await;
+    let env = ScanClock {
+        inner: TestEnv::new(),
+        reads: Default::default(),
+    };
+    let result = execute(
+        &check(server.port, r#", "max_age_minutes": 1, "retries": 1"#),
+        &env,
+    )
+    .await
+    .unwrap();
+    let wires = server
+        .transcripts()
+        .await
+        .into_iter()
+        .map(untag)
+        .collect::<Vec<_>>();
+    assert_eq!(result.data["error_type"], PyJson::from("no_recent_message"));
+    assert_eq!(result.data["attempts"], PyJson::Int(2));
+    assert_eq!(env.inner.sleeps(), [Duration::from_secs(7)]);
+    assert!(
+        wires
+            .iter()
+            .flatten()
+            .all(|line| !line.contains("STORE") && !line.contains("EXPUNGE"))
+    );
+}
+
+#[tokio::test]
+async fn r90_only_finally_fresh_uids_are_selected_and_deleted() {
+    let server = ScriptServer::start(vec![r90_aging_scan(true)], false).await;
+    let env = ScanClock {
+        inner: TestEnv::new(),
+        reads: Default::default(),
+    };
+    let result = execute(&check(server.port, r#", "max_age_minutes": 1"#), &env)
+        .await
+        .unwrap();
+    let wire = untag(server.transcripts().await.remove(0));
+    assert_eq!(result.status, ResultStatus::Ok, "{:?}", result.data);
+    assert_eq!(
+        result.data["matched_uids"],
+        PyJson::List(vec![PyJson::from("33")])
+    );
+    assert_eq!(wire[5], "UID STORE 33 +FLAGS (\\Deleted)");
+    assert_eq!(wire[7], "UID EXPUNGE 33");
+}
+
+#[tokio::test]
+async fn r90_future_dates_fail_closed_with_an_inclusive_skew_allowance() {
+    for (date, accepted) in [
+        ("09-Oct-2025 08:53:00 +0000", true),
+        ("09-Oct-2025 08:54:20 +0000", true), // exactly now + 60 s
+        ("09-Oct-2025 08:54:21 +0000", false),
+        ("09-Oct-2035 08:53:00 +0000", false),
+    ] {
+        let mut script = r90_start("5");
+        script.extend([
+            Step::Recv,
+            send(&format!("* 1 FETCH (UID 5 INTERNALDATE \"{date}\")\r\n")),
+            tagged("OK fetched"),
+        ]);
+        r90_finish(&mut script, accepted);
+        let server = ScriptServer::start(vec![script], false).await;
+        let env = TestEnv {
+            now: 1_760_000_000.0,
+            ..TestEnv::default()
+        };
+        let result = execute(&check(server.port, ""), &env).await.unwrap();
+        let wire = untag(server.transcripts().await.remove(0));
+        if accepted {
+            assert_eq!(result.status, ResultStatus::Ok, "{date}: {:?}", result.data);
+            assert_eq!(wire[4], "UID STORE 5 +FLAGS (\\Deleted)");
+        } else {
+            assert_eq!(
+                result.status,
+                ResultStatus::Error,
+                "{date}: {:?}",
+                result.data
+            );
+            assert_eq!(
+                result.data["error_type"],
+                PyJson::from("invalid_message_date")
+            );
+            assert_eq!(wire[4], "LOGOUT");
+            assert!(
+                !wire
+                    .iter()
+                    .any(|line| line.contains("STORE") || line.contains("EXPUNGE"))
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn r90_future_evidence_cannot_make_even_a_read_only_scan_healthy() {
+    for ids in ["5", "5 6"] {
+        let mut script = r90_start(ids);
+        script.extend([
+            Step::Recv,
+            send("* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2035 08:53:00 +0000\")\r\n"),
+        ]);
+        if ids == "5 6" {
+            script.push(send(
+                "* 2 FETCH (UID 6 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n",
+            ));
+        }
+        script.push(tagged("OK fetched"));
+        r90_finish(&mut script, false);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(
+            &check(server.port, r#", "delete_after_check": false"#),
+            &TestEnv::new(),
+        )
+        .await
+        .unwrap();
+        let wire = untag(server.transcripts().await.remove(0));
+        assert_eq!(result.status, ResultStatus::Error, "{:?}", result.data);
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("invalid_message_date")
+        );
+        assert_eq!(wire[4], "LOGOUT");
+    }
+}
+
+#[tokio::test]
+async fn r90_invalid_uid_sets_never_become_fetch_sequence_syntax() {
+    for ids in ["5 5", "0", "01", "4294967296", "5:*", "5,6", "-1"] {
+        let mut script = r90_start(ids);
+        r90_finish(&mut script, false);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        let wire = untag(server.transcripts().await.remove(0));
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("incomplete_scan"),
+            "{ids}"
+        );
+        assert_eq!(wire[3], "LOGOUT");
+    }
 }

@@ -530,6 +530,22 @@ targeted expunge, EHLO parsing and accepted-DATA classification are unchanged.
 These limits ship in `agent-rs-v0.1.3`; production adopts them with the
 owner-managed ops-control pin and rollout.
 
+IMAP subjects are literal printable ASCII strings: quotes and backslashes are
+escaped; unsupported/control characters fail before SEARCH. Selected-message
+work is limited to 256 distinct positive UIDs, FETCH batches of 32, and 8 MiB
+of total incoming FETCH bytes per attempt. UID attribution ignores unsolicited
+messages. Exceeding selection/work limits returns `incomplete_scan`, without
+success or any partial deletion; clear the matching backlog to recover. The
+existing Python dialogue fixture now records these intentional Rust admission
+and batch-command differences.
+
+After all FETCHes, IMAP checks re-evaluate the age of selected messages against
+the current clock immediately before success/deletion. Aged-out messages are
+excluded and an empty final set retains normal no-recent retries. INTERNALDATE
+more than 60 seconds ahead of the current clock fails with
+`invalid_message_date` and no deletion; the 60-second boundary is inclusive.
+This error is not retried, even if other matching messages are recent.
+
 ### Mail attempt deadlines and resolver capacity
 
 In addition to per-operation timeouts, each SMTP attempt has a total monotonic
