@@ -934,7 +934,7 @@ async fn a_suppressed_result_is_persisted_without_notification() {
         [(
             1,
             "error".to_owned(),
-            r#"{"error_type": "timeout", "notification_suppressed": {"reason": "backup", "source_url": "https://example.test/m", "source_status": "running"}}"#
+            r#"{"error_type": "timeout", "notification_suppressed": {"reason": "backup", "source_url": "https://example.test", "source_status": "running"}}"#
                 .to_owned()
         )]
     );
@@ -986,29 +986,150 @@ async fn collector_internal_samples_are_not_fetched_for() {
 }
 
 #[tokio::test]
-async fn a_raising_suppression_config_fails_the_result_handling() {
-    let setup = Setup::new();
-    let handler = setup.handler(&[]);
-    // `float(10**400)` raises OverflowError in `_timeout_seconds`.
-    let check = stored(
-        &setup,
-        1,
-        &format!(
-            r#"{{"notification_suppression": {{"url": "https://x.test", "timeout": 1{}}}}}"#,
+async fn suppression_conversion_errors_preserve_results_and_sibling_delivery() {
+    let configs = [
+        // float(10**400) overflows before fetching.
+        format!(
+            r#"{{"url":"https://example.test/m", "timeout":1{}}}"#,
             "0".repeat(400)
         ),
-    );
-    let (capture, _guard) = logging::capture();
-    handler.receive(check, result(1, ERROR, "{}")).await;
-    assert!(setup.db.results().is_empty());
-    let lines = capture.lines();
-    assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0].logger, "nyxmon.service_layer.handlers");
-    assert!(
-        lines[0]
-            .message
-            .starts_with("result handling failed for check_id=1\nOverflowError: ")
-    );
+        // int(path) exceeds the Python-compatible 4300-digit index limit.
+        format!(
+            r#"{{"url":"https://example.test/m", "active_if":[{{"path":"$.items.{}", "op":"==", "value":1}}]}}"#,
+            "1".repeat(4301)
+        ),
+    ];
+    for config in configs {
+        let setup = Setup::new();
+        let handler = setup
+            .handler(&[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")])
+            .with_suppression_fetch(serving(Some(r#"{"items": [1]}"#)));
+        let broken = stored(
+            &setup,
+            1,
+            &format!(r#"{{"notification_suppression":{config}}}"#),
+        );
+        let sibling = stored(&setup, 2, "{}");
+        let (capture, _guard) = logging::capture();
+        handler
+            .receive(broken, result(1, ERROR, r#"{"error_type":"probe_failed"}"#))
+            .await;
+        handler.receive(sibling, result(2, WARNING, "{}")).await;
+        assert_eq!(setup.db.results().len(), 2);
+        assert_eq!(setup.db.results()[0].2, r#"{"error_type": "probe_failed"}"#);
+        assert_eq!(setup.notifier.count(), 2);
+        assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 300, 0));
+        assert_eq!(setup.db.state(1).failure_count, 1);
+        let lines = capture.lines();
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].level, "WARNING");
+        assert!(lines[0].message.starts_with(
+            "suppression evaluation failed for check_id=1; continuing unsuppressed ("
+        ));
+        assert!(lines[0].message.len() < 140);
+        assert!(!lines[0].message.contains("https://"));
+    }
+}
+
+#[tokio::test]
+async fn suppression_expiry_uses_the_clock_after_a_deferred_fetch() {
+    for (elapsed, suppressed) in [(59, true), (60, true), (61, false)] {
+        let setup = Setup::new();
+        let (started, waiting) = tokio::sync::oneshot::channel();
+        let (release, response) = tokio::sync::oneshot::channel();
+        let channels = Mutex::new(Some((started, response)));
+        let handler = setup
+            .handler(&[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")])
+            .with_suppression_fetch(Arc::new(move |_| {
+                let (started, response) = channels.lock().unwrap().take().unwrap();
+                Box::pin(async move {
+                    started.send(()).unwrap();
+                    response.await.unwrap()
+                })
+            }));
+        let check = stored(
+            &setup,
+            1,
+            r#"{"notification_suppression":{"url":"https://example.test/m", "active_for_seconds":60}}"#,
+        );
+        let submitted = submit(&handler, &check, ERROR);
+        let deferred = async {
+            waiting.await.unwrap();
+            setup.clock.advance(elapsed);
+            release
+                .send(Some(PyJson::Dict(dict(&format!(
+                    r#"{{"last_status":"idle", "last_run_finished_epoch":{T0}}}"#
+                )))))
+                .unwrap();
+        };
+        let (notified, ()) = tokio::join!(submitted, deferred);
+        assert_eq!(notified, !suppressed, "response after {elapsed}s");
+        assert_eq!(setup.notifier.count(), usize::from(!suppressed));
+        let data = nyxmon_core::pyjson::loads(&setup.db.results()[0].2).unwrap();
+        assert_eq!(data.get("notification_suppressed").is_some(), suppressed);
+    }
+}
+
+#[tokio::test]
+async fn suppression_evidence_persists_only_private_bounded_diagnostics() {
+    for complex in [false, true] {
+        let setup = Setup::new();
+        let private = format!(
+            r#"{{"private_status":"{}"}}"#,
+            "SYNTHETIC_PRIVATE".repeat(1000)
+        );
+        let payload = if complex {
+            format!(r#"{{"last_status":{private}, "match":{private}}}"#)
+        } else {
+            r#"{"last_status":"running"}"#.to_owned()
+        };
+        let handler = setup
+            .handler(&[])
+            .with_suppression_fetch(Arc::new(move |request| {
+                // Fetching/matching still gets the full private transport and body.
+                assert!(request.url.contains("SYNTHETIC_PASSWORD"));
+                assert_eq!(
+                    request.auth,
+                    Some(("user".to_owned(), "SYNTHETIC_AUTH".to_owned()))
+                );
+                let payload = nyxmon_core::pyjson::loads(&payload).unwrap();
+                Box::pin(async move { Some(payload) })
+            }));
+        let rules = if complex {
+            format!(r#", "active_if":[{{"path":"$.match", "op":"==", "value":{private}}}]"#)
+        } else {
+            String::new()
+        };
+        let check = stored(
+            &setup,
+            1,
+            &format!(
+                r#"{{"notification_suppression":{{"url":"https://user:SYNTHETIC_PASSWORD@example.test:8443/SYNTHETIC_PATH?token=SYNTHETIC_QUERY#SYNTHETIC_FRAGMENT", "auth":{{"username":"user", "password":"SYNTHETIC_AUTH"}}{rules}}}}}"#
+            ),
+        );
+        let (capture, _guard) = logging::capture();
+        assert!(!submit(&handler, &check, ERROR).await);
+        let stored = &setup.db.results()[0].2;
+        assert!(!stored.contains("SYNTHETIC_"));
+        assert!(stored.len() < 1024);
+        let data = nyxmon_core::pyjson::loads(stored).unwrap();
+        let evidence = data.get("notification_suppressed").unwrap();
+        assert_eq!(
+            evidence.get("source_url").unwrap().as_str(),
+            Some("https://example.test:8443")
+        );
+        if complex {
+            assert_eq!(
+                evidence.get("source_status").unwrap().as_str(),
+                Some("<object>")
+            );
+            let rule = evidence.get("matched_rule").unwrap();
+            assert_eq!(rule.get("path").unwrap().as_str(), Some("$.match"));
+            assert_eq!(rule.get("value").unwrap().as_str(), Some("<object>"));
+        }
+        assert_eq!(setup.notifier.count(), 0);
+        assert!(capture.messages().is_empty());
+    }
 }
 
 // ------------------------------------------------------------ result_received
