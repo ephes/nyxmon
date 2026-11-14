@@ -361,6 +361,38 @@ OpsGate producer integration (optional) reads:
   whole-call deadline. Oversized responses fail without logging their contents.
 - `OPSGATE_SUBMIT_INCLUDE_WARNINGS`: Whether warning checks also create tickets (`false` by default)
 
+The Rust notifier treats tickets as optional: expiry/payload construction,
+encoding, submission or invalid success IDs add “Ticket creation failed; please
+create one manually” to the primary alert. These failures never suppress the
+Telegram send or change persisted check results. An invalid expiry is logged
+with the check ID and a fixed configuration diagnostic, without the payload.
+
+A ticket's HTTP 201 response must contain an `id` that is either a positive
+JSON integer or a string of 1..128 ASCII bytes matching
+`[A-Za-z0-9][A-Za-z0-9_.-]*`. UUIDs and ordinary numeric IDs are supported;
+whitespace, null, containers, booleans, fractions and URL delimiters are refused.
+Approval URLs append `tickets` and the ID through URL path segments, preserving
+the configured base path and removing query/fragment components. A malformed
+approval base (not http(s), or without a host) never produces a broken link: the
+alert still names the created ticket and says the approval link is unavailable, so
+check `OPSGATE_APPROVAL_BASE_URL` instead of creating a duplicate ticket by hand.
+
+Notification diagnostics scrub both `TELEGRAM_BOT_TOKEN` and
+`OPSGATE_SUBMIT_TOKEN`, including URL/form and JSON/diagnostic-escaped forms,
+before detail truncation (500 characters) and log formatting. Never copy raw
+provider replies or transport errors into other logs.
+
+Telegram delivery requires a 2xx response with strict JSON, `ok: true`, and a
+`result` object with a positive integer `message_id`, as returned by
+[`sendMessage`](https://core.telegram.org/bots/api#sendmessage). The existing
+64 KiB body limit applies before parsing. Empty/HTML/malformed or negative
+success envelopes return `Delivery::Failed`, with a fixed diagnostic containing
+no response body. They do not advance successful-delivery state; existing caller
+retry rules apply. Since an unacknowledged send may have reached Telegram, the
+notifier does not resend it immediately. The one plain-text retry remains
+reserved for an explicit HTTP 400 Markdown parse rejection, and its response
+must pass the same acknowledgement checks.
+
 ### Django Settings
 
 Django configuration is managed through environment variables in the `src/django/config/settings/` directory.

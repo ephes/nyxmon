@@ -2,7 +2,7 @@
 //! resent once as plain text when Telegram cannot parse it) and the OpsGate
 //! ticket submit whose outcome is appended to the alert.
 //!
-//! Security rule (PLAN.md 1.7): the bot token never reaches a log line or an
+//! Security rule (PLAN.md 1.7): the notifier credentials never reach a log line or an
 //! error string. Transport errors never include the request URL, and the
 //! token is replaced by `<redacted>` in every line logged, including
 //! response bodies an endpoint echoes back (OpsGate's included, where Python
@@ -15,15 +15,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use num_bigint::BigInt;
 use nyxmon_core::env::NotifierEnv;
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
-use nyxmon_core::pyjson::{PyDict, PyJson, loads_bytes, py_strip};
+use nyxmon_core::pyjson::{PyDict, PyJson, loads_bytes};
 
 use crate::http::{HttpClient, form_urlencode, timeout_from_secs};
 use crate::log::{Level, NotifyLog, TracingLog};
 use crate::markdown::{
     alert_body, append_ticket_notice, markdown_v2_to_plain_text, ticket_requested,
 };
-use crate::opsgate::{TicketOutcome, build_ticket_payload, encode_payload, task_ref};
-use crate::pystr::{py_repr, py_str};
+use crate::opsgate::{TicketOutcome, build_ticket_payload, encode_payload, task_ref, ticket_id};
+use crate::pystr::py_repr;
 use crate::{Delivery, Notifier, NotifyFuture, NotifyRaised};
 
 /// Telegram's Bot API base URL.
@@ -92,8 +92,7 @@ pub struct TelegramNotifier {
     chat_id: Option<String>,
     /// `https://api.telegram.org/bot<token>/sendMessage`, empty without a token.
     url: String,
-    /// Forms of the token that may appear in text: as set, and as encoded
-    /// in a URL path.
+    /// Raw and encoded forms of all notifier-owned credentials.
     secrets: Vec<String>,
     opsgate_submit_base_url: String,
     opsgate_submit_token: String,
@@ -138,14 +137,36 @@ impl TelegramNotifier {
             format!("{}/bot{token}/sendMessage", settings.telegram_api_base)
         });
         let mut secrets = Vec::new();
-        if let Some(token) = &token {
-            secrets.push(token.clone());
-            if let Some(encoded) = url_encoded_token(token)
-                && encoded != *token
-            {
+        for secret in token
+            .iter()
+            .chain(std::iter::once(&env.opsgate_submit_token))
+        {
+            if secret.is_empty() {
+                continue;
+            }
+            secrets.push(secret.clone());
+            if let Some(encoded) = url_encoded_token(secret) {
                 secrets.push(encoded);
             }
+            let form = form_urlencode(&[("", secret)]);
+            let encoded = form.trim_start_matches('=');
+            secrets.push(encoded.to_owned());
+            secrets.push(encoded.replace('+', "%20"));
+            // JSON/diagnostic quoting must not hide credentials from scrubbing.
+            for rendered in [
+                py_repr(&PyJson::from(secret.as_str())),
+                PyJson::from(secret.as_str())
+                    .to_json_string()
+                    .unwrap_or_default(),
+            ] {
+                if rendered.len() >= 2 {
+                    secrets.push(rendered[1..rendered.len() - 1].to_owned());
+                }
+            }
         }
+        // Scrub longer forms first when one credential is a prefix of another.
+        secrets.sort_by_key(|secret| std::cmp::Reverse(secret.len()));
+        secrets.dedup();
         let opsgate_timeout = timeout_from_secs(env.opsgate_submit_timeout_seconds);
         TelegramNotifier {
             telegram_client: HttpClient::new(settings.telegram_timeout),
@@ -175,12 +196,12 @@ impl TelegramNotifier {
     }
 
     /// Every line goes through [`Self::redact`]: no log line may carry the
-    /// bot token (PLAN.md 1.7), whatever a remote endpoint echoes back.
+    /// notifier credentials, whatever a remote endpoint echoes back.
     fn log(&self, level: Level, message: &str) {
         self.settings.log.log(level, &self.redact(message));
     }
 
-    /// Replace every form of the bot token by `<redacted>`.
+    /// Replace raw and encoded notifier credentials by `<redacted>`.
     fn redact(&self, text: &str) -> String {
         let mut text = text.to_owned();
         for secret in &self.secrets {
@@ -190,10 +211,7 @@ impl TelegramNotifier {
     }
 
     /// `async_notify_check_failed`.
-    ///
-    /// # Errors
-    /// `OverflowError` when the OpsGate expiry leaves Python's `datetime`
-    /// range (raised before anything is sent, as in Python).
+    /// Optional ticket failures never suppress the primary Telegram alert.
     pub async fn notify(
         &self,
         check: &Check,
@@ -261,6 +279,12 @@ impl TelegramNotifier {
             .await;
         match sent {
             Ok(response) if (200..300).contains(&response.status) => {
+                if !telegram_acknowledged(&response.body) {
+                    // The provider may have sent the message: leave retries to
+                    // the existing caller policy, without an immediate resend.
+                    self.log(Level::Error, "Telegram notification was not acknowledged: invalid or negative success envelope");
+                    return Post::Failed;
+                }
                 self.log(Level::Info, "Telegram notification delivered");
                 Post::Delivered
             }
@@ -304,15 +328,25 @@ impl TelegramNotifier {
         if self.opsgate_submit_base_url.is_empty() || self.opsgate_submit_token.is_empty() {
             return Ok(None);
         }
-        let payload = build_ticket_payload(
+        let payload = match build_ticket_payload(
             check,
             result,
             (self.settings.clock)(),
             &self.opsgate_ticket_expires_seconds,
             &(self.settings.nonce)(),
-        )?;
+        ) {
+            Ok(payload) => payload,
+            Err(_) => {
+                self.log(Level::Error, &format!(
+                    "OpsGate ticket payload construction failed for check_id={}: invalid expiry",
+                    check.check_id
+                ));
+                return Ok(Some(TicketOutcome::Error));
+            }
+        };
         let check_id = check.check_id;
         let submit_failed = |detail: &str| {
+            let detail: String = self.redact(detail).chars().take(MAX_DETAIL_CHARS).collect();
             self.log(
                 Level::Error,
                 &format!("OpsGate ticket submit failed for check_id={check_id}: {detail}"),
@@ -346,18 +380,13 @@ impl TelegramNotifier {
             .and_then(|parsed| parsed.into_dict().ok())
             .unwrap_or_default();
         if status == 201 {
-            let ticket_id = body
-                .get("id")
-                .map_or_else(String::new, |id| py_strip(&py_str(id)).to_owned());
-            if ticket_id.is_empty() {
+            let Some(ticket_id) = body.get("id").and_then(ticket_id) else {
                 self.log(
                     Level::Error,
-                    &format!(
-                        "OpsGate ticket submit succeeded without ticket id for check_id={check_id}"
-                    ),
+                    &format!("OpsGate ticket submit succeeded with invalid ticket id for check_id={check_id}"),
                 );
                 return Ok(Some(TicketOutcome::Error));
-            }
+            };
             return Ok(Some(TicketOutcome::Created(ticket_id)));
         }
         if status == 409
@@ -376,11 +405,28 @@ impl TelegramNotifier {
             Level::Error,
             &format!(
                 "OpsGate ticket submit returned status={status} for check_id={check_id} body={}",
-                py_repr(&PyJson::Dict(body))
+                self.redact(&py_repr(&PyJson::Dict(body)))
+                    .chars()
+                    .take(MAX_DETAIL_CHARS)
+                    .collect::<String>()
             ),
         );
         Ok(Some(TicketOutcome::Error))
     }
+}
+
+/// `sendMessage` returns an `ok: true` envelope containing a Message.
+/// Strict JSON parsing has its own nesting bound; HTTP caps bytes at 64 KiB.
+fn telegram_acknowledged(body: &[u8]) -> bool {
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(body) else {
+        return false;
+    };
+    value.get("ok").and_then(serde_json::Value::as_bool) == Some(true)
+        && value
+            .get("result")
+            .and_then(|result| result.get("message_id"))
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|id| id > 0)
 }
 
 /// The token as it appears in the request URL path (percent-encoded).

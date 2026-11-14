@@ -384,9 +384,12 @@ Never add DDL to the Python agent; a new required column raises
 - Notifiers implement `nyxmon_notify::Notifier`
   (`notify_check_failed -> Result<Delivery, NotifyRaised>`); only
   `Delivery::Failed` is a delivery failure, and `NotifyRaised` stands for a
-  Python exception escaping the notifier (the OpsGate expiry
-  `OverflowError`), which the caller handles like any result-handling
-  error. `TelegramNotifier::new` takes the `notifier_env` reading plus
+  notifier exception, which the caller handles like any result-handling
+  error. Optional OpsGate expiry/payload errors now become a ticket-error notice
+  while Telegram delivery continues. Telegram is acknowledged only for a valid
+  `ok: true` JSON envelope with a positive integer `result.message_id`; malformed
+  replies return `Failed` under the existing retry policy. See the notification
+  privacy and ticket-ID contract in `docs/configuration.md`. `TelegramNotifier::new` takes the `notifier_env` reading plus
   `NotifierSettings` (clock, nonce, log sink, Telegram endpoint for tests).
 - Check configurations live in `nyxmon_core::config` and return a
   `ConfigOutcome` (`Ok`, `ConfigError(message)` for Python's `ValueError`,

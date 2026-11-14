@@ -142,9 +142,16 @@ pub fn ticket_requested(check: &Check, result: &CheckResult, include_warnings: b
 pub fn append_ticket_notice(message: &mut String, ticket: &TicketOutcome, approval_base: &str) {
     match ticket {
         TicketOutcome::Created(ticket_id) => {
-            let approval_url = format!("{approval_base}/tickets/{ticket_id}");
             message.push_str("\n\n\u{1f6e0} *OpsGate Approval Needed*");
             message.push_str(&format!("\nTicket: `{}`", escape_markdown_v2(ticket_id)));
+            // The ticket exists: never report a creation failure (that invites a
+            // duplicate manual ticket) because the configured approval base is unusable.
+            let Some(approval_url) = approval_url(approval_base, ticket_id) else {
+                message.push_str(
+                    "\nApproval link unavailable; check the configured OpsGate approval base URL\\.",
+                );
+                return;
+            };
             message.push_str(&format!(
                 "\n[Open approval page]({})",
                 escape_markdown_link_url(&approval_url)
@@ -159,4 +166,20 @@ pub fn append_ticket_notice(message: &mut String, ticket: &TicketOutcome, approv
             message.push_str("\nTicket creation failed; please create one manually\\.");
         }
     }
+}
+
+/// Keep the provider ID in exactly one path segment, preserving a base path.
+fn approval_url(base: &str, ticket_id: &str) -> Option<String> {
+    let mut url = url::Url::parse(base).ok()?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return None;
+    }
+    url.set_query(None);
+    url.set_fragment(None);
+    url.path_segments_mut()
+        .ok()?
+        .pop_if_empty()
+        .push("tickets")
+        .push(ticket_id);
+    Some(url.into())
 }

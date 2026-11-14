@@ -17,6 +17,7 @@ http-body-util.workspace = true
 hyper.workspace = true
 hyper-util.workspace = true
 rand.workspace = true
+serde_json.workspace = true
 rustls.workspace = true
 tokio = { workspace = true, features = ["rt", "net", "time", "io-util", "macros"] }
 tokio-rustls.workspace = true

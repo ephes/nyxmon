@@ -107,8 +107,8 @@ scenarios against a local fake Telegram/OpsGate server).
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
 | `test_telegram_markdown_escape.py::test_escape_markdown_v2_*`, `::test_markdown_v2_to_plain_text_restores_the_source_text` | `telegram.json` `escape`/`plain_text`/`link_url`/`truncate` (`fixtures.rs::markdown_helpers_match_python`) | done |
-| `test_telegram_markdown_escape.py::test_long_alert_fields_are_truncated`, `::test_alert_with_backslashes_is_valid_markdown_v2` | `telegram.json` `messages` (`fixtures.rs::alert_messages_match_python`) | done |
-| `test_telegram_markdown_escape.py::test_parse_error_is_resent_once_as_plain_text`, `::test_failed_plain_text_resend_reports_failure`, `::test_other_400_errors_are_not_resent` | `telegram.json` `http` scenarios (`http.rs::http_scenarios_match_python`) | done |
+| `test_telegram_markdown_escape.py::test_long_alert_fields_are_truncated`, `::test_alert_with_backslashes_is_valid_markdown_v2` | `telegram.json` `messages` (`fixtures.rs::alert_messages_match_contract`) | done |
+| `test_telegram_markdown_escape.py::test_parse_error_is_resent_once_as_plain_text`, `::test_failed_plain_text_resend_reports_failure`, `::test_other_400_errors_are_not_resent` | `telegram.json` `http` scenarios (`http.rs::http_scenarios_match_contract`) | done |
 | `test_telegram_notification.py::test_http_failure_log_redacts_bot_token`, `::test_http_failure_redacts_before_detail_truncation` | `http` scenarios "plain text resend fails", "redaction before truncation"; `http.rs::connection_failure_is_a_failed_send_without_the_token`, `::stalled_telegram_times_out` (transport errors, token absent from every line) | done |
 | `test_telegram_notification.py::test_async_send_reports_delivery`, `::test_async_send_reports_an_http_failure`, `::test_async_send_reports_a_transport_failure`, `::test_async_send_without_credentials_reports_no_attempt`, `::test_notify_check_failed_propagates_*` | `http` scenarios "delivered", "other 400 is not resent", "missing credentials"/"missing chat"/"empty token"; `http.rs::connection_failure_*`, `::broken_success_body_is_a_failed_send` | done |
 | `test_telegram_notification.py::test_notify_check_failed_without_a_portal_reports_no_attempt` | — | n/a (no anyio portal in Rust) |
@@ -121,6 +121,14 @@ scenarios against a local fake Telegram/OpsGate server).
 | `test_opsgate_notification.py::test_hostile_result_data_cannot_steer_ticket_permissions_or_identity`, `::test_internal_collector_alert_keeps_incident_key_task_ref` | `prompts`/`payloads` `task_ref`; `http` scenarios "hostile data …", "internal alert keys off its incident" | done |
 | Handwritten hostile logging labels and sanitizer security boundaries | `tests/logging.rs::hostile_labels_remain_one_bounded_delivered_line`, `tests/sanitize.rs` (controls, Unicode, strings/keys, items/markers/collisions, depth) | done; intentional diagnostic safety difference from Python |
 | `LoggingNotifier` (`--shadow` line) | `http.rs::logging_notifier_lines` | done |
+
+Rust-only notification boundary regressions (D-22), in `http.rs`:
+credential reflection from both endpoints, redaction before truncation and
+submit transport errors; malformed/oversized ticket IDs and one-segment links;
+extreme expiry still sends exactly one Telegram alert without a submit;
+invalid/negative Telegram envelopes and the same boundary on plain-text retry.
+The Rust-owned `telegram.json` contract now rejects malformed success IDs and
+keeps the primary alert on expiry overflow.
 
 ## S6 — TCP + ping
 
