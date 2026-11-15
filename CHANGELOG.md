@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Site lifecycle safety (pending Rust rollout)
+
+- Restore the complete Rust site lifecycle atomically; refuse invalid fields and
+  unsupported versions without overwriting pending data, publishing partial state
+  or sending notifications. Preserve the row for compatible recovery.
+- Timestamp observations and evaluate grace, notifications and rechecks after
+  probe completion. Persist independent incident generations in payload v2,
+  migrate v1 pending state, and acknowledge only exact selected summary records
+  even when wall-clock labels collide or time moves backwards. No schema or
+  package version change.
+
 ### Rust agent 0.1.5
 
 - Release the Rust agent as `agent-rs-v0.1.5` (crate version 0.1.5, tag

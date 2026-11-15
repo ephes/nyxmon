@@ -59,7 +59,11 @@ Every `NYXMON_SITE_PROBE_INTERVAL_SECONDS` (60 s by default) one **round** tries
 every target of every observed path concurrently, with a per-target timeout
 (`NYXMON_SITE_PROBE_TIMEOUT_SECONDS`, 3 s) and a hard round budget of timeout
 plus two seconds. A target that does not answer inside the budget counts as
-failed.
+failed. The Rust observer samples its wall clock after all probes finish (or
+reach the round deadline). That one completion instant drives `observed_at`,
+path transitions, grace expiry, alert eligibility and rechecks. Probe budgets
+use the separate monotonic timer; the configured interval is the sleep between
+rounds.
 
 A path's round is `ok` when **at least one** of its targets answered, and
 `failed` only when every target failed. One dead server, or one unreachable
@@ -312,6 +316,18 @@ unknown. Writing an empty lifecycle over the persisted row would erase the
 pending summaries, the undelivered ongoing intent and the release watermarks. An
 absent row counts as restored — there is simply nothing to load.
 
+Rust validates the complete supported payload in a temporary candidate before
+installing paths, pending messages, rechecks or the restored flag. Invalid
+numbers/timestamps, including pending summary fields, leave the row and published
+snapshot untouched. Unknown versions fail with `UnsupportedSitePayloadVersion`
+and a fixed diagnostic requesting a compatible agent or explicit lifecycle
+repair. Neither case permits probes, writes, release decisions or sends. A
+startup restore failure stops the required observer and fails the agent through
+supervision; restarting alone repeats the refusal. Preserve the row (including
+unknown pending data) for compatible migration or operator recovery. Explicitly
+set `NYXMON_SITE_CONNECTIVITY_MODE=off` to collect without observation during
+repair; do not clear the row just to make startup succeed.
+
 If the probe targets themselves are firewalled while the internet is fine, the
 site alert at fifteen minutes reveals the misconfiguration, and every dependent
 alert is delayed at most the max-hold bound.
@@ -327,24 +343,47 @@ watermarks the freshness rule needs.
 ```json
 {
   "incident_type": "site_connectivity",
-  "version": 1,
+  "version": 2,
   "phase": "active",
   "incident_id": 1757123456,
+  "incident_generation": 7,
+  "last_generation": 7,
   "observed_at": 1757125000,
   "paths": {
     "ipv4": {"state": "recovering", "down_since": 1757123456,
              "recovered_at": 1757124900, "release_at": 1757125800,
-             "last_release_at": 0},
+             "last_release_at": 0, "incident_generation": 7},
     "dns": {"state": "up", "down_since": 0, "recovered_at": 0,
-            "release_at": 0, "last_release_at": 1757100000}
+            "release_at": 0, "last_release_at": 1757100000,
+            "incident_generation": 6}
   },
-  "ongoing": {"incident_id": 1757123456, "attempt_at": 1757124400,
+  "ongoing": {"incident_id": 1757123456, "incident_generation": 7,
+              "attempt_at": 1757124400,
               "attempts": 3, "delivered": false, "retired": false,
               "last_alert_at": 0},
   "summaries": [],
   "recheck": {"pending": true, "release_at": 1757125800}
 }
 ```
+
+Payload version 2 adds a monotonically increasing `last_generation` and an
+`incident_generation` for the active incident, participating paths, ongoing
+intent and each summary. Generation zero means no owned incident; the counter
+stays in the permanent row between outages. Wall-clock `incident_id` remains a
+legacy display/snapshot label, and timestamps still measure elapsed durations;
+identity comparisons use generations. Repeated or backward wall time therefore
+cannot merge distinct outages. Counter exhaustion refuses a new incident rather
+than reusing an identity.
+
+Version 1 (also a missing version) migrates in memory: each pending summary gets
+a distinct generation in stored order, then the active incident gets the next
+one. Matching ongoing state and participating paths inherit that generation.
+Attempts, delivery flags, pending summaries and release watermarks survive; the
+next normal write persists version 2. No Django schema migration is needed.
+Version 2 generations must be nonnegative integers within the persisted counter;
+active and summary identities are positive and distinct. Older binaries without
+the version-admission fence can overwrite unknown payloads: preserve a database
+backup and use a compatible binary when rolling back.
 
 Two messages exist.
 
@@ -377,8 +416,13 @@ is measured from the first `down_since` to the last `recovered_at` — the grace
 is **not** part of it. If the duration reaches the notify-after threshold, or an
 ongoing alert had been delivered, a summary record is appended in the same write
 that sets the phase back to `idle` and opens the recheck. Because records are
-keyed by `incident_id`, re-running the close after a crash cannot append one
+keyed by `incident_generation`, re-running the close after a crash cannot append one
 twice. A shorter outage with no delivered ongoing alert leaves only a log line.
+
+Only the exact records selected for a message are marked attempted or removed
+on acknowledgement. Other records retain their retry ownership, including when
+legacy wall-clock labels collide. An uncertain send (accepted before process
+death but not acknowledged durably) may be retried after restart.
 
 Summaries are sent with status `warning`, error type
 `site_connectivity_summary`, and `opsgate_ticket: false` — a resolved event must

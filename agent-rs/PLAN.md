@@ -360,8 +360,13 @@ section 3.6); no other new variable is introduced by the port.
   missing connectivity evidence/holds. A malformed row needs operator repair;
   restart alone will repeat the failure. Disable site observation explicitly
   (`NYXMON_SITE_CONNECTIVITY_MODE=off`) to collect without it during repair.
-  Pinned by
-  `site/tests.rs::a_restore_that_raises_stops_the_observer_with_a_log_line`.
+  Candidate admission now includes paths and pending notification/recheck fields;
+  unsupported versions are also fenced, with no partial installation or writes.
+  All round decisions use the clock sampled after probing. Payload v2 generations
+  separate durable ownership from wall-time labels. Historical replay expectations
+  use a v1 projection of v2 payloads; native restart, collision, clock and exact v2
+  roundtrip tests pin these deliberate Rust differences.
+  Pinned by `site/tests.rs` and `site/replay_tests.rs`.
 
 - **D-20 Processing leases outside SQLite's range.** When
   `NYXMON_PROCESSING_LEASE_SECONDS` is so large that `now - lease` leaves
@@ -1817,42 +1822,55 @@ releasing it.
 
 ### 6.4 Phase machine (`_advance_incident`, `_close_incident`)
 
-- `idle` and some path `down` → `active`, `incident_id = min(down_since)`,
-  log opened.
+- `idle` and some path `down` → `active`, legacy display label
+  `incident_id = min(down_since)`, allocate `incident_generation = ++last_generation`,
+  assign it to down paths, log opened. Further paths joining this active outage
+  inherit its generation. Refuse counter overflow without reusing an identity.
 - `active`: if no path is `down` → retire the undelivered ongoing intent of
   this incident (`retired: true`, never retried). If some path is blocking:
   releases this round → open/extend the recheck item
   (`{"pending": true, "release_at": max(previous if pending, max release)}`).
   If no path is blocking → close: participants = observed paths with
-  `down_since >= incident_id > 0` and `recovered_at > 0`;
+  matching `incident_generation` and `recovered_at > 0`;
   `last_recovered_at = max(recovered_at)` (default now); `duration =
   max(last_recovered_at - incident_id, 0)`; `delivered` = ongoing delivered
   for this incident; eligible = `duration >= notify_after or delivered`;
-  append a summary record once per `incident_id` (`incident_id, started_at,
-  ended_at, paths{name: {down_since, recovered_at}}, ongoing_delivered,
+  append a summary record once per `incident_generation` (`incident_id,
+  incident_generation, started_at, ended_at, paths{name: {down_since, recovered_at}}, ongoing_delivered,
   held_at_close (count_held_checks, 0 on error), attempt_at: 0,
   attempts: 0`); open the recheck with `release_at = max(round releases)`,
   else `max(last_release_at of participants)`, else now; log closed;
-  `phase = idle`, `incident_id = 0`.
+  `phase = idle`, `incident_id = incident_generation = 0`.
 
 Round order (`run_once`): restore if needed (skip the round entirely when the
-restore keeps failing) → `now` → probe → advance paths → `observed_at = now`
+restore keeps failing) → probe → completion `now` → advance paths → `observed_at = now`
 → advance phase → publish snapshot → write payload → ongoing → summaries →
 recheck.
 
 ### 6.5 Persisted payload, restore, writes
 
 - Payload (`build_payload`), key order: `incident_type="site_connectivity"`,
-  `version=1`, `phase`, `incident_id`, `observed_at`, `paths` (observed paths
-  only: `state, down_since, recovered_at, release_at, last_release_at`),
-  `ongoing`, `summaries`, `recheck`.
+  `version=2`, `phase`, `incident_id` (legacy wall-time label), `observed_at`,
+  `paths` (observed paths only: `state, down_since, recovered_at, release_at,
+  last_release_at, incident_generation`), `ongoing`, `summaries`, `recheck`,
+  `incident_generation`, `last_generation`. Ongoing and summary records also
+  carry their own `incident_generation`; wall timestamps never select ownership.
 - Write (`_write_payload`): if the row is known present →
   `set_collector_incident_payload`; a missing row → `open_collector_incident`
   (creates it silently); any error → log, mark the row unknown, return false.
   The row is never deleted.
 - Restore (`restore`): read failure → stay unrestored (no probe, no write,
-  snapshot unchanged, warning each round); absent row → restored; unknown
-  `version` → warning, ignore payload; per observed path restore valid states
+  snapshot unchanged, warning each round); absent row → restored; unsupported
+  `version` → fixed actionable warning and `UnsupportedSitePayloadVersion`,
+  no probes/writes/sends. Restore every supported field into a candidate;
+  validate all numeric fields used by ongoing/summary/recheck processing and
+  rendered timestamps before committing any state or the restored flag.
+  Invalid candidates preserve the complete durable row and published snapshot.
+  Version 1/missing version migrates pending summaries in stored order to unique
+  generations, followed by the active incident; attempts and delivery state stay
+  intact. Version 2 validates nonnegative integer generations against the high
+  watermark, with distinct positive active/summary identities. Per observed path
+  restore valid states
   (`up/failing/down/recovering`) and timestamps (`_as_int`: bools and
   non-numbers → 0, floats truncated), `failures = 1` for a restored `failing`;
   restore `observed_at`, `phase`, `incident_id`, `ongoing`, `summaries`
@@ -1864,10 +1882,11 @@ recheck.
 ### 6.6 Ongoing alert (`_process_ongoing`)
 
 Only in `active` with a `down` path and `now - incident_id >= notify_after`.
+The generation identifies the incident; the legacy ID still supplies its start time.
 Same incident: delivered → wait for `reminder` since `last_alert_at`;
 retired → wait for `reminder` since `max(last_alert_at, attempt_at)`;
 otherwise wait 60 s since `attempt_at`. Then write the intent
-`{incident_id, attempt_at: now, attempts: +1, delivered: false,
+`{incident_id, incident_generation, attempt_at: now, attempts: +1, delivered: false,
 retired: false, last_alert_at}` **before** sending (abort the send if the
 write fails), send `site_connectivity_outage` / status `error` /
 ticket allowed with `_ongoing_message`, on delivery write
@@ -1884,7 +1903,8 @@ characters (lines joined by `\n`); a single over-long record has its path list
 reduced from the end (`+N more path(s)`) and is hard-truncated as a last
 resort. Mark the covered records `attempt_at=now, attempts+1`, write, send
 `site_connectivity_summary` / status `warning` / `opsgate_ticket: false`,
-on delivery remove exactly the covered records and write. Line text
+on delivery remove exactly the covered record indices and write, never all
+records sharing a wall-time label. Line text
 `_render_summary_line`.
 
 ### 6.8 Recheck (`_process_recheck`)

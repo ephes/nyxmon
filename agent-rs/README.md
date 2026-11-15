@@ -314,6 +314,10 @@ Current fixtures:
   log lines in call order (payloads as `json.dumps` text), the probed
   targets, the published snapshot and the exception a round raised;
   `nyxmon-core` replays them against `site::Observer` with the same fakes.
+  The replay compares the historical v1 projection of current v2 payloads;
+  exact v2 roundtrips and native SQLite restart/clock/collision regressions test
+  generation ownership separately. Invalid/unsupported restore fixtures now
+  expect admission refusal (PLAN.md D-19).
   `site_replay/coverage.json` failed generation unless the corpus executed
   every line of the observer's pure methods and rendering helpers.
 - `config_ping.json`, `ping_text.json`, `ping_unicode.json` (`gen_ping.py`):
@@ -764,3 +768,21 @@ values passed to the pure evaluator, retain their representation while budget
 remains. Threshold decisions still run for all rules. This is a deliberate
 bounded-work difference from the retired Python executor; ordinary oracle cases
 remain unchanged. No active Python-agent behavior is changed.
+
+### Site lifecycle admission and observation time
+
+The site observer admits a complete persisted candidate before publication or
+side effects. Invalid fields and unsupported payload versions preserve the row
+and prevent probing, writes, releases and sends; startup refusal fails the
+required observer through supervision. Preserve unknown pending data and use a
+compatible binary or explicit operator repair (see `docs/site-connectivity.md`).
+Do not roll back to a binary that overwrites unknown payload versions.
+
+New writes use payload version 2. A permanent monotonic generation counter owns
+active outages, path participation and pending messages independently of wall
+seconds; v1/missing-version rows migrate on their next normal write without a
+schema migration. Wall-time `incident_id` remains the display/snapshot label.
+Only exact selected summary records are acknowledged. One wall clock sampled at
+probe completion drives observations, grace expiry, notifications and rechecks;
+probe deadlines use their separate monotonic timer. Adopting these changes needs
+a future Rust runner rollout; no release or deployment is part of this change.

@@ -370,13 +370,13 @@ fn the_site_observer_probes_local_targets_and_persists_each_round() {
     let first = site_payload(&db.path).unwrap();
     assert!(
         first.starts_with(
-            r#"{"incident_type": "site_connectivity", "version": 1, "phase": "idle", "incident_id": 0, "observed_at": "#
+            r#"{"incident_type": "site_connectivity", "version": 2, "phase": "idle", "incident_id": 0, "observed_at": "#
         ),
         "{first}"
     );
     assert!(
         first.contains(
-            r#""ipv4": {"state": "failing", "down_since": 0, "recovered_at": 0, "release_at": 0, "last_release_at": 0}"#
+            r#""ipv4": {"state": "failing", "down_since": 0, "recovered_at": 0, "release_at": 0, "last_release_at": 0, "incident_generation": 0}"#
         ),
         "{first}"
     );
