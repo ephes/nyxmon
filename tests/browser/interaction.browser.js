@@ -329,11 +329,10 @@ test('HTMX cleanup retires a detached pending owner without affecting a replacem
   await expect(checkbox).toBeDisabled();
   await expect.poll(() => posts).toBe(1);
   await page.evaluate(html => {
-    const old = document.getElementById('check-1');
-    const parent = old.parentNode;
-    window.htmx.remove(old);
-    parent.insertAdjacentHTML('afterbegin', html);
-    window.htmx.process(document.getElementById('check-1'));
+    // A real HTMX swap (e.g. a polling refresh) cleans the old card; htmx.remove()
+    // only detaches it without emitting htmx:beforeCleanupElement.
+    window.htmx.swap(document.getElementById('check-1'), html,
+      { swapStyle: 'outerHTML', swapDelay: 0, settleDelay: 0, transition: false });
   }, fixtures.fragments['1-False']);
   await checkbox.click();
   await expect.poll(() => posts).toBe(2);
