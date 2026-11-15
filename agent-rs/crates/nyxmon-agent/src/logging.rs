@@ -129,16 +129,66 @@ fn is_library_target(target: &str) -> bool {
     !target.starts_with("nyxmon")
 }
 
+const MAX_RECORD_BYTES: usize = 8192;
+const TRUNCATED: &str = "[truncated]";
+
+#[derive(Default)]
+struct BoundedText(String);
+
+impl fmt::Write for BoundedText {
+    fn write_str(&mut self, text: &str) -> fmt::Result {
+        let remaining = MAX_RECORD_BYTES.saturating_sub(self.0.len());
+        if text.len() <= remaining {
+            self.0.push_str(text);
+            return Ok(());
+        }
+        let mut end = remaining;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        self.0.push_str(&text[..end]);
+        Err(fmt::Error)
+    }
+}
+
+// All dynamic record components pass this final stderr boundary. Reserve the
+// marker before appending, never split UTF-8 or an escaped control sequence.
+fn stderr_record(line: &LogLine) -> String {
+    let asctime = chrono::Local::now().format("%Y-%m-%d %H:%M:%S,%3f");
+    let mut record = format!("{asctime} - ");
+    for text in [&line.logger, " - ", line.level, " - ", &line.message] {
+        for ch in text.chars() {
+            let escaped = match ch {
+                '\n' => "\\n".to_owned(),
+                '\r' => "\\r".to_owned(),
+                '\t' => "\\t".to_owned(),
+                c if c.is_control()
+                    || matches!(c, '\u{2028}' | '\u{2029}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}') =>
+                {
+                    format!("\\u{{{:x}}}", u32::from(c))
+                }
+                c => c.to_string(),
+            };
+            if record.len() + escaped.len() > MAX_RECORD_BYTES - TRUNCATED.len() {
+                record.push_str(TRUNCATED);
+                return record;
+            }
+            record.push_str(&escaped);
+        }
+    }
+    record
+}
+
 #[derive(Default)]
 struct MessageVisitor {
-    message: String,
-    fields: String,
+    message: BoundedText,
+    fields: BoundedText,
 }
 
 impl Visit for MessageVisitor {
     fn record_str(&mut self, field: &Field, value: &str) {
         if field.name() == "message" {
-            self.message.push_str(value);
+            let _ = self.message.write_str(value);
         } else {
             let _ = write!(self.fields, " {}={value}", field.name());
         }
@@ -186,17 +236,11 @@ impl tracing::Subscriber for PyLogSubscriber {
         let line = LogLine {
             level: level_name(metadata.level()),
             logger: metadata.target().to_owned(),
-            message: visitor.message + &visitor.fields,
+            message: visitor.message.0 + &visitor.fields.0,
         };
         match &self.sink {
             Sink::Stderr => {
-                let asctime = chrono::Local::now().format("%Y-%m-%d %H:%M:%S,%3f");
-                let mut stderr = std::io::stderr().lock();
-                let _ = writeln!(
-                    stderr,
-                    "{asctime} - {} - {} - {}",
-                    line.logger, line.level, line.message
-                );
+                let _ = writeln!(std::io::stderr().lock(), "{}", stderr_record(&line));
             }
             Sink::Memory(lines) => lines.lock().unwrap_or_else(|e| e.into_inner()).push(line),
         }
@@ -217,6 +261,39 @@ pub fn capture() -> (LogCapture, tracing::subscriber::DefaultGuard) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stderr_records_are_bounded_and_cannot_forge_lines() {
+        if std::env::var_os("NYXMON_LOG_FRAMING_CHILD").is_some() {
+            let subscriber = PyLogSubscriber::stderr(LevelFilter::INFO);
+            let _guard = tracing::subscriber::set_default(subscriber);
+            let mut check = crate::testutil::check(1);
+            check.name = "café\nFORGED\r\x1b[31m\u{2028}".to_owned();
+            check.check_type = "unknown".to_owned();
+            crate::startup::validate_check_types(&[check], &[]);
+            tracing::error!(target: "nyxmon.test", error = "bad\nfield\r\x00", "{}", "ü".repeat(20000));
+            tracing::error!(target: "nyxmon.test", error = "bad\nfield\r\x00", "short");
+            return;
+        }
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "logging::tests::stderr_records_are_bounded_and_cannot_forge_lines",
+                "--nocapture",
+            ])
+            .env("NYXMON_LOG_FRAMING_CHILD", "1")
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let text = String::from_utf8(output.stderr).unwrap();
+        let lines: Vec<_> = text.lines().collect();
+        assert_eq!(lines.len(), 6, "{text}");
+        assert!(lines.iter().all(|line| line.len() <= 8192));
+        assert!(text.contains("café\\nFORGED\\r\\u{1b}[31m\\u{2028}"));
+        assert!(text.contains("bad\\nfield\\r\\u{0}"));
+        assert!(!text.contains('\x1b'));
+        assert!(text.contains("[truncated]"));
+    }
 
     #[test]
     fn levels_map_to_python_names() {

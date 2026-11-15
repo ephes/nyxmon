@@ -52,7 +52,8 @@ pub(crate) fn claim_due_checks(
         let mut statement = transaction.prepare(&format!(
             "UPDATE health_check
                 SET status                = 'processing',
-                    processing_started_at = ?
+                    processing_started_at = ?,
+                    claim_generation = lower(hex(randomblob(16)))
                 WHERE id IN (SELECT id
                              FROM health_check
                              WHERE next_check_time <= ?
@@ -141,11 +142,11 @@ pub(crate) fn reclaim_stale_checks(
 }
 
 /// `release_claims_async`: hand this process's own claims back on shutdown.
-/// Only a claim still carrying the exact claim timestamp is released.
+/// Only a claim still carrying the exact nonempty generation is released.
 pub(crate) fn release_claims(
     connection: &mut Connection,
     now: i64,
-    claims: &[(i64, i64)],
+    claims: &[(i64, String)],
 ) -> Result<usize, StoreError> {
     if claims.is_empty() {
         return Ok(0);
@@ -158,11 +159,10 @@ pub(crate) fn release_claims(
                 SET status = 'idle', processing_started_at = 0,
                     next_check_time = ? + MAX(1, check_interval)
                 WHERE id = ? AND status = 'processing'
-                  AND processing_started_at = ? AND ? > 0",
+                  AND claim_generation = ? AND ? <> ''",
         )?;
-        for &(check_id, claim_started_at) in claims {
-            released +=
-                statement.execute(params![now, check_id, claim_started_at, claim_started_at])?;
+        for (check_id, generation) in claims {
+            released += statement.execute(params![now, check_id, generation, generation])?;
         }
     }
     transaction.commit()?;
@@ -290,9 +290,9 @@ impl Store {
     /// Release this process's claims on shutdown (`release_claims_async`);
     /// returns how many rows were released.
     pub async fn release_claims(&self, now: i64, claims: &[Check]) -> Result<usize, StoreError> {
-        let claims: Vec<(i64, i64)> = claims
+        let claims: Vec<(i64, String)> = claims
             .iter()
-            .map(|check| (check.check_id, check.claim_started_at))
+            .map(|check| (check.check_id, check.claim_generation.clone()))
             .collect();
         self.call(move |connection| release_claims(connection, now, &claims))
             .await

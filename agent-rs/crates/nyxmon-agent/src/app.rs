@@ -83,6 +83,10 @@ pub fn start_agent(args: &Args) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let store = match Store::open_locked(agent_lock) {
+        Ok(store) => store,
+        Err(err) => return fatal(err),
+    };
     cli_info!(
         "Initializing monitoring services with database: {}",
         args.db
@@ -96,7 +100,16 @@ pub fn start_agent(args: &Args) -> ExitCode {
         Ok(runtime) => runtime,
         Err(err) => return fatal(err),
     };
-    let code = runtime.block_on(run_monitoring_services(args, agent_lock.database_path()));
+    let code = runtime.block_on(async {
+        let code = run_monitoring_services(args, store.clone()).await;
+        match tokio::time::timeout(std::time::Duration::from_secs(15), store.close()).await {
+            Ok(Ok(())) => code,
+            Ok(Err(_)) => fatal("database actor drain failed"),
+            Err(_) => {
+                fatal("database actor drain timed out; ownership retained until connection closes")
+            }
+        }
+    });
     // Executor threads blocked in the system resolver must not hold the
     // exit (Python's daemon threads).
     runtime.shutdown_background();
@@ -104,11 +117,7 @@ pub fn start_agent(args: &Args) -> ExitCode {
 }
 
 /// `run_monitoring_services`.
-async fn run_monitoring_services(args: &Args, db_path: &Path) -> ExitCode {
-    let store = match Store::open(db_path) {
-        Ok(store) => store,
-        Err(err) => return fatal(err),
-    };
+async fn run_monitoring_services(args: &Args, store: Store) -> ExitCode {
     match store.verify_schema().await {
         Ok(report) if report.is_ok() => cli_info!("{report}"),
         Ok(report) => {

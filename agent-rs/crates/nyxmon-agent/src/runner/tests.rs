@@ -212,6 +212,8 @@ async fn a_result_handler_failure_does_not_abort_a_waiting_sibling() {
         claim.status = "processing".to_owned();
         claim.processing_started_at = 100;
         claim.claim_started_at = 100;
+        claim.claim_is_processing = true;
+        claim.claim_generation = "synthetic-claim".to_owned();
         db.insert(&claim);
         claims.push(claim);
     }

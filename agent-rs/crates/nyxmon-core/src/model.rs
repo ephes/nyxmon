@@ -58,10 +58,13 @@ pub struct Check {
     pub disabled: bool,
     /// The decoded `data` column, any JSON type (PLAN.md D-11).
     pub data: PyJson,
-    /// The claim identity: `processing_started_at` at load time, kept after
-    /// [`Check::schedule_next_check`] so a late completion cannot clobber a
-    /// newer claim.
+    /// Wall timestamp at load time, retained by [`Check::schedule_next_check`]
+    /// for observation timing. Ownership uses the generation and loaded state.
     pub claim_started_at: i64,
+    /// Opaque, newly generated claim identity, retained across scheduling.
+    pub claim_generation: String,
+    /// Whether the loaded ownership snapshot was processing (false for reclaimed rows).
+    pub claim_is_processing: bool,
 }
 
 impl Check {
@@ -285,6 +288,8 @@ mod tests {
             disabled: false,
             data: PyJson::dict(),
             claim_started_at: 1000,
+            claim_generation: String::new(),
+            claim_is_processing: false,
         };
         check.schedule_next_check(2000);
         assert_eq!(check.next_check_time, 2300);

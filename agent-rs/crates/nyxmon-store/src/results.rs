@@ -16,7 +16,7 @@ use crate::rows::{CHECK_COLUMNS, row_to_check, select_notification_state};
 pub struct PersistRequest {
     /// The check after `schedule_next_check` (its `status`,
     /// `next_check_time`, `processing_started_at` are written; its
-    /// `claim_started_at` guards the completion). Its definition fields retain
+    /// `claim_generation` guards the completion). Its definition fields retain
     /// the executed snapshot and fence publication against concurrent edits.
     pub check: Check,
     pub result: CheckResult,
@@ -48,15 +48,17 @@ fn complete(transaction: &Transaction<'_>, check: &Check) -> Result<bool, StoreE
         "UPDATE health_check
             SET status = ?, next_check_time = ?, processing_started_at = ?
             WHERE id = ?
-              AND ((status = 'processing' AND processing_started_at = ?)
-                   OR (status <> 'processing' AND ? = 0))",
+              AND claim_generation = ?
+              AND ((status = 'processing' AND ? AND claim_generation <> '')
+                   OR (status <> 'processing' AND NOT ?))",
         params![
             check.status,
             check.next_check_time,
             check.processing_started_at,
             check.check_id,
-            check.claim_started_at,
-            check.claim_started_at,
+            check.claim_generation,
+            check.claim_is_processing,
+            check.claim_is_processing,
         ],
     )?;
     Ok(changed > 0)
@@ -164,6 +166,11 @@ pub(crate) fn persist_check_result(
     connection: &mut Connection,
     request: PersistRequest,
 ) -> Result<bool, StoreError> {
+    if request.check.check_id != request.result.check_id {
+        return Err(StoreError::InvalidArgument(
+            "check and result identities must match",
+        ));
+    }
     let PersistRequest {
         check,
         result,
@@ -204,8 +211,12 @@ pub(crate) fn persist_check_result(
             // operator and leave a newer claim entirely untouched.
             transaction.execute(
                 "UPDATE health_check SET status = 'idle', processing_started_at = 0
-                 WHERE id = ? AND status = 'processing' AND processing_started_at = ?",
-                params![check.check_id, check.claim_started_at],
+                 WHERE id = ? AND status = 'processing' AND claim_generation = ? AND ? <> ''",
+                params![
+                    check.check_id,
+                    check.claim_generation,
+                    check.claim_generation
+                ],
             )?;
         }
         transaction.commit()?;

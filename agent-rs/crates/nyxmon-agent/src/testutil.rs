@@ -53,8 +53,8 @@ impl TestDb {
         self.raw()
             .execute(
                 "INSERT INTO health_check (id, service_id, name, check_type, url, check_interval,
-                    next_check_time, processing_started_at, status, disabled, data)
-                 VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    next_check_time, processing_started_at, status, disabled, data, claim_generation)
+                 VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     check.check_id,
                     check.name,
@@ -66,6 +66,7 @@ impl TestDb {
                     check.status,
                     check.disabled,
                     check.data.to_json_string().unwrap(),
+                    check.claim_generation,
                 ],
             )
             .unwrap();
@@ -145,6 +146,8 @@ pub fn check(check_id: i64) -> Check {
         disabled: false,
         data: PyJson::dict(),
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     }
 }
 

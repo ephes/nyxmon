@@ -85,7 +85,7 @@ fn deliberately_old_schema_is_reported_precisely() {
             "CREATE TABLE collector_incident",
             "CREATE TABLE unrelated_incident",
         )
-        .replace("'0013_site_connectivity_state'", "'0013_unrelated'");
+        .replace("'0015_healthcheck_claim_generation'", "'0013_unrelated'");
     assert_ne!(schema, SCHEMA_SQL);
     let db = TestDb::with_schema(&schema);
 
@@ -112,7 +112,7 @@ fn deliberately_old_schema_is_reported_precisely() {
         report.error_message().unwrap(),
         "database schema is older than the agent contract; missing tables: collector_incident; \
          missing columns: check_notification_state.held_since, check_notification_state.attempt_seq, \
-         check_notification_state.attempt_at; missing migration: nyxboard.0013_site_connectivity_state; \
+         check_notification_state.attempt_at; missing migration: nyxboard.0015_healthcheck_claim_generation; \
          run `manage.py migrate` before starting the agent"
     );
 }
@@ -136,13 +136,13 @@ fn agent_only_database_without_migrations_is_rejected() {
             "collector_incident"
         ]
     );
-    assert_eq!(report.missing_columns.len(), 10);
+    assert_eq!(report.missing_columns.len(), 11);
     assert!(report.missing_migrations_table && report.missing_migration);
     assert!(
         report
             .error_message()
             .unwrap()
-            .contains("missing migration: nyxboard.0013_site_connectivity_state (table django_migrations does not exist)")
+            .contains("missing migration: nyxboard.0015_healthcheck_claim_generation (table django_migrations does not exist)")
     );
 }
 
@@ -217,5 +217,23 @@ fn composite_or_partial_identity_keys_cannot_replace_required_keys() {
     for schema in [composite, partial] {
         let db = TestDb::with_schema(&schema);
         assert!(!check_schema(db.path()).unwrap().is_ok());
+    }
+}
+
+#[test]
+fn restored_storage_contract_is_checked_read_only() {
+    for (from, to) in [
+        ("\"name\" varchar(255)", "\"name\" INTEGER"),
+        ("\"check_interval\" integer", "\"check_interval\" TEXT"),
+        ("\"data\" text", "\"data\" BLOB"),
+        ("\"status\" varchar(10) NOT NULL", "\"status\" varchar(10)"),
+    ] {
+        let schema = SCHEMA_SQL.replace(from, to);
+        assert_ne!(schema, SCHEMA_SQL, "{from}");
+        let db = TestDb::with_schema(&schema);
+        let before = std::fs::read(db.path()).unwrap();
+        let report = check_schema(db.path()).unwrap();
+        assert!(!report.is_ok(), "admitted incompatible {from}");
+        assert_eq!(std::fs::read(db.path()).unwrap(), before);
     }
 }

@@ -66,6 +66,10 @@ impl AgentLock {
     /// [`LockError::Held`] when another process (or another open of the
     /// file) holds it, [`LockError::Io`] otherwise.
     pub fn acquire(db_path: &Path) -> Result<AgentLock, LockError> {
+        Self::acquire_with(db_path, |_| {})
+    }
+
+    fn acquire_with(db_path: &Path, hook: impl Fn(bool)) -> Result<AgentLock, LockError> {
         // Missing files (including dangling aliases) are refused: initialize the
         // database through Django before starting an agent.
         let database_path = db_path.canonicalize().map_err(|source| LockError::Io {
@@ -87,6 +91,13 @@ impl AgentLock {
             path: path.clone(),
             source,
         };
+        let parent = path.parent().expect("canonical database has parent");
+        let directory = OpenOptions::new()
+            .read(true)
+            .custom_flags((OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::NONBLOCK).bits() as i32)
+            .open(parent)
+            .map_err(io_error)?;
+        let parent_metadata = directory.metadata().map_err(io_error)?;
         // std opens with O_CLOEXEC, so ping children do not inherit it.
         let file = OpenOptions::new()
             .read(true)
@@ -105,12 +116,29 @@ impl AgentLock {
         }
         // `File::try_lock` is `flock(LOCK_EX | LOCK_NB)` on Unix, the same
         // lock Python's `fcntl.flock` takes.
+        hook(false);
         match file.try_lock() {
-            Ok(()) => Ok(AgentLock {
-                path,
-                database_path,
-                _file: file,
-            }),
+            Ok(()) => {
+                hook(true);
+                let named = std::fs::symlink_metadata(&path).map_err(io_error)?;
+                let named_parent = std::fs::symlink_metadata(parent).map_err(io_error)?;
+                let held = file.metadata().map_err(io_error)?;
+                if !named.is_file()
+                    || held.nlink() != 1
+                    || (held.dev(), held.ino()) != (named.dev(), named.ino())
+                    || (parent_metadata.dev(), parent_metadata.ino())
+                        != (named_parent.dev(), named_parent.ino())
+                {
+                    return Err(io_error(std::io::Error::other(
+                        "agent lock namespace changed during admission",
+                    )));
+                }
+                Ok(AgentLock {
+                    path,
+                    database_path,
+                    _file: file,
+                })
+            }
             Err(TryLockError::WouldBlock) => Err(LockError::Held { path }),
             Err(TryLockError::Error(source)) => Err(io_error(source)),
         }
@@ -125,5 +153,73 @@ impl AgentLock {
     /// The lock file path.
     pub fn path(&self) -> &Path {
         &self.path
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn competing_process_replaces_name_before_or_after_flock() {
+        use std::io::{BufRead, BufReader, Write};
+        use std::process::{Command, Stdio};
+        for after_lock in [false, true] {
+            let dir = tempfile::tempdir().unwrap();
+            let db = dir.path().join("db");
+            File::create(&db).unwrap();
+            let path = agent_lock_path(&db);
+            let child = std::cell::RefCell::new(None);
+            let outcome = AgentLock::acquire_with(&db, |locked| {
+                if locked != after_lock {
+                    return;
+                }
+                let mut process = Command::new("python3")
+                    .args(["-c", "import os,sys,fcntl; p=sys.argv[1]; os.rename(p,p+'.old'); f=open(p,'w'); fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB); print('ready',flush=True); sys.stdin.readline()"])
+                    .arg(&path).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
+                let mut ready = String::new();
+                BufReader::new(process.stdout.take().unwrap())
+                    .read_line(&mut ready)
+                    .unwrap();
+                assert_eq!(ready, "ready\n");
+                *child.borrow_mut() = Some(process);
+            });
+            assert!(outcome.is_err());
+            let mut process = child.into_inner().unwrap();
+            process.stdin.take().unwrap().write_all(b"done\n").unwrap();
+            assert!(process.wait().unwrap().success());
+            assert!(path.exists());
+        }
+    }
+
+    #[test]
+    fn replaced_lock_or_parent_is_refused_during_admission() {
+        for after_lock in [false, true] {
+            for parent in [false, true] {
+                let dir = tempfile::tempdir().unwrap();
+                let home = dir.path().join("home");
+                std::fs::create_dir(&home).unwrap();
+                let db = home.join("db");
+                File::create(&db).unwrap();
+                let path = agent_lock_path(&db);
+                let outcome = AgentLock::acquire_with(&db, |locked| {
+                    if locked != after_lock {
+                        return;
+                    }
+                    if parent {
+                        std::fs::rename(&home, dir.path().join("old")).unwrap();
+                        std::fs::create_dir(&home).unwrap();
+                        File::create(&db).unwrap();
+                    } else {
+                        std::fs::rename(&path, home.join("old-lock")).unwrap();
+                    }
+                    File::create(&path).unwrap();
+                    let owner = AgentLock::acquire(&db).unwrap();
+                    drop(owner);
+                });
+                assert!(outcome.is_err(), "admitted displaced lock");
+                assert!(path.exists(), "must not delete replacement");
+            }
+        }
     }
 }

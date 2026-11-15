@@ -311,6 +311,8 @@ pub(crate) async fn run_fixture_case(case: &PyJson, executor: Executor, host: &s
         disabled: false,
         data,
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     };
     let outcome: Result<CheckResult, nyxmon_core::config::PyException> = match executor {
         Executor::Http => Ok(crate::http::execute(&check, &ctx).await),

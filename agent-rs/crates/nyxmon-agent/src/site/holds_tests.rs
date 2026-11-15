@@ -128,7 +128,7 @@ impl Harness {
     fn claim(&mut self, check_id: i64, at: Option<i64>) -> i64 {
         let at = at.unwrap_or_else(|| self.now());
         self.db.execute(&format!(
-            "UPDATE health_check SET status = 'processing', processing_started_at = {at}
+            "UPDATE health_check SET status = 'processing', processing_started_at = {at}, claim_generation = lower(hex(randomblob(16)))
              WHERE id = {check_id}"
         ));
         at
@@ -143,11 +143,14 @@ impl Harness {
         claimed_at: Option<i64>,
     ) -> PyDict {
         let claimed_at = self.claim(check_id, claimed_at);
-        let mut executing = self.checks[&check_id].clone();
+        let mut executing = nyxmon_store::read_check(&self.db.path, check_id)
+            .unwrap()
+            .unwrap();
         executing.status = "idle".to_owned();
         executing.processing_started_at = 0;
         executing.next_check_time = self.now() + executing.check_interval;
         executing.claim_started_at = claimed_at;
+        executing.claim_is_processing = true;
         self.handler
             .add_check_result(
                 &executing,
@@ -1018,6 +1021,7 @@ async fn a_stale_claim_marks_no_hold() {
     h.claim(1, None);
     let mut stale = h.checks[&1].clone();
     stale.claim_started_at = h.now() - 5000;
+    stale.claim_is_processing = true;
     let persisted = h
         .store
         .persist_check_result(PersistRequest {

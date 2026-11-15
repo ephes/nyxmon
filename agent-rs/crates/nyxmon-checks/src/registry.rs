@@ -123,6 +123,8 @@ mod tests {
             disabled: false,
             data: PyJson::dict(),
             claim_started_at: 0,
+            claim_generation: String::new(),
+            claim_is_processing: false,
         }
     }
 

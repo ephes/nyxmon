@@ -51,6 +51,8 @@ pub fn build_incident_notification(incident: &IncidentNotification<'_>) -> (Chec
         disabled: false,
         data: PyJson::dict(),
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     };
     let mut data = PyDict::new();
     data.insert(

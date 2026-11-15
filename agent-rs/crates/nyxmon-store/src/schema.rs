@@ -18,7 +18,7 @@ use crate::actor::{Store, open_read_only};
 use crate::error::StoreError;
 
 /// The minimum Django migration the agent needs, `(app, name)`.
-pub const MIN_NYXBOARD_MIGRATION: (&str, &str) = ("nyxboard", "0013_site_connectivity_state");
+pub const MIN_NYXBOARD_MIGRATION: (&str, &str) = ("nyxboard", "0015_healthcheck_claim_generation");
 
 /// Every table and column the agent reads or writes.
 pub const REQUIRED_COLUMNS: [(&str, &[&str]); 4] = [
@@ -33,6 +33,7 @@ pub const REQUIRED_COLUMNS: [(&str, &[&str]); 4] = [
             "check_interval",
             "next_check_time",
             "processing_started_at",
+            "claim_generation",
             "status",
             "disabled",
             "data",
@@ -218,6 +219,55 @@ fn missing_constraints(connection: &Connection) -> Result<Vec<String>, StoreErro
     Ok(missing)
 }
 
+fn affinity(declared: &str) -> &'static str {
+    let kind = declared.to_ascii_uppercase();
+    if kind.contains("INT") {
+        "INTEGER"
+    } else if ["CHAR", "CLOB", "TEXT"].iter().any(|s| kind.contains(s)) {
+        "TEXT"
+    } else if kind.is_empty() || kind.contains("BLOB") {
+        "BLOB"
+    } else if ["REAL", "FLOA", "DOUB"].iter().any(|s| kind.contains(s)) {
+        "REAL"
+    } else {
+        "NUMERIC"
+    }
+}
+
+fn storage_problems(connection: &Connection) -> Result<Vec<String>, StoreError> {
+    let contract =
+        nyxmon_core::pyjson::loads(include_str!("../../../fixtures/schema/agent_tables.json"))
+            .expect("generated schema contract");
+    let mut problems = Vec::new();
+    for (table, columns) in REQUIRED_COLUMNS {
+        for column in columns {
+            let expected = contract
+                .get("storage")
+                .unwrap()
+                .get(table)
+                .unwrap()
+                .get(column)
+                .unwrap()
+                .as_list()
+                .unwrap();
+            let present = connection
+                .query_row(
+                    "SELECT type, \"notnull\" FROM pragma_table_info(?) WHERE name = ?",
+                    [table, column],
+                    |r| Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?)),
+                )
+                .optional()?;
+            if let Some((kind, not_null)) = present
+                && (Some(affinity(&kind)) != expected[0].as_str()
+                    || (expected[1].as_bool() == Some(true) && !not_null))
+            {
+                problems.push(format!("{table}.{column} storage affinity/nullability"));
+            }
+        }
+    }
+    Ok(problems)
+}
+
 /// Verify the contract on `connection` (read-only: no DDL, no pragma writes).
 pub(crate) fn verify_schema(connection: &Connection) -> Result<SchemaReport, StoreError> {
     let mut missing_tables = Vec::new();
@@ -235,7 +285,8 @@ pub(crate) fn verify_schema(connection: &Connection) -> Result<SchemaReport, Sto
             }
         }
     }
-    let missing_constraints = missing_constraints(connection)?;
+    let mut missing_constraints = missing_constraints(connection)?;
+    missing_constraints.extend(storage_problems(connection)?);
     let missing_migrations_table = table_columns(connection, "django_migrations")?.is_empty();
     let missing_migration = missing_migrations_table || {
         let (app, name) = MIN_NYXBOARD_MIGRATION;

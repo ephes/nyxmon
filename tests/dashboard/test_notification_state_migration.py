@@ -43,7 +43,7 @@ def _migrate(targets):
 def migrator():
     yield
     # Always leave the test database fully migrated for the rest of the session.
-    _migrate([MIGRATE_SITE_CONNECTIVITY])
+    _migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())
 
 
 def _state_columns():

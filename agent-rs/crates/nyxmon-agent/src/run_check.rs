@@ -165,6 +165,8 @@ mod tests {
             disabled: false,
             data: nyxmon_core::pyjson::loads(data).unwrap(),
             claim_started_at: 0,
+            claim_generation: String::new(),
+            claim_is_processing: false,
         }
     }
 

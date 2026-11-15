@@ -254,6 +254,7 @@ async fn a_superseded_result_cannot_alert_or_change_state() {
     snapshot.status = "processing".to_owned();
     snapshot.processing_started_at = 100;
     snapshot.claim_started_at = 100;
+    snapshot.claim_is_processing = true;
     snapshot.schedule_next_check(T0);
 
     assert!(!submit(&handler, &snapshot, ERROR).await);
@@ -1142,6 +1143,8 @@ async fn receive_schedules_the_next_run_and_completes_the_claim() {
     check.status = "processing".to_owned();
     check.processing_started_at = T0 - 5;
     check.claim_started_at = T0 - 5;
+    check.claim_is_processing = true;
+    check.claim_generation = "synthetic-claim".to_owned();
     setup.db.insert(&check);
     handler.receive(check, result(1, OK, "{}")).await;
     assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 300, 0));

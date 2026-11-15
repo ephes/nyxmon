@@ -338,7 +338,7 @@ Current fixtures:
 
 Django migrations own the schema (PLAN.md section 2). The Rust agent runs no
 DDL: at startup it checks that every table and column it uses exists and that
-`nyxboard.0013_site_connectivity_state` (`MIN_NYXBOARD_MIGRATION`) is
+`nyxboard.0015_healthcheck_claim_generation` (`MIN_NYXBOARD_MIGRATION`) is
 recorded, and refuses to start otherwise (`nyxmon_store::check_schema` is the
 core of `--check-schema`). Public SQLite introspection also checks the exact
 single-column primary keys on service/check/result/notification/incident identity
@@ -786,3 +786,49 @@ Only exact selected summary records are acknowledged. One wall clock sampled at
 probe completion drives observations, grace expiry, notifications and rechecks;
 probe deadlines use their separate monotonic timer. Adopting these changes needs
 a future Rust runner rollout; no release or deployment is part of this change.
+
+## Startup and stderr record contracts
+
+After acquiring the lock, startup verifies that its name still identifies the
+opened single-link inode and its parent still identifies the opened directory.
+Replacement during admission is refused without deleting the replacement.
+The lock namespace must remain stable for the entire live run; startup checks
+cannot protect against an administrator replacing a live lock afterward.
+
+Readiness also verifies the generated Django storage contract for required
+columns: SQLite affinity and required NOT NULL properties, alongside names,
+primary/foreign keys and the migration marker. Equivalent declared types and
+unrelated columns/indexes remain supported. Verification never repairs the DB;
+restore the migrated schema before starting a collector.
+
+Each stderr event occupies one physical UTF-8 line of at most 8192 bytes before
+its terminating newline. CR/LF, terminal controls and Unicode line/bidi controls
+are escaped at the final formatting boundary. Oversized diagnostics end with
+`[truncated]`; message/field formatting has a bounded intermediate buffer.
+Printable Unicode, logger and level metadata retain the existing format.
+Notification text is unaffected. These changes need a future Rust agent rollout.
+
+## Claim identity and ordered store retirement
+
+Migration `nyxboard.0015_healthcheck_claim_generation` is now required. Stop all
+agents, apply Django migrations, then adopt the updated Rust agent. Existing
+processing rows receive distinct UUID tokens without changing their lease times;
+idle rows start with an empty token. A claim assigns a new SQLite random 128-bit
+hex token atomically with its processing state. Tokens are independent of wall
+seconds, survive restarts and scheduling, and fence release and completion even
+when the clock repeats or rolls back. Stale reclaim retains the token with an idle ownership snapshot;
+its repair result can publish only before another generation takes ownership.
+The Rust agent never migrates the database; the Python agent remains retired.
+
+Persistence rejects a request whose Check and CheckResult IDs differ with
+`InvalidArgument`, before opening a transaction. Completion, history and alert
+state therefore share one check identity.
+
+Shutdown closes the DB actor after stopping supervised tasks. Close rejects new
+submissions and acknowledges only after accepted jobs finish and SQLite closes;
+repeated close calls await the same outcome. The agent allows 15 seconds for this
+drain, reporting failure on timeout or actor death. The actor itself retains the
+agent lock until its connection closes, including after caller cancellation or
+drain timeout in an embedding. Uncancellable accepted work may thus keep the lock
+longer than the caller's deadline; a second agent must wait/refuse. Normal process
+exit terminates remaining threads. No deployment or version bump is included.

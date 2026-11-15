@@ -27,8 +27,6 @@ CREATE TABLE "auth_user" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "pass
 CREATE TABLE "service" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "name" varchar(255) NOT NULL);
 CREATE TABLE "check_result" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "status" varchar(10) NOT NULL, "created_at" datetime NOT NULL, "data" text NOT NULL CHECK ((JSON_VALID("data") OR "data" IS NULL)), "health_check_id" bigint NOT NULL REFERENCES "health_check" ("id") DEFERRABLE INITIALLY DEFERRED);
 CREATE INDEX "check_result_health_check_id_7cad34f5" ON "check_result" ("health_check_id");
-CREATE TABLE "health_check" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "check_type" varchar(20) NOT NULL, "check_interval" integer NOT NULL, "service_id" bigint NOT NULL REFERENCES "service" ("id") DEFERRABLE INITIALLY DEFERRED, "next_check_time" integer unsigned NOT NULL CHECK ("next_check_time" >= 0), "processing_started_at" integer unsigned NOT NULL CHECK ("processing_started_at" >= 0), "status" varchar(10) NOT NULL, "name" varchar(255) NOT NULL, "disabled" bool NOT NULL, "data" text NOT NULL CHECK ((JSON_VALID("data") OR "data" IS NULL)), "url" varchar(512) NOT NULL);
-CREATE INDEX "health_check_service_id_0913502c" ON "health_check" ("service_id");
 CREATE TABLE check_notification_state (
                             check_id INTEGER PRIMARY KEY
                                 REFERENCES health_check(id) ON DELETE CASCADE,
@@ -45,6 +43,8 @@ CREATE TABLE collector_incident (
                         );
 CREATE TABLE "login_throttle_bucket" ("key" varchar(100) NOT NULL PRIMARY KEY, "expires_at" real NOT NULL, "failures" integer unsigned NOT NULL CHECK ("failures" >= 0), "pending" integer unsigned NOT NULL CHECK ("pending" >= 0));
 CREATE INDEX "login_throttle_bucket_expires_at_2b29c04f" ON "login_throttle_bucket" ("expires_at");
+CREATE TABLE "health_check" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "check_type" varchar(20) NOT NULL, "url" varchar(512) NOT NULL, "check_interval" integer NOT NULL, "service_id" bigint NOT NULL REFERENCES "service" ("id") DEFERRABLE INITIALLY DEFERRED, "next_check_time" integer unsigned NOT NULL CHECK ("next_check_time" >= 0), "processing_started_at" integer unsigned NOT NULL CHECK ("processing_started_at" >= 0), "status" varchar(10) NOT NULL, "name" varchar(255) NOT NULL, "disabled" bool NOT NULL, "data" text NOT NULL CHECK ((JSON_VALID("data") OR "data" IS NULL)), "claim_generation" varchar(32) DEFAULT '' NOT NULL);
+CREATE INDEX "health_check_service_id_0913502c" ON "health_check" ("service_id");
 CREATE TABLE "django_session" ("session_key" varchar(40) NOT NULL PRIMARY KEY, "session_data" text NOT NULL, "expire_date" datetime NOT NULL);
 CREATE INDEX "django_session_expire_date_a5c62663" ON "django_session" ("expire_date");
 INSERT INTO django_migrations (app, name, applied) VALUES ('contenttypes', '0001_initial', '2000-01-01 00:00:00');
@@ -78,4 +78,5 @@ INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0011_che
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0012_notification_reminder_timestamps', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0013_site_connectivity_state', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0014_login_throttle_bucket', '2000-01-01 00:00:00');
+INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0015_healthcheck_claim_generation', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('sessions', '0001_initial', '2000-01-01 00:00:00');
