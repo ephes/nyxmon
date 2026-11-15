@@ -64,3 +64,25 @@ test('processing actions announce Running with check identity', async ({ page })
   await page.getByRole('button', { name: 'Run now: Alpha', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Running... Alpha', exact: true })).toBeVisible();
 });
+
+test('removed card timing and health clear connected child state', async ({ page }) => {
+  await page.goto(server.url);
+  const result = await page.locator('#check-1').evaluate(card => {
+    const ring = card.querySelector('progress-ring');
+    const timer = card.querySelector('check-timer');
+    card.setAttribute('next-check', '1');
+    card.removeAttribute('next-check');
+    card.removeAttribute('check-interval');
+    card.removeAttribute('status');
+    return {
+      ringNext: ring.getAttribute('next-check'), interval: ring.getAttribute('check-interval'),
+      status: timer.getAttribute('status'), next: timer.getAttribute('next-check'),
+      heading: timer.shadowRoot.querySelector('.next-check-time').textContent,
+      countdown: timer.shadowRoot.querySelector('.next-check-countdown').textContent,
+      progress: ring.shadowRoot.querySelector('.progress-percentage').textContent,
+      pending: ring._dueTimer,
+    };
+  });
+  expect(result).toEqual({ ringNext: null, interval: null, status: null, next: null,
+    heading: '', countdown: '', progress: '0%', pending: null });
+});

@@ -32,6 +32,8 @@ asset deployment; this work does not deploy them.
 If HTMX is unavailable, a refresh accepts only an OK, non-redirected response
 from the exact same-origin status URL, containing one `health-check` element
 with the requested DOM ID and check ID. Whitespace around the fragment is fine.
+The fallback streams at most 128 KiB of decoded response bytes, regardless of
+Content-Length, before DOM parsing. Overflow cancels/releases the reader.
 Invalid responses retain the current check and show a status message with a
 manual **Retry status** button, enabled after five seconds. No automatic request
 loop is added. Each fallback request has a ten-second deadline covering headers
@@ -39,6 +41,11 @@ and response text, one AbortController, and one active owner. Disconnect aborts
 and clears its timers; reconnect starts a fresh request after an error or cancelled fetch/HTMX delay.
 Successfully replaced nodes retire their request state before disconnect.
 Late results from prior requests cannot replace the current check.
+
+Removing card timing, mode or health attributes removes the corresponding child
+attributes too. Missing timing clears the countdown and ring and cancels obsolete
+due callbacks; re-adding timing starts the current schedule. Health removal still
+notifies the containing service.
 
 Progress rings cancel delayed due events on timing/mode edits and disconnect,
 and recheck attachment and the current schedule before dispatch. Each schedule
@@ -71,7 +78,11 @@ confirmed checkbox/text and announces failure. Network, timeout and 5xx outcomes
 are uncertain: the browser fetches authoritative card state with GET, never
 retries the inversion POST. If that GET fails, Refresh status retries only GET;
 changing the check stays disabled until its state is confirmed. Requests have a
-ten-second timeout. Other cards remain usable.
+ten-second timeout. Other cards remain usable. HTMX's `beforeCleanupElement`
+retires only the cleaned card's reservation (child cleanup leaves it intact).
+A new card with the same ID starts its own mutation; old responses, reconciliation
+continuations and focus callbacks cannot release or alter that newer owner.
+Validated mutation/reconciliation swaps still confirm their own replacement.
 A successful HTTP status confirms a mutation only after the old card is actually
 replaced by one `health-check` with the same DOM ID and `check-id`. Before HTMX
 swaps, full pages, empty/multiple fragments and mismatched identities are refused.

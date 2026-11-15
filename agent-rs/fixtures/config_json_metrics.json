@@ -5814,35 +5814,14 @@
    "delays": [],
    "outcome": {
     "data": {
-     "duration_ms": "<duration>",
-     "error_msg": "1 warning: $.a",
-     "error_type": "threshold_failed",
-     "failures": [
-      {
-       "actual": NaN,
-       "expected": 1,
-       "op": "<",
-       "path": "$.a",
-       "severity": "warning"
-      }
-     ]
+     "error_msg": "non-finite number in metrics JSON",
+     "error_type": "json_error"
     },
-    "failure_keys": [
-     [
-      "path",
-      "op",
-      "expected",
-      "actual",
-      "severity"
-     ]
-    ],
     "keys": [
      "error_type",
-     "error_msg",
-     "failures",
-     "duration_ms"
+     "error_msg"
     ],
-    "status": "warning"
+    "status": "error"
    },
    "requests": [
     {
@@ -8250,6 +8229,141 @@
    },
    "requests": [],
    "steps": [],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "duplicate object member in metrics JSON",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a3130302c2261223a307d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "duplicate object member in metrics JSON",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b226865616c746879223a66616c73652c226865616c746879223a747275652c2261223a307d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
+   "url": "http://metrics.test/m"
+  },
+  {
+   "check_type": "json-metrics",
+   "data": {
+    "checks": [
+     {
+      "op": "<",
+      "path": "$.a",
+      "severity": "warning",
+      "value": 1
+     }
+    ],
+    "retry_delay": 0.5,
+    "timeout": 0.5,
+    "url": "http://metrics.test/m"
+   },
+   "delays": [],
+   "outcome": {
+    "data": {
+     "error_msg": "duplicate object member in metrics JSON",
+     "error_type": "json_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
+   "requests": [
+    {
+     "authorization": null,
+     "cookie": null,
+     "path": "/m"
+    }
+   ],
+   "steps": [
+    {
+     "respond": {
+      "body_hex": "7b2261223a302c226e6573746564223a7b22636f756e74223a332c22636f756e74223a317d7d",
+      "headers": [],
+      "status": 200
+     }
+    }
+   ],
    "url": "http://metrics.test/m"
   }
  ]

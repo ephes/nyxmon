@@ -1,4 +1,5 @@
 import { announceStatus } from '../status-announcer.js';
+import { readCardResponse } from '../card-response.js';
 
 /**
  * Custom element for displaying a health check with its status, progress, and controls.
@@ -97,20 +98,25 @@ class HealthCheck extends HTMLElement {
     // Update progress ring
     const progressRing = this.querySelector('progress-ring');
     if (progressRing) {
-      if (mode) progressRing.setAttribute('mode', mode);
-      if (nextCheck) progressRing.setAttribute('next-check', nextCheck);
-      if (checkInterval) progressRing.setAttribute('check-interval', checkInterval);
+      this.syncAttribute(progressRing, 'mode', mode);
+      this.syncAttribute(progressRing, 'next-check', nextCheck);
+      this.syncAttribute(progressRing, 'check-interval', checkInterval);
     }
     
     // Update check timer
     const checkTimer = this.querySelector('check-timer');
     if (checkTimer) {
-      if (mode) checkTimer.setAttribute('mode', mode);
-      if (status) checkTimer.setAttribute('status', this.getAttribute('execution-status') === 'processing' ? 'processing' : status);
-      if (nextCheck) checkTimer.setAttribute('next-check', nextCheck);
+      this.syncAttribute(checkTimer, 'mode', mode);
+      this.syncAttribute(checkTimer, 'status', this.getAttribute('execution-status') === 'processing' ? 'processing' : status);
+      this.syncAttribute(checkTimer, 'next-check', nextCheck);
     }
   }
   
+  syncAttribute(child, name, value) {
+    if (value === null) child.removeAttribute(name);
+    else child.setAttribute(name, value);
+  }
+
   handleCheckDue() {
     const checkId = this.getAttribute('check-id');
     if (!this.isConnected || this.hasAttribute('disabled') ||
@@ -152,7 +158,7 @@ class HealthCheck extends HTMLElement {
             if (!response.ok || response.redirected || response.url !== url.href) {
               throw new Error('Invalid status response');
             }
-            return response.text();
+            return readCardResponse(response, controller.signal);
           }),
         aborted,
       ]);

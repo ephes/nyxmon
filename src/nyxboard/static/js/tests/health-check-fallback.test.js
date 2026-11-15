@@ -7,7 +7,9 @@ let element;
 const statusUrl = () => new URL('/healthchecks/123/status/', window.location.href).href;
 const fragment = (id = '123') => `\n <health-check id="check-${id}" check-id="${id}" status="failed" check-mode="normal"></health-check>\n`;
 const response = (html = fragment(), overrides = {}) => ({
-  ok: true, redirected: false, url: statusUrl(), text: vi.fn().mockResolvedValue(html), ...overrides,
+  ok: true, redirected: false, url: statusUrl(),
+  body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(html)); controller.close(); } }),
+  text: vi.fn().mockResolvedValue(html), ...overrides,
 });
 const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function due() {
@@ -90,7 +92,7 @@ it('times out a never-resolving fetch and permits one bounded retry', async () =
   expect(fetch).toHaveBeenCalledTimes(2);
 });
 it('bounds reading the response text as well as acquiring headers', async () => {
-  fetch.mockResolvedValue(response('', { text: () => new Promise(() => {}) }));
+  fetch.mockResolvedValue(response('', { body: new ReadableStream({ pull() { return new Promise(() => {}); } }), text: () => new Promise(() => {}) }));
   due();
   await settle();
   await vi.advanceTimersByTimeAsync(10000);
@@ -135,4 +137,46 @@ it('restarts a cancelled HTMX delay once on reconnect', () => {
   document.body.append(element);
   vi.advanceTimersByTime(50);
   expect(window.htmx.ajax).toHaveBeenCalledTimes(1);
+});
+
+it.each([null, '1', '9999999'])('rejects streamed overflow before DOM parsing (length %s) and recovers', async length => {
+  const oversized = fragment().repeat(10000);
+  const reader = {
+    read: vi.fn().mockResolvedValue({ done: false, value: new TextEncoder().encode(oversized) }),
+    cancel: vi.fn().mockResolvedValue(), releaseLock: vi.fn(),
+  };
+  const reply = response(oversized, { headers: new Headers(length ? { 'Content-Length': length } : {}), body: { getReader: () => reader } });
+  const setter = vi.spyOn(Element.prototype, 'innerHTML', 'set');
+  fetch.mockResolvedValueOnce(reply);
+  due(); await settle();
+  expect(document.getElementById('check-123')).toBe(element);
+  expect(setter.mock.calls.some(([html]) => html === oversized)).toBe(false);
+  expect(reply.text).not.toHaveBeenCalled();
+  expect(reader.cancel).toHaveBeenCalled();
+  expect(reader.releaseLock).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(5000);
+  fetch.mockResolvedValueOnce(response());
+  element.querySelector('[data-refresh-error] button').click();
+  await settle();
+  expect(document.getElementById('check-123')).not.toBe(element);
+});
+
+it('admits an exact byte-limit fragment with split UTF-8 and releases the reader', async () => {
+  const { MAX_CARD_BYTES } = await import('../card-response.js');
+  const base = fragment();
+  const padding = MAX_CARD_BYTES - new TextEncoder().encode(base).byteLength - 2;
+  const bytes = new TextEncoder().encode(base.replace('</health-check>', 'é' + ' '.repeat(padding) + '</health-check>'));
+  expect(bytes.byteLength).toBe(MAX_CARD_BYTES);
+  const split = bytes.indexOf(0xc3) + 1;
+  const reader = { read: vi.fn()
+    .mockResolvedValueOnce({ value: bytes.slice(0, split), done: false })
+    .mockResolvedValueOnce({ value: bytes.slice(split), done: false })
+    .mockResolvedValueOnce({ done: true }),
+    cancel: vi.fn().mockResolvedValue(), releaseLock: vi.fn(),
+  };
+  fetch.mockResolvedValue(response('', { body: { getReader: () => reader } }));
+  due(); await settle();
+  expect(document.getElementById('check-123')).not.toBe(element);
+  expect(document.getElementById('check-123').textContent.trim()).toBe('é');
+  expect(reader.releaseLock).toHaveBeenCalledOnce();
 });

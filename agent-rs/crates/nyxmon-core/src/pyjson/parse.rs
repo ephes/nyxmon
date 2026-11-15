@@ -38,7 +38,9 @@ pub enum LoadError {
         colno: usize,
     },
     /// `ValueError` from the integer string conversion limit.
-    IntTooLong { digits: usize },
+    IntTooLong {
+        digits: usize,
+    },
     /// `UnicodeDecodeError` while decoding bytes (message is P2).
     Unicode {
         encoding: &'static str,
@@ -46,10 +48,15 @@ pub enum LoadError {
     },
     /// A lone UTF-16 surrogate inside a string (PLAN.md D-8). Python would
     /// accept the document; Rust strings cannot hold the value.
-    LoneSurrogate { pos: usize },
+    LoneSurrogate {
+        pos: usize,
+    },
     /// `RecursionError` for documents nested deeper than
     /// [`MAX_NESTING_DEPTH`].
     TooDeep,
+    /// External metrics require unique members and finite numbers.
+    DuplicateMember,
+    NonFinite,
 }
 
 impl LoadError {
@@ -59,7 +66,10 @@ impl LoadError {
     pub fn python_class(&self) -> &'static str {
         match self {
             LoadError::Decode { .. } => "JSONDecodeError",
-            LoadError::IntTooLong { .. } | LoadError::LoneSurrogate { .. } => "ValueError",
+            LoadError::IntTooLong { .. }
+            | LoadError::LoneSurrogate { .. }
+            | LoadError::DuplicateMember
+            | LoadError::NonFinite => "ValueError",
             LoadError::Unicode { .. } => "UnicodeDecodeError",
             LoadError::TooDeep => "RecursionError",
         }
@@ -93,6 +103,8 @@ impl fmt::Display for LoadError {
                 f,
                 "lone surrogate in a JSON string at char {pos} is not supported"
             ),
+            LoadError::DuplicateMember => f.write_str("duplicate object member in metrics JSON"),
+            LoadError::NonFinite => f.write_str("non-finite number in metrics JSON"),
             LoadError::TooDeep => f.write_str(
                 "maximum recursion depth exceeded while decoding a JSON document from a \
                  unicode string",
@@ -116,7 +128,7 @@ pub fn loads(text: &str) -> Result<PyJson, LoadError> {
             0,
         ));
     }
-    decode(&chars, &[])
+    decode(&chars, &[], false)
 }
 
 /// `json.loads(data)` for a `bytes` argument: `json.detect_encoding`, then
@@ -126,13 +138,28 @@ pub fn loads(text: &str) -> Result<PyJson, LoadError> {
 /// The error Python raises for the same bytes (see [`LoadError`]).
 pub fn loads_bytes(data: &[u8]) -> Result<PyJson, LoadError> {
     let (chars, surrogates) = decode_bytes(data)?;
-    decode(&chars, &surrogates)
+    decode(&chars, &surrogates, false)
 }
 
-fn decode(chars: &[char], raw_surrogates: &[usize]) -> Result<PyJson, LoadError> {
+/// External metrics admission, retaining the byte encodings and integer domain
+/// of `loads_bytes`, but refusing duplicate members and non-finite floats.
+///
+/// # Errors
+/// The compatible decoder errors, plus `DuplicateMember` or `NonFinite`.
+pub fn loads_metrics_bytes(data: &[u8]) -> Result<PyJson, LoadError> {
+    let (chars, surrogates) = decode_bytes(data)?;
+    decode(&chars, &surrogates, true)
+}
+
+fn decode(
+    chars: &[char],
+    raw_surrogates: &[usize],
+    strict_metrics: bool,
+) -> Result<PyJson, LoadError> {
     let mut scanner = Scanner {
         s: chars,
         lone_surrogate: None,
+        strict_metrics,
     };
     let start = scanner.skip_ws(0);
     let (value, end) = scanner.scan_once(start)?;
@@ -168,6 +195,7 @@ fn decode_error(s: &[char], msg: &'static str, pos: usize) -> LoadError {
 struct Scanner<'a> {
     s: &'a [char],
     lone_surrogate: Option<usize>,
+    strict_metrics: bool,
 }
 
 /// An open container on the scanner's explicit stack.
@@ -275,6 +303,9 @@ impl Scanner<'_> {
                 }
                 _ => self.scan_scalar(idx)?,
             };
+            if self.strict_metrics && matches!(&value, PyJson::Float(n) if !n.is_finite()) {
+                return Err(LoadError::NonFinite);
+            }
             // Attach the finished value to its parents, closing containers.
             loop {
                 let Some(frame) = stack.last_mut() else {
@@ -288,6 +319,9 @@ impl Scanner<'_> {
                     Frame::Object(map, key) => {
                         // Python dict assignment: a repeated key keeps its
                         // first position and takes the last value.
+                        if self.strict_metrics && map.contains_key(key.as_str()) {
+                            return Err(LoadError::DuplicateMember);
+                        }
                         map.insert(std::mem::take(key), value);
                         '}'
                     }

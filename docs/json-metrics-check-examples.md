@@ -76,3 +76,11 @@ Important behavior:
 - `$.summary.overall_ok` is the primary critical signal.
 - The Fractal payload sets `usb_snapshots_ok` to `null` when USB is offline.
   Avoid checking `$.summary.usb_snapshots_ok == true` unless you intentionally want alerts while USB is offline.
+
+The active Rust agent requires unique JSON members at every depth and finite
+numbers in endpoint responses; duplicates and non-finite values produce
+`json_error`. Path normalization strips only one leading `$.`, so `a.$.b`
+selects a literal `$` member below `a`; `$.items[0].value` supports array indices.
+Failure diagnostics render at most 200 characters plus an ellipsis each and
+share a 16,384-character evaluation allowance (lookahead included, markers extra).
+See [configuration](configuration.md#json-metrics-checks) for the input contract.

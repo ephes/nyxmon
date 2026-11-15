@@ -28709,32 +28709,12 @@
    }
   },
   {
-   "missing": false,
-   "path": "$.$.a",
-   "value": {
-    "": "empty",
-    "1": "one",
-    "b": {
-     "c": 1
-    },
-    "list": [
-     10,
-     20,
-     [
-      30,
-      {
-       "d": "deep"
-      }
-     ]
-    ]
-   }
+   "missing": true,
+   "path": "$.$.a"
   },
   {
-   "missing": false,
-   "path": "$.a.$.b",
-   "value": {
-    "c": 1
-   }
+   "missing": true,
+   "path": "$.a.$.b"
   },
   {
    "missing": true,
@@ -29061,6 +29041,96 @@
     }
    ],
    "value": null
+  },
+  {
+   "missing": false,
+   "path": "a.b",
+   "payload": {
+    "a": {
+     "$": {
+      "b": true
+     },
+     "b": false
+    },
+    "items": [
+     {
+      "ok": true
+     }
+    ]
+   },
+   "value": false
+  },
+  {
+   "missing": false,
+   "path": "$.a.b",
+   "payload": {
+    "a": {
+     "$": {
+      "b": true
+     },
+     "b": false
+    },
+    "items": [
+     {
+      "ok": true
+     }
+    ]
+   },
+   "value": false
+  },
+  {
+   "missing": false,
+   "path": "a.$.b",
+   "payload": {
+    "a": {
+     "$": {
+      "b": true
+     },
+     "b": false
+    },
+    "items": [
+     {
+      "ok": true
+     }
+    ]
+   },
+   "value": true
+  },
+  {
+   "missing": false,
+   "path": "$.a.$.b",
+   "payload": {
+    "a": {
+     "$": {
+      "b": true
+     },
+     "b": false
+    },
+    "items": [
+     {
+      "ok": true
+     }
+    ]
+   },
+   "value": true
+  },
+  {
+   "missing": false,
+   "path": "$.items[0].ok",
+   "payload": {
+    "a": {
+     "$": {
+      "b": true
+     },
+     "b": false
+    },
+    "items": [
+     {
+      "ok": true
+     }
+    ]
+   },
+   "value": true
   }
  ]
 }

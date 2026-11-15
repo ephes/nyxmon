@@ -6,10 +6,13 @@
 use crate::config::PyException;
 use crate::config::json_metrics::{MetricCheck, Severity};
 use crate::model::ResultStatus;
-use crate::pyjson::{DumpOpts, PyDict, PyJson, char_len, dumps, py_cmp};
+use crate::pyjson::{PyDict, PyJson, actual_prefix, char_len, py_cmp};
 
 /// `MAX_ACTUAL_CHARS`.
 pub const MAX_ACTUAL_CHARS: usize = 200;
+
+/// Shared serialization allowance per evaluation (truncation markers excluded).
+pub const MAX_DIAGNOSTIC_CHARS: usize = 16_384;
 
 /// CPython's default limit for `int(<str>)` (`sys.int_info.default_max_str_digits`).
 const MAX_INT_STR_DIGITS: usize = 4300;
@@ -46,9 +49,10 @@ pub fn resolve_path<'a>(
     if path == "$" {
         return Ok(Some(payload));
     }
-    let normalised = normalise_brackets(path).replace("$.", "");
+    let normalised = normalise_brackets(path);
+    let rooted = normalised.strip_prefix("$.").unwrap_or(&normalised);
     let mut current = payload;
-    for part in normalised.split('.').filter(|part| !part.is_empty()) {
+    for part in rooted.split('.').filter(|part| !part.is_empty()) {
         if let Some(value) = current.as_dict().and_then(|map| map.get(part)) {
             current = value;
             continue;
@@ -75,14 +79,24 @@ pub fn resolve_path<'a>(
 /// `_bounded_actual(actual)`: the `actual` value of a failure and, when its
 /// JSON form is longer than [`MAX_ACTUAL_CHARS`], the truncation marker.
 pub fn bounded_actual(actual: &PyJson) -> (PyJson, bool) {
-    let rendered = dumps(actual, &DumpOpts::bounded_actual())
-        .expect("bounded_actual allows NaN, so dumps cannot fail");
-    if char_len(&rendered) <= MAX_ACTUAL_CHARS {
+    let mut remaining = MAX_DIAGNOSTIC_CHARS;
+    bounded_actual_with_budget(actual, &mut remaining)
+}
+
+fn bounded_actual_with_budget(actual: &PyJson, remaining: &mut usize) -> (PyJson, bool) {
+    if *remaining == 0 {
+        return (PyJson::from("…"), true);
+    }
+    // Reserve one character of work for detecting overflow.
+    let limit = MAX_ACTUAL_CHARS.min(remaining.saturating_sub(1));
+    let (mut rendered, truncated) = actual_prefix(actual, limit);
+    // Charge the lookahead character that established truncation as well.
+    *remaining = remaining.saturating_sub(char_len(&rendered) + usize::from(truncated));
+    if !truncated {
         return (actual.clone(), false);
     }
-    let mut cut: String = rendered.chars().take(MAX_ACTUAL_CHARS).collect();
-    cut.push('\u{2026}');
-    (PyJson::Str(cut), true)
+    rendered.push('\u{2026}');
+    (PyJson::Str(rendered), true)
 }
 
 /// `_evaluate(payload, config)`: the failure records in check order.
@@ -92,6 +106,7 @@ pub fn bounded_actual(actual: &PyJson) -> (PyJson, bool) {
 /// non-string), raised at the first such check as in Python.
 pub fn evaluate(payload: &PyJson, checks: &[MetricCheck]) -> Result<Vec<PyJson>, PyException> {
     let mut failures = Vec::new();
+    let mut diagnostic_budget = MAX_DIAGNOSTIC_CHARS;
     for check in checks {
         let PyJson::Str(path) = &check.path else {
             return Err(PyException::TYPE_ERROR);
@@ -110,7 +125,7 @@ pub fn evaluate(payload: &PyJson, checks: &[MetricCheck]) -> Result<Vec<PyJson>,
         if py_cmp(check.op, actual, &check.value).unwrap_or(false) {
             continue;
         }
-        let (bounded, truncated) = bounded_actual(actual);
+        let (bounded, truncated) = bounded_actual_with_budget(actual, &mut diagnostic_budget);
         failure.insert("actual".to_owned(), bounded);
         failure.insert("severity".to_owned(), PyJson::from(check.severity.as_str()));
         if truncated {
