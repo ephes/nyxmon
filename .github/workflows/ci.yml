@@ -7,8 +7,6 @@ name: CI
 # secrets are needed.
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 permissions:
