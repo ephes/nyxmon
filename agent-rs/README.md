@@ -15,9 +15,12 @@ see git history. The Python agent stays in `src/nyxmon` but is not deployed;
 removing it together with its `_ensure_schema` DDL is a separate follow-up.
 
 Releases are cut from the commit that sets the crate version (see
-"Releases" below): `agent-rs-v0.1.4` (2026-11-12, bounded fleet execution,
-per-check cookies, whole-attempt HTTP deadlines and json-metrics clock bounds)
-follows `agent-rs-v0.1.3` (2026-11-12, `291a7e5`), which follows
+"Releases" below): `agent-rs-v0.1.5` (2026-11-15, bounded IMAP scans,
+hardened notification delivery and suppression evidence, store admission and
+schema constraint checks, strict json-metrics input) follows
+`agent-rs-v0.1.4` (2026-11-12, `e854b58`, bounded fleet execution,
+per-check cookies, whole-attempt HTTP deadlines and json-metrics clock bounds),
+which follows `agent-rs-v0.1.3` (2026-11-12, `291a7e5`), which follows
 `agent-rs-v0.1.2` (2026-11-02, `cb3928b`, warning digest delivery mode) and
 the eMudhra security patch
 [`agent-rs-v0.1.1`](https://github.com/ephes/nyxmon/releases/tag/agent-rs-v0.1.1),

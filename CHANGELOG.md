@@ -7,12 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent 0.1.5
+
+- Release the Rust agent as `agent-rs-v0.1.5` (crate version 0.1.5, tag
+  2026-11-15). Compared with `agent-rs-v0.1.4` (`e854b58`) it contains the
+  Rust agent changes merged since then, each with its own entry below
+  (marked "Ships in `agent-rs-v0.1.5`"):
+  bounded TLS probe cleanup and complete reading of consistent multiline SMTP
+  STARTTLS rejections; one total deadline for maintenance-suppression fetches;
+  suppression decisions that fail open on conversion errors, honour grace
+  expiry after the fetch and store only credential-free origins and scalar
+  evidence; scrubbed Telegram/OpsGate credentials, validated ticket IDs and
+  approval links, and a Telegram send acknowledged only by a valid
+  `message_id` envelope; bounded IMAP scans (at most 256 matching UIDs,
+  FETCH batches of 32 and 8 MiB of FETCH replies, otherwise
+  `incomplete_scan`), an escaped printable-ASCII subject literal and a
+  `invalid_message_date` refusal for dates more than 60 seconds in the
+  future; validated store batches and leases, a DB actor bounded to 32 jobs
+  and a schema check that refuses restored tables without their primary or
+  foreign keys; strict external JSON-metrics responses (duplicate members and
+  non-finite numbers are `json_error`) and bounded metric diagnostics. The
+  agent needs no new schema: its minimum stays
+  `nyxboard.0013_site_connectivity_state`. Upgrade notes: an IMAP check whose
+  subject search matches more than 256 messages now fails with
+  `incomplete_scan` (keep the monitoring mailbox cleanup running); an IMAP
+  `search_subject` with non-ASCII or control characters is refused; a
+  json-metrics endpoint that returns duplicate object members or `NaN`/
+  `Infinity` now fails with `json_error`; `--check-schema` and startup fail
+  for a restored database that lost a required primary or foreign key.
+
+### Changed and fixed since `agent-rs-v0.1.4`
+
+Entries marked "Ships in `agent-rs-v0.1.5`" are Rust agent changes; the
+others change the dashboard, which is deployed from the source tree.
+
 - Bound Rust metric diagnostic serialization to 200 characters per value and a
   shared 16,384-character evaluation allowance. Stop traversal at the writer
-  boundary instead of rendering complete subtrees before truncation.
+  boundary instead of rendering complete subtrees before truncation. (Ships in
+  `agent-rs-v0.1.5`.)
 - Reject duplicate object members and non-finite numbers in external Rust
   JSON-metrics responses as `json_error`; retain the general Python-compatible
-  decoder. Strip only one leading `$.` path prefix, preserving literal `$` keys.
+  decoder. Strip only one leading `$.` path prefix, preserving literal `$` keys. (Ships in
+  `agent-rs-v0.1.5`.)
 - Retire pending card mutations through HTMX cleanup and fence late callbacks
   by ownership, so replacement cards with the same ID can act independently.
 
@@ -26,37 +62,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Validate Rust store scheduling batches and leases before SQL, bound queued and
   running DB actor jobs to 32 while preserving accepted writes after cancellation,
-  and reject restored schemas missing required primary/foreign-key constraints.
+  and reject restored schemas missing required primary/foreign-key constraints. (Ships in
+  `agent-rs-v0.1.5`.)
 
 - Recheck IMAP message age after all FETCHes before selecting/deleting matches.
   Preserve empty-result retries; refuse dates over 60 seconds in the future as
-  `invalid_message_date` without deleting any matches.
+  `invalid_message_date` without deleting any matches. (Ships in
+  `agent-rs-v0.1.5`.)
 
 - Escape IMAP subject quotes/backslashes as one literal search argument and
   refuse unsupported/control characters. Bound scans to 256 distinct UIDs,
   batches of 32 and 8 MiB of total FETCH replies; report `incomplete_scan`
-  without partial success or deletion when admission/work limits are exceeded.
+  without partial success or deletion when admission/work limits are exceeded. (Ships in
+  `agent-rs-v0.1.5`.)
 
 - Redact Telegram and OpsGate submit credentials, including encoded forms,
   before truncating notification diagnostics. Validate bounded scalar ticket IDs
   and construct approval links with URL path segments. With an unusable approval
-  base URL the alert keeps the created ticket ID and says the link is unavailable.
+  base URL the alert keeps the created ticket ID and says the link is unavailable. (Ships in
+  `agent-rs-v0.1.5`.)
 - Keep primary Telegram alerts when optional ticket expiry/payload construction
   fails. Require a bounded valid Telegram success envelope with a message ID
-  before acknowledging delivery; malformed replies retain normal retry behavior.
+  before acknowledging delivery; malformed replies retain normal retry behavior. (Ships in
+  `agent-rs-v0.1.5`.)
 - Store Rust suppression sources as credential-free HTTP(S) origins and bound
   evidence to scalar diagnostics; keep private transport fields and large
-  payload objects out of new result history without changing rule matching.
+  payload objects out of new result history without changing rule matching. (Ships in
+  `agent-rs-v0.1.5`.)
 - Add a local TCP executor cancellation oracle with three live connection
   attempts, covering timeout, task cancellation, late winners, peer EOF and
-  subsequent recovery; retain the existing Happy Eyeballs cleanup policy.
+  subsequent recovery; retain the existing Happy Eyeballs cleanup policy. (Ships in
+  `agent-rs-v0.1.5`.)
 - Preserve Rust check results and normal alert delivery on suppression conversion
   errors, logging only a bounded diagnostic. Evaluate maintenance grace expiry
-  after fetching evidence, so expired windows cannot silence current failures.
+  after fetching evidence, so expired windows cannot silence current failures. (Ships in
+  `agent-rs-v0.1.5`.)
 
 - Give Rust maintenance-suppression fetches one total timeout across redirects
   and body reads; keep notification delivery fail-open on unavailable evidence.
-  Add a local UDP/TCP DNS cancellation, EOF, deadline and recovery journey.
+  Add a local UDP/TCP DNS cancellation, EOF, deadline and recovery journey. (Ships in
+  `agent-rs-v0.1.5`.)
 - Apply private/no-store handling to dashboard pages, forms, fragments and
   errors. Bound theme JSON to 4096 bytes and normalize resource/duplicate-member
   refusals without session changes. Require current signed definitions and
@@ -66,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bound Rust TCP TLS cleanup to one second, preserving certificate/probe outcomes
   with a separate fixed cleanup diagnostic; reject inconsistent SMTP STARTTLS
   multiline reply codes before TLS negotiation while still reading consistent
-  multiline rejections completely for their diagnostic.
+  multiline rejections completely for their diagnostic. (Ships in
+  `agent-rs-v0.1.5`.)
 
 ### Rust agent 0.1.4
 
