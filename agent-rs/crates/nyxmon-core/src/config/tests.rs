@@ -230,3 +230,56 @@ fn metrics_boundary_work_is_accepted() {
         256
     );
 }
+
+/// The same accept/refuse boundary pairs as the dashboard form's mirror
+/// (`tests/dashboard/test_forms.py::test_refuses_metric_work_the_agent_would_reject`).
+#[test]
+fn metrics_work_boundaries_match_the_dashboard_form() {
+    let nested = |depth: usize| format!("{}0{}", "[".repeat(depth), "]".repeat(depth));
+    let rules = |rule: String, n: usize| vec![rule; n];
+    let simple = r#"{"path":"$.a","op":"<","value":1,"severity":"warning"}"#.to_owned();
+    let path = format!(
+        r#"{{"path":"{}","op":"<","value":1,"severity":"warning"}}"#,
+        "é".repeat(4096)
+    );
+    let text = format!(
+        r#"{{"path":"$.a","op":"==","value":"{}","severity":"warning"}}"#,
+        "x".repeat(32_768)
+    );
+    let value =
+        |v: String| format!(r#"{{"path":"$.a","op":"==","value":{v},"severity":"warning"}}"#);
+    let zeros = |n: usize| format!("[{}]", vec!["0"; n].join(","));
+    let with = |mut base: Vec<String>, extra: &str| {
+        base.push(extra.to_owned());
+        base
+    };
+    let cases = [
+        (rules(simple.clone(), 256), rules(simple, 257)),
+        (
+            rules(path.clone(), 2),
+            with(
+                rules(path, 2),
+                r#"{"path":"$","op":"<","value":1,"severity":"warning"}"#,
+            ),
+        ),
+        (
+            rules(text.clone(), 2),
+            with(
+                rules(text, 2),
+                r#"{"path":"$.b","op":"==","value":null,"severity":"warning"}"#,
+            ),
+        ),
+        (vec![value(nested(64))], vec![value(nested(65))]),
+        (vec![value(zeros(8191))], vec![value(zeros(8192))]),
+    ];
+    let parse = |rules: &[String]| {
+        let data =
+            crate::pyjson::loads(&format!(r#"{{"url":"u","checks":[{}]}}"#, rules.join(",")))
+                .unwrap();
+        JsonMetricsConfig::from_data(&data)
+    };
+    for (accepted, refused) in cases {
+        assert!(parse(&accepted).is_ok());
+        assert!(parse(&refused).is_err());
+    }
+}

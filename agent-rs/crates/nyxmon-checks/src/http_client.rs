@@ -30,12 +30,11 @@ use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use cookie_store::{CookieStore, RawCookie};
+use cookie_store::{Cookie, CookieStore, RawCookie};
 use http_body_util::{BodyExt, Empty};
 use hyper::body::{Bytes, Incoming};
 use hyper::header::{self, HeaderMap, HeaderName, HeaderValue};
@@ -398,7 +397,6 @@ impl Drop for HttpResponse {
 /// The HTTP state of one batch (one httpx `AsyncClient`).
 pub struct HttpSession {
     jar: Mutex<CookieStore>,
-    cookie_overflow: AtomicBool,
     tls: tokio_rustls::TlsConnector,
     /// Tests: route host names to local addresses (the URL's port applies).
     overrides: Vec<(String, std::net::IpAddr)>,
@@ -422,7 +420,6 @@ impl HttpSession {
         tls.alpn_protocols = vec![b"http/1.1".to_vec()];
         HttpSession {
             jar: Mutex::new(CookieStore::new()),
-            cookie_overflow: AtomicBool::new(false),
             tls: tokio_rustls::TlsConnector::from(Arc::new(tls)),
             overrides: Vec::new(),
         }
@@ -435,7 +432,6 @@ impl HttpSession {
     pub fn for_check(&self) -> Self {
         HttpSession {
             jar: Mutex::new(CookieStore::new()),
-            cookie_overflow: AtomicBool::new(false),
             tls: self.tls.clone(),
             overrides: self.overrides.clone(),
         }
@@ -481,51 +477,50 @@ impl HttpSession {
         HeaderValue::from_str(&text).ok()
     }
 
-    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) -> Result<(), HttpError> {
-        let mut jar = self.jar.lock().unwrap_or_else(|e| e.into_inner());
-        let overflow = |jar: &mut CookieStore| {
-            jar.clear();
-            self.cookie_overflow.store(true, Ordering::Relaxed);
-            HttpError::new(
-                HttpErrorKind::Unexpected,
-                "HTTP cookie retention limit exceeded",
-            )
-        };
-        if self.cookie_overflow.load(Ordering::Relaxed) {
-            return Err(overflow(&mut jar));
-        }
+    /// Store the response's cookies within the per-check retention limits.
+    ///
+    /// Like a browser, a Set-Cookie field over [`MAX_SET_COOKIE_BYTES`] is
+    /// ignored, and once the jar is full ([`MAX_COOKIES`] or
+    /// [`MAX_COOKIE_BYTES`]) further new or growing cookies are ignored while
+    /// the retained ones keep working. Expiring (deleting) a cookie is always
+    /// admitted: it never adds an entry. The request itself never fails here.
+    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) {
         let Some(parsed) = cookie_url(url) else {
-            return Ok(());
+            return;
         };
+        let mut jar = self.jar.lock().unwrap_or_else(|e| e.into_inner());
         for value in headers.get_all(header::SET_COOKIE) {
             if value.as_bytes().len() > MAX_SET_COOKIE_BYTES {
-                return Err(overflow(&mut jar));
+                continue;
             }
-            let Some(mut cookie) = value
+            let Some(mut raw) = value
                 .to_str()
                 .ok()
                 .and_then(|text| RawCookie::parse(text.to_owned()).ok())
             else {
                 continue;
             };
-            if let Some(path) = cookie.path().map(cookie_path) {
-                cookie.set_path(path);
+            if let Some(path) = raw.path().map(cookie_path) {
+                raw.set_path(path);
             }
-            jar.store_response_cookies(std::iter::once(cookie), &parsed);
-            let count = jar.iter_any().count();
-            let bytes: usize = jar
-                .iter_any()
-                .map(|c| {
-                    c.to_string().len()
-                        + String::from(&c.path).len()
-                        + format!("{:?}", c.domain).len()
-                })
-                .sum();
-            if count > MAX_COOKIES || bytes > MAX_COOKIE_BYTES {
-                return Err(overflow(&mut jar));
+            let Ok(cookie) = Cookie::try_from_raw_cookie(&raw, &parsed) else {
+                continue;
+            };
+            if !cookie.is_expired() {
+                let previous = cookie.domain.as_cow().and_then(|domain| {
+                    jar.get_any(&domain, &String::from(&cookie.path), cookie.name())
+                        .map(retained_cookie_bytes)
+                });
+                let count = jar.iter_any().count() + usize::from(previous.is_none());
+                let bytes = jar.iter_any().map(retained_cookie_bytes).sum::<usize>()
+                    - previous.unwrap_or(0)
+                    + retained_cookie_bytes(&cookie);
+                if count > MAX_COOKIES || bytes > MAX_COOKIE_BYTES {
+                    continue;
+                }
             }
+            let _ = jar.insert(cookie.into_owned(), &parsed);
         }
-        Ok(())
     }
 
     /// Send one GET without following redirects.
@@ -539,12 +534,6 @@ impl HttpSession {
         authorization: Option<&HeaderValue>,
         extra_headers: &[(HeaderName, HeaderValue)],
     ) -> Result<HttpResponse, HttpError> {
-        if self.cookie_overflow.load(Ordering::Relaxed) {
-            return Err(HttpError::new(
-                HttpErrorKind::Unexpected,
-                "HTTP cookie retention limit exceeded",
-            ));
-        }
         check_scheme(url)?;
         if url.host.is_empty() {
             return Err(HttpError::request("Request URL is missing a host."));
@@ -595,10 +584,7 @@ impl HttpSession {
             }
         };
         let (parts, body) = response.into_parts();
-        if let Err(error) = self.store_cookies(url, &parts.headers) {
-            connection.abort();
-            return Err(error);
-        }
+        self.store_cookies(url, &parts.headers);
         Ok(HttpResponse {
             status: parts.status.as_u16(),
             headers: parts.headers,
@@ -687,6 +673,12 @@ fn escape_path(path: &str) -> String {
 /// normalise. Cookie paths from `Set-Cookie` get the same mapping.
 fn cookie_path(path: &str) -> String {
     escape_path(path).replace('%', "%25")
+}
+
+/// The bytes one stored cookie counts against [`MAX_COOKIE_BYTES`]: its
+/// serialized text plus its stored domain and path keys.
+fn retained_cookie_bytes(cookie: &Cookie<'_>) -> usize {
+    cookie.to_string().len() + String::from(&cookie.path).len() + String::from(&cookie.domain).len()
 }
 
 /// The URL the cookie jar matches against (path mapped by [`cookie_path`]).

@@ -566,44 +566,75 @@ async fn redirect_bodies_cannot_delay_following_or_the_redirect_limit() {
     assert_eq!(error.message, "Exceeded maximum allowed redirects.");
 }
 
+fn set_cookies(values: &[String]) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    for value in values {
+        headers.append(header::SET_COOKIE, HeaderValue::from_str(value).unwrap());
+    }
+    headers
+}
+
+fn cookie_names(session: &HttpSession) -> Vec<String> {
+    let jar = session.jar.lock().unwrap();
+    let mut names: Vec<String> = jar.iter_any().map(|c| c.name().to_owned()).collect();
+    names.sort();
+    names
+}
+
 #[test]
 fn retained_cookie_inventory_is_bounded_across_responses() {
     let session = session();
     let url = request_url("http://example.test/").unwrap();
     for i in 0..200 {
-        let mut headers = HeaderMap::new();
-        headers.append(
-            header::SET_COOKIE,
-            HeaderValue::from_str(&format!("c{i}=v; Path=/")).unwrap(),
-        );
-        let _ = session.store_cookies(&url, &headers);
+        session.store_cookies(&url, &set_cookies(&[format!("c{i}=v; Path=/")]));
     }
-    assert!(session.jar.lock().unwrap().iter_any().count() <= 128);
+    assert_eq!(session.jar.lock().unwrap().iter_any().count(), MAX_COOKIES);
+    // The first cookies stay retained; later new ones are ignored.
+    let names = cookie_names(&session);
+    assert!(names.contains(&"c0".to_owned()));
+    assert!(!names.contains(&"c199".to_owned()));
+    // A full jar still accepts a same-size replacement and a deletion.
+    session.store_cookies(&url, &set_cookies(&["c0=w; Path=/".to_owned()]));
+    let header = session.cookie_header(&url).unwrap();
+    assert!(header.to_str().unwrap().contains("c0=w"));
+    session.store_cookies(&url, &set_cookies(&["c1=; Path=/; Max-Age=0".to_owned()]));
+    assert!(
+        !session
+            .cookie_header(&url)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .contains("c1=")
+    );
 }
 
 #[test]
-fn cookie_byte_overflow_is_latched_and_replacement_does_not_grow_inventory() {
+fn cookie_bytes_are_bounded_and_oversized_fields_are_ignored() {
     let session = session();
     let url = request_url("http://example.test/").unwrap();
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::SET_COOKIE,
-        HeaderValue::from_static("sid=one; Path=/"),
-    );
+    session.store_cookies(&url, &set_cookies(&["sid=one; Path=/".to_owned()]));
     for _ in 0..200 {
-        session.store_cookies(&url, &headers).unwrap();
+        session.store_cookies(&url, &set_cookies(&["sid=one; Path=/".to_owned()]));
     }
-    assert_eq!(session.jar.lock().unwrap().iter_any().count(), 1);
+    assert_eq!(cookie_names(&session), ["sid"]);
+    // A field over the per-field limit is ignored, like a browser does,
+    // while its ordinary siblings in the same response are kept.
+    let oversized = format!("big={}; Path=/", "x".repeat(MAX_SET_COOKIE_BYTES));
+    session.store_cookies(
+        &url,
+        &set_cookies(&[oversized, "next=ok; Path=/".to_owned()]),
+    );
+    assert_eq!(cookie_names(&session), ["next", "sid"]);
     for i in 0..20 {
-        headers.insert(
-            header::SET_COOKIE,
-            HeaderValue::from_str(&format!("c{i}={}; Path=/", "x".repeat(4000))).unwrap(),
+        session.store_cookies(
+            &url,
+            &set_cookies(&[format!("c{i}={}; Path=/", "x".repeat(4000))]),
         );
-        if session.store_cookies(&url, &headers).is_err() {
-            break;
-        }
     }
-    assert!(session.cookie_overflow.load(Ordering::Relaxed));
-    assert_eq!(session.jar.lock().unwrap().iter_any().count(), 0);
-    assert!(session.store_cookies(&url, &HeaderMap::new()).is_err());
+    let jar = session.jar.lock().unwrap();
+    let bytes: usize = jar.iter_any().map(retained_cookie_bytes).sum();
+    assert!(bytes <= MAX_COOKIE_BYTES, "{bytes}");
+    // The session cookie survives the overflow.
+    assert!(jar.iter_any().any(|c| c.name() == "sid"));
+    assert!(jar.iter_any().count() < 22);
 }

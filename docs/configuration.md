@@ -1275,11 +1275,13 @@ it cannot fit, the last failure is returned. An initial attempt that cannot fit
 returns `timeout` without transport. Scheduler delays also consume the allowance.
 
 Each HTTP-family check jar retains at most 128 cookies and 32,768 bytes of cookie
-text/domain/path evidence, including expired entries. A Set-Cookie field may
-contain at most 4096 bytes. Limits apply across redirects and retries. Overflow
-clears the jar and permanently refuses that execution with nonretryable
-`unexpected_error` (`HTTP cookie retention limit exceeded`); no cookie value is
-included. Ordinary replacements and redirect sessions remain supported.
+text/domain/path evidence, including expired entries. Limits apply across
+redirects and retries. Like a browser, the agent ignores a Set-Cookie field over
+4096 bytes, and once the jar is full it ignores further new or growing cookies
+while the retained ones keep working; deleting (expiring) a cookie is always
+accepted. Cookie limits never fail the check itself, so an endpoint that sends
+large authentication cookies still reports its real status. Ordinary
+replacements and redirect sessions remain supported.
 
 ### JSON-metrics evaluation work and evidence
 
@@ -1288,7 +1290,9 @@ cumulative UTF-8 path bytes, or 65,536 expected-value work bytes before cloning
 rules or requesting HTTP. Expected values admit at most 8192 nodes and depth 64;
 keys/strings charge UTF-8 bytes, scalar values charge eight bytes and large
 integers conservatively charge their bit count. Limits are cumulative across
-rules. Refusal returns `configuration_error`; split oversized configurations.
+rules. Refusal returns `configuration_error`; split oversized configurations. The
+dashboard's JSON-metrics form applies the same limits when a check is saved and
+reports `metric checks exceed the evaluation work limit`.
 
 All failure paths, expected values and actual values share the 16,384-character
 diagnostic budget. Each field retains at most 200 characters plus an ellipsis;

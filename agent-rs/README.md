@@ -875,11 +875,13 @@ exit terminates remaining threads. No deployment or version bump is included.
 
 Plain HTTP/JSON-HTTP admit attempts and retry sleeps against the capped lease
 estimate on the Tokio monotonic clock. HTTP-family cookies have per-execution
-count/byte admission and fail closed on overflow. See the exact limits and
+count/byte admission: oversized fields and cookies beyond a full jar are
+ignored, as in a browser, without failing the check. See the exact limits and
 outcomes in `docs/configuration.md` (HTTP execution and cookie limits).
 
 Rule admission precedes cloning/transport: 256 rules, 16,384 UTF-8 path bytes,
-65,536 expected-value work bytes, 8192 value nodes and depth 64. The summary
+65,536 expected-value work bytes, 8192 value nodes and depth 64; the
+dashboard form mirrors this admission (parity test in `config/tests.rs`). The summary
 retains all severity counts under a 4096-byte limit; every failure retains its
 severity and explicit field truncation markers. See `docs/configuration.md` for
 accounting and the serialized envelope guarantee.

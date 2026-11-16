@@ -12,6 +12,7 @@ from nyxboard.forms import (
     PingHealthCheckForm,
     JsonMetricsHealthCheckForm,
     GenericHealthCheckForm,
+    METRIC_WORK_ERROR,
 )
 from nyxboard.models import Service, HealthCheck
 from nyxmon.domain import CheckType
@@ -1365,6 +1366,13 @@ class TestPingHealthCheckForm:
         }
 
 
+def _nested(depth):
+    value = 0
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
 class TestJsonMetricsHealthCheckForm:
     """Tests for JsonMetricsHealthCheckForm parsing and serialization."""
 
@@ -1387,6 +1395,111 @@ class TestJsonMetricsHealthCheckForm:
         )
         assert not form.is_valid()
         assert "checks_json" in form.errors
+
+    @staticmethod
+    def _metrics_form(service, checks):
+        return JsonMetricsHealthCheckForm(
+            data={
+                "name": "Mail metrics thresholds",
+                "service": service.id,
+                "check_type": CheckType.JSON_METRICS,
+                "check_interval": 300,
+                "disabled": False,
+                "url": "http://localhost:9100/.well-known/health",
+                "auth_username": "",
+                "auth_password": "",
+                "timeout": 10.0,
+                "retries": 1,
+                "retry_delay": 2.0,
+                "checks_json": json.dumps(checks),
+            }
+        )
+
+    @pytest.mark.parametrize(
+        ("accepted", "refused"),
+        [
+            # Rule count.
+            (
+                [{"path": "$.a", "op": "<", "value": 1, "severity": "warning"}] * 256,
+                [{"path": "$.a", "op": "<", "value": 1, "severity": "warning"}] * 257,
+            ),
+            # Cumulative UTF-8 path bytes.
+            (
+                [{"path": "é" * 4096, "op": "<", "value": 1, "severity": "warning"}]
+                * 2,
+                [{"path": "é" * 4096, "op": "<", "value": 1, "severity": "warning"}] * 2
+                + [{"path": "$", "op": "<", "value": 1, "severity": "warning"}],
+            ),
+            # Cumulative expected-value bytes.
+            (
+                [
+                    {
+                        "path": "$.a",
+                        "op": "==",
+                        "value": "x" * 32_768,
+                        "severity": "warning",
+                    }
+                ]
+                * 2,
+                [
+                    {
+                        "path": "$.a",
+                        "op": "==",
+                        "value": "x" * 32_768,
+                        "severity": "warning",
+                    }
+                ]
+                * 2
+                + [{"path": "$.b", "op": "==", "value": None, "severity": "warning"}],
+            ),
+            # Expected-value depth.
+            (
+                [
+                    {
+                        "path": "$.a",
+                        "op": "==",
+                        "value": _nested(64),
+                        "severity": "warning",
+                    }
+                ],
+                [
+                    {
+                        "path": "$.a",
+                        "op": "==",
+                        "value": _nested(65),
+                        "severity": "warning",
+                    }
+                ],
+            ),
+            # Expected-value nodes.
+            (
+                [
+                    {
+                        "path": "$.a",
+                        "op": "==",
+                        "value": [0] * 8191,
+                        "severity": "warning",
+                    }
+                ],
+                [
+                    {
+                        "path": "$.a",
+                        "op": "==",
+                        "value": [0] * 8192,
+                        "severity": "warning",
+                    }
+                ],
+            ),
+        ],
+    )
+    def test_refuses_metric_work_the_agent_would_reject(
+        self, service, accepted, refused
+    ):
+        form = self._metrics_form(service, accepted)
+        assert form.is_valid(), form.errors
+        form = self._metrics_form(service, refused)
+        assert not form.is_valid()
+        assert form.errors["checks_json"] == [METRIC_WORK_ERROR]
 
     def test_serializes_checks_and_optional_auth(self, service):
         checks_json = """
