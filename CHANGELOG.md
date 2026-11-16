@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Legacy check cleanup
+
+- Recheck inventoried definitions under writer ownership before disabling or
+  deleting legacy checks; skip concurrent repairs/edits and new entries. Count
+  deleted checks independently of cascaded results.
+- Stream legacy definition metadata in bounded keyset batches, spool only opaque
+  confirmation receipts, and commit backend-safe cleanup batches with explicit
+  partial-progress counts on failure.
+
+### Metric evaluation limits (pending Rust rollout)
+
+- Refuse excessive cumulative metric rule/path/expected-value work before HTTP;
+  the JSON-metrics form refuses the same configurations when saving.
+  Share bounded diagnostic evidence across paths, expected and actual values;
+  cap summaries while preserving every failure and worst severity.
+
+### HTTP execution limits (pending Rust rollout)
+
+- Admit HTTP/JSON-HTTP retry delays and full attempts within the capped derived
+  lease budget. Bound per-check HTTP-family cookie count and retained bytes;
+  ignore oversized Set-Cookie fields and cookies beyond a full jar, as browsers
+  do, instead of failing the check.
+
 ### IMAP cleanup evidence (pending Rust rollout)
 
 - Fence destructive UID commands with SELECT UIDVALIDITY and latch intervening

@@ -792,7 +792,7 @@ explicit literal-dollar identity cases. The strict endpoint fixture also covers
 contradictory health/count members.
 
 Diagnostic serialization uses the existing iterative serializer with a stopping
-writer and lazy container traversal. Each actual value gets at most 200 code
+writer and lazy container traversal. Each path, expected and actual value gets at most 200 code
 points plus an ellipsis. Each evaluation shares 16,384 code points of diagnostic
 work/output, including truncation lookahead, excluding markers; later diagnostics
 may be shorter or just an ellipsis. Exact small values, including non-finite
@@ -870,3 +870,18 @@ agent lock until its connection closes, including after caller cancellation or
 drain timeout in an embedding. Uncancellable accepted work may thus keep the lock
 longer than the caller's deadline; a second agent must wait/refuse. Normal process
 exit terminates remaining threads. No deployment or version bump is included.
+
+### HTTP execution resource envelope
+
+Plain HTTP/JSON-HTTP admit attempts and retry sleeps against the capped lease
+estimate on the Tokio monotonic clock. HTTP-family cookies have per-execution
+count/byte admission: oversized fields and cookies beyond a full jar are
+ignored, as in a browser, without failing the check. See the exact limits and
+outcomes in `docs/configuration.md` (HTTP execution and cookie limits).
+
+Rule admission precedes cloning/transport: 256 rules, 16,384 UTF-8 path bytes,
+65,536 expected-value work bytes, 8192 value nodes and depth 64; the
+dashboard form mirrors this admission (parity test in `config/tests.rs`). The summary
+retains all severity counts under a 4096-byte limit; every failure retains its
+severity and explicit field truncation markers. See `docs/configuration.md` for
+accounting and the serialized envelope guarantee.

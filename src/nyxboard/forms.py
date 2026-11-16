@@ -1287,6 +1287,70 @@ class PingHealthCheckForm(HealthCheckForm):
         return instance
 
 
+# Evaluation work the Rust agent admits for json-metrics rules
+# (agent-rs nyxmon-core config/json_metrics.rs `admit_work`); kept in step so
+# the form refuses configurations the agent would always reject.
+MAX_METRIC_CHECKS = 256
+MAX_METRIC_PATH_BYTES = 16_384
+MAX_METRIC_VALUE_BYTES = 65_536
+MAX_METRIC_VALUE_NODES = 8192
+MAX_METRIC_VALUE_DEPTH = 64
+METRIC_WORK_ERROR = "metric checks exceed the evaluation work limit"
+_I64_MIN, _I64_MAX = -(2**63), 2**63 - 1
+
+
+def _metric_value_work(value: Any, depth: int, budget: dict[str, int]) -> bool:
+    if depth > MAX_METRIC_VALUE_DEPTH or budget["nodes"] == 0:
+        return False
+    budget["nodes"] -= 1
+    if isinstance(value, str):
+        size = len(value.encode("utf-8", "surrogatepass"))
+    elif isinstance(value, bool) or value is None or isinstance(value, float):
+        size = 8
+    elif isinstance(value, int):
+        size = 8 if _I64_MIN <= value <= _I64_MAX else abs(value).bit_length()
+    elif isinstance(value, list):
+        return all(_metric_value_work(item, depth + 1, budget) for item in value)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            key_bytes = len(str(key).encode("utf-8", "surrogatepass"))
+            if key_bytes > budget["bytes"]:
+                return False
+            budget["bytes"] -= key_bytes
+            if not _metric_value_work(item, depth + 1, budget):
+                return False
+        return True
+    else:
+        size = 8
+    if size > budget["bytes"]:
+        return False
+    budget["bytes"] -= size
+    return True
+
+
+def metric_checks_within_work_limit(checks: list[Any]) -> bool:
+    """Mirror of the Rust agent's json-metrics rule admission."""
+    if len(checks) > MAX_METRIC_CHECKS:
+        return False
+    paths = MAX_METRIC_PATH_BYTES
+    budget = {"bytes": MAX_METRIC_VALUE_BYTES, "nodes": MAX_METRIC_VALUE_NODES}
+    for entry in checks:
+        if not isinstance(entry, dict):
+            continue
+        for key in ("path", "value"):
+            if key not in entry:
+                continue
+            value = entry[key]
+            if key == "path" and isinstance(value, str):
+                size = len(value.encode("utf-8", "surrogatepass"))
+                if size > paths:
+                    return False
+                paths -= size
+            elif not _metric_value_work(value, 0, budget):
+                return False
+    return True
+
+
 class JsonMetricsHealthCheckForm(HealthCheckForm):
     """Form for JSON metrics health checks.
 
@@ -1405,6 +1469,10 @@ class JsonMetricsHealthCheckForm(HealthCheckForm):
 
         if not isinstance(checks, list):
             self.add_error("checks_json", "Checks must be a JSON array")
+            return cleaned_data
+
+        if not metric_checks_within_work_limit(checks):
+            self.add_error("checks_json", METRIC_WORK_ERROR)
             return cleaned_data
 
         cleaned_data["_checks"] = checks

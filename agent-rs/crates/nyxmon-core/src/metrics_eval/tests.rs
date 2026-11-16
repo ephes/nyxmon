@@ -186,3 +186,26 @@ fn only_a_leading_root_prefix_is_removed() {
     }
     assert_eq!(resolve_path(&payload, "$.a.$.missing").unwrap(), None);
 }
+
+#[test]
+fn failure_envelope_bounds_expected_paths_and_summary() {
+    let checks = vec![
+        MetricCheck {
+            path: PyJson::from("🦀".repeat(2048)),
+            op: crate::pyjson::CmpOp::Eq,
+            value: PyJson::List(vec![PyJson::from("x".repeat(10000)); 100]),
+            severity: Severity::Critical,
+        };
+        256
+    ];
+    let failures = evaluate(&PyJson::Null, &checks).unwrap();
+    assert_eq!(failures.len(), 256);
+    assert_eq!(failure_status(&failures), ResultStatus::Error);
+    assert!(failure_summary(&failures).len() <= 4096);
+    let encoded = crate::pyjson::dumps(
+        &PyJson::List(failures),
+        &crate::pyjson::DumpOpts::python_default(),
+    )
+    .unwrap();
+    assert!(encoded.len() < 524288, "{}", encoded.len());
+}

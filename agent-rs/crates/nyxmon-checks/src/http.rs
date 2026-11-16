@@ -8,7 +8,9 @@
 //! as a whole ([`attempt_deadline`]), and the check uses its own cookie jar
 //! ([`crate::http_client::HttpSession::for_check`]).
 
-use std::time::Instant;
+use nyxmon_core::lease::{MAX_DERIVED_PROCESSING_LEASE_SECONDS, estimated_check_runtime_seconds};
+use std::time::Duration;
+use tokio::time::Instant;
 
 use hyper::header;
 use nyxmon_core::config::http::HttpConfig;
@@ -53,6 +55,16 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> CheckResult {
         }
     };
     let attempts = config.retries + 1;
+    let started = Instant::now();
+    let budget = Duration::from_secs(
+        estimated_check_runtime_seconds(check.check_id, &check.check_type, &check.data, None)
+            .clamp(0, MAX_DERIVED_PROCESSING_LEASE_SECONDS) as u64,
+    );
+    let may_retry = |attempt: u32| {
+        attempt < attempts
+            && started.elapsed().as_secs_f64() + config.retry_delay + config.timeout
+                <= budget.as_secs_f64()
+    };
     let request = GetRequest {
         url: &check.url,
         timeout: timeout_duration(config.timeout),
@@ -61,6 +73,14 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> CheckResult {
     };
     let http = ctx.http.for_check();
     for attempt in 1..=attempts {
+        if started.elapsed().as_secs_f64() + config.timeout > budget.as_secs_f64() {
+            return error(
+                check,
+                "timeout",
+                "HTTP execution budget exhausted".to_owned(),
+                attempt_keys(attempt - 1, attempts),
+            );
+        }
         let start = Instant::now();
         let response = match attempt_deadline(request.timeout, http.get(&request)).await {
             Ok(response) => response,
@@ -78,8 +98,21 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> CheckResult {
                         );
                     }
                 };
-                if attempt < attempts {
-                    ctx.sleeper.sleep(config.retry_delay).await;
+                if may_retry(attempt) {
+                    if tokio::time::timeout(
+                        budget.saturating_sub(started.elapsed()),
+                        ctx.sleeper.sleep(config.retry_delay),
+                    )
+                    .await
+                    .is_err()
+                    {
+                        return error(
+                            check,
+                            "timeout",
+                            "HTTP execution budget exhausted".to_owned(),
+                            attempt_keys(attempt, attempts),
+                        );
+                    }
                     continue;
                 }
                 return error(
@@ -94,12 +127,25 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> CheckResult {
         let location = header_text(&response.headers, header::LOCATION);
         // The body is never read: dropping the response closes the stream.
         drop(response);
-        let retryable = config.retry_status_codes.contains(&status_code) && attempt < attempts;
+        let retryable = config.retry_status_codes.contains(&status_code) && may_retry(attempt);
 
         if let Some(expected) = config.expected_status {
             if status_code != expected {
                 if retryable {
-                    ctx.sleeper.sleep(config.retry_delay).await;
+                    if tokio::time::timeout(
+                        budget.saturating_sub(started.elapsed()),
+                        ctx.sleeper.sleep(config.retry_delay),
+                    )
+                    .await
+                    .is_err()
+                    {
+                        return error(
+                            check,
+                            "timeout",
+                            "HTTP execution budget exhausted".to_owned(),
+                            attempt_keys(attempt, attempts),
+                        );
+                    }
                     continue;
                 }
                 let mut rest = vec![
@@ -116,7 +162,20 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> CheckResult {
             }
         } else if !(200..300).contains(&status_code) {
             if retryable {
-                ctx.sleeper.sleep(config.retry_delay).await;
+                if tokio::time::timeout(
+                    budget.saturating_sub(started.elapsed()),
+                    ctx.sleeper.sleep(config.retry_delay),
+                )
+                .await
+                .is_err()
+                {
+                    return error(
+                        check,
+                        "timeout",
+                        "HTTP execution budget exhausted".to_owned(),
+                        attempt_keys(attempt, attempts),
+                    );
+                }
                 continue;
             }
             let mut rest = vec![("status_code", PyJson::Int(status_code))];

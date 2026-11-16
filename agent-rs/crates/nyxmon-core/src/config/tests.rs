@@ -190,3 +190,96 @@ fn sorted_set_repr_matches_the_python_literal() {
         "{'critical', 'warning'}"
     );
 }
+
+#[test]
+fn metrics_total_work_is_admitted_before_cloning_rules() {
+    let rule = r#"{"path":"a","op":"==","value":0,"severity":"warning"}"#;
+    for rules in [
+        vec![rule.to_owned(); 257],
+        vec![rule.replace("\"a\"", &format!("\"{}\"", "a".repeat(2048))); 9],
+        vec![rule.replace(
+            "\"value\":0",
+            &format!("\"value\":\"{}\"", "x".repeat(65537)),
+        )],
+    ] {
+        let data =
+            crate::pyjson::loads(&format!(r#"{{"url":"u","checks":[{}]}}"#, rules.join(",")))
+                .unwrap();
+        assert!(JsonMetricsConfig::from_data(&data).is_err());
+    }
+}
+
+#[test]
+fn metrics_boundary_work_is_accepted() {
+    let rule = format!(
+        r#"{{"path":"{}","op":"==","value":"{}","severity":"warning"}}"#,
+        "p".repeat(64),
+        "v".repeat(256)
+    );
+    let data = crate::pyjson::loads(&format!(
+        r#"{{"url":"u","checks":[{}]}}"#,
+        vec![rule; 256].join(",")
+    ))
+    .unwrap();
+    let config = JsonMetricsConfig::from_data(&data).unwrap();
+    assert_eq!(config.checks.len(), 256);
+    assert_eq!(
+        crate::metrics_eval::evaluate(&PyJson::Null, &config.checks)
+            .unwrap()
+            .len(),
+        256
+    );
+}
+
+/// The same accept/refuse boundary pairs as the dashboard form's mirror
+/// (`tests/dashboard/test_forms.py::test_refuses_metric_work_the_agent_would_reject`).
+#[test]
+fn metrics_work_boundaries_match_the_dashboard_form() {
+    let nested = |depth: usize| format!("{}0{}", "[".repeat(depth), "]".repeat(depth));
+    let rules = |rule: String, n: usize| vec![rule; n];
+    let simple = r#"{"path":"$.a","op":"<","value":1,"severity":"warning"}"#.to_owned();
+    let path = format!(
+        r#"{{"path":"{}","op":"<","value":1,"severity":"warning"}}"#,
+        "é".repeat(4096)
+    );
+    let text = format!(
+        r#"{{"path":"$.a","op":"==","value":"{}","severity":"warning"}}"#,
+        "x".repeat(32_768)
+    );
+    let value =
+        |v: String| format!(r#"{{"path":"$.a","op":"==","value":{v},"severity":"warning"}}"#);
+    let zeros = |n: usize| format!("[{}]", vec!["0"; n].join(","));
+    let with = |mut base: Vec<String>, extra: &str| {
+        base.push(extra.to_owned());
+        base
+    };
+    let cases = [
+        (rules(simple.clone(), 256), rules(simple, 257)),
+        (
+            rules(path.clone(), 2),
+            with(
+                rules(path, 2),
+                r#"{"path":"$","op":"<","value":1,"severity":"warning"}"#,
+            ),
+        ),
+        (
+            rules(text.clone(), 2),
+            with(
+                rules(text, 2),
+                r#"{"path":"$.b","op":"==","value":null,"severity":"warning"}"#,
+            ),
+        ),
+        (vec![value(nested(64))], vec![value(nested(65))]),
+        (vec![value(zeros(8191))], vec![value(zeros(8192))]),
+    ];
+    let parse = |rules: &[String]| {
+        let data =
+            crate::pyjson::loads(&format!(r#"{{"url":"u","checks":[{}]}}"#, rules.join(",")))
+                .unwrap();
+        JsonMetricsConfig::from_data(&data)
+    };
+    for (accepted, refused) in cases {
+        assert!(parse(&accepted).is_ok());
+        assert!(parse(&refused).is_err());
+    }
+}

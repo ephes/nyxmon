@@ -1265,3 +1265,64 @@ the lock until its connection closes, even if an embedding returns or tears down
 its async runtime. Include these 15 seconds in the service stop allowance.
 Stderr records escape controls, retain printable Unicode and are capped at 8192
 bytes plus newline with `[truncated]` on oversized records.
+
+### HTTP execution and cookie limits (pending Rust rollout)
+
+Plain HTTP and JSON-HTTP retries share one monotonic execution allowance: the
+existing runtime estimate, including `max_runtime_seconds`, capped at 3600
+seconds. A retry requires room for its delay and full configured timeout; when
+it cannot fit, the last failure is returned. An initial attempt that cannot fit
+returns `timeout` without transport. Scheduler delays also consume the allowance.
+
+Each HTTP-family check jar retains at most 128 cookies and 32,768 bytes of cookie
+text/domain/path evidence, including expired entries. Limits apply across
+redirects and retries. Like a browser, the agent ignores a Set-Cookie field over
+4096 bytes, and once the jar is full it ignores further new or growing cookies
+while the retained ones keep working; deleting (expiring) a cookie is always
+accepted. Cookie limits never fail the check itself, so an endpoint that sends
+large authentication cookies still reports its real status. Ordinary
+replacements and redirect sessions remain supported.
+
+### JSON-metrics evaluation work and evidence
+
+The Rust executor refuses configurations exceeding 256 metric rules, 16,384
+cumulative UTF-8 path bytes, or 65,536 expected-value work bytes before cloning
+rules or requesting HTTP. Expected values admit at most 8192 nodes and depth 64;
+keys/strings charge UTF-8 bytes, scalar values charge eight bytes and large
+integers conservatively charge their bit count. Limits are cumulative across
+rules. Refusal returns `configuration_error`; split oversized configurations. The
+dashboard's JSON-metrics form applies the same limits when a check is saved and
+reports `metric checks exceed the evaluation work limit`.
+
+All failure paths, expected values and actual values share the 16,384-character
+diagnostic budget. Each field retains at most 200 characters plus an ellipsis;
+`path_truncated`, `expected_truncated` and `actual_truncated` identify omissions.
+Every failed rule keeps a record and severity, even after evidence is exhausted,
+so failure totals and worst status remain exact. The summary is at most 4096
+UTF-8 bytes and keeps severity counts with `[paths omitted]` when needed. For
+admitted configurations the serialized failure evidence and summary stay below
+512 KiB, including JSON escaping and omission metadata.
+
+### Cleaning legacy check definitions
+
+`uv run src/django/manage.py find_legacy_checks` lists unsupported checks;
+`--disable` disables them and `--delete` requires interactive confirmation.
+Cleanup rechecks each inventoried definition and supported-type eligibility
+inside its write transaction. Edited, repaired or deleted entries are skipped;
+new entries require another invocation. Runtime-only agent changes do not
+invalidate confirmation. Deleted counts count checks, excluding cascaded results.
+
+Inventory reads definition/service metadata in keyset batches of 100 up to the
+initial highest legacy ID, closing each query before display. An anonymous
+on-disk receipt retains only IDs and opaque revisions until confirmation;
+credentials and whole model inventories are not spooled. No writes happen before
+inventory completes and delete confirmation succeeds. Disable remains
+noninteractive.
+
+Mutation uses batches of at most 100 IDs (smaller for backend parameter limits),
+with an independent transaction and definition recheck per batch. Progress reports
+completed mutations, changed/deleted skips, already-disabled rows and remaining
+unprocessed rows. A failed batch rolls back; earlier batches stay committed and
+the command exits nonzero with exact completed/remaining counts. Rerun the
+inventory to review current definitions before retrying. Cleanup is deliberately
+not fleet-wide atomic. Dry runs also use bounded inventory queries.

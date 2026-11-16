@@ -34,7 +34,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use cookie_store::{CookieStore, RawCookie};
+use cookie_store::{Cookie, CookieStore, RawCookie};
 use http_body_util::{BodyExt, Empty};
 use hyper::body::{Bytes, Incoming};
 use hyper::header::{self, HeaderMap, HeaderName, HeaderValue};
@@ -55,6 +55,10 @@ use crate::httpx_url::HttpxUrl;
 pub const USER_AGENT: &str = "python-httpx/0.28.1";
 /// `DEFAULT_MAX_REDIRECTS`.
 pub const MAX_REDIRECTS: usize = 20;
+/// Per-check cookie storage limits, including expired entries.
+pub const MAX_COOKIES: usize = 128;
+pub const MAX_COOKIE_BYTES: usize = 32_768;
+pub const MAX_SET_COOKIE_BYTES: usize = 4096;
 
 /// The httpx exception family of a failed request.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -473,25 +477,49 @@ impl HttpSession {
         HeaderValue::from_str(&text).ok()
     }
 
+    /// Store the response's cookies within the per-check retention limits.
+    ///
+    /// Like a browser, a Set-Cookie field over [`MAX_SET_COOKIE_BYTES`] is
+    /// ignored, and once the jar is full ([`MAX_COOKIES`] or
+    /// [`MAX_COOKIE_BYTES`]) further new or growing cookies are ignored while
+    /// the retained ones keep working. Expiring (deleting) a cookie is always
+    /// admitted: it never adds an entry. The request itself never fails here.
     fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) {
         let Some(parsed) = cookie_url(url) else {
             return;
         };
-        let cookies: Vec<RawCookie<'static>> = headers
-            .get_all(header::SET_COOKIE)
-            .iter()
-            .filter_map(|value| value.to_str().ok())
-            .filter_map(|text| RawCookie::parse(text.to_owned()).ok())
-            .map(|mut cookie| {
-                if let Some(path) = cookie.path().map(cookie_path) {
-                    cookie.set_path(path);
+        let mut jar = self.jar.lock().unwrap_or_else(|e| e.into_inner());
+        for value in headers.get_all(header::SET_COOKIE) {
+            if value.as_bytes().len() > MAX_SET_COOKIE_BYTES {
+                continue;
+            }
+            let Some(mut raw) = value
+                .to_str()
+                .ok()
+                .and_then(|text| RawCookie::parse(text.to_owned()).ok())
+            else {
+                continue;
+            };
+            if let Some(path) = raw.path().map(cookie_path) {
+                raw.set_path(path);
+            }
+            let Ok(cookie) = Cookie::try_from_raw_cookie(&raw, &parsed) else {
+                continue;
+            };
+            if !cookie.is_expired() {
+                let previous = cookie.domain.as_cow().and_then(|domain| {
+                    jar.get_any(&domain, &String::from(&cookie.path), cookie.name())
+                        .map(retained_cookie_bytes)
+                });
+                let count = jar.iter_any().count() + usize::from(previous.is_none());
+                let bytes = jar.iter_any().map(retained_cookie_bytes).sum::<usize>()
+                    - previous.unwrap_or(0)
+                    + retained_cookie_bytes(&cookie);
+                if count > MAX_COOKIES || bytes > MAX_COOKIE_BYTES {
+                    continue;
                 }
-                cookie
-            })
-            .collect();
-        if !cookies.is_empty() {
-            let mut jar = self.jar.lock().unwrap_or_else(|e| e.into_inner());
-            jar.store_response_cookies(cookies.into_iter(), &parsed);
+            }
+            let _ = jar.insert(cookie.into_owned(), &parsed);
         }
     }
 
@@ -645,6 +673,12 @@ fn escape_path(path: &str) -> String {
 /// normalise. Cookie paths from `Set-Cookie` get the same mapping.
 fn cookie_path(path: &str) -> String {
     escape_path(path).replace('%', "%25")
+}
+
+/// The bytes one stored cookie counts against [`MAX_COOKIE_BYTES`]: its
+/// serialized text plus its stored domain and path keys.
+fn retained_cookie_bytes(cookie: &Cookie<'_>) -> usize {
+    cookie.to_string().len() + String::from(&cookie.path).len() + String::from(&cookie.domain).len()
 }
 
 /// The URL the cookie jar matches against (path mapped by [`cookie_path`]).

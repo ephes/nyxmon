@@ -16,8 +16,15 @@ Usage:
     python manage.py find_legacy_checks --delete
 """
 
-from django.core.management.base import BaseCommand
-from django.db import transaction
+import json
+import tempfile
+from itertools import islice
+
+from django.core.management.base import BaseCommand, CommandError
+from django.db import DatabaseError, connection, transaction
+from django.db.models import F
+
+from nyxboard.forms import DEFINITION_FIELDS, check_definition_revision
 
 from nyxboard.models import HealthCheck
 from nyxmon.domain import CheckType
@@ -55,90 +62,115 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Find all checks with unsupported types using ORM filter
-        legacy_checks = list(
-            HealthCheck.objects.exclude(
-                check_type__in=SUPPORTED_CHECK_TYPES
-            ).select_related("service")
-        )
-
-        if not legacy_checks:
+        candidates = HealthCheck.objects.exclude(check_type__in=SUPPORTED_CHECK_TYPES)
+        horizon = candidates.order_by("-pk").values_list("pk", flat=True).first()
+        if horizon is None:
             self.stdout.write(
                 self.style.SUCCESS(
                     "No legacy check types found. All checks are using supported types."
                 )
             )
             return
-
-        # Report what was found
-        self.stdout.write(
-            self.style.WARNING(
-                f"Found {len(legacy_checks)} check(s) with legacy/unsupported types:"
-            )
-        )
-
-        for check in legacy_checks:
-            status = "DISABLED" if check.disabled else "ENABLED"
-            self.stdout.write(
-                f"  - ID: {check.id}, Name: {check.name}, "
-                f"Type: {check.check_type}, Service: {check.service.name}, "
-                f"Status: {status}"
-            )
-
-        # Handle --delete option
-        if options["delete"]:
-            # Get confirmation BEFORE starting the transaction
-            confirm = input(
-                f"\nAre you sure you want to DELETE {len(legacy_checks)} legacy check(s)? "
-                "This cannot be undone. [y/N]: "
-            )
-            if confirm.lower() == "y":
-                # Wrap only the write operation in a transaction
-                with transaction.atomic():
-                    check_ids = [check.id for check in legacy_checks]
-                    deleted_count, _ = HealthCheck.objects.filter(
-                        id__in=check_ids
-                    ).delete()
-                self.stdout.write(
-                    self.style.SUCCESS(f"Deleted {deleted_count} legacy check(s).")
+        # Anonymous disk-backed receipt stores only IDs and opaque revisions;
+        # no full fleet or credentials remain in application memory.
+        with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as receipt:
+            count = enabled = cursor = 0
+            while True:
+                batch = list(
+                    candidates.filter(pk__gt=cursor, pk__lte=horizon)
+                    .select_related("service")
+                    .only("pk", *DEFINITION_FIELDS, "service__name")
+                    .order_by("pk")[:100]
                 )
-            else:
-                self.stdout.write("Delete operation cancelled.")
-            return
-
-        # Handle --disable option
-        if options["disable"]:
-            # Wrap only the write operation in a transaction
-            with transaction.atomic():
-                checks_to_disable = [
-                    check for check in legacy_checks if not check.disabled
-                ]
-                if checks_to_disable:
-                    check_ids = [check.id for check in checks_to_disable]
-                    disabled_count = HealthCheck.objects.filter(
-                        id__in=check_ids
-                    ).update(disabled=True)
-                else:
-                    disabled_count = 0
-
-            if disabled_count > 0:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"Disabled {disabled_count} legacy check(s). "
-                        f"({len(legacy_checks) - disabled_count} were already disabled)"
+                if not batch:
+                    break
+                for check in batch:
+                    receipt.write(
+                        json.dumps([check.pk, check_definition_revision(check)]) + "\n"
                     )
+                    count += 1
+                    enabled += not check.disabled
+                    status = "DISABLED" if check.disabled else "ENABLED"
+                    self.stdout.write(
+                        f"  - ID: {check.id}, Name: {check.name}, "
+                        f"Type: {check.check_type}, Service: {check.service.name}, Status: {status}"
+                    )
+                cursor = batch[-1].pk
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Found {count} check(s) with legacy/unsupported types."
                 )
-            else:
+            )
+            if options["delete"]:
+                confirm = input(
+                    f"\nAre you sure you want to DELETE {count} legacy check(s)? "
+                    "This cannot be undone. [y/N]: "
+                )
+                if confirm.lower() != "y":
+                    self.stdout.write("Delete operation cancelled.")
+                    return
+            if not (options["delete"] or options["disable"]):
                 self.stdout.write(
-                    self.style.SUCCESS("All legacy checks were already disabled.")
+                    f"\n{enabled} of these checks are currently ENABLED and will "
+                    "cause ERROR results when the agent runs."
                 )
-        else:
-            # Dry run - just list
-            enabled_count = sum(1 for check in legacy_checks if not check.disabled)
-            self.stdout.write(
-                f"\n{enabled_count} of these checks are currently ENABLED and will "
-                "cause ERROR results when the agent runs."
+                self.stdout.write(
+                    "Run with --disable to disable them, or --delete to remove them."
+                )
+                return
+            receipt.seek(0)
+            # Leave room for assignment/filter parameters on the backend.
+            batch_size = min(
+                100, max(1, (connection.features.max_query_params or 102) - 2)
             )
+            completed = skipped = already = processed = 0
+            try:
+                while lines := list(islice(receipt, batch_size)):
+                    revisions = dict(json.loads(line) for line in lines)
+                    changed, stale, disabled = self._mutate_batch(
+                        revisions, options["delete"]
+                    )
+                    completed += changed
+                    skipped += stale
+                    already += disabled
+                    processed += len(revisions)
+                    self.stdout.write(
+                        f"Progress: completed={completed}, skipped={skipped}, "
+                        f"already_disabled={already}, remaining={count - processed}"
+                    )
+            except (DatabaseError, OSError) as exc:
+                raise CommandError(
+                    f"Cleanup stopped: completed={completed}, skipped={skipped}, "
+                    f"already_disabled={already}, remaining={count - processed}. "
+                    "Earlier batches are committed; rerun inventory before retrying."
+                ) from exc
+            verb = "Deleted" if options["delete"] else "Disabled"
             self.stdout.write(
-                "Run with --disable to disable them, or --delete to remove them."
+                self.style.SUCCESS(
+                    f"{verb} {completed} legacy check(s). Skipped {skipped} changed/deleted; "
+                    f"{already} already disabled."
+                )
             )
+
+    def _mutate_batch(self, revisions, delete):
+        changed = already = 0
+        with transaction.atomic():
+            # Reserve SQLite's writer before re-reading definitions. On other
+            # backends the following row locks serialize concurrent edits.
+            HealthCheck.objects.filter(pk__in=revisions).update(disabled=F("disabled"))
+            current = HealthCheck.objects.filter(pk__in=revisions).select_for_update()
+            for check in current:
+                if (
+                    check.check_type in SUPPORTED_CHECK_TYPES
+                    or check_definition_revision(check) != revisions[check.pk]
+                ):
+                    continue
+                if delete:
+                    check.delete()
+                    changed += 1
+                elif not check.disabled:
+                    HealthCheck.objects.filter(pk=check.pk).update(disabled=True)
+                    changed += 1
+                else:
+                    already += 1
+        return changed, len(revisions) - changed - already, already
