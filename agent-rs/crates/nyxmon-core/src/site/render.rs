@@ -7,9 +7,9 @@ use std::fmt;
 
 use crate::pyjson::{PyDict, PyJson, char_len, py_truthy};
 
-/// The Python exception a coercion or rendering step raised. Python lets it
-/// escape the round (`run_once`), so the Rust observer propagates it the
-/// same way with every mutation done before it kept.
+/// A bounded coercion, rendering or lifecycle-admission error category.
+/// Restore validates a temporary candidate before installing any lifecycle
+/// state; other round errors propagate to the I/O driver.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Raised(pub &'static str);
 

@@ -168,12 +168,12 @@ async fn run_restores_then_loops_until_stopped() {
 }
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
-async fn run_logs_and_continues_when_a_round_raises() {
+async fn invalid_summary_stops_restore_before_probes_or_writes() {
     let (capture, _guard) = logging::capture();
     let db = TestDb::new();
     let store = db.store();
     // A summary record whose `attempt_at` Python's `int()` cannot convert:
-    // every round raises in `_process_summaries` after its write.
+    // admission refuses it before any probe, write or notification.
     store
         .open_collector_incident(
             SITE_INCIDENT_KEY,
@@ -202,15 +202,17 @@ async fn run_logs_and_continues_when_a_round_raises() {
     let site = runtime(make_config(), store, &clock, probes.clone(), None);
     site.run(stop).await;
 
-    assert_eq!(probes.calls.load(Ordering::SeqCst), 2 * per_round);
+    assert_eq!(probes.calls.load(Ordering::SeqCst), 0);
     let failed: Vec<String> = capture
         .messages()
         .into_iter()
-        .filter(|message| message.starts_with("site connectivity round failed"))
+        .filter(|message| message.starts_with("site connectivity observer stopped"))
         .collect();
     assert_eq!(
         failed,
-        vec!["site connectivity round failed\nOverflowError"; 2]
+        vec![
+            "site connectivity observer stopped: restoring the persisted lifecycle failed\nOverflowError"
+        ]
     );
 }
 
@@ -623,4 +625,269 @@ async fn probe_panics_are_internal_evidence_without_payloads() {
     assert!(diagnostics.contains("probe round deadline: target index 2"));
     assert!(!diagnostics.contains("target index 1"));
     assert!(!diagnostics.contains("panic-sentinel-secret"));
+}
+
+#[tokio::test]
+async fn invalid_persisted_paths_preserve_the_durable_row_across_restarts() {
+    for field in ["down_since", "release_at"] {
+        let db = TestDb::new();
+        let mut seed = crate::testutil::dict(
+            r#"{"version":1,"observed_at":1700000000,
+            "phase":"active","incident_id":1700000000,"paths":{
+            "ipv4":{"state":"down","down_since":1700000000},
+            "dns":{"state":"recovering","down_since":1700000000}},
+            "summaries":[{"incident_id":42,"started_at":42,"attempt_at":0}]}"#,
+        );
+        let PyJson::Dict(paths) = seed.get_mut("paths").unwrap() else {
+            unreachable!()
+        };
+        let PyJson::Dict(path) = paths.get_mut("dns").unwrap() else {
+            unreachable!()
+        };
+        path.insert(field.to_owned(), PyJson::Float(f64::INFINITY));
+        db.store()
+            .open_collector_incident(SITE_INCIDENT_KEY, T0, seed.clone())
+            .await
+            .unwrap();
+        let clock = ManualClock::new(T0);
+        let probes = Arc::new(ScriptedProbes::default());
+        let notifier = ScriptedNotifier::new(None);
+        for _ in 0..2 {
+            let store = db.store();
+            let mut site = runtime(
+                make_config(),
+                store.clone(),
+                &clock,
+                probes.clone(),
+                Some(notifier.clone()),
+            );
+            for _ in 0..2 {
+                assert!(site.run_once().await.is_err());
+                assert_eq!(site.snapshot().observed_at, 0);
+                assert_eq!(payload(&store).await, seed);
+            }
+        }
+        assert_eq!(probes.calls.load(Ordering::SeqCst), 0);
+        assert!(notifier.calls().is_empty());
+    }
+}
+
+#[tokio::test]
+async fn unsupported_payload_versions_fence_writes_and_sends_across_restarts() {
+    let db = TestDb::new();
+    let seed = crate::testutil::dict(
+        r#"{"version":99,"phase":"active",
+        "pending_future_notifications":{"sentinel":["keep",42]},
+        "summaries":[{"incident_id":7,"started_at":7,"attempt_at":0}]}"#,
+    );
+    db.store()
+        .open_collector_incident(SITE_INCIDENT_KEY, T0, seed.clone())
+        .await
+        .unwrap();
+    let clock = ManualClock::new(T0);
+    let probes = Arc::new(ScriptedProbes::default());
+    probes.set_down(&["ipv4"]);
+    let notifier = ScriptedNotifier::new(None);
+    for _ in 0..2 {
+        let store = db.store();
+        let mut site = runtime(
+            make_config(),
+            store.clone(),
+            &clock,
+            probes.clone(),
+            Some(notifier.clone()),
+        );
+        for _ in 0..3 {
+            let error = site
+                .run_once()
+                .await
+                .expect_err("unsupported lifecycle must refuse admission");
+            assert_eq!(error.0, "UnsupportedSitePayloadVersion");
+            assert_eq!(payload(&store).await, seed);
+            assert_eq!(site.snapshot().observed_at, 0);
+            clock.advance(1200);
+        }
+    }
+    assert_eq!(probes.calls.load(Ordering::SeqCst), 0);
+    assert!(notifier.calls().is_empty());
+}
+
+#[tokio::test]
+async fn probe_completion_time_drives_observation_release_and_recheck() {
+    let db = TestDb::new();
+    let store = db.store();
+    let clock = ManualClock::new(T0);
+    let probes = Arc::new(ScriptedProbes::default());
+    probes.set_down(&["ipv4"]);
+    let notifier = ScriptedNotifier::new(None);
+    let config = SiteEnvConfig {
+        down_after_failures: 1,
+        recovery_grace_seconds: 60,
+        incident_notify_after_seconds: 60,
+        ..make_config()
+    };
+    let mut site = runtime(
+        config,
+        store.clone(),
+        &clock,
+        probes.clone(),
+        Some(notifier.clone()),
+    );
+    site.run_once().await.unwrap();
+    probes.set_down(&[]);
+    clock.advance(60);
+    site.run_once().await.unwrap();
+    assert_eq!(
+        site.snapshot().path(PathName::Ipv4).unwrap().release_at,
+        T0 + 120
+    );
+    let clock_in_probe = clock.clone();
+    *probes.hook.lock().unwrap() = Some(Box::new(move |_| {
+        // Every concurrent probe completes at this same synthetic wall time.
+        clock_in_probe.advance(T0 + 180 - clock_in_probe.now());
+    }));
+    site.run_once().await.unwrap();
+    assert_eq!(site.snapshot().observed_at, T0 + 180);
+    assert_eq!(
+        site.snapshot().path(PathName::Ipv4).unwrap().state,
+        PathState::Up
+    );
+    let row = payload(&store).await;
+    assert_eq!(text(&row, "phase"), "idle");
+    assert_eq!(int(&row, "observed_at"), T0 + 180);
+    assert_eq!(
+        row.get("recheck")
+            .and_then(PyJson::as_dict)
+            .unwrap()
+            .get("pending"),
+        Some(&PyJson::Bool(false))
+    );
+    assert_eq!(notifier.calls().len(), 1);
+    site.run_once().await.unwrap();
+    assert_eq!(notifier.calls().len(), 1);
+}
+
+#[tokio::test]
+async fn repeated_and_backward_wall_times_keep_distinct_outage_generations() {
+    for second_start in [T0, T0 - 10] {
+        let db = TestDb::new();
+        let clock = ManualClock::new(T0);
+        let probes = Arc::new(ScriptedProbes::default());
+        let notifier = ScriptedNotifier::new(None);
+        notifier.always(Delivery::Failed);
+        let config = SiteEnvConfig {
+            down_after_failures: 1,
+            recovery_grace_seconds: 0,
+            incident_notify_after_seconds: 0,
+            ..make_config()
+        };
+        for start in [T0, second_start] {
+            clock.advance(start - clock.now());
+            let mut site = runtime(
+                config.clone(),
+                db.store(),
+                &clock,
+                probes.clone(),
+                Some(notifier.clone()),
+            );
+            probes.set_down(&["ipv4"]);
+            site.run_once().await.unwrap();
+            probes.set_down(&[]);
+            site.run_once().await.unwrap();
+        }
+        let row = payload(&db.store()).await;
+        let summaries = row.get("summaries").and_then(PyJson::as_list).unwrap();
+        assert_eq!(summaries.len(), 2, "each closed outage owns its summary");
+        let generations: Vec<i64> = summaries
+            .iter()
+            .map(|r| int(r.as_dict().unwrap(), "incident_generation"))
+            .collect();
+        assert!(generations[1] > generations[0]);
+        assert_eq!(int(&row, "last_generation"), generations[1]);
+    }
+}
+
+#[tokio::test]
+async fn restart_migrates_colliding_legacy_summaries_and_acknowledges_only_the_batch() {
+    let db = TestDb::new();
+    let seed = crate::testutil::dict(
+        r#"{"version":1,"phase":"idle","paths":{},
+        "summaries":[
+            {"incident_id":42,"started_at":42,"attempt_at":0,"attempts":0,"held_at_close":1},
+            {"incident_id":42,"started_at":42,"attempt_at":1700000000,"attempts":3,"held_at_close":2}]}"#,
+    );
+    db.store()
+        .open_collector_incident(SITE_INCIDENT_KEY, T0, seed)
+        .await
+        .unwrap();
+    let clock = ManualClock::new(T0 + 1);
+    let probes = Arc::new(ScriptedProbes::default());
+    let notifier = ScriptedNotifier::new(None);
+    // Crash/restart after a failed send leaves both exact records and their retry ownership.
+    notifier.always(Delivery::Failed);
+    let mut site = runtime(
+        make_config(),
+        db.store(),
+        &clock,
+        probes.clone(),
+        Some(notifier.clone()),
+    );
+    site.run_once().await.unwrap();
+    let before = payload(&db.store()).await;
+    let records = before.get("summaries").and_then(PyJson::as_list).unwrap();
+    assert_eq!(records.len(), 2);
+    assert_eq!(int(records[1].as_dict().unwrap(), "attempts"), 3);
+    let retained = records[1].clone();
+    drop(site);
+    // Make only the first record due, as after an interrupted retry window.
+    let mut row = before.clone();
+    let PyJson::List(records) = row.get_mut("summaries").unwrap() else {
+        unreachable!()
+    };
+    let PyJson::Dict(first) = &mut records[0] else {
+        unreachable!()
+    };
+    first.insert("attempt_at".to_owned(), PyJson::Int(0));
+    db.store()
+        .set_collector_incident_payload(SITE_INCIDENT_KEY, row)
+        .await
+        .unwrap();
+    notifier.always(Delivery::Delivered);
+    let mut site = runtime(make_config(), db.store(), &clock, probes, Some(notifier));
+    site.run_once().await.unwrap();
+    assert_eq!(
+        payload(&db.store()).await.get("summaries"),
+        Some(&PyJson::List(vec![retained]))
+    );
+}
+
+#[tokio::test]
+async fn slow_failed_probe_crosses_the_ongoing_notification_threshold_once() {
+    let db = TestDb::new();
+    let clock = ManualClock::new(T0);
+    let probes = Arc::new(ScriptedProbes::default());
+    probes.set_down(&["ipv4"]);
+    let notifier = ScriptedNotifier::new(None);
+    let config = SiteEnvConfig {
+        down_after_failures: 1,
+        incident_notify_after_seconds: 60,
+        ..make_config()
+    };
+    let mut site = runtime(
+        config,
+        db.store(),
+        &clock,
+        probes.clone(),
+        Some(notifier.clone()),
+    );
+    site.run_once().await.unwrap();
+    assert!(notifier.calls().is_empty());
+    let probe_clock = clock.clone();
+    *probes.hook.lock().unwrap() = Some(Box::new(move |_| {
+        probe_clock.advance(T0 + 120 - probe_clock.now());
+    }));
+    site.run_once().await.unwrap();
+    assert_eq!(notifier.calls().len(), 1);
+    site.run_once().await.unwrap();
+    assert_eq!(notifier.calls().len(), 1);
 }

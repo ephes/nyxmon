@@ -67,8 +67,40 @@ fn list(items: impl IntoIterator<Item = PyJson>) -> PyJson {
     PyJson::List(items.into_iter().collect())
 }
 
+/// Keep the historical replay oracle focused on its v1 public behavior.
+/// Generation ownership and exact v2 roundtrips have separate native tests.
+fn legacy_payload(payload: &PyDict) -> PyDict {
+    let mut payload = payload.clone();
+    payload.insert("version".to_owned(), PyJson::Int(1));
+    payload.shift_remove("incident_generation");
+    payload.shift_remove("last_generation");
+    if let Some(PyJson::Dict(paths)) = payload.get_mut("paths") {
+        for path in paths.values_mut().filter_map(|value| match value {
+            PyJson::Dict(path) => Some(path),
+            _ => None,
+        }) {
+            path.shift_remove("incident_generation");
+        }
+    }
+    if let Some(PyJson::Dict(ongoing)) = payload.get_mut("ongoing") {
+        ongoing.shift_remove("incident_generation");
+    }
+    if let Some(PyJson::List(records)) = payload.get_mut("summaries") {
+        for record in records {
+            if let PyJson::Dict(record) = record {
+                record.shift_remove("incident_generation");
+            }
+        }
+    }
+    payload
+}
+
 fn payload_text(payload: &PyDict) -> String {
-    dumps(&PyJson::Dict(payload.clone()), &DumpOpts::python_default()).expect("dumpable")
+    dumps(
+        &PyJson::Dict(legacy_payload(payload)),
+        &DumpOpts::python_default(),
+    )
+    .expect("dumpable")
 }
 
 /// The persistent fake state of the former generator's `gen_site.py:_World`
@@ -571,11 +603,94 @@ fn every_written_payload_restores_to_itself() {
                         Arc::new(WarnOnce::new(Arc::new(EventSink(world.events.clone()))));
                     let mut observer = Observer::new(config.clone(), warnings);
                     block_on(observer.restore(&world)).unwrap();
-                    assert_eq!(observer.build_payload(), payload, "{body}");
+                    let current = observer.build_payload();
+                    assert_eq!(legacy_payload(&current), payload, "{body}");
+                    world.state.lock().unwrap().row = Some(current.clone());
+                    let mut again = Observer::new(
+                        config.clone(),
+                        Arc::new(WarnOnce::new(Arc::new(EventSink(world.events.clone())))),
+                    );
+                    block_on(again.restore(&world)).unwrap();
+                    assert_eq!(again.build_payload(), current, "v2 roundtrip: {body}");
                     checked += 1;
                 }
             }
         }
     }
     assert!(checked > 500, "{checked} payloads");
+}
+
+#[test]
+fn invalid_restore_never_installs_partial_state_or_writes() {
+    for field in ["down_since", "release_at"] {
+        let world = World::default();
+        let warnings = Arc::new(WarnOnce::new(Arc::new(EventSink(world.events.clone()))));
+        let mut observer = Observer::new(
+            SiteEnvConfig {
+                mode: SiteMode::Enforce,
+                ..SiteEnvConfig::default()
+            },
+            warnings,
+        );
+        let before = observer.build_payload();
+        let mut payload = loads(
+            r#"{"version":1,"observed_at":1700000000,"phase":"active",
+            "incident_id":1700000000,"paths":{
+                "ipv4":{"state":"down","down_since":1700000000},
+                "dns":{"state":"recovering","down_since":1700000000}},
+            "summaries":[{"incident_id":42,"started_at":42,"attempt_at":0}]}"#,
+        )
+        .unwrap()
+        .into_dict()
+        .unwrap();
+        let PyJson::Dict(paths) = payload.get_mut("paths").unwrap() else {
+            unreachable!()
+        };
+        let PyJson::Dict(path) = paths.get_mut("dns").unwrap() else {
+            unreachable!()
+        };
+        path.insert(field.to_owned(), PyJson::Float(f64::INFINITY));
+        world.state.lock().unwrap().row = Some(payload.clone());
+        world.state.lock().unwrap().now = 1700000000;
+        for _ in 0..2 {
+            assert!(block_on(observer.restore(&world)).is_err());
+            assert!(!observer.is_restored());
+            assert_eq!(observer.build_payload(), before);
+            assert!(block_on(observer.run_once(&world)).is_err());
+            assert_eq!(world.state.lock().unwrap().row, Some(payload.clone()));
+            assert_eq!(world.state.lock().unwrap().write_calls, 0);
+            assert!(world.state.lock().unwrap().probed.is_empty());
+        }
+    }
+}
+
+#[test]
+fn version_two_generation_admission_is_atomic() {
+    for bad in [
+        r#"{"version":2,"last_generation":-1,"incident_generation":0}"#,
+        r#"{"version":2,"last_generation":0,"incident_generation":1,"phase":"active"}"#,
+        r#"{"version":2,"last_generation":2,"incident_generation":0,"summaries":[
+            {"incident_generation":1},{"incident_generation":1}]}"#,
+        r#"{"version":2,"last_generation":2,"incident_generation":0,"paths":{
+            "ipv4":{"state":"up","incident_generation":"oops"}}}"#,
+    ] {
+        let world = World::default();
+        world.state.lock().unwrap().row = Some(loads(bad).unwrap().into_dict().unwrap());
+        let warnings = Arc::new(WarnOnce::new(Arc::new(EventSink(world.events.clone()))));
+        let mut observer = Observer::new(
+            SiteEnvConfig {
+                mode: SiteMode::Enforce,
+                ..SiteEnvConfig::default()
+            },
+            warnings,
+        );
+        let before = observer.build_payload();
+        assert_eq!(
+            block_on(observer.restore(&world)),
+            Err(Raised("InvalidSiteIncidentGeneration"))
+        );
+        assert!(!observer.is_restored());
+        assert_eq!(observer.build_payload(), before);
+        assert_eq!(world.state.lock().unwrap().write_calls, 0);
+    }
 }

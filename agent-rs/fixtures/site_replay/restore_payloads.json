@@ -43,11 +43,11 @@
        "log",
        "WARNING",
        "nyxmon.adapters.site_connectivity",
-       "ignoring the site connectivity payload: unknown version 2"
+       "site connectivity payload version is unsupported; preserve the row and use a compatible agent or explicitly repair the lifecycle"
       ]
      ],
      "probed": [],
-     "raised": null,
+     "raised": "UnsupportedSitePayloadVersion",
      "snapshot": [
       0,
       "enforce",
@@ -81,20 +81,20 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000070, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+       "get",
+       "ok"
+      ],
+      [
+       "log",
+       "WARNING",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity payload version is unsupported; preserve the row and use a compatible agent or explicitly repair the lifecycle"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
-     "raised": null,
+     "probed": [],
+     "raised": "UnsupportedSitePayloadVersion",
      "snapshot": [
-      1700000070,
+      0,
       "enforce",
       0,
       {
@@ -126,20 +126,20 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000130, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+       "get",
+       "ok"
+      ],
+      [
+       "log",
+       "WARNING",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity payload version is unsupported; preserve the row and use a compatible agent or explicitly repair the lifecycle"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
-     "raised": null,
+     "probed": [],
+     "raised": "UnsupportedSitePayloadVersion",
      "snapshot": [
-      1700000130,
+      0,
       "enforce",
       0,
       {
@@ -171,7 +171,7 @@
    "steps": [
     {
      "op": "seed",
-     "payload_json": "{\"incident_type\": \"site_connectivity\", \"version\": 2, \"phase\": \"active\", \"incident_id\": 1700000000, \"observed_at\": 1700000000, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+     "payload_json": "{\"incident_type\": \"site_connectivity\", \"version\": 99, \"phase\": \"active\", \"incident_id\": 1700000000, \"observed_at\": 1700000000, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
     },
     {
      "at": 1700000060,
@@ -839,11 +839,11 @@
        "log",
        "WARNING",
        "nyxmon.adapters.site_connectivity",
-       "ignoring the site connectivity payload: unknown version '1'"
+       "site connectivity payload version is unsupported; preserve the row and use a compatible agent or explicitly repair the lifecycle"
       ]
      ],
      "probed": [],
-     "raised": null,
+     "raised": "UnsupportedSitePayloadVersion",
      "snapshot": [
       0,
       "enforce",
@@ -877,20 +877,20 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000070, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+       "get",
+       "ok"
+      ],
+      [
+       "log",
+       "WARNING",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity payload version is unsupported; preserve the row and use a compatible agent or explicitly repair the lifecycle"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
-     "raised": null,
+     "probed": [],
+     "raised": "UnsupportedSitePayloadVersion",
      "snapshot": [
-      1700000070,
+      0,
       "enforce",
       0,
       {
@@ -922,20 +922,20 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000130, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+       "get",
+       "ok"
+      ],
+      [
+       "log",
+       "WARNING",
+       "nyxmon.adapters.site_connectivity",
+       "site connectivity payload version is unsupported; preserve the row and use a compatible agent or explicitly repair the lifecycle"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
-     "raised": null,
+     "probed": [],
+     "raised": "UnsupportedSitePayloadVersion",
      "snapshot": [
-      1700000130,
+      0,
       "enforce",
       0,
       {
@@ -1866,20 +1866,14 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000070, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000000, \"recovered_at\": 1700000070, \"release_at\": 1700000970, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+       "get",
+       "ok"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
-     "raised": null,
+     "probed": [],
+     "raised": "OverflowError",
      "snapshot": [
-      1700000070,
+      0,
       "enforce",
       0,
       {
@@ -1891,10 +1885,10 @@
         0
        ],
        "ipv4": [
-        "recovering",
-        1700000000,
-        1700000070,
-        1700000970,
+        "up",
+        0,
+        0,
+        0,
         0
        ],
        "ipv6": [
@@ -1911,20 +1905,14 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000130, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"recovering\", \"down_since\": 1700000000, \"recovered_at\": 1700000070, \"release_at\": 1700000970, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [], \"recheck\": {}}"
+       "get",
+       "ok"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
-     "raised": null,
+     "probed": [],
+     "raised": "OverflowError",
      "snapshot": [
-      1700000130,
+      0,
       "enforce",
       0,
       {
@@ -1936,10 +1924,10 @@
         0
        ],
        "ipv4": [
-        "recovering",
-        1700000000,
-        1700000070,
-        1700000970,
+        "up",
+        0,
+        0,
+        0,
         0
        ],
        "ipv6": [
@@ -2005,7 +1993,7 @@
     "probe_timeout": 3,
     "recovery_grace_seconds": 900
    },
-   "name": "restore_nan_in_summary_raises_during_the_round",
+   "name": "restore_nan_in_summary_refuses_candidate",
    "results": [
     {
      "events": [
@@ -2016,9 +2004,9 @@
       ]
      ],
      "probed": [],
-     "raised": null,
+     "raised": "ValueError",
      "snapshot": [
-      1700000000,
+      0,
       "enforce",
       0,
       {
@@ -2050,20 +2038,14 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000070, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [{\"incident_id\": 1700010000, \"started_at\": 1700010000, \"ended_at\": 1700011200, \"paths\": {\"ipv4\": {\"down_since\": 1700010000, \"recovered_at\": 1700011200}}, \"ongoing_delivered\": false, \"held_at_close\": 1, \"attempt_at\": NaN, \"attempts\": 0}], \"recheck\": {}}"
+       "get",
+       "ok"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
+     "probed": [],
      "raised": "ValueError",
      "snapshot": [
-      1700000070,
+      0,
       "enforce",
       0,
       {
@@ -2095,20 +2077,14 @@
      "events": [
       [
        "store",
-       "set",
-       "ok",
-       "{\"incident_type\": \"site_connectivity\", \"version\": 1, \"phase\": \"idle\", \"incident_id\": 0, \"observed_at\": 1700000130, \"paths\": {\"dns\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv4\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}, \"ipv6\": {\"state\": \"up\", \"down_since\": 0, \"recovered_at\": 0, \"release_at\": 0, \"last_release_at\": 0}}, \"ongoing\": {}, \"summaries\": [{\"incident_id\": 1700010000, \"started_at\": 1700010000, \"ended_at\": 1700011200, \"paths\": {\"ipv4\": {\"down_since\": 1700010000, \"recovered_at\": 1700011200}}, \"ongoing_delivered\": false, \"held_at_close\": 1, \"attempt_at\": NaN, \"attempts\": 0}], \"recheck\": {}}"
+       "get",
+       "ok"
       ]
      ],
-     "probed": [
-      "cloudflare.com",
-      "1.1.1.1:443",
-      "8.8.8.8:443",
-      "[2606:4700:4700::1111]:443"
-     ],
+     "probed": [],
      "raised": "ValueError",
      "snapshot": [
-      1700000130,
+      0,
       "enforce",
       0,
       {

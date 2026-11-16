@@ -5,9 +5,9 @@
 //! Everything with side effects goes through [`SitePorts`]: the clock, the
 //! probe round, the `site:connectivity` incident row, the scheduler queries
 //! of the recovery recheck, the notifier, snapshot publication and logging.
-//! The control flow is a line-by-line port of the Python methods, so a call
-//! sequence against the ports is the same as the Python observer's against
-//! its store, scheduler and notifier; the replay fixtures pin that sequence.
+//! Historical call sequences are pinned by replay fixtures. Candidate admission,
+//! completion-time observations and v2 generations intentionally tighten the
+//! retired Python contract (PLAN.md D-19 and sections 6.4-6.7).
 //! The I/O driver (probe runner, store and notifier wiring, the loop) lives
 //! in `nyxmon-agent` (slice S11).
 
@@ -24,7 +24,7 @@ use super::snapshot::{PathSnapshot, PathState, SiteSnapshot};
 use crate::env::{ProbeTarget, SiteEnvConfig, SiteMode};
 use crate::log::{WarnOnce, loggers};
 use crate::model::HeldCheck;
-use crate::pyjson::{CmpOp, PyDict, PyJson, char_len, py_cmp, py_repr, py_truthy};
+use crate::pyjson::{CmpOp, PyDict, PyJson, char_len, py_cmp, py_truthy};
 
 /// `SITE_INCIDENT_KEY`: the one row that carries the whole site lifecycle.
 pub const SITE_INCIDENT_KEY: &str = "site:connectivity";
@@ -33,7 +33,7 @@ pub const SITE_INCIDENT_NAME: &str = "site connectivity";
 /// `SITE_INCIDENT_TYPE`: `payload["incident_type"]`.
 pub const SITE_INCIDENT_TYPE: &str = "site_connectivity";
 /// `SITE_PAYLOAD_VERSION`.
-pub const SITE_PAYLOAD_VERSION: i64 = 1;
+pub const SITE_PAYLOAD_VERSION: i64 = 2;
 /// `SITE_ONGOING_ERROR_TYPE`.
 pub const SITE_ONGOING_ERROR_TYPE: &str = "site_connectivity_outage";
 /// `SITE_SUMMARY_ERROR_TYPE`.
@@ -186,6 +186,7 @@ struct PathRuntime {
     release_at: i64,
     last_release_at: i64,
     failures: i64,
+    incident_generation: i64,
 }
 
 impl PathRuntime {
@@ -198,6 +199,7 @@ impl PathRuntime {
             release_at: 0,
             last_release_at: 0,
             failures: 0,
+            incident_generation: 0,
         }
     }
 
@@ -224,6 +226,7 @@ fn dict_of(value: Option<&PyJson>) -> PyDict {
 }
 
 /// `SiteConnectivityObserver` without its I/O.
+#[derive(Clone)]
 pub struct Observer {
     config: SiteEnvConfig,
     warnings: Arc<WarnOnce>,
@@ -231,6 +234,8 @@ pub struct Observer {
     observed_at: i64,
     phase: Phase,
     incident_id: i64,
+    incident_generation: i64,
+    last_generation: i64,
     ongoing: PyDict,
     summaries: Vec<PyDict>,
     recheck: PyDict,
@@ -277,6 +282,8 @@ impl Observer {
             observed_at: 0,
             phase: Phase::Idle,
             incident_id: 0,
+            incident_generation: 0,
+            last_generation: 0,
             ongoing: PyDict::new(),
             summaries: Vec::new(),
             recheck: PyDict::new(),
@@ -296,7 +303,7 @@ impl Observer {
         &self.snapshot
     }
 
-    /// Whether the persisted row was read successfully once.
+    /// Whether the persisted lifecycle was successfully admitted.
     pub fn is_restored(&self) -> bool {
         self.restored
     }
@@ -328,12 +335,14 @@ impl Observer {
     ///
     /// # Errors
     ///
-    /// The Python exception a malformed timestamp raises (`int(inf)`), with
-    /// the fields restored before it kept, exactly as in Python.
+    /// Invalid persisted numbers or timestamps refuse the complete candidate.
+    /// No observer state, publication or durable data changes on refusal.
     pub async fn restore<P: SitePorts>(&mut self, ports: &P) -> Result<(), Raised> {
         if self.config.mode == SiteMode::Off {
             return Ok(());
         }
+        // Re-reading an externally repaired row also re-establishes admission.
+        self.restored = false;
         let incident = match ports.get_incident().await {
             Ok(incident) => incident,
             Err(error) => {
@@ -345,27 +354,34 @@ impl Observer {
                 return Ok(());
             }
         };
-        self.restored = true;
         let Some(payload) = incident else {
+            self.restored = true;
             self.publish(ports);
             return Ok(());
         };
-        self.row_present = true;
         let current = PyJson::Int(SITE_PAYLOAD_VERSION);
-        let version = payload.get("version").unwrap_or(&current);
-        if !py_eq(Some(version), &current) {
+        let legacy = PyJson::Int(1);
+        let version = payload.get("version").unwrap_or(&legacy);
+        if !py_eq(Some(version), &current) && !py_eq(Some(version), &legacy) {
             ports.log(
                 LogLevel::Warning,
-                &format!(
-                    "ignoring the site connectivity payload: unknown version {}",
-                    py_repr(version)
-                ),
+                "site connectivity payload version is unsupported; preserve the row and use a compatible agent or explicitly repair the lifecycle",
                 None,
             );
-            self.publish(ports);
-            return Ok(());
+            return Err(Raised("UnsupportedSitePayloadVersion"));
         }
 
+        let mut candidate = self.clone();
+        candidate.restore_payload(ports, &payload)?;
+        candidate.row_present = true;
+        candidate.restored = true;
+        *self = candidate;
+        self.publish(ports);
+        Ok(())
+    }
+
+    /// Mutations here belong exclusively to an uncommitted candidate.
+    fn restore_payload<P: SitePorts>(&mut self, ports: &P, payload: &PyDict) -> Result<(), Raised> {
         if let Some(PyJson::Dict(raw_paths)) = payload.get("paths") {
             for (name, raw) in raw_paths {
                 let Some(name) = PathName::parse(name) else {
@@ -390,6 +406,7 @@ impl Observer {
                 path.recovered_at = as_int(raw.get("recovered_at"))?;
                 path.release_at = as_int(raw.get("release_at"))?;
                 path.last_release_at = as_int(raw.get("last_release_at"))?;
+                path.incident_generation = as_int(raw.get("incident_generation"))?;
                 // Derived, not persisted: a restored `failing` path carries
                 // the one failure its state implies.
                 path.failures = i64::from(state == PathState::Failing);
@@ -411,6 +428,12 @@ impl Observer {
             _ => Vec::new(),
         };
         self.recheck = dict_of(payload.get("recheck"));
+        self.validate_restored_values()?;
+        if py_eq(payload.get("version"), &PyJson::Int(SITE_PAYLOAD_VERSION)) {
+            self.restore_generations(payload)?;
+        } else {
+            self.migrate_legacy_generations()?;
+        }
 
         let now = ports.now();
         if self.phase == Phase::Active && !self.is_fresh(now) {
@@ -431,8 +454,138 @@ impl Observer {
             }
             self.phase = Phase::Idle;
             self.incident_id = 0;
+            self.incident_generation = 0;
         }
-        self.publish(ports);
+        Ok(())
+    }
+
+    /// Version 1 used wall seconds as identities. Allocate every pending
+    /// summary its own generation, even when those legacy labels collide.
+    fn migrate_legacy_generations(&mut self) -> Result<(), Raised> {
+        self.last_generation = 0;
+        for record in &mut self.summaries {
+            self.last_generation = self
+                .last_generation
+                .checked_add(1)
+                .ok_or(Raised("SiteIncidentGenerationExhausted"))?;
+            record.insert(
+                "incident_generation".to_owned(),
+                PyJson::Int(self.last_generation),
+            );
+        }
+        self.incident_generation = if self.phase == Phase::Active {
+            self.last_generation = self
+                .last_generation
+                .checked_add(1)
+                .ok_or(Raised("SiteIncidentGenerationExhausted"))?;
+            self.last_generation
+        } else {
+            0
+        };
+        if !self.ongoing.is_empty() {
+            let generation = if self.phase == Phase::Active
+                && py_eq(
+                    self.ongoing.get("incident_id"),
+                    &PyJson::Int(self.incident_id),
+                ) {
+                self.incident_generation
+            } else {
+                0
+            };
+            self.ongoing
+                .insert("incident_generation".to_owned(), PyJson::Int(generation));
+        }
+        for path in &mut self.paths {
+            path.incident_generation = if self.phase == Phase::Active
+                && (path.state.is_blocking()
+                    || (path.down_since >= self.incident_id && path.recovered_at > 0))
+            {
+                self.incident_generation
+            } else {
+                0
+            };
+        }
+        Ok(())
+    }
+
+    fn restore_generations(&mut self, payload: &PyDict) -> Result<(), Raised> {
+        fn generation(map: &PyDict, key: &str) -> Result<i64, Raised> {
+            match map.get(key) {
+                Some(PyJson::Int(value)) if *value >= 0 => Ok(*value),
+                _ => Err(Raised("InvalidSiteIncidentGeneration")),
+            }
+        }
+        self.last_generation = generation(payload, "last_generation")?;
+        self.incident_generation = generation(payload, "incident_generation")?;
+        if self.incident_generation > self.last_generation
+            || (self.phase == Phase::Active) != (self.incident_generation > 0)
+        {
+            return Err(Raised("InvalidSiteIncidentGeneration"));
+        }
+        let mut used = HashSet::new();
+        if self.incident_generation > 0 {
+            used.insert(self.incident_generation);
+        }
+        for record in &self.summaries {
+            let value = generation(record, "incident_generation")?;
+            if value == 0 || value > self.last_generation || !used.insert(value) {
+                return Err(Raised("InvalidSiteIncidentGeneration"));
+            }
+        }
+        if !self.ongoing.is_empty()
+            && generation(&self.ongoing, "incident_generation")? > self.last_generation
+        {
+            return Err(Raised("InvalidSiteIncidentGeneration"));
+        }
+        if let Some(PyJson::Dict(paths)) = payload.get("paths") {
+            for path in self.observed_paths() {
+                if let Some(PyJson::Dict(raw)) = paths.get(path.name.as_str()) {
+                    let value = generation(raw, "incident_generation")?;
+                    if value > self.last_generation
+                        || (path.state.is_blocking() && value != self.incident_generation)
+                    {
+                        return Err(Raised("InvalidSiteIncidentGeneration"));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_restored_values(&self) -> Result<(), Raised> {
+        iso(self.observed_at)?;
+        for path in self.observed_paths() {
+            for at in [
+                path.down_since,
+                path.recovered_at,
+                path.release_at,
+                path.last_release_at,
+            ] {
+                iso(at)?;
+            }
+        }
+        for key in ["incident_id", "attempt_at", "attempts", "last_alert_at"] {
+            as_int(self.ongoing.get(key))?;
+        }
+        iso(as_int(self.recheck.get("release_at"))?)?;
+        for record in &self.summaries {
+            for key in [
+                "incident_id",
+                "started_at",
+                "ended_at",
+                "held_at_close",
+                "attempt_at",
+                "attempts",
+            ] {
+                as_int(record.get(key))?;
+            }
+            if let Some(PyJson::Dict(paths)) = record.get("paths") {
+                for path in paths.values().filter_map(PyJson::as_dict) {
+                    iso(as_int(path.get("down_since"))?)?;
+                    iso(as_int(path.get("recovered_at"))?)?;
+                }
+            }
+        }
         Ok(())
     }
 
@@ -443,8 +596,8 @@ impl Observer {
     ///
     /// # Errors
     ///
-    /// The Python exception a malformed persisted value raises mid-round
-    /// (the I/O driver logs `site connectivity round failed`).
+    /// Invalid or unsupported persisted state, or an exhausted incident generation.
+    /// The I/O driver logs the bounded failure category.
     pub async fn run_once<P: SitePorts>(&mut self, ports: &P) -> Result<(), Raised> {
         if self.config.mode == SiteMode::Off {
             return Ok(());
@@ -461,8 +614,8 @@ impl Observer {
                 return Ok(());
             }
         }
-        let now = ports.now();
         let failed = self.probe_round(ports).await;
+        let now = ports.now();
         let released = self.advance_paths(&failed, now);
         self.observed_at = now;
         self.advance_incident(ports, now, &released).await?;
@@ -511,7 +664,11 @@ impl Observer {
         let mut released = Vec::new();
         for path in self.paths.iter_mut().filter(|path| path.observed()) {
             if let Some(failed) = failed[path.name.index()] {
+                let was_usable = !path.state.is_blocking();
                 Self::apply_outcome(&self.config, path, failed, now);
+                if was_usable && path.state == PathState::Down {
+                    path.incident_generation = self.incident_generation;
+                }
             }
             if path.state == PathState::Recovering && now >= path.release_at {
                 path.last_release_at = path.release_at;
@@ -592,8 +749,19 @@ impl Observer {
                     "site connectivity incident {incident_id} opened: {} down",
                     names.join(", ")
                 );
+                let generation = self
+                    .last_generation
+                    .checked_add(1)
+                    .ok_or(Raised("SiteIncidentGenerationExhausted"))?;
                 self.phase = Phase::Active;
                 self.incident_id = incident_id;
+                self.last_generation = generation;
+                self.incident_generation = generation;
+                for path in &mut self.paths {
+                    if path.state == PathState::Down {
+                        path.incident_generation = generation;
+                    }
+                }
                 ports.log(LogLevel::Info, &message, None);
             }
             return Ok(());
@@ -619,8 +787,8 @@ impl Observer {
     fn retire_ongoing(&mut self) {
         if self.ongoing.is_empty()
             || !py_eq(
-                self.ongoing.get("incident_id"),
-                &PyJson::Int(self.incident_id),
+                self.ongoing.get("incident_generation"),
+                &PyJson::Int(self.incident_generation),
             )
         {
             return;
@@ -657,7 +825,7 @@ impl Observer {
         let participants: Vec<PathRuntime> = self
             .observed_paths()
             .filter(|path| {
-                path.down_since >= incident_id && incident_id > 0 && path.recovered_at > 0
+                path.incident_generation == self.incident_generation && path.recovered_at > 0
             })
             .cloned()
             .collect();
@@ -667,14 +835,14 @@ impl Observer {
             .max()
             .unwrap_or(now);
         let lasted = last_recovered_at.saturating_sub(incident_id).max(0);
-        let incident = PyJson::Int(incident_id);
+        let generation = PyJson::Int(self.incident_generation);
         let delivered = truthy(self.ongoing.get("delivered"))
-            && py_eq(self.ongoing.get("incident_id"), &incident);
+            && py_eq(self.ongoing.get("incident_generation"), &generation);
         let eligible = lasted >= self.config.incident_notify_after_seconds || delivered;
         let already = self
             .summaries
             .iter()
-            .any(|record| py_eq(record.get("incident_id"), &incident));
+            .any(|record| py_eq(record.get("incident_generation"), &generation));
         if eligible && !already {
             let mut paths = PyDict::new();
             for path in &participants {
@@ -692,6 +860,7 @@ impl Observer {
             };
             let mut record = PyDict::new();
             record.insert("incident_id".to_owned(), PyJson::Int(incident_id));
+            record.insert("incident_generation".to_owned(), generation);
             record.insert("started_at".to_owned(), PyJson::Int(incident_id));
             record.insert("ended_at".to_owned(), PyJson::Int(last_recovered_at));
             record.insert("paths".to_owned(), PyJson::Dict(paths));
@@ -719,6 +888,7 @@ impl Observer {
         );
         self.phase = Phase::Idle;
         self.incident_id = 0;
+        self.incident_generation = 0;
         Ok(())
     }
 
@@ -736,8 +906,8 @@ impl Observer {
             return Ok(());
         }
         let same_incident = py_eq(
-            self.ongoing.get("incident_id"),
-            &PyJson::Int(self.incident_id),
+            self.ongoing.get("incident_generation"),
+            &PyJson::Int(self.incident_generation),
         );
         let last_alert_at = if same_incident {
             as_int(self.ongoing.get("last_alert_at"))?
@@ -772,6 +942,10 @@ impl Observer {
 
         let mut ongoing = PyDict::new();
         ongoing.insert("incident_id".to_owned(), PyJson::Int(self.incident_id));
+        ongoing.insert(
+            "incident_generation".to_owned(),
+            PyJson::Int(self.incident_generation),
+        );
         ongoing.insert("attempt_at".to_owned(), PyJson::Int(now));
         ongoing.insert(
             "attempts".to_owned(),
@@ -830,26 +1004,17 @@ impl Observer {
         if batch.is_empty() {
             return Ok(());
         }
-        let mut covered = HashSet::new();
-        for index in batch {
-            covered.insert(as_int(self.summaries[index].get("incident_id"))?);
-        }
-        let mut marked = Vec::with_capacity(self.summaries.len());
-        for record in &self.summaries {
-            if covered.contains(&as_int(record.get("incident_id"))?) {
-                let mut record = record.clone();
+        let covered: HashSet<usize> = batch.into_iter().collect();
+        for (index, record) in self.summaries.iter_mut().enumerate() {
+            if covered.contains(&index) {
                 let attempts = as_int(record.get("attempts"))?;
                 record.insert("attempt_at".to_owned(), PyJson::Int(now));
                 record.insert(
                     "attempts".to_owned(),
                     PyJson::Int(attempts.saturating_add(1)),
                 );
-                marked.push(record);
-            } else {
-                marked.push(record.clone());
             }
         }
-        self.summaries = marked;
         if !self.write_payload(ports, now).await {
             return Ok(());
         }
@@ -860,13 +1025,12 @@ impl Observer {
             return Ok(());
         }
         // Only the records this send covered are removed.
-        let mut kept = Vec::with_capacity(self.summaries.len());
-        for record in &self.summaries {
-            if !covered.contains(&as_int(record.get("incident_id"))?) {
-                kept.push(record.clone());
-            }
-        }
-        self.summaries = kept;
+        self.summaries = self
+            .summaries
+            .drain(..)
+            .enumerate()
+            .filter_map(|(index, record)| (!covered.contains(&index)).then_some(record))
+            .collect();
         self.write_payload(ports, now).await;
         Ok(())
     }
@@ -1051,6 +1215,10 @@ impl Observer {
                 "last_release_at".to_owned(),
                 PyJson::Int(path.last_release_at),
             );
+            entry.insert(
+                "incident_generation".to_owned(),
+                PyJson::Int(path.incident_generation),
+            );
             paths.insert(path.name.as_str().to_owned(), PyJson::Dict(entry));
         }
         let mut payload = PyDict::new();
@@ -1066,12 +1234,23 @@ impl Observer {
             PyJson::List(self.summaries.iter().cloned().map(PyJson::Dict).collect()),
         );
         payload.insert("recheck".to_owned(), PyJson::Dict(self.recheck.clone()));
+        payload.insert(
+            "incident_generation".to_owned(),
+            PyJson::Int(self.incident_generation),
+        );
+        payload.insert(
+            "last_generation".to_owned(),
+            PyJson::Int(self.last_generation),
+        );
         payload
     }
 
     /// `_write_payload`: replace the row's payload, create the row when it
     /// is missing; any error marks the row unknown and returns `false`.
     async fn write_payload<P: SitePorts>(&mut self, ports: &P, now: i64) -> bool {
+        if !self.restored {
+            return false;
+        }
         let payload = self.build_payload();
         if self.row_present {
             match ports.set_incident_payload(&payload).await {
