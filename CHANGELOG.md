@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### DNS answer evidence (pending Rust rollout)
 
+- Refuse selected CNAME RRsets with conflicting canonical targets, independently
+  of answer order. Preserve equivalent and case-variant duplicate aliases.
+
 - Deduplicate canonical answer records with hashing while preserving first-seen
   order and case-insensitive names. Bound expanded answer work across chain steps
   before allocating canonical evidence; refuse excessive compressed responses.

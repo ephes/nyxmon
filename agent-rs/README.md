@@ -720,6 +720,9 @@ order (domain names remain case-insensitive). All CNAME-chain scans share a
 512 KiB work allowance, charging record visits, compared owner-name wire bytes
 and expanded canonical RDATA bytes before allocation/hashing. Exhaustion returns
 a bounded resolver failure, including for otherwise valid compressed responses.
+A selected CNAME RRset must have exactly one canonical target, both for direct
+CNAME queries and while following aliases. Conflicting targets fail regardless
+of answer order; equal targets with different ASCII casing remain duplicates.
 
 ## Lease result authority and bounded repair
 

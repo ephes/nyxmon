@@ -721,6 +721,7 @@ pub enum ChainError {
     /// `FormError`: not exactly one question.
     QuestionCount,
     WorkLimit,
+    ConflictingCname,
     ChainTooLong,
     AnswerForNxdomain,
 }
@@ -729,6 +730,7 @@ impl fmt::Display for ChainError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             ChainError::QuestionCount => "The DNS packet passed to from_wire() is invalid.",
+            ChainError::ConflictingCname => "The DNS answer has conflicting CNAME targets.",
             ChainError::WorkLimit => "The DNS answer work limit was exceeded.",
             ChainError::ChainTooLong => "The CNAME chain is too long.",
             ChainError::AnswerForNxdomain => "The rcode is NXDOMAIN but an answer was found.",
@@ -754,6 +756,9 @@ pub fn resolve_chaining(response: &Message) -> Result<Option<Vec<&RData>>, Chain
             && let Some(rrset) =
                 find_rrset(&response.answers, &qname, question.rtype, &mut work_left)?
         {
+            if question.rtype == QueryType::Cname.code() && rrset.len() != 1 {
+                return Err(ChainError::ConflictingCname);
+            }
             answer = Some(rrset);
             break;
         }
@@ -769,6 +774,9 @@ pub fn resolve_chaining(response: &Message) -> Result<Option<Vec<&RData>>, Chain
         else {
             break;
         };
+        if cnames.len() != 1 {
+            return Err(ChainError::ConflictingCname);
+        }
         match cnames.first() {
             Some(RData::Target(target)) => qname = target.clone(),
             _ => break,
