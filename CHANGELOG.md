@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Ping process retirement (pending Rust rollout)
+
+- Refuse successful ping results when group signalling or child kill/wait fails;
+  report nonretryable `process_retirement_error`. Preserve primary timeout/output
+  failures and log bounded secondary cleanup evidence. Keep Drop best effort.
+  On macOS, verify the lone unreaped zombie-leader case through public libproc
+  inspection before accepting XNU's otherwise ambiguous `EPERM`.
+
+- Observe successful process completion without reaping the leader, signal the
+  owned group while its identity remains reserved, then reap the direct child.
+
+### DNS answer evidence (pending Rust rollout)
+
+- Refuse selected CNAME RRsets with conflicting canonical targets, independently
+  of answer order. Preserve equivalent and case-variant duplicate aliases.
+
+- Deduplicate canonical answer records with hashing while preserving first-seen
+  order and case-insensitive names. Bound expanded answer work across chain steps
+  before allocating canonical evidence; refuse excessive compressed responses.
+
 ### Legacy check cleanup
 
 - Recheck inventoried definitions under writer ownership before disabling or

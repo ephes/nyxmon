@@ -266,3 +266,119 @@ fn repeated_compressed_names_exhaust_shared_work_budget() {
         assert!(parsed.answers.len() < usize::from(repetitions));
     }
 }
+
+#[test]
+fn expanded_answer_evidence_has_a_shared_limit() {
+    let name = format!(
+        "{}.{}.{}.test",
+        "a".repeat(63),
+        "b".repeat(63),
+        "c".repeat(63)
+    );
+    let mut wire = header(1, FLAG_QR, [1, 1600, 0, 0]);
+    name_from_text(&name).unwrap().write_wire(&mut wire);
+    wire.extend([0, 6, 0, 1]);
+    for serial in 0..1600u32 {
+        wire.extend([0xc0, 12, 0, 6, 0, 1, 0, 0, 0, 60, 0, 24]);
+        wire.extend([0xc0, 12, 0xc0, 12]);
+        wire.extend(serial.to_be_bytes());
+        wire.extend([0; 16]);
+    }
+    assert!(wire.len() <= 65535);
+    let response = parse_message(&wire).unwrap();
+    assert!(
+        resolve_chaining(&response).is_err(),
+        "expanded answer work must be bounded"
+    );
+}
+
+#[test]
+fn large_rrsets_keep_first_seen_order() {
+    for count in [1000u16, 2000, 4000] {
+        for rtype in [1u16, 16] {
+            let mut wire = header(1, FLAG_QR, [1, count + 2, 0, 0]);
+            name_from_text("a.test").unwrap().write_wire(&mut wire);
+            wire.extend(rtype.to_be_bytes());
+            wire.extend(CLASS_IN.to_be_bytes());
+            for i in (0..count).chain([3, 0]) {
+                wire.extend([0xc0, 12]);
+                wire.extend(rtype.to_be_bytes());
+                wire.extend([0, 1, 0, 0, 0, 60]);
+                wire.extend(4u16.to_be_bytes());
+                if rtype == 1 {
+                    wire.extend([192, 0, (i >> 8) as u8, i as u8]);
+                } else {
+                    wire.extend([3, b'x', (i >> 8) as u8, i as u8]);
+                }
+            }
+            assert!(wire.len() <= 65535);
+            let response = parse_message(&wire).unwrap();
+            let mut work_left = ANSWER_WORK_LIMIT;
+            let rrset = find_rrset(
+                &response.answers,
+                &response.questions[0].name,
+                rtype,
+                &mut work_left,
+            )
+            .unwrap()
+            .unwrap();
+            // Each candidate costs one visit, eight owner bytes and four data
+            // bytes, including duplicates: exact linear growth, no timing test.
+            assert_eq!(ANSWER_WORK_LIMIT - work_left, usize::from(count + 2) * 13);
+            assert_eq!(rrset.len(), usize::from(count));
+            for (record, expected) in rrset.iter().zip(&response.answers) {
+                assert_eq!(record.canonical(), expected.rdata.canonical());
+            }
+        }
+    }
+}
+
+fn alias_response(targets: &[&str], qtype: u16) -> Message {
+    let mut wire = header(1, FLAG_QR, [1, targets.len() as u16 + 1, 0, 0]);
+    name_from_text("a.test").unwrap().write_wire(&mut wire);
+    wire.extend(qtype.to_be_bytes());
+    wire.extend(CLASS_IN.to_be_bytes());
+    for target in targets {
+        wire.extend([0xc0, 12, 0, 5, 0, 1, 0, 0, 0, 60]);
+        let mut data = Vec::new();
+        name_from_text(target).unwrap().write_wire(&mut data);
+        wire.extend((data.len() as u16).to_be_bytes());
+        wire.extend(data);
+    }
+    name_from_text("healthy.test")
+        .unwrap()
+        .write_wire(&mut wire);
+    wire.extend([0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 192, 0, 2, 1]);
+    parse_message(&wire).unwrap()
+}
+
+#[test]
+fn conflicting_cname_targets_are_refused_in_either_order() {
+    for qtype in [1, 5] {
+        for targets in [
+            ["healthy.test", "other.test"],
+            ["other.test", "healthy.test"],
+        ] {
+            let message = alias_response(&targets, qtype);
+            let error = resolve_chaining(&message).expect_err("ambiguous aliases must fail");
+            assert_eq!(
+                error.to_string(),
+                "The DNS answer has conflicting CNAME targets."
+            );
+        }
+    }
+}
+
+#[test]
+fn equivalent_cname_targets_keep_first_spelling_and_resolve() {
+    let message = alias_response(&["HEALTHY.test", "healthy.TEST", "HEALTHY.test"], 1);
+    assert_eq!(
+        record_texts(&resolve_chaining(&message).unwrap().unwrap()).unwrap(),
+        ["192.0.2.1"]
+    );
+    let message = alias_response(&["HEALTHY.test", "healthy.TEST"], 5);
+    assert_eq!(
+        record_texts(&resolve_chaining(&message).unwrap().unwrap()).unwrap(),
+        ["HEALTHY.test."]
+    );
+}

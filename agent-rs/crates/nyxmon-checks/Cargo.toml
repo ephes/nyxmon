@@ -43,3 +43,6 @@ tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "net"
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libproc = "0.15"

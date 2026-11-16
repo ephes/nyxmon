@@ -577,3 +577,207 @@ async fn timeout_and_cancellation_kill_descendants_holding_pipes() {
         assert!(!escaped.exists(), "descendant outlived the owned check");
     }
 }
+
+#[tokio::test]
+async fn success_signals_the_group_before_reaping_the_leader() {
+    use rustix::process::{WaitIdOptions, waitid};
+    for script in ["printf ready; exit 7", "exec 1>&- 2>&-; sleep 0.05; exit 7"] {
+        let held = std::sync::atomic::AtomicBool::new(false);
+        let result = run_process_with_signal(
+            vec!["sh".into(), "-c".into(), script.into()],
+            2.0,
+            |group| {
+                held.store(
+                    waitid(
+                        rustix::process::WaitId::Pid(group),
+                        WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT,
+                    )
+                    .is_ok_and(|status| status.is_some()),
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+                kill_owned_group(group)
+            },
+        )
+        .await
+        .unwrap();
+        assert!(
+            held.load(std::sync::atomic::Ordering::Relaxed),
+            "leader identity was released before group signal"
+        );
+        assert_eq!(result.returncode, 7);
+    }
+}
+
+#[tokio::test]
+async fn group_signal_failure_cannot_return_successful_output() {
+    let result = run_process_with_signal(
+        vec![
+            "sh".into(),
+            "-c".into(),
+            "printf 'reply time=1 ms'; exit 0".into(),
+        ],
+        2.0,
+        |_| Err(rustix::io::Errno::PERM),
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "denied group retirement must fail closed: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_failed_reap_is_not_successful_output() {
+    let result = run_process_with_signal(
+        vec!["sh".into(), "-c".into(), "exit 0".into()],
+        2.0,
+        |group| {
+            // Simulate a lost wait result without leaving any real process.
+            rustix::process::waitpid(Some(group), rustix::process::WaitOptions::empty())?;
+            Ok(())
+        },
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "uncertain wait cannot be success: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn cleanup_signal_failure_keeps_timeout_and_output_limit_primary() {
+    for (script, timeout, expected) in [
+        ("exec 1>&- 2>&-; sleep 5", 0.02, RunError::Timeout),
+        (
+            "i=0; while [ $i -lt 10000 ]; do printf 0123456789abcdef; i=$((i+1)); done",
+            2.0,
+            RunError::OutputLimit,
+        ),
+    ] {
+        let result = run_process_with_signal(
+            vec!["sh".into(), "-c".into(), script.into()],
+            timeout,
+            |group| {
+                // Retire the real fixture, but inject uncertain signal evidence.
+                let _ = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);
+                Err(rustix::io::Errno::PERM)
+            },
+        )
+        .await;
+        assert_eq!(result, Err(expected));
+    }
+}
+
+#[tokio::test]
+async fn retirement_failure_overrides_an_earlier_ping_reply_without_retry() {
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter = calls.clone();
+    let executor = linux_executor("synthetic-ping").with_runner(Arc::new(move |_, _| {
+        let attempt = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Box::pin(async move {
+            if attempt == 0 {
+                Ok(ProcessOutput {
+                    returncode: 0,
+                    stdout: "64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=1.0 ms".into(),
+                    stderr: String::new(),
+                })
+            } else {
+                Err(RunError::Retirement("group kill: denied".into()))
+            }
+        })
+    }));
+    let result = executor
+        .execute(&check("127.0.0.1", r#"{"count":3,"interval":0}"#))
+        .await
+        .unwrap();
+    assert_eq!(result.status, ResultStatus::Error);
+    assert!(data_json(&result).contains("process_retirement_error"));
+    assert_eq!(calls.load(std::sync::atomic::Ordering::Relaxed), 2);
+}
+
+#[tokio::test]
+async fn direct_child_kill_errors_are_retained() {
+    let child = tokio::process::Command::new("sh")
+        .args(["-c", "exit 0"])
+        .process_group(0)
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let mut owned = OwnedProcess {
+        group: rustix::process::Pid::from_raw(child.id().unwrap() as i32),
+        child,
+    };
+    observe_exit(owned.group.unwrap()).await.unwrap();
+    let errors = owned.terminate_with(&kill_owned_group, |_| Err(io::Error::from_raw_os_error(1)));
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].starts_with("child kill: "));
+    owned.child.wait().await.unwrap();
+    assert!(owned.group.is_none());
+}
+
+#[tokio::test]
+async fn successful_wrappers_retire_descendants_that_closed_capture_pipes() {
+    let dir = tempfile::tempdir().unwrap();
+    let escaped = dir.path().join("escaped");
+    let script = format!(
+        "(exec 1>&- 2>&-; sleep 0.5; echo survived > '{}') & exit 0",
+        escaped.display()
+    );
+    assert_eq!(
+        run(&["sh", "-c", &script], 2.0).await.unwrap().returncode,
+        0
+    );
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    assert!(
+        !escaped.exists(),
+        "descendant survived successful wrapper cleanup"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[tokio::test]
+async fn macos_zombie_exception_requires_the_held_leader_to_be_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    let ready = dir.path().join("ready");
+    let script = format!("sleep 5 & echo ready > '{}'; exit 0", ready.display());
+    let child = tokio::process::Command::new("sh")
+        .args(["-c", &script])
+        .process_group(0)
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let mut owned = OwnedProcess {
+        group: rustix::process::Pid::from_raw(child.id().unwrap() as i32),
+        child,
+    };
+    let group = owned.group.unwrap();
+    observe_exit(group).await.unwrap();
+    assert!(ready.exists());
+    let alone = only_exited_leader_remains(group);
+    // Always retire the fixture before asserting, even if inspection regresses.
+    let retired = owned.retire(&kill_owned_group).await;
+    assert!(
+        !alone,
+        "a live descendant must prevent the zombie exception"
+    );
+    assert!(retired.is_ok(), "{retired:?}");
+
+    let child = tokio::process::Command::new("sh")
+        .args(["-c", "exit 0"])
+        .process_group(0)
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let mut owned = OwnedProcess {
+        group: rustix::process::Pid::from_raw(child.id().unwrap() as i32),
+        child,
+    };
+    let group = owned.group.unwrap();
+    observe_exit(group).await.unwrap();
+    assert!(only_exited_leader_remains(group));
+    owned.retire(&kill_owned_group).await.unwrap();
+    assert!(
+        !only_exited_leader_remains(group),
+        "reaped leaders confer no exception"
+    );
+}

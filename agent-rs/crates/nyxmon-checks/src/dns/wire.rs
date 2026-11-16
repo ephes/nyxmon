@@ -4,6 +4,7 @@
 //! parsing (`dns.message.from_wire`) for the record types the check renders,
 //! and the record texts of `DnspythonResolver.query`.
 
+use std::collections::HashSet;
 use std::fmt;
 
 use nyxmon_core::config::dns::QueryType;
@@ -37,6 +38,14 @@ pub struct Name {
 }
 
 impl Name {
+    fn wire_len(&self) -> usize {
+        1 + self
+            .labels
+            .iter()
+            .map(|label| 1 + label.len())
+            .sum::<usize>()
+    }
+
     /// dnspython name equality: labels compared with ASCII case folding.
     pub fn eq_ignore_case(&self, other: &Name) -> bool {
         self.labels.len() == other.labels.len()
@@ -260,6 +269,18 @@ pub enum RData {
 }
 
 impl RData {
+    fn canonical_len(&self) -> usize {
+        match self {
+            Self::A(_) => 4,
+            Self::Aaaa(_) => 16,
+            Self::Mx { exchange, .. } => 2 + exchange.wire_len(),
+            Self::Txt(strings) => strings.iter().map(|s| 1 + s.len()).sum(),
+            Self::Target(name) => name.wire_len(),
+            Self::Soa { mname, rname, .. } => mname.wire_len() + rname.wire_len() + 20,
+            Self::Other(bytes) => bytes.len(),
+        }
+    }
+
     /// The canonical form dnspython compares rdatas by (names lowercased),
     /// used to drop duplicates within an RRset.
     fn canonical(&self) -> Vec<u8> {
@@ -661,21 +682,37 @@ pub fn is_response(query_id: u16, question: &Question, response: &Message) -> bo
 
 /// `find_rrset(section, name, IN, rtype)`: the rdatas of matching records
 /// in order, duplicates dropped; `None` when there is none.
-fn find_rrset<'a>(section: &'a [Record], name: &Name, rtype: u16) -> Option<Vec<&'a RData>> {
-    let mut found: Vec<&RData> = Vec::new();
-    let mut seen: Vec<Vec<u8>> = Vec::new();
-    let mut any = false;
+// Shared across all chain steps. Charge scans and expanded identity bytes before
+// allocating/hashing them; wire-size bounds alone do not bound compressed data.
+const ANSWER_WORK_LIMIT: usize = 512 * 1024;
+
+fn charge_answer(work_left: &mut usize, amount: usize) -> Result<(), ChainError> {
+    *work_left = work_left.checked_sub(amount).ok_or(ChainError::WorkLimit)?;
+    Ok(())
+}
+
+fn find_rrset<'a>(
+    section: &'a [Record],
+    name: &Name,
+    rtype: u16,
+    work_left: &mut usize,
+) -> Result<Option<Vec<&'a RData>>, ChainError> {
+    let mut found = Vec::new();
+    let mut seen = HashSet::new();
     for record in section {
-        if record.rtype == rtype && record.class == CLASS_IN && record.name.eq_ignore_case(name) {
-            any = true;
-            let canonical = record.rdata.canonical();
-            if !seen.contains(&canonical) {
-                seen.push(canonical);
+        charge_answer(work_left, 1)?;
+        if record.rtype != rtype || record.class != CLASS_IN {
+            continue;
+        }
+        charge_answer(work_left, record.name.wire_len())?;
+        if record.name.eq_ignore_case(name) {
+            charge_answer(work_left, record.rdata.canonical_len())?;
+            if seen.insert(record.rdata.canonical()) {
                 found.push(&record.rdata);
             }
         }
     }
-    any.then_some(found)
+    Ok((!found.is_empty()).then_some(found))
 }
 
 /// Why `Message.resolve_chaining()` rejected a response.
@@ -683,6 +720,8 @@ fn find_rrset<'a>(section: &'a [Record], name: &Name, rtype: u16) -> Option<Vec<
 pub enum ChainError {
     /// `FormError`: not exactly one question.
     QuestionCount,
+    WorkLimit,
+    ConflictingCname,
     ChainTooLong,
     AnswerForNxdomain,
 }
@@ -691,6 +730,8 @@ impl fmt::Display for ChainError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             ChainError::QuestionCount => "The DNS packet passed to from_wire() is invalid.",
+            ChainError::ConflictingCname => "The DNS answer has conflicting CNAME targets.",
+            ChainError::WorkLimit => "The DNS answer work limit was exceeded.",
             ChainError::ChainTooLong => "The CNAME chain is too long.",
             ChainError::AnswerForNxdomain => "The rcode is NXDOMAIN but an answer was found.",
         })
@@ -709,19 +750,33 @@ pub fn resolve_chaining(response: &Message) -> Result<Option<Vec<&RData>>, Chain
     let mut qname = question.name.clone();
     let mut answer = None;
     let mut count = 0;
+    let mut work_left = ANSWER_WORK_LIMIT;
     while count < MAX_CHAIN {
         if question.class == CLASS_IN
-            && let Some(rrset) = find_rrset(&response.answers, &qname, question.rtype)
+            && let Some(rrset) =
+                find_rrset(&response.answers, &qname, question.rtype, &mut work_left)?
         {
+            if question.rtype == QueryType::Cname.code() && rrset.len() != 1 {
+                return Err(ChainError::ConflictingCname);
+            }
             answer = Some(rrset);
             break;
         }
         if question.rtype == QueryType::Cname.code() || question.class != CLASS_IN {
             break;
         }
-        let Some(cnames) = find_rrset(&response.answers, &qname, QueryType::Cname.code()) else {
+        let Some(cnames) = find_rrset(
+            &response.answers,
+            &qname,
+            QueryType::Cname.code(),
+            &mut work_left,
+        )?
+        else {
             break;
         };
+        if cnames.len() != 1 {
+            return Err(ChainError::ConflictingCname);
+        }
         match cnames.first() {
             Some(RData::Target(target)) => qname = target.clone(),
             _ => break,

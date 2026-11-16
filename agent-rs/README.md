@@ -704,8 +704,24 @@ limited to 64 KiB and their combined output to 96 KiB; overflow returns a single
 `output_limit` failure without retaining or logging rejected output or retrying.
 Each invocation owns a Unix process group. Timeout, overflow and task cancellation
 kill that group, including wrappers and descendants that hold capture pipes.
-Error cleanup waits at most one second for the direct child; cancellation uses
-Tokio kill-on-drop reaping. Normal ping parsing and locale remain unchanged.
+Normal completion observes the leader with non-reaping `waitid(WNOWAIT)`;
+the runner signals the group while the leader still reserves its identity, then
+reaps the direct child. This also covers wrappers that close both pipes early.
+Cleanup waits at most one second for the direct child; cancellation uses
+Tokio kill-on-drop reaping. A denied group/direct-child kill or a failed/timed-out
+wait refuses success as nonretryable `process_retirement_error`, even after a
+previous successful attempt. `ESRCH` signalling means the process/group is already
+absent. On macOS, XNU also returns `EPERM` for a group containing only the zombie
+leader. Only the production signal helper may accept that case: the public
+`libproc` group listing must contain no additional member, and `waitid(WNOWAIT)`
+must still confirm the owned leader's exit. Failed inspection or any additional
+member preserves the signal error. This uses a macOS-only `libproc` dependency
+(local builds need libclang and the macOS SDK, available with Xcode's tools);
+see [XNU killpg1](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c).
+An existing timeout, output-limit or capture failure remains primary;
+cleanup uncertainty is logged with at most three operation/error details (160
+characters per OS error), without captured output. Drop remains nonblocking best
+effort. Normal ping parsing and locale remain unchanged.
 
 ### DNS parsing work limit
 
@@ -715,6 +731,14 @@ operations per packet byte, capped at 65,536 operations per response. Budget
 exhaustion uses the existing malformed-response classification. Ordinary compressed
 names and UDP-to-TCP truncation fallback are preserved; heavily amplified pointer
 ladders are refused even if their wire packet is otherwise valid.
+Answer selection uses hashed canonical RDATA identities and retains first-seen
+order (domain names remain case-insensitive). All CNAME-chain scans share a
+512 KiB work allowance, charging record visits, compared owner-name wire bytes
+and expanded canonical RDATA bytes before allocation/hashing. Exhaustion returns
+a bounded resolver failure, including for otherwise valid compressed responses.
+A selected CNAME RRset must have exactly one canonical target, both for direct
+CNAME queries and while following aliases. Conflicting targets fail regardless
+of answer order; equal targets with different ASCII casing remain duplicates.
 
 ## Lease result authority and bounded repair
 
