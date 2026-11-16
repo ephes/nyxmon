@@ -1239,3 +1239,24 @@ transaction. Inputs are fully materialized before rendering outside that
 transaction. A completion committed between the reads cannot mix a prior lease
 or schedule with its new result. Disabled checks remain in normal card mode;
 processing enabled checks remain due even if their schedule is in the future.
+
+### Rust claim generations and shutdown drain
+
+For this pending Rust agent update, run Django migrations through
+`0015_healthcheck_claim_generation`, then install/start the updated binary. An
+older agent may keep running during the migration (as the ops deploy does).
+Processing rows get distinct initial UUID tokens; idle rows get an empty token.
+The agent runs no DDL. Every new claim gets a fresh random 128-bit token in its
+claim transaction. Scheduling and expiry still use timestamps; release and
+publication compare generation tokens, so repeating/rollback wall seconds do not
+restore an old claim's authority. Mismatched check/result IDs are refused before
+any transaction changes.
+
+After supervised task shutdown, an ordered store close drains accepted operations
+and closes SQLite before releasing the singleton lock. New operations are refused.
+The drain has a 15-second caller deadline: timeout/actor death logs failure and
+returns unsuccessful status. An actor still executing uncancellable work retains
+the lock until its connection closes, even if an embedding returns or tears down
+its async runtime. Include these 15 seconds in the service stop allowance.
+Stderr records escape controls, retain printable Unicode and are capped at 8192
+bytes plus newline with `[truncated]` on oversized records.

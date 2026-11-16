@@ -185,7 +185,7 @@ fn usage_errors_and_conflicting_flags_are_refused() {
         assert_eq!(code, 1);
         assert!(
             stderr.contains(
-                "Error running monitoring services\nValueError: batch_size must be in 1..=1000"
+                "Error running monitoring services\\nValueError: batch_size must be in 1..=1000"
             ),
             "{stderr}"
         );

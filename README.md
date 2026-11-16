@@ -453,3 +453,21 @@ updates alone do not invalidate a revision. Status, Run now and toggle fragments
 load the check and its five latest results in one SQLite read snapshot after any
 mutation, then render outside the transaction. Login windows start after writer
 admission, so database lock waits cannot create already-expired reservations.
+
+### Pending Rust agent startup and ownership update
+
+Before adopting this branch's Rust agent, run Django migrations through
+`0015_healthcheck_claim_generation` (the older agent may keep running meanwhile). Existing processing rows receive
+distinct tokens; every new claim gets a fresh random 128-bit generation, so
+clock repetition/rollback cannot revive an old completion or release. Check and
+result IDs must match before persistence. The retired Python agent is unchanged.
+
+Startup verifies the named lock inode and parent after acquisition, plus required
+SQLite affinities/nullability from the Django-generated schema contract. Keep
+lock names stable during a live run. Stderr escapes controls and limits physical
+records to 8192 bytes plus newline, marking truncation explicitly.
+
+Shutdown drains accepted DB actor operations before releasing singleton ownership.
+The caller waits up to 15 seconds and reports drain uncertainty as failure; the
+actor keeps its lock until SQLite closes even if an embedded caller times out.
+See [Rust agent contracts](agent-rs/README.md) for migration and shutdown details.

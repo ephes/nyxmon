@@ -1,5 +1,15 @@
 # Runtime Concurrency Model
 
+Production uses the Rust agent; the Python sections below describe the retired
+implementation. The pending Rust ownership update uses an ordered actor close:
+submissions and the terminal marker share a short mutex, new submissions are
+refused after close, and accepted jobs run before SQLite closes. Shutdown waits
+up to 15 seconds for acknowledgement and fails on timeout/actor death. The actor
+owns AgentLock through connection closure, including after async cancellation
+or runtime teardown, so a new embedded agent cannot overlap surviving writes.
+Claim completion/release use fresh random generation tokens; wall timestamps
+only govern observation timing, expiry and scheduling. See {doc}`agent-rs`.
+
 NyxMon combines synchronous command handling with asynchronous I/O by composing three kinds of execution contexts: the uvloop event loop started by the CLI, background portals created from `BlockingPortalProvider`, and AnyIO worker threads. This document describes how those pieces fit together.
 
 ## 1. Startup Timeline (`entrypoints/cli.py:start_agent`)

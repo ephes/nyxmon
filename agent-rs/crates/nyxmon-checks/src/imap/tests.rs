@@ -29,6 +29,8 @@ fn check_data(data: PyJson) -> Check {
         disabled: false,
         data,
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     }
 }
 

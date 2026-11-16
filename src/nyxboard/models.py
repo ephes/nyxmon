@@ -104,6 +104,14 @@ class HealthCheck(models.Model):
         default=0,
         help_text="Unix timestamp when the check started processing",
     )
+    claim_generation: models.CharField = models.CharField(
+        max_length=32,
+        default="",
+        db_default="",
+        blank=True,
+        editable=False,
+        help_text="Opaque generation of the last claim; timestamps only control expiry",
+    )
     disabled: models.BooleanField = models.BooleanField(
         "Disabled",
         default=False,

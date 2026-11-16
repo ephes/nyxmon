@@ -142,6 +142,8 @@ async fn state_write_failure_rolls_back_result_and_check() {
     let store = db.store();
     let mut claimed = check(1);
     claimed.claim_started_at = 4_000;
+    claimed.claim_is_processing = true;
+    claimed.claim_generation = (4_000i64).to_string();
 
     let err = store
         .persist_check_result(request(
@@ -165,6 +167,8 @@ async fn stale_notification_state_is_rejected_atomically() {
     let store = db.store();
     let mut claimed = check(1);
     claimed.claim_started_at = 4_000;
+    claimed.claim_is_processing = true;
+    claimed.claim_generation = (4_000i64).to_string();
 
     let err = store
         .persist_check_result(request(
@@ -518,6 +522,8 @@ async fn hold_marker_lands_atomically_with_the_completion() {
     let mut done = check(1);
     done.next_check_time = 9_000;
     done.claim_started_at = 4_000;
+    done.claim_is_processing = true;
+    done.claim_generation = (4_000i64).to_string();
 
     assert!(
         store
@@ -572,6 +578,8 @@ async fn a_stale_completion_marks_nothing() {
     let mut late = check(1);
     late.next_check_time = 9_000;
     late.claim_started_at = 4_000;
+    late.claim_is_processing = true;
+    late.claim_generation = (4_000i64).to_string();
 
     assert!(
         !store
@@ -590,6 +598,8 @@ async fn a_deleted_check_marks_nothing() {
     let store = db.store();
     let mut ghost = check(1);
     ghost.claim_started_at = 4_000;
+    ghost.claim_is_processing = true;
+    ghost.claim_generation = (4_000i64).to_string();
 
     assert!(
         !store
@@ -647,6 +657,8 @@ async fn nan_in_result_data_fails_json_valid_and_rolls_back() {
     let store = db.store();
     let mut claimed = check(1);
     claimed.claim_started_at = 4_000;
+    claimed.claim_is_processing = true;
+    claimed.claim_generation = (4_000i64).to_string();
     let mut data = dict("{}");
     data.insert("value".to_owned(), PyJson::Float(f64::NAN));
 
@@ -697,7 +709,7 @@ async fn changed_definitions_drop_samples_and_settle_only_the_old_claim() {
                 if newer_claim {
                     db.raw()
                         .execute(
-                            "UPDATE health_check SET processing_started_at = 2000 WHERE id = 1",
+                            "UPDATE health_check SET processing_started_at = 2000, claim_generation = 'replacement' WHERE id = 1",
                             [],
                         )
                         .unwrap();
@@ -776,4 +788,123 @@ async fn superseded_fallback_cannot_create_or_change_a_hold_marker() {
         );
         assert_eq!(db.schedule(1), Some(("idle".to_owned(), 0, 0)));
     }
+}
+
+#[tokio::test]
+async fn mismatched_result_identity_changes_nothing() {
+    for complete_check in [false, true] {
+        let db = TestDb::new();
+        db.insert(row(1));
+        db.insert(row(2));
+        let store = db.store();
+        let claimed = store.claim_due_checks(1000, 1).await.unwrap().remove(0);
+        let before = db.schedule(1);
+        let mut request = request(
+            &completed(&claimed, 1000),
+            error(2),
+            Some((zero(), state([2, 2, 0, 0, 0, 0, 0, 0]))),
+        );
+        request.complete_check = complete_check;
+        assert!(matches!(
+            store.persist_check_result(request).await,
+            Err(StoreError::InvalidArgument(_))
+        ));
+        assert_eq!(db.schedule(1), before);
+        assert!(db.results().is_empty());
+        assert_eq!(db.state_row(1), None);
+        assert_eq!(db.state_row(2), None);
+    }
+}
+
+#[tokio::test]
+async fn same_second_and_rollback_claims_do_not_reuse_authority() {
+    for next_now in [1000, 900] {
+        let db = TestDb::new();
+        db.insert(row(1));
+        let store = db.store();
+        let first = store.claim_due_checks(1000, 1).await.unwrap().remove(0);
+        store
+            .release_claims(0, std::slice::from_ref(&first))
+            .await
+            .unwrap();
+        drop(store);
+        let store = db.store(); // restart must not reset generation
+        let second = store.claim_due_checks(next_now, 1).await.unwrap().remove(0);
+        let before = db.schedule(1);
+        assert!(
+            !store
+                .persist_check_result(request(
+                    &completed(&first, next_now),
+                    error(1),
+                    Some((zero(), state([2, 2, 0, 0, 0, 0, 0, 0])))
+                ))
+                .await
+                .unwrap()
+        );
+        assert_eq!(store.release_claims(next_now, &[first]).await.unwrap(), 0);
+        assert_eq!(db.schedule(1), before);
+        assert!(db.results().is_empty());
+        assert_eq!(db.state_row(1), None);
+        assert!(
+            store
+                .persist_check_result(request(&completed(&second, next_now), error(1), None))
+                .await
+                .unwrap()
+        );
+    }
+}
+
+#[tokio::test]
+async fn late_repair_cannot_publish_after_another_claim_is_reclaimed() {
+    let db = TestDb::new();
+    db.insert(row(1));
+    let store = db.store();
+    store.claim_due_checks(1000, 1).await.unwrap();
+    let repair_a = store
+        .reclaim_stale_checks(1100, 30, 1)
+        .await
+        .unwrap()
+        .remove(0);
+    store.claim_due_checks(1000, 1).await.unwrap();
+    let repair_b = store
+        .reclaim_stale_checks(1100, 30, 1)
+        .await
+        .unwrap()
+        .remove(0);
+    assert_ne!(repair_a.claim_generation, repair_b.claim_generation);
+    assert!(
+        !store
+            .persist_check_result(request(&completed(&repair_a, 1100), error(1), None))
+            .await
+            .unwrap()
+    );
+    assert!(db.results().is_empty());
+    assert!(
+        store
+            .persist_check_result(request(&completed(&repair_b, 1100), error(1), None))
+            .await
+            .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn epoch_zero_claim_is_owned_and_only_completes_once() {
+    let db = TestDb::new();
+    db.insert(row(1));
+    let store = db.store();
+    let claimed = store.claim_due_checks(0, 1).await.unwrap().remove(0);
+    let done = completed(&claimed, 1);
+    assert!(
+        store
+            .persist_check_result(request(&done, error(1), None))
+            .await
+            .unwrap()
+    );
+    assert!(
+        !store
+            .persist_check_result(request(&done, error(1), None))
+            .await
+            .unwrap()
+    );
+    assert_eq!(db.results().len(), 1);
 }

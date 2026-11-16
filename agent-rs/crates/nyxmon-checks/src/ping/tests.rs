@@ -51,6 +51,8 @@ fn check(url: &str, data: &str) -> Check {
         disabled: false,
         data: loads(data).expect("valid data"),
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     }
 }
 

@@ -2,7 +2,7 @@
 //! (PLAN.md section 3.2).
 
 use std::path::Path;
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
 
 use rusqlite::{Connection, OpenFlags};
@@ -12,6 +12,11 @@ use crate::error::StoreError;
 
 /// Maximum queued plus running operations per store actor.
 pub const MAX_PENDING_JOBS: usize = 32;
+
+enum Command {
+    Run(Job),
+    Close,
+}
 
 type Job = Box<dyn FnOnce(&mut Connection) + Send>;
 
@@ -40,7 +45,9 @@ impl Default for StoreOptions {
 /// cancellation (the result is then discarded).
 #[derive(Clone, Debug)]
 pub struct Store {
-    jobs: mpsc::Sender<Job>,
+    jobs: mpsc::Sender<Command>,
+    closing: Arc<Mutex<bool>>,
+    finished: tokio::sync::watch::Receiver<bool>,
     admission: Arc<Semaphore>,
 }
 
@@ -60,23 +67,76 @@ impl Store {
     /// # Errors
     /// See [`Store::open`].
     pub fn open_with(path: &Path, options: StoreOptions) -> Result<Store, StoreError> {
-        let mut connection = open_read_write(path, options)?;
-        let (jobs, inbox) = mpsc::channel::<Job>();
+        Self::open_inner(path, options, None)
+    }
+
+    /// Open an actor that retains singleton ownership until its connection closes,
+    /// even if its caller times out or drops all async runtime tasks.
+    pub fn open_locked(lock: crate::AgentLock) -> Result<Store, StoreError> {
+        let path = lock.database_path().to_owned();
+        Self::open_inner(&path, StoreOptions::default(), Some(lock))
+    }
+
+    fn open_inner(
+        path: &Path,
+        options: StoreOptions,
+        lock: Option<crate::AgentLock>,
+    ) -> Result<Store, StoreError> {
+        let connection = open_read_write(path, options)?;
+        let (jobs, inbox) = mpsc::channel::<Command>();
+        let (done, finished) = tokio::sync::watch::channel(false);
         std::thread::Builder::new()
             .name("nyxmon-db".to_owned())
             .spawn(move || {
+                // Reverse local drop order closes SQLite before releasing ownership,
+                // including during unwinding from a panicking operation.
+                let agent_lock = lock;
+                let mut connection = connection;
                 // A panicking job unwinds this thread: the connection is
                 // dropped (rolling back its open transaction), every waiting
                 // and later caller gets `ActorDied`.
-                while let Ok(job) = inbox.recv() {
-                    job(&mut connection);
+                while let Ok(command) = inbox.recv() {
+                    match command {
+                        Command::Run(job) => job(&mut connection),
+                        Command::Close => break,
+                    }
                 }
+                drop(connection);
+                drop(agent_lock);
+                let _ = done.send(true);
             })
             .map_err(StoreError::Io)?;
         Ok(Store {
             jobs,
+            closing: Arc::new(Mutex::new(false)),
+            finished,
             admission: Arc::new(Semaphore::new(MAX_PENDING_JOBS)),
         })
+    }
+
+    /// Close the actor after draining accepted work.
+    pub async fn close(&self) -> Result<(), StoreError> {
+        {
+            // The same short mutex serializes submission and the terminal marker.
+            let mut closing = self.closing.lock().unwrap_or_else(|e| e.into_inner());
+            if !*closing {
+                *closing = true;
+                self.admission.close();
+                self.jobs
+                    .send(Command::Close)
+                    .map_err(|_| StoreError::ActorDied)?;
+            }
+        }
+        let mut finished = self.finished.clone();
+        loop {
+            if *finished.borrow_and_update() {
+                return Ok(());
+            }
+            finished
+                .changed()
+                .await
+                .map_err(|_| StoreError::ActorDied)?;
+        }
     }
 
     /// Run `operation` on the actor thread and await its result.
@@ -98,7 +158,15 @@ impl Store {
             // operation has completed either way.
             let _ = reply.send(operation(connection));
         });
-        self.jobs.send(job).map_err(|_| StoreError::ActorDied)?;
+        {
+            let closing = self.closing.lock().unwrap_or_else(|e| e.into_inner());
+            if *closing {
+                return Err(StoreError::ActorDied);
+            }
+            self.jobs
+                .send(Command::Run(job))
+                .map_err(|_| StoreError::ActorDied)?;
+        }
         response.await.map_err(|_| StoreError::ActorDied)?
     }
 }
@@ -126,6 +194,87 @@ pub(crate) fn open_read_only(path: &Path) -> Result<Connection, StoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn close_waits_for_admitted_write_and_is_terminal() {
+        use crate::AgentLock;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db");
+        Connection::open(&path)
+            .unwrap()
+            .execute_batch("CREATE TABLE writes (value INTEGER)")
+            .unwrap();
+        let lock = AgentLock::acquire(&path).unwrap();
+        let store = Store::open(&path).unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, gate) = mpsc::channel();
+        let write = enqueue(&store, move |connection| {
+            entered.send(()).unwrap();
+            gate.recv().unwrap();
+            connection.execute("INSERT INTO writes VALUES (7)", [])?;
+            Ok(())
+        })
+        .await;
+        bounded(started).await.unwrap();
+        let closing = store.clone();
+        let mut close = Box::pin(async move {
+            let result = closing.close().await;
+            drop(lock);
+            result
+        });
+        let pending = std::future::poll_fn(|cx| std::task::Poll::Ready(close.as_mut().poll(cx)))
+            .await
+            .is_pending();
+        let held = AgentLock::acquire(&path).is_err();
+        release.send(()).unwrap();
+        bounded(write).await.unwrap().unwrap();
+        assert!(pending, "close returned before admitted write finished");
+        assert!(held, "ownership transferred before drain");
+        bounded(close).await.unwrap();
+        bounded(store.close()).await.unwrap();
+        assert!(store.call(|_| Ok(())).await.is_err());
+        let _next = AgentLock::acquire(&path).unwrap();
+        assert_eq!(
+            Connection::open(&path)
+                .unwrap()
+                .query_row("SELECT value FROM writes", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            7
+        );
+    }
+
+    #[tokio::test]
+    async fn cancelled_close_retains_lock_until_actor_connection_closes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db");
+        Connection::open(&path).unwrap();
+        let store = Store::open_locked(crate::AgentLock::acquire(&path).unwrap()).unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, gate) = mpsc::channel();
+        let write = enqueue(&store, move |_| {
+            entered.send(()).unwrap();
+            gate.recv().unwrap();
+            Ok(())
+        })
+        .await;
+        bounded(started).await.unwrap();
+        {
+            let close = store.close();
+            tokio::pin!(close);
+            assert!(
+                std::future::poll_fn(|cx| std::task::Poll::Ready(close.as_mut().poll(cx)))
+                    .await
+                    .is_pending()
+            );
+        }
+        // Simulate drain timeout/cancellation while a detached operation survives.
+        assert!(store.call(|_| Ok(())).await.is_err());
+        assert!(crate::AgentLock::acquire(&path).is_err());
+        release.send(()).unwrap();
+        bounded(write).await.unwrap().unwrap();
+        bounded(store.close()).await.unwrap();
+        let _next = crate::AgentLock::acquire(&path).unwrap();
+    }
 
     #[tokio::test]
     async fn pending_jobs_are_bounded_and_cancellation_keeps_admitted_writes() {
@@ -190,6 +339,8 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(died, StoreError::ActorDied));
+        assert!(matches!(store.close().await, Err(StoreError::ActorDied)));
+        assert!(matches!(store.close().await, Err(StoreError::ActorDied)));
         let later = store.call(|_| Ok(2)).await.unwrap_err();
         assert!(matches!(later, StoreError::ActorDied));
     }
@@ -326,7 +477,7 @@ mod tests {
         // Use the existing private Job seam so no awaiting task holds a Store clone.
         store
             .jobs
-            .send(Box::new(move |connection| {
+            .send(Command::Run(Box::new(move |connection| {
                 connection
                     .execute_batch(
                         "BEGIN IMMEDIATE; INSERT INTO writes VALUES (7); COMMIT; BEGIN IMMEDIATE;",
@@ -334,7 +485,7 @@ mod tests {
                     .unwrap();
                 done.send(()).unwrap();
                 // Leave a write lock behind: only closing the actor connection releases it.
-            }))
+            })))
             .unwrap();
         // Cancelling the gate caller drops its clone, but its queued operation remains.
         blocker.abort();

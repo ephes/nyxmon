@@ -33,6 +33,8 @@ fn check(port: u16, extra: &str) -> Check {
         disabled: false,
         data: loads(&text).expect("valid check data"),
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     }
 }
 

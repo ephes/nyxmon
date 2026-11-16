@@ -74,6 +74,14 @@ impl TestDb {
                 ],
             )
             .unwrap();
+        if row.status == "processing" && row.processing_started_at > 0 {
+            self.raw()
+                .execute(
+                    "UPDATE health_check SET claim_generation = ? WHERE id = ?",
+                    params![row.processing_started_at.to_string(), row.id],
+                )
+                .unwrap();
+        }
     }
 
     pub fn set_state(&self, check_id: i64, state: NotificationState) {
@@ -216,6 +224,8 @@ pub fn check(id: i64) -> Check {
         disabled: false,
         data: PyJson::dict(),
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     }
 }
 

@@ -202,7 +202,7 @@ async fn release_returns_only_this_process_claims() {
     // completed meanwhile.
     db.raw()
         .execute(
-            "UPDATE health_check SET processing_started_at = 1500 WHERE id = 3",
+            "UPDATE health_check SET processing_started_at = 1500, claim_generation = 'replacement' WHERE id = 3",
             [],
         )
         .unwrap();

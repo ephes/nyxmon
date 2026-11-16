@@ -399,6 +399,8 @@ fn decision_matches_python() {
             disabled: false,
             data: json(case, "check_data_json"),
             claim_started_at: claim,
+            claim_generation: String::new(),
+            claim_is_processing: false,
         };
         let site = case.field("site");
         let snap = site.get("snapshot").filter(|s| !s.is_null()).map(snapshot);
@@ -535,6 +537,8 @@ fn delivery_decision(
         disabled: false,
         data: PyJson::Dict(PyDict::new()),
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     };
     let cooldown = BigInt::from(3600);
     let ctx = DecisionContext {

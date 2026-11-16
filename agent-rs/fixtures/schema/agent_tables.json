@@ -1,8 +1,142 @@
 {
  "min_nyxboard_migration": [
   "nyxboard",
-  "0013_site_connectivity_state"
+  "0015_healthcheck_claim_generation"
  ],
+ "storage": {
+  "check_notification_state": {
+   "attempt_at": [
+    "INTEGER",
+    true
+   ],
+   "attempt_seq": [
+    "INTEGER",
+    true
+   ],
+   "check_id": [
+    "INTEGER",
+    false
+   ],
+   "failure_count": [
+    "INTEGER",
+    true
+   ],
+   "first_failure_at": [
+    "INTEGER",
+    true
+   ],
+   "held_since": [
+    "INTEGER",
+    true
+   ],
+   "last_attempt_count": [
+    "INTEGER",
+    true
+   ],
+   "last_immediate_at": [
+    "INTEGER",
+    true
+   ],
+   "last_notified_at": [
+    "INTEGER",
+    true
+   ]
+  },
+  "check_result": {
+   "created_at": [
+    "NUMERIC",
+    true
+   ],
+   "data": [
+    "TEXT",
+    true
+   ],
+   "health_check_id": [
+    "INTEGER",
+    true
+   ],
+   "id": [
+    "INTEGER",
+    true
+   ],
+   "status": [
+    "TEXT",
+    true
+   ]
+  },
+  "collector_incident": {
+   "alert_count": [
+    "INTEGER",
+    true
+   ],
+   "incident_key": [
+    "TEXT",
+    false
+   ],
+   "last_alert_at": [
+    "INTEGER",
+    true
+   ],
+   "opened_at": [
+    "INTEGER",
+    true
+   ],
+   "payload": [
+    "TEXT",
+    true
+   ]
+  },
+  "health_check": {
+   "check_interval": [
+    "INTEGER",
+    true
+   ],
+   "check_type": [
+    "TEXT",
+    true
+   ],
+   "claim_generation": [
+    "TEXT",
+    true
+   ],
+   "data": [
+    "TEXT",
+    true
+   ],
+   "disabled": [
+    "NUMERIC",
+    true
+   ],
+   "id": [
+    "INTEGER",
+    true
+   ],
+   "name": [
+    "TEXT",
+    true
+   ],
+   "next_check_time": [
+    "INTEGER",
+    true
+   ],
+   "processing_started_at": [
+    "INTEGER",
+    true
+   ],
+   "service_id": [
+    "INTEGER",
+    true
+   ],
+   "status": [
+    "TEXT",
+    true
+   ],
+   "url": [
+    "TEXT",
+    true
+   ]
+  }
+ },
  "tables": {
   "check_notification_state": [
    "check_id",
@@ -32,6 +166,7 @@
   "health_check": [
    "id",
    "check_type",
+   "url",
    "check_interval",
    "service_id",
    "next_check_time",
@@ -40,7 +175,7 @@
    "name",
    "disabled",
    "data",
-   "url"
+   "claim_generation"
   ]
  }
 }

@@ -39,7 +39,7 @@ DJANGO_DIR = REPO_ROOT / "src" / "django"
 
 #: The minimum migration level of the Rust agent (``MIN_NYXBOARD_MIGRATION``
 #: in ``nyxmon-store``). Raising it is a breaking agent release (PLAN.md 2.4).
-MIN_NYXBOARD_MIGRATION = ("nyxboard", "0013_site_connectivity_state")
+MIN_NYXBOARD_MIGRATION = ("nyxboard", "0015_healthcheck_claim_generation")
 
 AGENT_TABLES = (
     "health_check",
@@ -85,6 +85,20 @@ def _sql_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
+def affinity(declared_type: str) -> str:
+    """SQLite's declared-type affinity rules, in their specified order."""
+    kind = declared_type.upper()
+    if "INT" in kind:
+        return "INTEGER"
+    if any(token in kind for token in ("CHAR", "CLOB", "TEXT")):
+        return "TEXT"
+    if not kind or "BLOB" in kind:
+        return "BLOB"
+    if any(token in kind for token in ("REAL", "FLOA", "DOUB")):
+        return "REAL"
+    return "NUMERIC"
+
+
 def render_from_db(db_path: Path) -> dict[str, str]:
     """Render both contract files from a migrated database."""
     with sqlite3.connect(db_path) as connection:
@@ -105,6 +119,13 @@ def render_from_db(db_path: Path) -> dict[str, str]:
             ]
             for table in AGENT_TABLES
         }
+        storage = {
+            table: {
+                row[1]: [affinity(row[2]), bool(row[3])]
+                for row in connection.execute(f"PRAGMA table_info({table})")
+            }
+            for table in AGENT_TABLES
+        }
     if tuple(MIN_NYXBOARD_MIGRATION) not in {tuple(row) for row in migrations}:
         raise RuntimeError(f"{MIN_NYXBOARD_MIGRATION} is not a Django migration")
 
@@ -122,6 +143,7 @@ def render_from_db(db_path: Path) -> dict[str, str]:
     agent_tables = {
         "min_nyxboard_migration": list(MIN_NYXBOARD_MIGRATION),
         "tables": tables,
+        "storage": storage,
     }
     return {
         "schema.sql": "\n".join(lines) + "\n",

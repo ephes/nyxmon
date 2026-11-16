@@ -12,7 +12,7 @@ use crate::error::StoreError;
 /// The `health_check` columns every check query selects or returns, in
 /// `row_to_check` order.
 pub(crate) const CHECK_COLUMNS: &str = "id, service_id, name, check_type, url, check_interval, \
-     next_check_time, processing_started_at, status, disabled, data";
+     next_check_time, processing_started_at, status, disabled, data, claim_generation";
 
 /// The `collector_incident` columns, in `_row_to_collector_incident` order.
 pub(crate) const INCIDENT_COLUMNS: &str =
@@ -139,7 +139,9 @@ pub(crate) fn row_to_check(row: &Row<'_>) -> rusqlite::Result<Check> {
         status: text_or_empty(row, 8)?,
         disabled: truthy(row, 9)?,
         data: decode_check_data(row.get_ref(10)?),
-        // `Check.__init__`: the claim identity is the loaded lease timestamp.
+        claim_generation: row.get(11)?,
+        claim_is_processing: text_or_empty(row, 8)? == "processing",
+        // Wall time is retained for observation timing, not ownership.
         claim_started_at: processing_started_at,
     })
 }

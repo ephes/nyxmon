@@ -18,6 +18,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   even when wall-clock labels collide or time moves backwards. No schema or
   package version change.
 
+### Agent startup, claim identity and store retirement (pending Rust rollout)
+
+- Bind persisted check/result IDs before any transaction. Fence claim completion
+  and release with fresh random 128-bit generations rather than wall seconds.
+  Requires Django migration `0015_healthcheck_claim_generation` before the
+  updated Rust binary is adopted; migrating while an older agent still runs (as
+  the ops deploy does) is supported. No agent DDL or version bump.
+- Drain accepted DB actor jobs before releasing singleton ownership. New work is
+  refused after close; a 15-second drain timeout fails shutdown while a surviving
+  actor retains its lock until SQLite closes.
+- Refuse displaced lock names/parents during Rust startup; verify required
+  SQLite affinities and nullability from the generated Django schema contract.
+- Escape record-breaking stderr controls and cap physical log records at 8192
+  bytes with an explicit truncation marker. Notification text stays unchanged.
+
 ### Rust agent 0.1.5
 
 - Release the Rust agent as `agent-rs-v0.1.5` (crate version 0.1.5, tag

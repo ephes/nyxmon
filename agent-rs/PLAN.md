@@ -582,19 +582,22 @@ The Rust agent never executes `CREATE`, `ALTER`, `DROP` or `PRAGMA
 journal_mode=…`. At startup, before taking any claim, `nyxmon-store` verifies:
 
 1. Tables and columns exist (via `PRAGMA table_info`):
-   - `health_check`: `id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, status, disabled, data`
+   - `health_check`: `id, service_id, name, check_type, url, check_interval, next_check_time, processing_started_at, claim_generation, status, disabled, data`
    - `check_result`: `id, health_check_id, status, data, created_at`
    - `check_notification_state`: `check_id, failure_count, last_attempt_count, last_immediate_at, last_notified_at, first_failure_at, held_since, attempt_seq, attempt_at`
    - `collector_incident`: `incident_key, opened_at, last_alert_at, alert_count, payload`
 2. `django_migrations` exists and contains
-   `('nyxboard', '0013_site_connectivity_state')` (the minimum migration
+   `('nyxboard', '0015_healthcheck_claim_generation')` (the minimum migration
    level, constant `MIN_NYXBOARD_MIGRATION` in `nyxmon-store`).
 3. Public SQLite schema introspection verifies exact single-column primary keys:
    service/check/result `id`, notification `check_id`, incident `incident_key`.
    Required foreign keys are check → service and result → check (NO ACTION),
    notification → check (ON DELETE CASCADE). Additive columns/indexes are allowed;
    missing constraints are refused read-only, with no agent repair of restored DDL.
-4. `django_session` is optional (the cleaner probes for it every cycle, like
+4. Required columns retain generated SQLite affinity and required NOT NULL
+   properties (equivalent declared types are allowed). `just rs-fixtures`
+   generates storage expectations together with the column names.
+5. `django_session` is optional (the cleaner probes for it every cycle, like
    `delete_old_results_async`).
 
 On failure the agent logs one error naming every missing table/column/constraint/
@@ -715,24 +718,30 @@ All statements are copied from `sqlite_repo.py`; parameter order and guards
 are part of the contract.
 
 - **Claim** (`list_due_checks_async`): one `UPDATE health_check SET
-  status='processing', processing_started_at=:now WHERE id IN (SELECT id …
+  status='processing', processing_started_at=:now,
+  claim_generation=lower(hex(randomblob(16))) WHERE id IN (SELECT id …
   WHERE next_check_time <= :now AND status='idle' AND disabled=0 ORDER BY
   next_check_time ASC, id ASC LIMIT :batch) RETURNING <all columns>`.
   `:batch = min(check_batch_size(), 5)` (the execution admission cap of
   §5.8; stale reclaim still uses the uncapped `check_batch_size()`). Each
   returned row becomes a `Check` whose
-  `claim_started_at = processing_started_at` (`domain/models.py:Check.__init__`).
+  `claim_started_at = processing_started_at` for observation timing and a
+  fresh `claim_generation` for ownership.
 - **Schedule on result** (`Check.schedule_next_check`): when the result
   arrives, `next_check_time = int(now) + check_interval`, `status='idle'`,
-  `processing_started_at=0`; `claim_started_at` is kept.
+  `processing_started_at=0`; `claim_started_at` and `claim_generation` are kept.
 - **Complete** (`_complete_on_connection`): `UPDATE health_check SET
   status=?, next_check_time=?, processing_started_at=? WHERE id=? AND
-  ((status='processing' AND processing_started_at=:claim) OR (status<>'processing' AND :claim=0))`.
+  claim_generation=:generation AND
+  ((status='processing' AND :claim_is_processing AND :generation<>'')
+  OR (status<>'processing' AND NOT :claim_is_processing))`.
 - **Persist** (`_persist_check_result_async`), inside one `BEGIN IMMEDIATE`:
+  0. reject mismatched Check/CheckResult IDs with `InvalidArgument` before
+     starting the transaction;
   1. fence publication against the current executed definition: if the row
      is gone or its definition changed → if completing, release only the
      matching old claim (`… WHERE id=? AND status='processing' AND
-     processing_started_at=:claim`); commit, log `dropped superseded result
+     claim_generation=:generation AND :generation<>''`); commit, log `dropped superseded result
      for check_id=…`, return `false`;
   2. if `complete_check`: run Complete; `completion_applied` = rowcount > 0;
   3. if completing and completion not applied: log `dropped late result from
@@ -764,12 +773,12 @@ are part of the contract.
   time). At most `batch` rows change per transaction. Empty reclaim output
   ends the collector sweep; later iterations continue repairs. Returned rows
   have `processing_started_at = 0`, hence `claim_started_at = 0`, so their
-  later stale result completes through the `status<>'processing' AND 0=0`
-  branch unless a newer claim exists.
+  later stale result completes only while the row remains idle with the same
+  generation. A replacement retains its token through completion/reclaim.
 - **Release on shutdown** (`release_claims_async`), one transaction: for each
   owned claim `UPDATE … SET status='idle', processing_started_at=0,
   next_check_time = :now + MAX(1, check_interval) WHERE id=? AND
-  status='processing' AND processing_started_at=:claim AND :claim > 0`. Only
+  status='processing' AND claim_generation=:generation AND :generation <> ''`. Only
   this process's claims, never another collector's, never a completed check,
   no result, no notification-state change.
 - **Held set / reschedule / counts** (`list_held_checks_async`,
@@ -919,7 +928,7 @@ parallel with few merge conflicts.
   per variable in section 1.4.
 - `Check { check_id, service_id, name, check_type, url, check_interval,
   next_check_time, processing_started_at, status, disabled, data: PyJson
-  (raw, any JSON type, D-11), claim_started_at }` with
+  (raw, any JSON type, D-11), claim_started_at, claim_generation, claim_is_processing }` with
   `schedule_next_check(now)`.
 - `CheckResult { check_id, status: ResultStatus, data: IndexMap<String, PyJson> }`,
   `ResultStatus { Ok, Warning, Error }` (`"ok"/"warning"/"error"`).
@@ -2702,3 +2711,16 @@ end/trailers without growing the output. Raw/zlib first-chunk fallback and
 truncated/trailing-byte behavior are unchanged. Size refusals retain the normal
 `BodyTooLarge` result/message. Discard mode also has an 8 MiB decoded allowance.
 These changes require an eventual Rust-agent rollout; no deployment is included.
+
+
+### Pending startup/retirement contract (round 101)
+
+The minimum migrated schema is 0015_healthcheck_claim_generation, applied before
+adoption (an older agent may keep running during the migration): existing processing rows receive distinct UUID tokens,
+idle rows start empty. Claims assign random 128-bit tokens, independently of time.
+The actor's ordered close rejects submissions and acknowledges after all admitted
+work and SQLite closure. App shutdown waits up to 15 seconds; uncertainty fails
+shutdown, and the actor retains AgentLock until its connection closes even if its
+caller/runtime disappears. Lock admission verifies the named inode and parent
+identity after acquisition; namespace stability remains required during a run.
+Stderr escapes controls and caps each physical record at 8192 bytes plus newline.

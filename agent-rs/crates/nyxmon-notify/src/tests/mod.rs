@@ -54,6 +54,8 @@ pub(crate) fn check_of(spec: &PyJson) -> Check {
         disabled: false,
         data: PyJson::dict(),
         claim_started_at: 0,
+        claim_generation: String::new(),
+        claim_is_processing: false,
     }
 }
 

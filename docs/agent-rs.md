@@ -62,8 +62,10 @@ against glibc 2.35 or older, so names resolve through `getaddrinfo` and
 
 Django migrations own the database schema. The Rust agent runs no DDL: at
 startup it checks that every table and column it uses exists and that the
-`nyxboard` migration it needs (`0013_site_connectivity_state`) is applied,
-and refuses to start otherwise (exit 1 with the missing columns). The
+`nyxboard` migration it needs (`0015_healthcheck_claim_generation`) is applied,
+and refuses to start otherwise (exit 1 with contract diagnostics). It also
+checks required primary/foreign keys, SQLite affinities and required nullability
+against the generated migrated schema. Additive columns/indexes remain allowed. The
 undeployed Python agent still creates and upgrades its tables itself
 (`_ensure_schema`, to be removed with it), but **new DDL must never be added
 there**: a schema change is a Django migration,
@@ -210,3 +212,25 @@ commands and the deploy log.
   against scripted fake servers, PLAN.md 7.4) and a shadow run on the
   production host (PLAN.md 9.1) compared the two implementations. Both were
   removed with the Python fallback on 2026-10-25; see git history.
+
+## Startup, publication and shutdown contracts
+
+Lock admission checks the opened lock against its current name and pins the
+parent directory identity after acquisition. A replacement is refused without
+unlinking anything. Keep the lock namespace stable throughout the live run.
+Stderr escapes record-breaking controls and limits each physical UTF-8 record
+to 8192 bytes plus newline, marking truncation with `[truncated]`.
+
+Before adopting this agent, apply Django migration 0015 (an older agent may keep
+running during the migration; see `agent-rs/README.md`). Existing
+processing rows receive distinct UUID generations; idle rows start empty. Every
+new Rust claim assigns a fresh random 128-bit token atomically. Completion and
+release compare this token, independently of wall-clock expiry timestamps; a
+late result cannot complete a same-second replacement claim. Check and result
+IDs must match or persistence fails before any transaction changes.
+
+Shutdown closes/drains the DB actor after task supervision. New submissions are
+rejected; accepted writes survive cancellation. Close acknowledges after SQLite
+closes. A 15-second drain timeout or actor death fails shutdown. The actor retains
+the singleton lock through connection closure even if the caller times out or an
+embedded runtime stops, so ownership cannot transfer ahead of old writes.
