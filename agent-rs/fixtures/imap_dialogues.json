@@ -81,6 +81,13 @@
       "recv"
      ],
      [
+      "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
       "send",
       "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
@@ -127,6 +134,7 @@
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 20,30,40 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 30,20 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "UID EXPUNGE 30,20",
@@ -193,7 +201,7 @@
      ],
      [
       "tagged",
-      "OK [READ-WRITE] selected"
+      "OK [UIDVALIDITY 7] selected"
      ],
      [
       "recv"
@@ -216,6 +224,13 @@
      [
       "tagged",
       "OK FETCH completed"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
+      "OK synchronized"
      ],
      [
       "recv"
@@ -262,6 +277,7 @@
      "SELECT \"Monitoring Box\"",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "LOGOUT"
@@ -465,9 +481,8 @@
    "name": "literal_in_fetch_response",
    "result": {
     "attempts": 1,
-    "error_msg": "No messages with subject '[nyxmon]' within 30 minutes",
-    "error_type": "no_recent_message",
-    "severity": "critical"
+    "error_msg": "IMAP scan incomplete: conflicting FETCH INTERNALDATE for selected UID",
+    "error_type": "incomplete_scan"
    },
    "scripts": [
     [
@@ -902,6 +917,13 @@
       "recv"
      ],
      [
+      "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
       "send",
       "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
@@ -956,6 +978,7 @@
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "UID EXPUNGE 5",
@@ -1525,6 +1548,13 @@
      ],
      [
       "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
       "NO [CANNOT] store failed"
      ],
      [
@@ -1548,6 +1578,7 @@
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 5 +FLAGS (\\Deleted)",
      "LOGOUT"
     ]
@@ -1620,6 +1651,13 @@
       "recv"
      ],
      [
+      "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
       "send",
       "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
@@ -1666,6 +1704,7 @@
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "UID EXPUNGE 5",
@@ -2767,6 +2806,13 @@
      ],
      [
       "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
+      "tagged",
       "OK stored"
      ],
      [
@@ -2797,6 +2843,7 @@
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "LOGOUT"
@@ -2877,6 +2924,13 @@
       "recv"
      ],
      [
+      "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
       "send",
       "* 1 FETCH (UID 11 FLAGS (\\Deleted))\r\n"
      ],
@@ -2931,6 +2985,7 @@
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 11,12 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 11,12 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "UID EXPUNGE 11,12",
@@ -3022,6 +3077,13 @@
       "recv"
      ],
      [
+      "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
       "send",
       "* 5 FETCH (UID 4711 FLAGS (\\Deleted))\r\n"
      ],
@@ -3073,6 +3135,7 @@
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 4711 (INTERNALDATE)",
+     "NOOP",
      "UID STORE 4711 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "UID EXPUNGE 4711",

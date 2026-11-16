@@ -45,6 +45,8 @@ enum ImapExc {
     Incomplete(String),
     /// A server timestamp cannot provide plausible current evidence.
     Observation(String),
+    /// Selected UIDs cannot authorize destructive work in this generation.
+    Generation(String),
     /// `ssl.SSLError`: `tls_error`.
     Tls(String),
     /// `imaplib.error`/`abort`/`readonly`; `command: X => ` wrapping
@@ -287,6 +289,9 @@ struct Imap {
     response_bytes: usize,
     response_count: usize,
     fetch_bytes_remaining: Option<usize>,
+    mailbox_generation: Option<u32>,
+    generation_invalid: bool,
+    track_generation: bool,
 }
 
 impl Imap {
@@ -317,6 +322,9 @@ impl Imap {
             response_bytes: 0,
             response_count: 0,
             fetch_bytes_remaining: None,
+            mailbox_generation: None,
+            generation_invalid: false,
+            track_generation: false,
         };
         imap.connect().await?;
         Ok(imap)
@@ -516,10 +524,33 @@ impl Imap {
             }
             self.append_untagged(kind.clone(), Datum::Bytes(dat.clone()));
         }
-        if matches!(kind.as_str(), "OK" | "NO" | "BAD")
-            && let Some((code, data)) = response_code(&dat)
-        {
-            self.append_untagged(code, Datum::Bytes(data.unwrap_or_default()));
+        if matches!(kind.as_str(), "OK" | "NO" | "BAD") {
+            if self.track_generation && dat.starts_with(b"[UIDVALIDITY") {
+                let generation = response_code(&dat).and_then(|(code, value)| {
+                    let value = value?;
+                    if code != "UIDVALIDITY"
+                        || value.is_empty()
+                        || !value.iter().all(u8::is_ascii_digit)
+                    {
+                        return None;
+                    }
+                    std::str::from_utf8(&value)
+                        .ok()?
+                        .parse::<u32>()
+                        .ok()
+                        .filter(|n| *n > 0)
+                });
+                match generation {
+                    Some(value) if self.mailbox_generation.is_none() => {
+                        self.mailbox_generation = Some(value)
+                    }
+                    Some(value) if self.mailbox_generation == Some(value) => {}
+                    _ => self.generation_invalid = true,
+                }
+            }
+            if let Some((code, data)) = response_code(&dat) {
+                self.append_untagged(code, Datum::Bytes(data.unwrap_or_default()));
+            }
         }
         Ok(Some(resp))
     }
@@ -745,6 +776,9 @@ impl Imap {
     /// `IMAP4.select(mailbox)`.
     async fn select(&mut self, mailbox: &PyJson) -> Result<(String, Data), ImapExc> {
         self.untagged.clear();
+        self.mailbox_generation = None;
+        self.generation_invalid = false;
+        self.track_generation = true;
         let arg = astring(mailbox)?;
         let (kind, data) = self.simple_command("SELECT", &[arg]).await?;
         if kind != "OK" {
@@ -752,6 +786,8 @@ impl Imap {
             return Ok((kind, data));
         }
         self.state = "SELECTED";
+        // A later UIDVALIDITY cannot retroactively establish SELECT ownership.
+        self.generation_invalid |= self.mailbox_generation.is_none();
         if self.untagged.contains_key("READ-ONLY") {
             return Err(ImapExc::Lib(format!(
                 "{} is not writable",
@@ -765,6 +801,15 @@ impl Imap {
         Ok((kind, exists))
     }
 
+    fn require_mailbox_generation(&self) -> Result<(), ImapExc> {
+        if self.generation_invalid || self.mailbox_generation.is_none() {
+            return Err(ImapExc::Generation(
+                "IMAP mailbox UIDVALIDITY missing, invalid or changed; cleanup refused".to_owned(),
+            ));
+        }
+        Ok(())
+    }
+
     /// `IMAP4.uid(command, *args)` for SEARCH, FETCH, STORE and EXPUNGE.
     async fn uid(&mut self, command: &str, args: Vec<Vec<u8>>) -> Result<(String, Data), ImapExc> {
         if self.state != "SELECTED" {
@@ -773,9 +818,16 @@ impl Imap {
                 self.state
             )));
         }
+        let destructive = matches!(command, "STORE" | "EXPUNGE");
+        if destructive {
+            self.require_mailbox_generation()?;
+        }
         let mut all = vec![command.as_bytes().to_vec()];
         all.extend(args);
         let (kind, data) = self.simple_command("UID", &all).await?;
+        if destructive {
+            self.require_mailbox_generation()?;
+        }
         let name = if command == "SEARCH" {
             "SEARCH"
         } else {
@@ -886,15 +938,29 @@ async fn search_recent(
             let args = vec![ascii(&batch.join(","))?, b"(INTERNALDATE)".to_vec()];
             let data = checked("uid", imap.uid("FETCH", args).await?)?;
             for id in batch {
-                let raw = data.iter().find_map(|entry| {
+                let mut observation = None;
+                for entry in &data {
                     let candidate = match entry {
                         Some(Datum::Bytes(b)) | Some(Datum::Literal(b, _)) => b,
-                        None => return None,
+                        None => continue,
                     };
-                    (fetch_uid(candidate) == Some(id.as_bytes())).then_some(candidate)
-                });
-                let Some(raw) = raw else { continue };
-                match parse_internaldate(raw) {
+                    if fetch_uid(candidate) != Some(id.as_bytes()) {
+                        continue;
+                    }
+                    let date = parse_internaldate(candidate);
+                    if observation
+                        .as_ref()
+                        .is_some_and(|previous| previous != &date)
+                    {
+                        return Err(ImapExc::Incomplete(
+                            "IMAP scan incomplete: conflicting FETCH INTERNALDATE for selected UID"
+                                .to_owned(),
+                        ));
+                    }
+                    observation = Some(date);
+                }
+                let Some(date) = observation else { continue };
+                match date {
                     InternalDate::At(at) if (at as f64) >= cutoff => {
                         messages.push((id.clone(), at))
                     }
@@ -917,6 +983,7 @@ async fn delete_messages(imap: &mut Imap, ids: &[String]) -> Result<(), ImapExc>
     let args = vec![set.clone(), b"+FLAGS".to_vec(), b"(\\Deleted)".to_vec()];
     checked("uid", imap.uid("STORE", args).await?)?;
     let capabilities = checked("capability", imap.capability().await?)?;
+    imap.require_mailbox_generation()?;
     let mut uidplus = false;
     for line in capabilities.iter().flatten() {
         match line {
@@ -1004,7 +1071,29 @@ async fn session(
     // FETCH can take long enough to age previously admitted messages out.
     // Settle against one current clock reading immediately before selection
     // and destructive cleanup; never allow implausible future evidence to pass.
-    let now = env.now();
+    settle_messages(&mut messages, config, env.now())?;
+    if config.delete_after_check {
+        imap.require_mailbox_generation()?;
+        // Drain pending status after FETCH, then settle age again: a slow
+        // NOOP must not keep expired evidence healthy or authorize deletion.
+        checked("noop", imap.simple_command("NOOP", &[]).await?)?;
+        imap.require_mailbox_generation()?;
+        settle_messages(&mut messages, config, env.now())?;
+    }
+    messages.sort_by_key(|(_, at)| *at);
+    let latest = messages.last().map_or(0, |(_, at)| *at);
+    let uids: Vec<String> = messages.into_iter().map(|(uid, _)| uid).collect();
+    if config.delete_after_check {
+        delete_messages(imap, &uids).await?;
+    }
+    Ok((uids, latest))
+}
+
+fn settle_messages(
+    messages: &mut Vec<(String, i64)>,
+    config: &ImapConfig,
+    now: f64,
+) -> Result<(), AttemptError> {
     if messages
         .iter()
         .any(|(_, at)| (*at as f64) > now + MAX_CLOCK_SKEW_SECONDS)
@@ -1023,13 +1112,7 @@ async fn session(
             config.max_age_minutes
         )));
     }
-    messages.sort_by_key(|(_, at)| *at);
-    let latest = messages.last().map_or(0, |(_, at)| *at);
-    let uids: Vec<String> = messages.into_iter().map(|(uid, _)| uid).collect();
-    if config.delete_after_check {
-        delete_messages(imap, &uids).await?;
-    }
-    Ok((uids, latest))
+    Ok(())
 }
 
 fn error_data(error_type: &str, message: String) -> PyDict {
@@ -1083,6 +1166,7 @@ pub async fn execute(check: &Check, env: &impl MailEnv) -> Result<CheckResult, P
                     ImapExc::Check(text) => ("execution_error", text),
                     ImapExc::Incomplete(text) => ("incomplete_scan", text),
                     ImapExc::Observation(text) => ("invalid_message_date", text),
+                    ImapExc::Generation(text) => ("invalid_mailbox_generation", text),
                     ImapExc::Tls(text) => ("tls_error", text),
                     ImapExc::Lib(text) | ImapExc::Other(text) => ("unexpected_error", text),
                 };

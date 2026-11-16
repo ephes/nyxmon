@@ -560,6 +560,38 @@ more than 60 seconds ahead of the current clock fails with
 `invalid_message_date` and no deletion; the 60-second boundary is inclusive.
 This error is not retried, even if other matching messages are recent.
 
+The Rust SMTP sender requires three ASCII digits, CRLF and a space/hyphen
+separator on each reply line (a bare terminal code is supported). All multiline
+codes must agree. Invalid evidence closes the stream with nonretryable
+`smtp_error` before the next command. This applies to greeting, EHLO, TLS,
+authentication and DATA replies.
+
+If DATA is accepted for only some recipients, the result is nonretryable
+`partial_delivery`, preserving `accepted_recipients` and `refused_recipients`
+(address to `smtp_code`/`response_message`) plus the first refused `smtp_code`.
+Whole-message retries would duplicate relay acceptance for the accepted subset;
+operators must reconcile refused recipients separately. QUIT cannot change this
+outcome. No result schema migration or retired Python-agent change is required.
+
+Cleanup pins SELECT's positive 32-bit UIDVALIDITY. Missing or invalid SELECT
+evidence, or a later changed/invalid value, returns nonretryable
+`invalid_mailbox_generation`. An invalidation stays latched if the old value
+returns. A NOOP round trip drains pending status after FETCH before STORE;
+message ages are rechecked afterwards so the wait cannot retain expired evidence.
+Before STORE and UID EXPUNGE, and after their replies, Rust verifies
+the pinned generation; CAPABILITY evidence is included before EXPUNGE. A change
+reported during STORE cannot undo flags already stored but prevents EXPUNGE.
+Read-only scans do not require UIDVALIDITY. The server must truthfully report
+changes before the next destructive command: this is a protocol evidence fence,
+not an external atomicity guarantee.
+
+All FETCH records matching each requested UID must agree on the parsed
+INTERNALDATE instant (including presence/absence). Conflicts are nonretryable
+`incomplete_scan`, before success or cleanup, regardless of reply order.
+Identical instants, including different timezone spellings, are tolerated as
+one observation; unsolicited UIDs are ignored. The dialogue fixture now
+supplies UIDVALIDITY for its successful cleanup sessions.
+
 ### Mail attempt deadlines and resolver capacity
 
 In addition to per-operation timeouts, each SMTP attempt has a total monotonic
@@ -570,7 +602,7 @@ completed SMTP/IMAP session outcomes survive a QUIT/LOGOUT stall, including
 accepted SMTP DATA, successful IMAP cleanup, and IMAP no-recent-message retries.
 An exhausted SMTP attempt reports `timeout` (`connection timed out`); IMAP
 reports `unexpected_error` (`mail attempt timed out`). Deadline failures are
-not retried. Existing SMTP temporary-response retries and IMAP no-recent-message
+not retried. Existing SMTP temporary-response retries (except partial delivery) and IMAP no-recent-message
 retries remain unchanged, with at most `retries + 1` attempts and the configured
 `retry_delay` between them. No retry sleeps are inside an attempt budget.
 

@@ -248,7 +248,7 @@ async fn missing_extensions_are_smtp_errors() {
 }
 
 #[tokio::test]
-async fn partly_refused_recipients_report_the_first_refusal_after_delivery() {
+async fn partly_refused_recipients_preserve_all_delivery_evidence() {
     let script = with_greeting(vec![
         Step::Recv,
         send("250 mail.example\r\n"),
@@ -271,7 +271,7 @@ async fn partly_refused_recipients_report_the_first_refusal_after_delivery() {
     let (result, lines) = single_error(script, extra).await;
     assert_eq!(
         result,
-        r#"{"error_type": "recipient_refused", "error_msg": "5.1.1 unknown", "attempts": 1, "smtp_code": 550}"#
+        r#"{"error_type": "partial_delivery", "error_msg": "Message accepted for some recipients; refused recipients were not retried", "attempts": 1, "smtp_code": 550, "accepted_recipients": ["c@x.example"], "refused_recipients": {"a@x.example": {"smtp_code": 550, "response_message": "5.1.1 unknown"}, "b@x.example": {"smtp_code": 452, "response_message": "4.2.2 full"}}}"#
     );
     assert_eq!(lines[1], "mail from:<monitor@example.com>");
     assert_eq!(
@@ -657,4 +657,127 @@ async fn smtp_attempt_deadline_includes_hostname_discovery() {
     assert!(env.sleeps().is_empty());
     tokio::time::resume();
     server.transcripts().await;
+}
+
+#[tokio::test]
+async fn r102_mixed_reply_codes_never_advance_the_transaction() {
+    // Greeting, EHLO, AUTH, DATA admission and DATA completion must close
+    // without issuing another command on inconsistent reply evidence.
+    for (index, final_code, commands) in [
+        (0, 220, 0),
+        (2, 250, 1),
+        (4, 235, 2),
+        (10, 354, 5),
+        (12, 250, 6),
+    ] {
+        let mut script = with_greeting(delivery());
+        script[index] = send(&format!("550-refused\r\n{final_code} accepted\r\n"));
+        let server = ScriptServer::start(vec![script], false).await;
+        let env = TestEnv::new();
+        let result = execute(&check(server.port, ""), &env).await;
+        assert_eq!(result.status, ResultStatus::Error, "reply at {index}");
+        assert_eq!(result.data["error_type"], PyJson::from("smtp_error"));
+        assert!(env.sleeps().is_empty());
+        let lines = server.transcripts().await.remove(0);
+        // RecvData records an empty body even when the client closed.
+        assert_eq!(
+            lines.iter().filter(|line| line.as_str() != "DATA:").count(),
+            commands
+        );
+    }
+}
+
+#[tokio::test]
+async fn r102_malformed_reply_codes_and_separators_are_refused() {
+    for reply in [
+        "+22 ready\r\n",
+        " 22 ready\r\n",
+        "22 ready\r\n",
+        "220xready\r\n",
+        "220\tready\r\n",
+        "220 ready\n",
+        "220-ready\r\n250 ready\r\n",
+    ] {
+        let server = ScriptServer::start(vec![vec![send(reply)]], false).await;
+        let env = TestEnv::new();
+        let result = execute(&check(server.port, ""), &env).await;
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("smtp_error"),
+            "{reply:?}"
+        );
+        assert!(env.sleeps().is_empty());
+        assert!(server.transcripts().await[0].is_empty());
+    }
+}
+
+#[tokio::test]
+async fn r102_empty_and_multiline_replies_remain_supported() {
+    let mut script = with_greeting(delivery());
+    script[0] = send("220-first\r\n220\r\n");
+    script[12] = send("250-queued\r\n250\r\n");
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new()).await;
+    assert_eq!(result.status, ResultStatus::Ok);
+    assert_eq!(server.transcripts().await, vec![delivery_lines()]);
+}
+
+#[tokio::test]
+async fn r102_partial_delivery_never_retries_accepted_recipients() {
+    for refusal in ["452 full\r\n", "550 unknown\r\n"] {
+        let script = with_greeting(vec![
+            Step::Recv,
+            send("250 mail.example\r\n"),
+            Step::Recv,
+            send("250 sender\r\n"),
+            Step::Recv,
+            send("250 accepted\r\n"),
+            Step::Recv,
+            send(refusal),
+            Step::Recv,
+            send("354 go\r\n"),
+            Step::RecvData,
+            send("250 queued\r\n"),
+            Step::Recv,
+            send("221 bye\r\n"),
+        ]);
+        let server = ScriptServer::start(vec![script], false).await;
+        let env = TestEnv::new();
+        let result = execute(
+            &check(
+                server.port,
+                r#", "username": null, "to_addr": "accepted@x.example, refused@x.example""#,
+            ),
+            &env,
+        )
+        .await;
+        assert_eq!(result.status, ResultStatus::Error);
+        assert_eq!(result.data["error_type"], PyJson::from("partial_delivery"));
+        assert_eq!(result.data["attempts"], PyJson::Int(1));
+        assert_eq!(
+            result.data["accepted_recipients"],
+            PyJson::List(vec![PyJson::from("accepted@x.example")])
+        );
+        let refused = result.data["refused_recipients"]
+            .get("refused@x.example")
+            .unwrap();
+        assert_eq!(
+            refused.get("smtp_code"),
+            Some(&PyJson::Int(if refusal.starts_with("452") {
+                452
+            } else {
+                550
+            }))
+        );
+        assert!(env.sleeps().is_empty());
+        let lines = server.transcripts().await.remove(0);
+        assert_eq!(
+            lines
+                .iter()
+                .filter(|line| line.starts_with("DATA:"))
+                .count(),
+            1
+        );
+        assert_eq!(lines.last().map(String::as_str), Some("quit"));
+    }
 }

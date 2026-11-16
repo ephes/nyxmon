@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### IMAP cleanup evidence (pending Rust rollout)
+
+- Fence destructive UID commands with SELECT UIDVALIDITY and latch intervening
+  invalidations (`invalid_mailbox_generation`). Preserve UIDPLUS restrictions;
+  the fence relies on truthful server protocol evidence, not external atomicity.
+- Refuse conflicting duplicate UID FETCH timestamps as `incomplete_scan` before
+  success or cleanup; tolerate duplicate observations of the same instant.
+  Update synthetic dialogues with selected-mailbox generation evidence. No
+  database migration, version bump or retired Python-agent change.
+
+### SMTP transaction evidence (pending Rust rollout)
+
+- Reject malformed or mixed-code SMTP sender replies before advancing the
+  transaction; preserve normal consistent multiline replies.
+- Report accepted/refused recipients after partial DATA acceptance as
+  nonretryable `partial_delivery`, preventing whole-message retry duplicates.
+  Operator reconciliation of refused recipients is required. No version bump,
+  database migration or retired Python-agent change.
+
 ### Site lifecycle safety (pending Rust rollout)
 
 - Restore the complete Rust site lifecycle atomically; refuse invalid fields and

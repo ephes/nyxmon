@@ -331,7 +331,10 @@ section 3.6); no other new variable is introduced by the port.
   SEARCH); UID FETCH runs in batches of 32 over at most 256 distinct UIDs with
   an 8 MiB reply budget (`incomplete_scan` beyond that); ages are rechecked
   after all FETCHes, and an INTERNALDATE more than 60 s in the future is
-  `invalid_message_date`. The dialogue fixture records these differences.
+  `invalid_message_date`. Cleanup now also requires pinned SELECT UIDVALIDITY
+  with no intervening invalidation (`invalid_mailbox_generation`); conflicting
+  duplicate FETCH dates fail with `incomplete_scan`. Identical parsed instants
+  are accepted once. The dialogue fixture records these differences.
   A truthy `host` that is a JSON list or
   object is a `configuration_error` ("host is not supported by the Rust
   agent: not a string"); Python accepts it and fails later in ways that
@@ -497,7 +500,7 @@ status="unreachable"|"timeout", error_msg, returncode}`. Messages use Python
   `configuration_error` (only `error_type, error_msg`), `auth_error`,
   `temporary_failure` (4xx, retried with `retry_delay`), `smtp_error`,
   `timeout` ("connection timed out"), `connection_error`, `tls_error`,
-  `recipient_refused`, `unexpected_error`.
+  `partial_delivery`, `unexpected_error`.
 
 **imap** (`executors/imap_executor.py`):
 
@@ -1397,7 +1400,9 @@ resolution loop and the message handling the results depend on.
 - `send_message`: recipients from the `To` header (`getaddresses`); `MAIL
   FROM` refused → response error with code; all recipients refused →
   `smtp_error` with the Python repr of the refused dict; some refused →
-  `recipient_refused` with the first refused code and message; `DATA`
+  nonretryable `partial_delivery` after DATA acceptance, with all accepted
+  and refused recipient evidence (intentional Rust safety divergence; no
+  whole-message retry even for a 4xx recipient refusal); `DATA`
   refused → response error. QUIT/close errors after DATA are ignored
   (delivery outcome preserved).
 - Mapping order exactly as `SmtplibClient._send_blocking`'s `except` chain:
@@ -1755,11 +1760,16 @@ the connection, including before oversized literal bodies are read; see README.
   'replace'))` → `unexpected_error` with the server text as a `str` (CPython
   3.13.16, e.g. `[AUTHENTICATIONFAILED] Authentication failed.`), not a
   bytes repr.
-- `SELECT folder`; `UID SEARCH NOT DELETED HEADER SUBJECT "<subject>"`; per
-  UID `UID FETCH <uid> (INTERNALDATE)` taking only the first response line
-  whose `\bUID (\d+)\b` is that UID; skip older than `max_age_minutes`; sort
+- `SELECT folder`; `UID SEARCH NOT DELETED HEADER SUBJECT "<subject>"`;
+  batches `UID FETCH <uids> (INTERNALDATE)`, requiring all matching UID records
+  to agree on the parsed INTERNALDATE instant (identical duplicates tolerated;
+  conflicts are nonretryable `incomplete_scan`); skip older than `max_age_minutes`; sort
   ascending (stable); when `delete_after_check`: `UID STORE <uids> +FLAGS
   (\Deleted)`, then `CAPABILITY`, `UID EXPUNGE <uids>` only with `UIDPLUS`;
+  cleanup requires SELECT's positive 32-bit UIDVALIDITY, a NOOP synchronization after FETCH, and rechecks before
+  STORE/EXPUNGE and after replies, with intervening changes/invalidations latched
+  (`invalid_mailbox_generation`, nonretryable). This trusts server generation
+  reporting; it cannot undo STORE if its response first reports a change.
   `LOGOUT` best effort, also after a failed search/delete (not after a failed
   LOGIN/SELECT, which happen in `__aenter__`).
 - Non-OK command → `execution_error` "<method> failed: <TYP> <py repr of
