@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recheck inventoried definitions under writer ownership before disabling or
   deleting legacy checks; skip concurrent repairs/edits and new entries. Count
   deleted checks independently of cascaded results.
+- Stream legacy definition metadata in bounded keyset batches, spool only opaque
+  confirmation receipts, and commit backend-safe cleanup batches with explicit
+  partial-progress counts on failure.
 
 ### Metric evaluation limits (pending Rust rollout)
 

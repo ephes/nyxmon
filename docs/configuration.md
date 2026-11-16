@@ -1307,3 +1307,18 @@ Cleanup rechecks each inventoried definition and supported-type eligibility
 inside its write transaction. Edited, repaired or deleted entries are skipped;
 new entries require another invocation. Runtime-only agent changes do not
 invalidate confirmation. Deleted counts count checks, excluding cascaded results.
+
+Inventory reads definition/service metadata in keyset batches of 100 up to the
+initial highest legacy ID, closing each query before display. An anonymous
+on-disk receipt retains only IDs and opaque revisions until confirmation;
+credentials and whole model inventories are not spooled. No writes happen before
+inventory completes and delete confirmation succeeds. Disable remains
+noninteractive.
+
+Mutation uses batches of at most 100 IDs (smaller for backend parameter limits),
+with an independent transaction and definition recheck per batch. Progress reports
+completed mutations, changed/deleted skips, already-disabled rows and remaining
+unprocessed rows. A failed batch rolls back; earlier batches stay committed and
+the command exits nonzero with exact completed/remaining counts. Rerun the
+inventory to review current definitions before retrying. Cleanup is deliberately
+not fleet-wide atomic. Dry runs also use bounded inventory queries.
