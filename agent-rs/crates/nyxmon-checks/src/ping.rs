@@ -55,6 +55,8 @@ pub enum RunError {
     Timeout,
     /// The combined or per-stream capture ceiling was exceeded.
     OutputLimit,
+    /// Process-group signalling or direct-child retirement was uncertain.
+    Retirement(String),
     /// `FileNotFoundError` (`ENOENT`).
     NotFound(String),
     /// `PermissionError` (`EACCES`, `EPERM`).
@@ -101,10 +103,7 @@ fn returncode(status: std::process::ExitStatus) -> i64 {
 /// `LC_ALL=C` and `LANG=C`, stdin from `/dev/null`, capturing both output
 /// streams; killed when `timeout` seconds pass.
 pub async fn run_process(command: Vec<String>, timeout: f64) -> Result<ProcessOutput, RunError> {
-    run_process_with_signal(command, timeout, |group| {
-        rustix::process::kill_process_group(group, rustix::process::Signal::KILL)
-    })
-    .await
+    run_process_with_signal(command, timeout, kill_owned_group).await
 }
 
 async fn run_process_with_signal(
@@ -149,17 +148,53 @@ async fn run_process_with_signal(
         .unwrap_or(Err(RunError::Timeout));
     // Terminate even descendants that closed their pipes; keep the stable group
     // identity until cleanup. On cancellation Drop performs the same kill.
-    owned.terminate(&signal);
-    let retired = tokio::time::timeout(Duration::from_secs(1), owned.child.wait()).await;
-    let (stdout, stderr) = result?;
-    let status = retired
-        .map_err(|_| RunError::Os("Ping child retirement timed out".to_owned()))?
-        .map_err(|err| RunError::Os(os_error_str(&err)))?;
+    let retired = owned.retire(&signal).await;
+    let (stdout, stderr) = match result {
+        Ok(output) => output,
+        Err(primary) => {
+            if let Err(detail) = retired {
+                // Fixed operation names and bounded OS errors; never subprocess output.
+                tracing::warn!("Ping cleanup failed after primary failure: {detail}");
+            }
+            return Err(primary);
+        }
+    };
+    let status = retired.map_err(RunError::Retirement)?;
     Ok(ProcessOutput {
         returncode: returncode(status),
         stdout: decode_output(&stdout),
         stderr: decode_output(&stderr),
     })
+}
+
+fn kill_owned_group(group: rustix::process::Pid) -> rustix::io::Result<()> {
+    let result = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);
+    #[cfg(target_os = "macos")]
+    if result == Err(rustix::io::Errno::PERM) && only_exited_leader_remains(group) {
+        return Ok(());
+    }
+    result
+}
+
+#[cfg(target_os = "macos")]
+fn only_exited_leader_remains(group: rustix::process::Pid) -> bool {
+    use libproc::processes::{ProcFilter, pids_by_type};
+    use rustix::process::{WaitId, WaitIdOptions, waitid};
+    // XNU skips zombies for killpg and returns EPERM for a zombie-only group.
+    // Never infer absence from EPERM alone. The held leader prevents PGID reuse;
+    // any additional member or failed enumeration keeps retirement uncertain.
+    let leader = group.as_raw_nonzero().get() as u32;
+    let Ok(pids) = pids_by_type(ProcFilter::ByProgramGroup { pgrpid: leader }) else {
+        return false;
+    };
+    if pids.as_slice() != [leader] {
+        return false;
+    }
+    waitid(
+        WaitId::Pid(group),
+        WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT,
+    )
+    .is_ok_and(|status| status.is_some())
 }
 
 // Never poll Child::wait/try_wait before group retirement: either releases
@@ -211,20 +246,69 @@ struct OwnedProcess {
     group: Option<rustix::process::Pid>,
 }
 
+fn retirement_detail(operation: &str, error: &io::Error) -> String {
+    let text: String = os_error_str(error).chars().take(160).collect();
+    format!("{operation}: {text}")
+}
+
 impl OwnedProcess {
-    fn terminate(&mut self, signal: &impl Fn(rustix::process::Pid) -> rustix::io::Result<()>) {
-        if let Some(group) = self.group.take() {
-            let _ = signal(group);
+    fn terminate(
+        &mut self,
+        signal: &impl Fn(rustix::process::Pid) -> rustix::io::Result<()>,
+    ) -> Vec<String> {
+        self.terminate_with(signal, |child| child.start_kill())
+    }
+
+    fn terminate_with(
+        &mut self,
+        signal: &impl Fn(rustix::process::Pid) -> rustix::io::Result<()>,
+        kill: impl FnOnce(&mut tokio::process::Child) -> io::Result<()>,
+    ) -> Vec<String> {
+        let mut errors = Vec::new();
+        // Consume group authority before any reap, even on signal failure.
+        // Drop must never retry a saved numeric PGID after leader release.
+        if let Some(group) = self.group.take()
+            && let Err(err) = signal(group)
+            && err != rustix::io::Errno::SRCH
+        {
+            errors.push(retirement_detail("group kill", &io::Error::from(err)));
         }
-        let _ = self.child.start_kill();
+        if let Err(err) = kill(&mut self.child)
+            && err.raw_os_error() != Some(rustix::io::Errno::SRCH.raw_os_error())
+        {
+            errors.push(retirement_detail("child kill", &err));
+        }
+        errors
+    }
+
+    async fn retire(
+        &mut self,
+        signal: &impl Fn(rustix::process::Pid) -> rustix::io::Result<()>,
+    ) -> Result<std::process::ExitStatus, String> {
+        let mut errors = self.terminate(signal);
+        let status = match tokio::time::timeout(Duration::from_secs(1), self.child.wait()).await {
+            Ok(Ok(status)) => Some(status),
+            Ok(Err(err)) => {
+                errors.push(retirement_detail("child wait", &err));
+                None
+            }
+            Err(_) => {
+                errors.push("child wait: retirement timed out".to_owned());
+                None
+            }
+        };
+        if errors.is_empty() {
+            Ok(status.expect("successful wait"))
+        } else {
+            Err(errors.join("; "))
+        }
     }
 }
 
 impl Drop for OwnedProcess {
     fn drop(&mut self) {
-        // Nonblocking cancellation cleanup. Tokio's kill_on_drop also arranges
-        // direct-child reaping when this future is dropped at any await point.
-        self.terminate(&|group| {
+        // Nonblocking best effort only. Tokio also arranges direct-child reaping.
+        let _ = self.terminate(&|group| {
             rustix::process::kill_process_group(group, rustix::process::Signal::KILL)
         });
     }
@@ -524,7 +608,10 @@ impl PingExecutor {
             };
             if matches!(
                 failure.0,
-                "permission_error" | "ping_unavailable" | "output_limit"
+                "permission_error"
+                    | "ping_unavailable"
+                    | "output_limit"
+                    | "process_retirement_error"
             ) {
                 // Retrying cannot help.
                 let mut data = base;
@@ -587,6 +674,13 @@ impl PingExecutor {
                     "error",
                     "output_limit",
                     "Ping output exceeded capture limit".to_owned(),
+                );
+            }
+            Err(RunError::Retirement(detail)) => {
+                return failed(
+                    "error",
+                    "process_retirement_error",
+                    format!("Could not retire ping: {detail}"),
                 );
             }
             Err(RunError::NotFound(exc)) => {

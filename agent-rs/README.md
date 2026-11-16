@@ -708,7 +708,20 @@ Normal completion observes the leader with non-reaping `waitid(WNOWAIT)`;
 the runner signals the group while the leader still reserves its identity, then
 reaps the direct child. This also covers wrappers that close both pipes early.
 Cleanup waits at most one second for the direct child; cancellation uses
-Tokio kill-on-drop reaping. Normal ping parsing and locale remain unchanged.
+Tokio kill-on-drop reaping. A denied group/direct-child kill or a failed/timed-out
+wait refuses success as nonretryable `process_retirement_error`, even after a
+previous successful attempt. `ESRCH` signalling means the process/group is already
+absent. On macOS, XNU also returns `EPERM` for a group containing only the zombie
+leader. Only the production signal helper may accept that case: the public
+`libproc` group listing must contain no additional member, and `waitid(WNOWAIT)`
+must still confirm the owned leader's exit. Failed inspection or any additional
+member preserves the signal error. This uses a macOS-only `libproc` dependency
+(local builds need libclang and the macOS SDK, available with Xcode's tools);
+see [XNU killpg1](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c).
+An existing timeout, output-limit or capture failure remains primary;
+cleanup uncertainty is logged with at most three operation/error details (160
+characters per OS error), without captured output. Drop remains nonblocking best
+effort. Normal ping parsing and locale remain unchanged.
 
 ### DNS parsing work limit
 
