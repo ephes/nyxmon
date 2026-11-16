@@ -275,6 +275,9 @@ Validation is fail-safe and follows the `notification_suppression` precedent:
   used instead. Nothing raises into the check path.
 - Each rejected field is warned about once per `(check_id, field)`, so a single
   malformed check cannot flood the worker log.
+- Rust policy warnings include the policy key, check ID, fixed rejection reason
+  and type name only. Rejected values and nested contents are never formatted or
+  logged, so diagnostic work and output do not grow with configuration size.
 - A missing key is not an error; it simply inherits the global default.
 - Unknown keys inside `notification_policy` are ignored, and the object as a
   whole is ignored by the check executors, so it is safe to add to any check

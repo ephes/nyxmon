@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Policy diagnostics (pending Rust rollout)
+
+- Replace full rejected notification-policy values with static type names in
+  warnings, preserving fallback resolution and deduplication without traversing
+  or exposing nested configuration. Update Rust-owned diagnostic fixtures.
+
 ### Ping process retirement (pending Rust rollout)
 
 - Refuse successful ping results when group signalling or child kill/wait fails;

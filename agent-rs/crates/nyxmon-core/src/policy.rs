@@ -13,7 +13,7 @@ use crate::env::{
 };
 use crate::log::{WarnOnce, loggers};
 use crate::model::ResultStatus;
-use crate::pyjson::{PyDict, PyJson, bigint_to_i64_saturating, py_repr};
+use crate::pyjson::{PyDict, PyJson, bigint_to_i64_saturating, py_type_name};
 
 /// `POLICY_DATA_KEY`.
 pub const POLICY_DATA_KEY: &str = "notification_policy";
@@ -37,9 +37,10 @@ fn warn_once(warnings: &WarnOnce, check_id: i64, key: &str, raw: &PyJson, reason
         key,
         || {
             format!(
-                "notification_policy.{key} for check_id={check_id} is invalid ({reason}, got {}); \
+                "notification_policy.{key} for check_id={check_id} is invalid ({reason}, got type {}); \
                  using the global default",
-                py_repr(raw)
+                // A static type name never formats or traverses private configuration.
+                py_type_name(raw)
             )
         },
     );
@@ -160,5 +161,67 @@ pub fn resolve_notification_policy(
     NotificationPolicy {
         consecutive_failures: warning_threshold.or(threshold).unwrap_or(default_threshold),
         reminder_seconds: warning_reminder.or(reminder).unwrap_or(default_reminder),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::log::RecordingSink;
+
+    #[test]
+    fn invalid_policy_warnings_do_not_project_nested_values() {
+        const PRIVATE: &str = "synthetic-private-policy-sentinel";
+        let mut nested = PyJson::Str(PRIVATE.repeat(100));
+        for _ in 0..128 {
+            nested = PyJson::List(vec![nested]);
+        }
+        let mut fields = PyDict::new();
+        for index in 0..128 {
+            fields.insert(format!("{PRIVATE}-{index}"), nested.clone());
+        }
+        let wide = PyJson::Dict(fields);
+
+        for key in [
+            POLICY_DATA_KEY,
+            "consecutive_failures",
+            "reminder_seconds",
+            "warning_consecutive_failures",
+            "warning_reminder_seconds",
+        ] {
+            let sink = Arc::new(RecordingSink::default());
+            let warnings = WarnOnce::new(sink.clone());
+            let env = Env::from_map(HashMap::<String, String>::new(), sink.clone());
+            let value = if key == POLICY_DATA_KEY {
+                nested.clone()
+            } else {
+                PyJson::Dict(PyDict::from([(key.to_owned(), wide.clone())]))
+            };
+            let data = PyJson::Dict(PyDict::from([(POLICY_DATA_KEY.to_owned(), value)]));
+            for _ in 0..2 {
+                assert_eq!(
+                    resolve_notification_policy(&env, &warnings, 42, &data, ResultStatus::Warning),
+                    NotificationPolicy {
+                        consecutive_failures: 2,
+                        reminder_seconds: 86400,
+                    }
+                );
+            }
+            let lines = sink.take();
+            assert_eq!(lines.len(), 1);
+            let (logger, line) = &lines[0];
+            assert_eq!(logger, loggers::NOTIFICATION_POLICY);
+            assert!(line.len() < 200, "warning must have constant-size evidence");
+            assert!(!line.contains(PRIVATE));
+            assert!(line.contains(&format!("notification_policy.{key} for check_id=42")));
+            assert!(line.contains(if key == POLICY_DATA_KEY {
+                "must be an object, got type list"
+            } else {
+                "must be an integer, got type dict"
+            }));
+        }
     }
 }

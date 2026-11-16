@@ -398,6 +398,14 @@ section 3.6); no other new variable is introduced by the port.
   Frozen Rust-owned notifier fixtures and `nyxmon-notify/src/tests/http.rs`
   cover these changes from the retired Python behavior.
 
+- **D-23 Policy warning projection.** Invalid per-check notification policy
+  diagnostics retain only the allowlisted policy key, check ID, fixed validation
+  reason and static Python type name. They never format or traverse the rejected
+  value, including nested objects, strings and large integers. Fallback resolution
+  and warning keys are unchanged. `fixtures/policy.json` intentionally updates
+  only these diagnostic expectations from the historical Python oracle;
+  `policy::tests` covers large nested private synthetic values.
+
 ### 1.6 Result `data` shapes per check type (P1)
 
 Order of keys as written. `[x]` = present only under the stated condition.
@@ -1085,6 +1093,7 @@ behaviour is pinned by a Python-generated fixture (section 7.2).
   rejects bools, non-ints (JSON `2.0` is a float → rejected), out-of-range;
   warn once per `(check_id, key)`; non-object `notification_policy` warns once
   under key `notification_policy`; `null` means "absent" (no warning).
+- Warning evidence is a static type name, never a raw value (D-23).
 - `global_reminder_seconds` checks the deprecated variable on every call
   (warning once per value).
 

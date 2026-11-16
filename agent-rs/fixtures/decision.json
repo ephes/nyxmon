@@ -3006,7 +3006,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -3791,7 +3791,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -5005,7 +5005,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -5437,7 +5437,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -9089,7 +9089,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -9859,7 +9859,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -10006,7 +10006,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -10239,7 +10239,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -11852,7 +11852,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -12653,7 +12653,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -13994,7 +13994,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -16168,7 +16168,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -18951,7 +18951,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -24397,7 +24397,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -27435,7 +27435,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -28785,7 +28785,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -29176,7 +29176,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -29272,7 +29272,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -32702,7 +32702,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -32869,7 +32869,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -34824,7 +34824,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -39106,7 +39106,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -40901,7 +40901,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -41496,7 +41496,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -41663,7 +41663,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -43152,7 +43152,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -43281,7 +43281,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -43428,7 +43428,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -47219,7 +47219,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -47530,7 +47530,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -49036,7 +49036,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -50320,7 +50320,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -50676,7 +50676,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -53075,7 +53075,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -53562,7 +53562,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -53919,7 +53919,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -54011,7 +54011,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -55334,7 +55334,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -56706,7 +56706,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=4 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -58650,7 +58650,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -60235,7 +60235,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -60829,7 +60829,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -61792,7 +61792,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -62136,7 +62136,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=6 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -63878,7 +63878,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -65148,7 +65148,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -65609,7 +65609,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=2 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -66214,7 +66214,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -68249,7 +68249,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -70548,7 +70548,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=5 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -72263,7 +72263,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -72347,7 +72347,7 @@
    "warnings": [
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=1 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
@@ -73982,7 +73982,7 @@
     ],
     [
      "nyxmon.service_layer.notification_policy",
-     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got 'bad'); using the global default"
+     "notification_policy.notification_policy for check_id=3 is invalid (must be an object, got type str); using the global default"
     ]
    ]
   },
