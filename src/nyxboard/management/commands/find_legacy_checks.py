@@ -18,6 +18,9 @@ Usage:
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import F
+
+from nyxboard.forms import check_definition_revision
 
 from nyxboard.models import HealthCheck
 from nyxmon.domain import CheckType
@@ -77,6 +80,7 @@ class Command(BaseCommand):
             )
         )
 
+        revisions = {check.pk: check_definition_revision(check) for check in legacy_checks}
         for check in legacy_checks:
             status = "DISABLED" if check.disabled else "ENABLED"
             self.stdout.write(
@@ -85,60 +89,45 @@ class Command(BaseCommand):
                 f"Status: {status}"
             )
 
-        # Handle --delete option
         if options["delete"]:
-            # Get confirmation BEFORE starting the transaction
             confirm = input(
                 f"\nAre you sure you want to DELETE {len(legacy_checks)} legacy check(s)? "
                 "This cannot be undone. [y/N]: "
             )
-            if confirm.lower() == "y":
-                # Wrap only the write operation in a transaction
-                with transaction.atomic():
-                    check_ids = [check.id for check in legacy_checks]
-                    deleted_count, _ = HealthCheck.objects.filter(
-                        id__in=check_ids
-                    ).delete()
-                self.stdout.write(
-                    self.style.SUCCESS(f"Deleted {deleted_count} legacy check(s).")
-                )
-            else:
+            if confirm.lower() != "y":
                 self.stdout.write("Delete operation cancelled.")
-            return
-
-        # Handle --disable option
-        if options["disable"]:
-            # Wrap only the write operation in a transaction
-            with transaction.atomic():
-                checks_to_disable = [
-                    check for check in legacy_checks if not check.disabled
-                ]
-                if checks_to_disable:
-                    check_ids = [check.id for check in checks_to_disable]
-                    disabled_count = HealthCheck.objects.filter(
-                        id__in=check_ids
-                    ).update(disabled=True)
-                else:
-                    disabled_count = 0
-
-            if disabled_count > 0:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"Disabled {disabled_count} legacy check(s). "
-                        f"({len(legacy_checks) - disabled_count} were already disabled)"
-                    )
-                )
-            else:
-                self.stdout.write(
-                    self.style.SUCCESS("All legacy checks were already disabled.")
-                )
+                return
+        if options["delete"] or options["disable"]:
+            changed, skipped, already = self._mutate_batch(revisions, options["delete"])
+            verb = "Deleted" if options["delete"] else "Disabled"
+            self.stdout.write(self.style.SUCCESS(
+                f"{verb} {changed} legacy check(s). Skipped {skipped} changed/deleted; "
+                f"{already} already disabled."
+            ))
         else:
-            # Dry run - just list
-            enabled_count = sum(1 for check in legacy_checks if not check.disabled)
+            enabled_count = sum(not check.disabled for check in legacy_checks)
             self.stdout.write(
                 f"\n{enabled_count} of these checks are currently ENABLED and will "
                 "cause ERROR results when the agent runs."
             )
-            self.stdout.write(
-                "Run with --disable to disable them, or --delete to remove them."
-            )
+            self.stdout.write("Run with --disable to disable them, or --delete to remove them.")
+
+    def _mutate_batch(self, revisions, delete):
+        changed = already = 0
+        with transaction.atomic():
+            # Reserve SQLite's writer before re-reading definitions. On other
+            # backends the following row locks serialize concurrent edits.
+            HealthCheck.objects.filter(pk__in=revisions).update(disabled=F("disabled"))
+            current = HealthCheck.objects.filter(pk__in=revisions).select_for_update()
+            for check in current:
+                if check.check_type in SUPPORTED_CHECK_TYPES or check_definition_revision(check) != revisions[check.pk]:
+                    continue
+                if delete:
+                    check.delete()
+                    changed += 1
+                elif not check.disabled:
+                    HealthCheck.objects.filter(pk=check.pk).update(disabled=True)
+                    changed += 1
+                else:
+                    already += 1
+        return changed, len(revisions) - changed - already, already

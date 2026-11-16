@@ -1298,3 +1298,12 @@ so failure totals and worst status remain exact. The summary is at most 4096
 UTF-8 bytes and keeps severity counts with `[paths omitted]` when needed. For
 admitted configurations the serialized failure evidence and summary stay below
 512 KiB, including JSON escaping and omission metadata.
+
+### Cleaning legacy check definitions
+
+`uv run src/django/manage.py find_legacy_checks` lists unsupported checks;
+`--disable` disables them and `--delete` requires interactive confirmation.
+Cleanup rechecks each inventoried definition and supported-type eligibility
+inside its write transaction. Edited, repaired or deleted entries are skipped;
+new entries require another invocation. Runtime-only agent changes do not
+invalidate confirmation. Deleted counts count checks, excluding cascaded results.

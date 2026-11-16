@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Legacy check cleanup
+
+- Recheck inventoried definitions under writer ownership before disabling or
+  deleting legacy checks; skip concurrent repairs/edits and new entries. Count
+  deleted checks independently of cascaded results.
+
 ### Metric evaluation limits (pending Rust rollout)
 
 - Refuse excessive cumulative metric rule/path/expected-value work before HTTP.
