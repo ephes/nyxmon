@@ -2,8 +2,9 @@
 //!
 //! The global defaults come from the environment readers in [`crate::env`];
 //! per-check overrides live in `health_check.data["notification_policy"]`.
-//! Malformed overrides warn once per `(check_id, key)` and fall back to the
-//! global default, never raising (PLAN.md section 5.2).
+//! Malformed overrides warn once per retained `(check_id, key)` and fall back
+//! to the global default, never raising (PLAN.md section 5.2). The shared FIFO
+//! may evict old warning keys, allowing them to warn again.
 
 use num_bigint::BigInt;
 

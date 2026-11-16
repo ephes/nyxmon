@@ -206,9 +206,10 @@ global default stays at two:
 }
 ```
 
-Every key is optional; anything malformed or out of range is warned about once
-and falls back to the global default rather than raising or silently disabling
-alerts. See `docs/configuration.md` for the ranges and resolution order.
+Every key is optional; anything malformed or out of range warns and falls back
+to the global default. Rust policy warnings contain type names instead of raw
+values. A shared 1024-key FIFO suppresses repeats; evicted keys may warn again.
+See `docs/configuration.md` for the ranges, resolution order and logging contract.
 
 
 The Rust runner executes at most five checks at a time. Collector execution

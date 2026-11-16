@@ -273,8 +273,13 @@ Validation is fail-safe and follows the `notification_suppression` precedent:
 - A non-object `notification_policy`, a non-integer value, a boolean, `null`,
   or a value outside the documented range is ignored and the global default is
   used instead. Nothing raises into the check path.
-- Each rejected field is warned about once per `(check_id, field)`, so a single
-  malformed check cannot flood the worker log.
+- Each rejected field is warned about once per retained `(check_id, field)`.
+  Rust retains at most 1024 keys in the shared warning FIFO across notification
+  policy, site dependency, unobserved-path and runtime-estimate warnings. New
+  keys evict the oldest first-seen key; repeats do not refresh FIFO order.
+  A rejected field can warn again after eviction. New warnings are never
+  globally silenced by a full cache. Environment-variable warnings use separate
+  bookkeeping.
 - Rust policy warnings include the policy key, check ID, fixed rejection reason
   and type name only. Rejected values and nested contents are never formatted or
   logged, so diagnostic work and output do not grow with configuration size.

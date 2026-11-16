@@ -402,9 +402,18 @@ section 3.6); no other new variable is introduced by the port.
   diagnostics retain only the allowlisted policy key, check ID, fixed validation
   reason and static Python type name. They never format or traverse the rejected
   value, including nested objects, strings and large integers. Fallback resolution
-  and warning keys are unchanged. `fixtures/policy.json` intentionally updates
-  only these diagnostic expectations from the historical Python oracle;
+  and warning keys are unchanged. `fixtures/policy.json` and `decision.json`
+  intentionally update only these diagnostics from the historical Python oracle;
   `policy::tests` covers large nested private synthetic values.
+
+- **D-24 Bounded warning deduplication.** The process-shared `WarnOnce` retains
+  at most 1024 `(scope, check_id, field)` keys across notification policy, site
+  dependency, unobserved paths and collector runtime estimates. A standard
+  HashSet plus FIFO evicts the oldest first-seen key before admitting a new
+  one; suppressed repeats do not refresh its position. Evicted keys may warn
+  again, unlike Python's lifetime sets. Scope reset removes both membership and
+  FIFO entries. Environment readers keep their separate deduplication contract.
+  `log::tests` covers small injected capacities, churn, reset and concurrency.
 
 ### 1.6 Result `data` shapes per check type (P1)
 
@@ -1094,6 +1103,8 @@ behaviour is pinned by a Python-generated fixture (section 7.2).
   warn once per `(check_id, key)`; non-object `notification_policy` warns once
   under key `notification_policy`; `null` means "absent" (no warning).
 - Warning evidence is a static type name, never a raw value (D-23).
+- Warn-once keys share a process-wide 1024-key FIFO; eviction permits a later
+  repeat warning (D-24). Recent repeats remain suppressed.
 - `global_reminder_seconds` checks the deprecated variable on every call
   (warning once per value).
 

@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace full rejected notification-policy values with static type names in
   warnings, preserving fallback resolution and deduplication without traversing
   or exposing nested configuration. Update Rust-owned diagnostic fixtures.
+- Bound shared warning deduplication to 1024 keys with FIFO eviction. Recent
+  repeats stay suppressed; evicted policy/site/runtime warning keys may warn
+  again, preventing unbounded retention during check churn.
 
 ### Ping process retirement (pending Rust rollout)
 

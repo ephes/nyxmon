@@ -5,8 +5,9 @@
 //! Python logger name (PLAN.md section 1.7). [`TracingSink`] forwards to
 //! `tracing` with the Python logger name as the target.
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::fmt;
+use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 
 /// Python logger names used by the ported modules.
@@ -85,12 +86,24 @@ impl LogSink for RecordingSink {
 /// `_warned_*` sets of `notification_policy.py`, `site_dependency.py` and
 /// `site_connectivity.py`, and the collector's runtime-estimate warning keys.
 ///
-/// A key is `(scope, check_id, field)`; `scope` names the Python set, so the
-/// sets stay independent as in Python. One instance lives as long as the
-/// process (Python never clears the sets outside tests).
+/// A key is `(scope, check_id, field)`; scopes have independent identities but
+/// share one bounded FIFO. Recent repeats are suppressed without refreshing
+/// their position; an evicted key may warn again (PLAN.md D-24).
 pub struct WarnOnce {
     sink: Arc<dyn LogSink>,
-    seen: Mutex<HashSet<(&'static str, i64, String)>>,
+    capacity: NonZeroUsize,
+    seen: Mutex<WarningKeys>,
+}
+
+/// Maximum retained keys across all scopes of a default [`WarnOnce`].
+pub const DEFAULT_WARN_ONCE_CAPACITY: NonZeroUsize = NonZeroUsize::new(1_024).unwrap();
+
+type WarningKey = (&'static str, i64, String);
+
+#[derive(Default)]
+struct WarningKeys {
+    keys: HashSet<WarningKey>,
+    order: VecDeque<WarningKey>,
 }
 
 impl fmt::Debug for WarnOnce {
@@ -101,14 +114,21 @@ impl fmt::Debug for WarnOnce {
 
 impl WarnOnce {
     pub fn new(sink: Arc<dyn LogSink>) -> Self {
+        Self::with_capacity(sink, DEFAULT_WARN_ONCE_CAPACITY)
+    }
+
+    /// Use a smaller/larger nonzero FIFO allowance (primarily for testing).
+    pub fn with_capacity(sink: Arc<dyn LogSink>, capacity: NonZeroUsize) -> Self {
         WarnOnce {
             sink,
-            seen: Mutex::new(HashSet::new()),
+            capacity,
+            seen: Mutex::new(WarningKeys::default()),
         }
     }
 
-    /// Emit `message()` under `logger` unless `(scope, check_id, field)` was
-    /// seen before. Returns whether the warning was emitted.
+    /// Emit `message()` under `logger` unless `(scope, check_id, field)`
+    /// is still retained. Evict the oldest key when full. Returns whether the
+    /// warning was emitted; formatting and delivery happen outside the lock.
     pub fn warn(
         &self,
         logger: &'static str,
@@ -117,11 +137,21 @@ impl WarnOnce {
         field: &str,
         message: impl FnOnce() -> String,
     ) -> bool {
-        let first = self.seen.lock().unwrap_or_else(|e| e.into_inner()).insert((
-            scope,
-            check_id,
-            field.to_owned(),
-        ));
+        let key = (scope, check_id, field.to_owned());
+        let first = {
+            let mut seen = self.seen.lock().unwrap_or_else(|e| e.into_inner());
+            if seen.keys.contains(&key) {
+                false
+            } else {
+                if seen.order.len() == self.capacity.get() {
+                    let oldest = seen.order.pop_front().expect("full FIFO is nonempty");
+                    seen.keys.remove(&oldest);
+                }
+                seen.keys.insert(key.clone());
+                seen.order.push_back(key);
+                true
+            }
+        };
         if first {
             self.sink.warning(logger, &message());
         }
@@ -130,9 +160,125 @@ impl WarnOnce {
 
     /// Forget every key of `scope` (Python's `reset_*_warning_state`, tests).
     pub fn reset(&self, scope: &'static str) {
-        self.seen
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .retain(|(seen_scope, _, _)| *seen_scope != scope);
+        let mut seen = self.seen.lock().unwrap_or_else(|e| e.into_inner());
+        seen.keys.retain(|(seen_scope, _, _)| *seen_scope != scope);
+        seen.order.retain(|(seen_scope, _, _)| *seen_scope != scope);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn warn(warnings: &WarnOnce, scope: &'static str, check_id: i64, field: &str) -> bool {
+        warnings.warn(loggers::NOTIFICATION_POLICY, scope, check_id, field, || {
+            format!("{scope}/{check_id}/{field}")
+        })
+    }
+
+    fn assert_retained(warnings: &WarnOnce, expected: usize) {
+        let seen = warnings.seen.lock().unwrap();
+        assert_eq!(seen.keys.len(), expected);
+        assert_eq!(seen.order.len(), expected);
+        assert!(expected <= warnings.capacity.get());
+        assert_eq!(
+            seen.order.iter().cloned().collect::<HashSet<_>>(),
+            seen.keys
+        );
+    }
+
+    #[test]
+    fn small_capacity_bounds_churn_and_keeps_recent_duplicates_lazy() {
+        let sink = Arc::new(RecordingSink::default());
+        let warnings = WarnOnce::with_capacity(sink.clone(), NonZeroUsize::new(3).unwrap());
+        for id in 0..100 {
+            assert!(warn(&warnings, "policy", id, "field"));
+            assert_retained(&warnings, usize::min(id as usize + 1, 3));
+            assert!(
+                !warnings.warn(loggers::NOTIFICATION_POLICY, "policy", id, "field", || {
+                    panic!("duplicate must not format")
+                })
+            );
+        }
+        assert_eq!(sink.take().len(), 100);
+        for id in 97..100 {
+            assert!(!warn(&warnings, "policy", id, "field"));
+        }
+        // Repeating 97 did not refresh its FIFO position.
+        assert!(warn(&warnings, "policy", 100, "field"));
+        assert!(warn(&warnings, "policy", 97, "field"));
+        assert_retained(&warnings, 3);
+        assert_eq!(sink.take().len(), 2);
+    }
+
+    #[test]
+    fn scope_and_field_identity_and_reset_preserve_fifo_consistency() {
+        let warnings = WarnOnce::with_capacity(
+            Arc::new(RecordingSink::default()),
+            NonZeroUsize::new(3).unwrap(),
+        );
+        assert!(warn(&warnings, "policy", 1, "a"));
+        assert!(warn(&warnings, "site", 1, "a"));
+        assert!(warn(&warnings, "policy", 1, "b"));
+        assert_retained(&warnings, 3);
+        warnings.reset("policy");
+        warnings.reset("absent");
+        assert_retained(&warnings, 1);
+        assert!(!warn(&warnings, "site", 1, "a"));
+        assert!(warn(&warnings, "policy", 1, "a"));
+        assert!(warn(&warnings, "policy", 1, "b"));
+        assert!(warn(&warnings, "policy", 2, "a"));
+        assert_retained(&warnings, 3);
+        assert!(warn(&warnings, "site", 1, "a"));
+        warnings.reset("policy");
+        warnings.reset("site");
+        assert_retained(&warnings, 0);
+    }
+
+    #[test]
+    fn capacity_one_and_concurrent_duplicates_stay_bounded() {
+        let sink = Arc::new(RecordingSink::default());
+        let warnings = WarnOnce::with_capacity(sink.clone(), NonZeroUsize::new(1).unwrap());
+        std::thread::scope(|threads| {
+            for _ in 0..16 {
+                threads.spawn(|| {
+                    warn(&warnings, "policy", 1, "field");
+                });
+            }
+        });
+        assert_eq!(sink.take().len(), 1);
+        assert_retained(&warnings, 1);
+        assert!(warn(&warnings, "policy", 2, "field"));
+        assert!(warn(&warnings, "policy", 1, "field"));
+        assert_retained(&warnings, 1);
+    }
+
+    #[test]
+    fn dedup_churn_rewarns_evicted_keys_without_silencing_new_keys() {
+        let sink = Arc::new(RecordingSink::default());
+        let warnings = WarnOnce::new(sink.clone());
+        for check_id in 0..2_048 {
+            assert!(warnings.warn(
+                loggers::NOTIFICATION_POLICY,
+                "policy",
+                check_id,
+                "field",
+                || { format!("check {check_id}") }
+            ));
+        }
+        assert_eq!(sink.take().len(), 2_048);
+        assert!(!warnings.warn(
+            loggers::NOTIFICATION_POLICY,
+            "policy",
+            2_047,
+            "field",
+            || { panic!("recent duplicate must not format") }
+        ));
+        assert!(
+            warnings.warn(loggers::NOTIFICATION_POLICY, "policy", 0, "field", || {
+                "evicted key".to_owned()
+            })
+        );
+        assert_eq!(sink.take().len(), 1);
     }
 }

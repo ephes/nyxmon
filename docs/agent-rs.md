@@ -126,6 +126,8 @@ PLAN.md 1.3 defines three parity classes:
 | D-20 | Processing leases beyond SQLite's integer range. |
 | D-21 | Rust cleanup batches accept only 1..=1000 rows and continue while either sessions or results fill a batch. The retired Python cleaner has no upper limit and stops on a short result count. Result totals exclude sessions in both agents. |
 | D-22 | Notifier credentials are scrubbed in raw/encoded diagnostics; ticket IDs are bounded scalars and approval links use URL segments. Optional ticket construction failures keep the alert. Telegram delivery requires a valid success envelope and message ID (see [configuration](configuration.md#opsgate-integration)). |
+| D-23 | Invalid notification-policy warnings project only key/check ID, fixed reason and static type name, never rejected values or nested contents. Rust-owned policy fixtures pin the changed diagnostic text. |
+| D-24 | Shared warning deduplication retains at most 1024 keys in FIFO order across policy/site/runtime scopes; repeats do not refresh order and evicted keys may warn again. Environment warnings keep separate bookkeeping. |
 
 D-1 and D-7 were withdrawn: non-standard JSON numbers and big integers are
 handled exactly like CPython.
