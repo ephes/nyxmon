@@ -577,3 +577,33 @@ async fn timeout_and_cancellation_kill_descendants_holding_pipes() {
         assert!(!escaped.exists(), "descendant outlived the owned check");
     }
 }
+
+#[tokio::test]
+async fn success_signals_the_group_before_reaping_the_leader() {
+    use rustix::process::{WaitIdOptions, waitid};
+    for script in ["printf ready; exit 7", "exec 1>&- 2>&-; sleep 0.05; exit 7"] {
+        let held = std::sync::atomic::AtomicBool::new(false);
+        let result = run_process_with_signal(
+            vec!["sh".into(), "-c".into(), script.into()],
+            2.0,
+            |group| {
+                held.store(
+                    waitid(
+                        rustix::process::WaitId::Pid(group),
+                        WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT,
+                    )
+                    .is_ok_and(|status| status.is_some()),
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+                rustix::process::kill_process_group(group, rustix::process::Signal::KILL)
+            },
+        )
+        .await
+        .unwrap();
+        assert!(
+            held.load(std::sync::atomic::Ordering::Relaxed),
+            "leader identity was released before group signal"
+        );
+        assert_eq!(result.returncode, 7);
+    }
+}

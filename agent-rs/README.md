@@ -704,7 +704,10 @@ limited to 64 KiB and their combined output to 96 KiB; overflow returns a single
 `output_limit` failure without retaining or logging rejected output or retrying.
 Each invocation owns a Unix process group. Timeout, overflow and task cancellation
 kill that group, including wrappers and descendants that hold capture pipes.
-Error cleanup waits at most one second for the direct child; cancellation uses
+Normal completion observes the leader with non-reaping `waitid(WNOWAIT)`;
+the runner signals the group while the leader still reserves its identity, then
+reaps the direct child. This also covers wrappers that close both pipes early.
+Cleanup waits at most one second for the direct child; cancellation uses
 Tokio kill-on-drop reaping. Normal ping parsing and locale remain unchanged.
 
 ### DNS parsing work limit

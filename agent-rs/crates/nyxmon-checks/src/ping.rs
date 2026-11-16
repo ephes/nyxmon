@@ -101,6 +101,17 @@ fn returncode(status: std::process::ExitStatus) -> i64 {
 /// `LC_ALL=C` and `LANG=C`, stdin from `/dev/null`, capturing both output
 /// streams; killed when `timeout` seconds pass.
 pub async fn run_process(command: Vec<String>, timeout: f64) -> Result<ProcessOutput, RunError> {
+    run_process_with_signal(command, timeout, |group| {
+        rustix::process::kill_process_group(group, rustix::process::Signal::KILL)
+    })
+    .await
+}
+
+async fn run_process_with_signal(
+    command: Vec<String>,
+    timeout: f64,
+    signal: impl Fn(rustix::process::Pid) -> rustix::io::Result<()> + Send + Sync,
+) -> Result<ProcessOutput, RunError> {
     let Some(program) = command.first() else {
         // `subprocess` refuses an empty argument list.
         return Err(RunError::Exception(PyException::VALUE_ERROR));
@@ -130,27 +141,42 @@ pub async fn run_process(command: Vec<String>, timeout: f64) -> Result<ProcessOu
     let total = std::sync::atomic::AtomicUsize::new(0);
     let run = async {
         let (stdout, stderr) = tokio::try_join!(capture(stdout, &total), capture(stderr, &total),)?;
-        let status = owned
-            .child
-            .wait()
-            .await
-            .map_err(|err| RunError::Os(os_error_str(&err)))?;
-        Ok(ProcessOutput {
-            returncode: returncode(status),
-            stdout: decode_output(&stdout),
-            stderr: decode_output(&stderr),
-        })
+        observe_exit(owned.group.expect("owned leader")).await?;
+        Ok((stdout, stderr))
     };
     let result = tokio::time::timeout(limit, run)
         .await
         .unwrap_or(Err(RunError::Timeout));
     // Terminate even descendants that closed their pipes; keep the stable group
     // identity until cleanup. On cancellation Drop performs the same kill.
-    owned.terminate();
-    if result.is_err() {
-        let _ = tokio::time::timeout(Duration::from_secs(1), owned.child.wait()).await;
+    owned.terminate(&signal);
+    let retired = tokio::time::timeout(Duration::from_secs(1), owned.child.wait()).await;
+    let (stdout, stderr) = result?;
+    let status = retired
+        .map_err(|_| RunError::Os("Ping child retirement timed out".to_owned()))?
+        .map_err(|err| RunError::Os(os_error_str(&err)))?;
+    Ok(ProcessOutput {
+        returncode: returncode(status),
+        stdout: decode_output(&stdout),
+        stderr: decode_output(&stderr),
+    })
+}
+
+// Never poll Child::wait/try_wait before group retirement: either releases
+// the leader's PID. WNOWAIT leaves even an exited leader holding its identity.
+async fn observe_exit(pid: rustix::process::Pid) -> Result<(), RunError> {
+    use rustix::process::{WaitId, WaitIdOptions, waitid};
+    loop {
+        match waitid(
+            WaitId::Pid(pid),
+            WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT,
+        ) {
+            Ok(Some(_)) => return Ok(()),
+            Ok(None) | Err(rustix::io::Errno::INTR) => {}
+            Err(err) => return Err(RunError::Os(os_error_str(&io::Error::from(err)))),
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
     }
-    result
 }
 
 // A single ping response is tiny. Bound retained bytes and total work across
@@ -186,9 +212,9 @@ struct OwnedProcess {
 }
 
 impl OwnedProcess {
-    fn terminate(&mut self) {
+    fn terminate(&mut self, signal: &impl Fn(rustix::process::Pid) -> rustix::io::Result<()>) {
         if let Some(group) = self.group.take() {
-            let _ = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);
+            let _ = signal(group);
         }
         let _ = self.child.start_kill();
     }
@@ -198,7 +224,9 @@ impl Drop for OwnedProcess {
     fn drop(&mut self) {
         // Nonblocking cancellation cleanup. Tokio's kill_on_drop also arranges
         // direct-child reaping when this future is dropped at any await point.
-        self.terminate();
+        self.terminate(&|group| {
+            rustix::process::kill_process_group(group, rustix::process::Signal::KILL)
+        });
     }
 }
 

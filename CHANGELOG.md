@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Ping process retirement (pending Rust rollout)
+
+- Observe successful process completion without reaping the leader, signal the
+  owned group while its identity remains reserved, then reap the direct child.
+
 ### DNS answer evidence (pending Rust rollout)
 
 - Refuse selected CNAME RRsets with conflicting canonical targets, independently
