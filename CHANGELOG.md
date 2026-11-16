@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### HTTP execution limits (pending Rust rollout)
+
+- Admit HTTP/JSON-HTTP retry delays and full attempts within the capped derived
+  lease budget. Bound per-check HTTP-family cookie count and retained bytes;
+  refuse overflow without retaining credentials or continuing retries.
+
 ### IMAP cleanup evidence (pending Rust rollout)
 
 - Fence destructive UID commands with SELECT UIDVALIDITY and latch intervening

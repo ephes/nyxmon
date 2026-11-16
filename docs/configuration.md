@@ -1265,3 +1265,18 @@ the lock until its connection closes, even if an embedding returns or tears down
 its async runtime. Include these 15 seconds in the service stop allowance.
 Stderr records escape controls, retain printable Unicode and are capped at 8192
 bytes plus newline with `[truncated]` on oversized records.
+
+### HTTP execution and cookie limits (pending Rust rollout)
+
+Plain HTTP and JSON-HTTP retries share one monotonic execution allowance: the
+existing runtime estimate, including `max_runtime_seconds`, capped at 3600
+seconds. A retry requires room for its delay and full configured timeout; when
+it cannot fit, the last failure is returned. An initial attempt that cannot fit
+returns `timeout` without transport. Scheduler delays also consume the allowance.
+
+Each HTTP-family check jar retains at most 128 cookies and 32,768 bytes of cookie
+text/domain/path evidence, including expired entries. A Set-Cookie field may
+contain at most 4096 bytes. Limits apply across redirects and retries. Overflow
+clears the jar and permanently refuses that execution with nonretryable
+`unexpected_error` (`HTTP cookie retention limit exceeded`); no cookie value is
+included. Ordinary replacements and redirect sessions remain supported.

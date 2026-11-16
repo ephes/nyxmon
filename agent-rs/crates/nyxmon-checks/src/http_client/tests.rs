@@ -565,3 +565,45 @@ async fn redirect_bodies_cannot_delay_following_or_the_redirect_limit() {
     assert_eq!(error.kind, HttpErrorKind::Request);
     assert_eq!(error.message, "Exceeded maximum allowed redirects.");
 }
+
+#[test]
+fn retained_cookie_inventory_is_bounded_across_responses() {
+    let session = session();
+    let url = request_url("http://example.test/").unwrap();
+    for i in 0..200 {
+        let mut headers = HeaderMap::new();
+        headers.append(
+            header::SET_COOKIE,
+            HeaderValue::from_str(&format!("c{i}=v; Path=/")).unwrap(),
+        );
+        let _ = session.store_cookies(&url, &headers);
+    }
+    assert!(session.jar.lock().unwrap().iter_any().count() <= 128);
+}
+
+#[test]
+fn cookie_byte_overflow_is_latched_and_replacement_does_not_grow_inventory() {
+    let session = session();
+    let url = request_url("http://example.test/").unwrap();
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::SET_COOKIE,
+        HeaderValue::from_static("sid=one; Path=/"),
+    );
+    for _ in 0..200 {
+        session.store_cookies(&url, &headers).unwrap();
+    }
+    assert_eq!(session.jar.lock().unwrap().iter_any().count(), 1);
+    for i in 0..20 {
+        headers.insert(
+            header::SET_COOKIE,
+            HeaderValue::from_str(&format!("c{i}={}; Path=/", "x".repeat(4000))).unwrap(),
+        );
+        if session.store_cookies(&url, &headers).is_err() {
+            break;
+        }
+    }
+    assert!(session.cookie_overflow.load(Ordering::Relaxed));
+    assert_eq!(session.jar.lock().unwrap().iter_any().count(), 0);
+    assert!(session.store_cookies(&url, &HeaderMap::new()).is_err());
+}

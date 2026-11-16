@@ -870,3 +870,10 @@ agent lock until its connection closes, including after caller cancellation or
 drain timeout in an embedding. Uncancellable accepted work may thus keep the lock
 longer than the caller's deadline; a second agent must wait/refuse. Normal process
 exit terminates remaining threads. No deployment or version bump is included.
+
+### HTTP execution resource envelope
+
+Plain HTTP/JSON-HTTP admit attempts and retry sleeps against the capped lease
+estimate on the Tokio monotonic clock. HTTP-family cookies have per-execution
+count/byte admission and fail closed on overflow. See the exact limits and
+outcomes in `docs/configuration.md` (HTTP execution and cookie limits).

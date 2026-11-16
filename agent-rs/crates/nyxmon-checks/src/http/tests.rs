@@ -256,3 +256,23 @@ async fn retry_delays_wait_on_the_tokio_clock() {
     sleeper.sleep(f64::NAN).await;
     assert_eq!(start.elapsed(), slept);
 }
+
+#[tokio::test(start_paused = true)]
+async fn retry_sequence_stays_inside_derived_lease() {
+    let batch = BatchCtx {
+        http: HttpSession::new(),
+        sleeper: Sleeper::real(),
+    };
+    let start = tokio::time::Instant::now();
+    let result = execute(
+        &check(
+            "ftp://example.test/",
+            r#"{"timeout":300,"retry_delay":300,"retries":100}"#,
+        ),
+        &batch,
+    )
+    .await;
+    assert!(start.elapsed() <= Duration::from_secs(3600));
+    assert!(result.data["attempt"].as_i64().unwrap() < 101);
+    assert_eq!(result.data["error_type"].as_str(), Some("request_error"));
+}

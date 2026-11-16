@@ -30,6 +30,7 @@ use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -55,6 +56,10 @@ use crate::httpx_url::HttpxUrl;
 pub const USER_AGENT: &str = "python-httpx/0.28.1";
 /// `DEFAULT_MAX_REDIRECTS`.
 pub const MAX_REDIRECTS: usize = 20;
+/// Per-check cookie storage limits, including expired entries.
+pub const MAX_COOKIES: usize = 128;
+pub const MAX_COOKIE_BYTES: usize = 32_768;
+pub const MAX_SET_COOKIE_BYTES: usize = 4096;
 
 /// The httpx exception family of a failed request.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -393,6 +398,7 @@ impl Drop for HttpResponse {
 /// The HTTP state of one batch (one httpx `AsyncClient`).
 pub struct HttpSession {
     jar: Mutex<CookieStore>,
+    cookie_overflow: AtomicBool,
     tls: tokio_rustls::TlsConnector,
     /// Tests: route host names to local addresses (the URL's port applies).
     overrides: Vec<(String, std::net::IpAddr)>,
@@ -416,6 +422,7 @@ impl HttpSession {
         tls.alpn_protocols = vec![b"http/1.1".to_vec()];
         HttpSession {
             jar: Mutex::new(CookieStore::new()),
+            cookie_overflow: AtomicBool::new(false),
             tls: tokio_rustls::TlsConnector::from(Arc::new(tls)),
             overrides: Vec::new(),
         }
@@ -428,6 +435,7 @@ impl HttpSession {
     pub fn for_check(&self) -> Self {
         HttpSession {
             jar: Mutex::new(CookieStore::new()),
+            cookie_overflow: AtomicBool::new(false),
             tls: self.tls.clone(),
             overrides: self.overrides.clone(),
         }
@@ -473,26 +481,51 @@ impl HttpSession {
         HeaderValue::from_str(&text).ok()
     }
 
-    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) {
-        let Some(parsed) = cookie_url(url) else {
-            return;
+    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) -> Result<(), HttpError> {
+        let mut jar = self.jar.lock().unwrap_or_else(|e| e.into_inner());
+        let overflow = |jar: &mut CookieStore| {
+            jar.clear();
+            self.cookie_overflow.store(true, Ordering::Relaxed);
+            HttpError::new(
+                HttpErrorKind::Unexpected,
+                "HTTP cookie retention limit exceeded",
+            )
         };
-        let cookies: Vec<RawCookie<'static>> = headers
-            .get_all(header::SET_COOKIE)
-            .iter()
-            .filter_map(|value| value.to_str().ok())
-            .filter_map(|text| RawCookie::parse(text.to_owned()).ok())
-            .map(|mut cookie| {
-                if let Some(path) = cookie.path().map(cookie_path) {
-                    cookie.set_path(path);
-                }
-                cookie
-            })
-            .collect();
-        if !cookies.is_empty() {
-            let mut jar = self.jar.lock().unwrap_or_else(|e| e.into_inner());
-            jar.store_response_cookies(cookies.into_iter(), &parsed);
+        if self.cookie_overflow.load(Ordering::Relaxed) {
+            return Err(overflow(&mut jar));
         }
+        let Some(parsed) = cookie_url(url) else {
+            return Ok(());
+        };
+        for value in headers.get_all(header::SET_COOKIE) {
+            if value.as_bytes().len() > MAX_SET_COOKIE_BYTES {
+                return Err(overflow(&mut jar));
+            }
+            let Some(mut cookie) = value
+                .to_str()
+                .ok()
+                .and_then(|text| RawCookie::parse(text.to_owned()).ok())
+            else {
+                continue;
+            };
+            if let Some(path) = cookie.path().map(cookie_path) {
+                cookie.set_path(path);
+            }
+            jar.store_response_cookies(std::iter::once(cookie), &parsed);
+            let count = jar.iter_any().count();
+            let bytes: usize = jar
+                .iter_any()
+                .map(|c| {
+                    c.to_string().len()
+                        + String::from(&c.path).len()
+                        + format!("{:?}", c.domain).len()
+                })
+                .sum();
+            if count > MAX_COOKIES || bytes > MAX_COOKIE_BYTES {
+                return Err(overflow(&mut jar));
+            }
+        }
+        Ok(())
     }
 
     /// Send one GET without following redirects.
@@ -506,6 +539,12 @@ impl HttpSession {
         authorization: Option<&HeaderValue>,
         extra_headers: &[(HeaderName, HeaderValue)],
     ) -> Result<HttpResponse, HttpError> {
+        if self.cookie_overflow.load(Ordering::Relaxed) {
+            return Err(HttpError::new(
+                HttpErrorKind::Unexpected,
+                "HTTP cookie retention limit exceeded",
+            ));
+        }
         check_scheme(url)?;
         if url.host.is_empty() {
             return Err(HttpError::request("Request URL is missing a host."));
@@ -556,7 +595,10 @@ impl HttpSession {
             }
         };
         let (parts, body) = response.into_parts();
-        self.store_cookies(url, &parts.headers);
+        if let Err(error) = self.store_cookies(url, &parts.headers) {
+            connection.abort();
+            return Err(error);
+        }
         Ok(HttpResponse {
             status: parts.status.as_u16(),
             headers: parts.headers,
