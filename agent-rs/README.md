@@ -715,6 +715,11 @@ operations per packet byte, capped at 65,536 operations per response. Budget
 exhaustion uses the existing malformed-response classification. Ordinary compressed
 names and UDP-to-TCP truncation fallback are preserved; heavily amplified pointer
 ladders are refused even if their wire packet is otherwise valid.
+Answer selection uses hashed canonical RDATA identities and retains first-seen
+order (domain names remain case-insensitive). All CNAME-chain scans share a
+512 KiB work allowance, charging record visits, compared owner-name wire bytes
+and expanded canonical RDATA bytes before allocation/hashing. Exhaustion returns
+a bounded resolver failure, including for otherwise valid compressed responses.
 
 ## Lease result authority and bounded repair
 
