@@ -1242,8 +1242,9 @@ processing enabled checks remain due even if their schedule is in the future.
 
 ### Rust claim generations and shutdown drain
 
-For this pending Rust agent update, stop agents, run Django migrations through
-`0015_healthcheck_claim_generation`, then install/start the updated binary.
+For this pending Rust agent update, run Django migrations through
+`0015_healthcheck_claim_generation`, then install/start the updated binary. An
+older agent may keep running during the migration (as the ops deploy does).
 Processing rows get distinct initial UUID tokens; idle rows get an empty token.
 The agent runs no DDL. Every new claim gets a fresh random 128-bit token in its
 claim transaction. Scheduling and expiry still use timestamps; release and

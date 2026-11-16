@@ -22,8 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bind persisted check/result IDs before any transaction. Fence claim completion
   and release with fresh random 128-bit generations rather than wall seconds.
-  Requires Django migration `0015_healthcheck_claim_generation`: stop agents,
-  migrate, then adopt the updated Rust binary; no agent DDL or version bump.
+  Requires Django migration `0015_healthcheck_claim_generation` before the
+  updated Rust binary is adopted; migrating while an older agent still runs (as
+  the ops deploy does) is supported. No agent DDL or version bump.
 - Drain accepted DB actor jobs before releasing singleton ownership. New work is
   refused after close; a 15-second drain timeout fails shutdown while a surviving
   actor retains its lock until SQLite closes.

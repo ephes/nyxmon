@@ -456,8 +456,8 @@ admission, so database lock waits cannot create already-expired reservations.
 
 ### Pending Rust agent startup and ownership update
 
-Before adopting this branch's Rust agent, stop agents and run Django migrations
-through `0015_healthcheck_claim_generation`. Existing processing rows receive
+Before adopting this branch's Rust agent, run Django migrations through
+`0015_healthcheck_claim_generation` (the older agent may keep running meanwhile). Existing processing rows receive
 distinct tokens; every new claim gets a fresh random 128-bit generation, so
 clock repetition/rollback cannot revive an old completion or release. Check and
 result IDs must match before persistence. The retired Python agent is unchanged.

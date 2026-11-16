@@ -1,4 +1,4 @@
-"""Django owns claim generations. Stop agents before migrating/upgrading."""
+"""Django owns claim generations; apply before adopting the updated Rust agent."""
 
 import uuid
 

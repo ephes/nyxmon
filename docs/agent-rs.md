@@ -221,7 +221,8 @@ unlinking anything. Keep the lock namespace stable throughout the live run.
 Stderr escapes record-breaking controls and limits each physical UTF-8 record
 to 8192 bytes plus newline, marking truncation with `[truncated]`.
 
-Before adopting this agent, stop agents and apply Django migration 0015. Existing
+Before adopting this agent, apply Django migration 0015 (an older agent may keep
+running during the migration; see `agent-rs/README.md`). Existing
 processing rows receive distinct UUID generations; idle rows start empty. Every
 new Rust claim assigns a fresh random 128-bit token atomically. Completion and
 release compare this token, independently of wall-clock expiry timestamps; a

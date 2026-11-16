@@ -2715,8 +2715,8 @@ These changes require an eventual Rust-agent rollout; no deployment is included.
 
 ### Pending startup/retirement contract (round 101)
 
-The minimum migrated schema is 0015_healthcheck_claim_generation. Stop agents
-before migration/adoption: existing processing rows receive distinct UUID tokens,
+The minimum migrated schema is 0015_healthcheck_claim_generation, applied before
+adoption (an older agent may keep running during the migration): existing processing rows receive distinct UUID tokens,
 idle rows start empty. Claims assign random 128-bit tokens, independently of time.
 The actor's ordered close rejects submissions and acknowledges after all admitted
 work and SQLite closure. App shutdown waits up to 15 seconds; uncertainty fails

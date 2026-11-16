@@ -792,6 +792,8 @@ a future Rust runner rollout; no release or deployment is part of this change.
 After acquiring the lock, startup verifies that its name still identifies the
 opened single-link inode and its parent still identifies the opened directory.
 Replacement during admission is refused without deleting the replacement.
+Pinning the parent opens the database directory, so the agent user needs read
+and search permission on it (not only write and search).
 The lock namespace must remain stable for the entire live run; startup checks
 cannot protect against an administrator replacing a live lock afterward.
 
@@ -810,8 +812,12 @@ Notification text is unaffected. These changes need a future Rust agent rollout.
 
 ## Claim identity and ordered store retirement
 
-Migration `nyxboard.0015_healthcheck_claim_generation` is now required. Stop all
-agents, apply Django migrations, then adopt the updated Rust agent. Existing
+Migration `nyxboard.0015_healthcheck_claim_generation` is now required. Apply
+Django migrations, then adopt the updated Rust agent. Stopping agents first is
+the simplest order, but migrating while an older agent (0.1.x) still runs, as the
+ops deploy does, is supported: the old agent ignores the column and keeps its
+timestamp fences. Rows it claims after the migration carry an empty or stale
+token until it completes them or the updated agent's stale reclaim repairs them. Existing
 processing rows receive distinct UUID tokens without changing their lease times;
 idle rows start with an empty token. A claim assigns a new SQLite random 128-bit
 hex token atomically with its processing state. Tokens are independent of wall
