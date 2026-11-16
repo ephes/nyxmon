@@ -111,25 +111,43 @@ pub fn evaluate(payload: &PyJson, checks: &[MetricCheck]) -> Result<Vec<PyJson>,
         let PyJson::Str(path) = &check.path else {
             return Err(PyException::TYPE_ERROR);
         };
-        let mut failure = PyDict::new();
-        failure.insert("path".to_owned(), check.path.clone());
-        failure.insert("op".to_owned(), PyJson::from(check.op.symbol()));
-        failure.insert("expected".to_owned(), check.value.clone());
-        let Some(actual) = resolve_path(payload, path)? else {
-            failure.insert("actual".to_owned(), PyJson::Null);
-            failure.insert("reason".to_owned(), PyJson::from("path_missing"));
-            failure.insert("severity".to_owned(), PyJson::from(check.severity.as_str()));
-            failures.push(PyJson::Dict(failure));
-            continue;
-        };
-        if py_cmp(check.op, actual, &check.value).unwrap_or(false) {
+        let actual = resolve_path(payload, path)?;
+        if actual.is_some_and(|actual| py_cmp(check.op, actual, &check.value).unwrap_or(false)) {
             continue;
         }
-        let (bounded, truncated) = bounded_actual_with_budget(actual, &mut diagnostic_budget);
+        let mut failure = PyDict::new();
+        let limit = MAX_ACTUAL_CHARS.min(diagnostic_budget);
+        let path_prefix: String = path.chars().take(limit).collect();
+        diagnostic_budget = diagnostic_budget.saturating_sub(char_len(&path_prefix));
+        let path_truncated = path_prefix.len() < path.len();
+        failure.insert(
+            "path".to_owned(),
+            PyJson::from(if path_truncated {
+                format!("{path_prefix}…")
+            } else {
+                path_prefix
+            }),
+        );
+        failure.insert("op".to_owned(), PyJson::from(check.op.symbol()));
+        let (expected, expected_truncated) =
+            bounded_actual_with_budget(&check.value, &mut diagnostic_budget);
+        failure.insert("expected".to_owned(), expected);
+        let (bounded, truncated) = actual.map_or((PyJson::Null, false), |actual| {
+            bounded_actual_with_budget(actual, &mut diagnostic_budget)
+        });
         failure.insert("actual".to_owned(), bounded);
+        if actual.is_none() {
+            failure.insert("reason".to_owned(), PyJson::from("path_missing"));
+        }
         failure.insert("severity".to_owned(), PyJson::from(check.severity.as_str()));
         if truncated {
             failure.insert("actual_truncated".to_owned(), PyJson::Bool(true));
+        }
+        if path_truncated {
+            failure.insert("path_truncated".to_owned(), PyJson::Bool(true));
+        }
+        if expected_truncated {
+            failure.insert("expected_truncated".to_owned(), PyJson::Bool(true));
         }
         failures.push(PyJson::Dict(failure));
     }
@@ -142,23 +160,56 @@ fn severity_of(failure: &PyJson) -> Option<&str> {
 
 /// `_build_failure_summary(failures)`.
 pub fn failure_summary(failures: &[PyJson]) -> String {
-    let mut parts = Vec::new();
+    const LIMIT: usize = 4096;
+    const OMITTED: &str = " … [paths omitted]";
+    let mut summary = String::new();
+    // Reserve both counts before appending any path evidence.
     for severity in [Severity::Critical, Severity::Warning] {
-        let paths: Vec<&str> = failures
+        let count = failures
             .iter()
             .filter(|f| severity_of(f) == Some(severity.as_str()))
-            .map(|f| f.get("path").and_then(PyJson::as_str).unwrap_or("?"))
-            .collect();
-        if !paths.is_empty() {
-            parts.push(format!(
-                "{} {}: {}",
-                paths.len(),
-                severity.as_str(),
-                paths.join(", ")
-            ));
+            .count();
+        if count > 0 {
+            if !summary.is_empty() {
+                summary.push_str("; ");
+            }
+            summary.push_str(&format!("{count} {}", severity.as_str()));
         }
     }
-    parts.join("; ")
+    let mut parts = Vec::new();
+    for severity in [Severity::Critical, Severity::Warning] {
+        let count = failures
+            .iter()
+            .filter(|f| severity_of(f) == Some(severity.as_str()))
+            .count();
+        if count == 0 {
+            continue;
+        }
+        let mut part = format!("{count} {}: ", severity.as_str());
+        for (index, failure) in failures
+            .iter()
+            .filter(|f| severity_of(f) == Some(severity.as_str()))
+            .enumerate()
+        {
+            if index > 0 {
+                part.push_str(", ");
+            }
+            let path = failure.get("path").and_then(PyJson::as_str).unwrap_or("?");
+            if part.len() + path.len() > LIMIT - OMITTED.len() - summary.len() {
+                summary.push_str(OMITTED);
+                return summary;
+            }
+            part.push_str(path);
+        }
+        parts.push(part);
+    }
+    let full = parts.join("; ");
+    if full.len() > LIMIT {
+        summary.push_str(OMITTED);
+        summary
+    } else {
+        full
+    }
 }
 
 /// The result status of a non-empty failure list: `error` when any failure

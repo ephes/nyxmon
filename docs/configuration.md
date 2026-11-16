@@ -1280,3 +1280,21 @@ contain at most 4096 bytes. Limits apply across redirects and retries. Overflow
 clears the jar and permanently refuses that execution with nonretryable
 `unexpected_error` (`HTTP cookie retention limit exceeded`); no cookie value is
 included. Ordinary replacements and redirect sessions remain supported.
+
+### JSON-metrics evaluation work and evidence
+
+The Rust executor refuses configurations exceeding 256 metric rules, 16,384
+cumulative UTF-8 path bytes, or 65,536 expected-value work bytes before cloning
+rules or requesting HTTP. Expected values admit at most 8192 nodes and depth 64;
+keys/strings charge UTF-8 bytes, scalar values charge eight bytes and large
+integers conservatively charge their bit count. Limits are cumulative across
+rules. Refusal returns `configuration_error`; split oversized configurations.
+
+All failure paths, expected values and actual values share the 16,384-character
+diagnostic budget. Each field retains at most 200 characters plus an ellipsis;
+`path_truncated`, `expected_truncated` and `actual_truncated` identify omissions.
+Every failed rule keeps a record and severity, even after evidence is exhausted,
+so failure totals and worst status remain exact. The summary is at most 4096
+UTF-8 bytes and keeps severity counts with `[paths omitted]` when needed. For
+admitted configurations the serialized failure evidence and summary stay below
+512 KiB, including JSON escaping and omission metadata.

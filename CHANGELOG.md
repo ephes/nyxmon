@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Metric evaluation limits (pending Rust rollout)
+
+- Refuse excessive cumulative metric rule/path/expected-value work before HTTP.
+  Share bounded diagnostic evidence across paths, expected and actual values;
+  cap summaries while preserving every failure and worst severity.
+
 ### HTTP execution limits (pending Rust rollout)
 
 - Admit HTTP/JSON-HTTP retry delays and full attempts within the capped derived

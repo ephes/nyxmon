@@ -32,6 +32,12 @@ pub const MAX_TIMEOUT_SECONDS: f64 = 300.0;
 pub const MAX_RETRY_DELAY_SECONDS: f64 = 300.0;
 /// Largest accepted `retries` (as for HTTP checks).
 pub const MAX_RETRIES: u32 = 100;
+/// Total evaluation work admitted before rule cloning or transport.
+pub const MAX_METRIC_CHECKS: usize = 256;
+pub const MAX_METRIC_PATH_BYTES: usize = 16_384;
+pub const MAX_METRIC_VALUE_BYTES: usize = 65_536;
+pub const MAX_METRIC_VALUE_NODES: usize = 8192;
+pub const MAX_METRIC_VALUE_DEPTH: usize = 64;
 
 /// A threshold severity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -198,6 +204,7 @@ fn parse_checks(raw: &PyJson) -> Result<Vec<MetricCheck>, ConfigError> {
             return Err(PyException::TYPE_ERROR.into());
         }
     };
+    admit_work(entries)?;
     let mut checks = Vec::with_capacity(entries.len());
     let (null, empty) = (PyJson::Null, PyJson::Str(String::new()));
     for entry in entries {
@@ -235,6 +242,61 @@ fn parse_checks(raw: &PyJson) -> Result<Vec<MetricCheck>, ConfigError> {
         });
     }
     Ok(checks)
+}
+
+// Walk lazily and stop at the first exhausted allowance, before cloning values.
+fn value_work(value: &PyJson, depth: usize, nodes: &mut usize, bytes: &mut usize) -> bool {
+    if depth > MAX_METRIC_VALUE_DEPTH || *nodes == 0 {
+        return false;
+    }
+    *nodes -= 1;
+    let size = match value {
+        PyJson::Str(s) => s.len(),
+        PyJson::BigInt(n) => usize::try_from(n.bits()).unwrap_or(usize::MAX),
+        PyJson::List(items) => return items.iter().all(|v| value_work(v, depth + 1, nodes, bytes)),
+        PyJson::Dict(map) => {
+            return map.iter().all(|(k, v)| {
+                if k.len() > *bytes {
+                    return false;
+                }
+                *bytes -= k.len();
+                value_work(v, depth + 1, nodes, bytes)
+            });
+        }
+        _ => 8,
+    };
+    if size > *bytes {
+        return false;
+    }
+    *bytes -= size;
+    true
+}
+
+fn admit_work(entries: &[PyJson]) -> Result<(), ConfigError> {
+    let refusal = || ConfigError::invalid("metric checks exceed the evaluation work limit");
+    if entries.len() > MAX_METRIC_CHECKS {
+        return Err(refusal());
+    }
+    let mut paths = MAX_METRIC_PATH_BYTES;
+    let mut bytes = MAX_METRIC_VALUE_BYTES;
+    let mut nodes = MAX_METRIC_VALUE_NODES;
+    for entry in entries {
+        for key in ["path", "value"] {
+            if let Some(value) = entry.get(key) {
+                if key == "path"
+                    && let PyJson::Str(path) = value
+                {
+                    if path.len() > paths {
+                        return Err(refusal());
+                    }
+                    paths -= path.len();
+                } else if !value_work(value, 0, &mut nodes, &mut bytes) {
+                    return Err(refusal());
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// `needle in value` for the `auth` membership test.

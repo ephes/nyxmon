@@ -333,3 +333,17 @@ async fn finite_nested_metrics_keep_their_threshold_results() {
     let result = execute(&check(&data), &ctx()).await.unwrap();
     assert_eq!(result.status, ResultStatus::Ok);
 }
+
+#[tokio::test]
+async fn excessive_metric_work_is_refused_before_transport() {
+    let rule = r#"{"path":"$","op":"==","value":0,"severity":"critical"}"#;
+    let data = format!(
+        r#"{{"url":"http://127.0.0.1:1/","checks":[{}]}}"#,
+        vec![rule; 257].join(",")
+    );
+    let result = execute(&check(&data), &ctx()).await.unwrap();
+    assert_eq!(
+        result.data["error_type"].as_str(),
+        Some("configuration_error")
+    );
+}
