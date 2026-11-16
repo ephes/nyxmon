@@ -12,9 +12,7 @@ use indexmap::IndexMap;
 use md5::Md5;
 use nyxmon_core::config::smtp::{SmtpConfig, SmtpMessage, SmtpTls, prepare};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
-use nyxmon_core::pyjson::{
-    PyDict, PyJson, py_bytes_repr, py_int, py_isspace, py_str_repr, py_strip,
-};
+use nyxmon_core::pyjson::{PyDict, PyJson, py_bytes_repr, py_isspace, py_str_repr, py_strip};
 use nyxmon_core::pyjson::{py_str, py_type_name};
 use rustls::ClientConfig;
 use std::sync::Arc;
@@ -46,12 +44,17 @@ enum SmtpExc {
     Smtp(String),
     /// `ssl.SSLError`.
     Tls(String),
-    /// The executor's own `recipient_refused` error for the first refused
-    /// recipient when others were accepted.
-    RecipientRefused(i64, Vec<u8>),
+    /// DATA was accepted for a subset: resending the message duplicates it.
+    PartialDelivery(DeliveryReport),
     /// Not an SMTP or OS error (`ValueError`, `UnicodeEncodeError`, ...):
     /// escapes the client and becomes `unexpected_error`.
     Other(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DeliveryReport {
+    accepted: Vec<String>,
+    refused: IndexMap<String, (i64, Vec<u8>)>,
 }
 
 impl From<NetError> for SmtpExc {
@@ -237,7 +240,7 @@ impl Client {
 
     async fn getreply(&mut self) -> Result<(i64, Vec<u8>), SmtpExc> {
         let mut resp: Vec<Vec<u8>> = Vec::new();
-        let mut errcode;
+        let mut reply_code = None;
         let mut reply_bytes = 0;
         loop {
             let Some(conn) = self.conn.as_mut() else {
@@ -270,24 +273,38 @@ impl Client {
                 return Err(SmtpExc::Response(500, b"Reply limit exceeded.".to_vec()));
             }
             reply_bytes += line.len();
-            let text = line.get(4..).unwrap_or_default();
+            // A reply has one code throughout. Never let a later success
+            // line replace earlier refusal evidence or reuse a broken stream.
+            let raw = line.strip_suffix(b"\r\n");
+            let valid = raw.is_some_and(|raw| {
+                raw.len() >= 3
+                    && raw[..3].iter().all(u8::is_ascii_digit)
+                    && (raw.len() == 3 || matches!(raw[3], b' ' | b'-'))
+            });
+            if !valid {
+                self.close();
+                return Err(SmtpExc::Smtp("Malformed SMTP reply".to_owned()));
+            }
+            let raw = raw.expect("validated reply");
+            let code = i64::from(raw[0] - b'0') * 100
+                + i64::from(raw[1] - b'0') * 10
+                + i64::from(raw[2] - b'0');
+            if reply_code.is_some_and(|previous| previous != code) {
+                self.close();
+                return Err(SmtpExc::Smtp("Inconsistent SMTP reply codes".to_owned()));
+            }
+            reply_code = Some(code);
+            let text = raw.get(4..).unwrap_or_default();
             let start = text.iter().position(|b| !b" \t\r\n".contains(b));
             let end = text.iter().rposition(|b| !b" \t\r\n".contains(b));
             resp.push(match (start, end) {
                 (Some(s), Some(e)) => text[s..=e].to_vec(),
                 _ => Vec::new(),
             });
-            let code = &line[..line.len().min(3)];
-            errcode = std::str::from_utf8(code)
-                .ok()
-                .filter(|c| c.is_ascii())
-                .and_then(|c| py_int(c).ok())
-                .and_then(|n| i64::try_from(n).ok());
-            if errcode.is_none() || line.get(3) != Some(&b'-') {
-                break;
+            if raw.get(3) != Some(&b'-') {
+                return Ok((code, resp.join(&b"\n"[..])));
             }
         }
-        Ok((errcode.unwrap_or(-1), resp.join(&b"\n"[..])))
     }
 
     async fn docmd(&mut self, cmd: &str, args: &str) -> Result<(i64, Vec<u8>), SmtpExc> {
@@ -627,9 +644,19 @@ async fn session(
         client.login(&config.username, &password).await?;
     }
     let refused = client.send_message(message).await?;
-    match refused.into_iter().next() {
-        Some((_, (code, resp))) => Err(SmtpExc::RecipientRefused(code, resp)),
-        None => Ok(()),
+    if refused.is_empty() {
+        Ok(())
+    } else {
+        let accepted = message
+            .recipients
+            .iter()
+            .filter(|recipient| !refused.contains_key(*recipient))
+            .cloned()
+            .collect();
+        Err(SmtpExc::PartialDelivery(DeliveryReport {
+            accepted,
+            refused,
+        }))
     }
 }
 
@@ -639,6 +666,7 @@ struct SendError {
     message: String,
     code: Option<i64>,
     temporary: bool,
+    partial: Option<DeliveryReport>,
 }
 
 fn is_temporary(code: i64) -> bool {
@@ -652,6 +680,7 @@ impl From<SmtpExc> for SendError {
             message,
             code: None,
             temporary: false,
+            partial: None,
         };
         match exc {
             SmtpExc::Auth(code, msg) => {
@@ -665,13 +694,17 @@ impl From<SmtpExc> for SendError {
                     },
                     code: Some(code),
                     temporary: false,
+                    partial: None,
                 }
             }
-            SmtpExc::RecipientRefused(code, resp) => SendError {
-                error_type: "recipient_refused",
-                message: decode_response(&resp),
-                code: Some(code),
-                temporary: is_temporary(code),
+            SmtpExc::PartialDelivery(report) => SendError {
+                error_type: "partial_delivery",
+                message:
+                    "Message accepted for some recipients; refused recipients were not retried"
+                        .to_owned(),
+                code: report.refused.first().map(|(_, (code, _))| *code),
+                temporary: false,
+                partial: Some(report),
             },
             SmtpExc::Response(code, msg) => SendError {
                 error_type: if is_temporary(code) {
@@ -682,6 +715,7 @@ impl From<SmtpExc> for SendError {
                 message: decode_response(&msg),
                 code: Some(code),
                 temporary: is_temporary(code),
+                partial: None,
             },
             SmtpExc::Timeout => plain("timeout", "connection timed out".to_owned()),
             SmtpExc::Connection(text) => plain("connection_error", text),
@@ -746,6 +780,28 @@ pub async fn execute(check: &Check, env: &impl MailEnv) -> CheckResult {
             result
                 .data
                 .insert("smtp_code".to_owned(), PyJson::Int(code));
+        }
+        if let Some(report) = err.partial {
+            result.data.insert(
+                "accepted_recipients".to_owned(),
+                PyJson::List(report.accepted.into_iter().map(PyJson::Str).collect()),
+            );
+            let refused = report
+                .refused
+                .into_iter()
+                .map(|(recipient, (code, resp))| {
+                    let mut evidence = PyDict::new();
+                    evidence.insert("smtp_code".to_owned(), PyJson::Int(code));
+                    evidence.insert(
+                        "response_message".to_owned(),
+                        PyJson::Str(decode_response(&resp)),
+                    );
+                    (recipient, PyJson::Dict(evidence))
+                })
+                .collect();
+            result
+                .data
+                .insert("refused_recipients".to_owned(), PyJson::Dict(refused));
         }
         return result;
     }

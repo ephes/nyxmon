@@ -40,7 +40,9 @@ Validation rules:
 - Authenticates before sending when credentials are provided.
 - Builds subjects as `<prefix> <UTC timestamp> <6-char token>` and returns the token for IMAP correlation.
 - QUIT and socket close are best-effort: shutdown failures preserve DATA acceptance or recipient refusal and do not trigger another send.
-- Retries on 4xx responses (greylisting/temporary failures) with configurable backoff.
+- The production Rust sender requires three ASCII code digits, CRLF and a space or hyphen separator (a bare terminal code is allowed). Every line of a multiline reply must carry the same code. Malformed or mixed replies close the connection with `smtp_error` before another command; no retry follows.
+- Retries on 4xx response errors (greylisting/temporary failures) with configurable backoff, except after partial DATA acceptance.
+- When DATA is accepted for some recipients and others were refused, Rust returns an error with `error_type="partial_delivery"`, `attempts`, the first refused `smtp_code`, `accepted_recipients` (list) and `refused_recipients` (address to `smtp_code`/`response_message` evidence). It never retries the whole message, even for a temporary recipient refusal. SMTP acceptance is relay acceptance, not proof of final delivery. Reconcile refused recipients separately; the retired Python sender is unchanged.
 - Fails fast on 5xx errors, auth failures, connection errors, and timeouts.
 - Drives the IMAP inbound check: keep `subject_prefix` in sync with the IMAP `search_subject`, and send at least once per IMAP interval so the IMAP check can find a fresh message.
 

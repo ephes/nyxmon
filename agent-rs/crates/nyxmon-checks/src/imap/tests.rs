@@ -192,7 +192,7 @@ fn login_select() -> Vec<Step> {
         Step::Recv,
         tagged("OK [CAPABILITY IMAP4rev1 UIDPLUS] Logged in"),
         Step::Recv,
-        send("* 3 EXISTS\r\n"),
+        send("* 3 EXISTS\r\n* OK [UIDVALIDITY 7] selected\r\n"),
         tagged("OK [READ-WRITE] SELECT completed"),
     ]
 }
@@ -599,6 +599,8 @@ async fn imap_attempt_deadline_preserves_completed_cleanup_when_logout_drips() {
         send("* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n"),
         tagged("OK done"),
         Step::Recv,
+        tagged("OK synchronized"),
+        Step::Recv,
         tagged("OK stored"),
         Step::Recv,
         send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
@@ -624,6 +626,7 @@ async fn imap_attempt_deadline_preserves_completed_cleanup_when_logout_drips() {
     assert_eq!(
         &transcript[4..],
         [
+            "NOOP",
             "UID STORE 5 +FLAGS (\\Deleted)",
             "CAPABILITY",
             "UID EXPUNGE 5",
@@ -671,6 +674,8 @@ fn r90_finish(script: &mut Vec<Step>, delete: bool) {
     if delete {
         script.extend([
             Step::Recv,
+            tagged("OK synchronized"),
+            Step::Recv,
             tagged("OK stored"),
             Step::Recv,
             send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
@@ -706,8 +711,8 @@ async fn r90_subject_is_one_literal_search_argument() {
         wire[2],
         r#"UID SEARCH NOT DELETED HEADER SUBJECT "report \" OR ALL HEADER SUBJECT \" \\ end""#
     );
-    assert_eq!(wire[4], "UID STORE 5 +FLAGS (\\Deleted)");
-    assert_eq!(wire[6], "UID EXPUNGE 5");
+    assert_eq!(wire[5], "UID STORE 5 +FLAGS (\\Deleted)");
+    assert_eq!(wire[7], "UID EXPUNGE 5");
 }
 
 #[tokio::test]
@@ -781,9 +786,9 @@ async fn r90_fetches_are_batched_and_attributed_by_uid() {
             format!("UID FETCH {} (INTERNALDATE)", batch.join(","))
         );
     }
-    assert_eq!(wire.len(), 15);
+    assert_eq!(wire.len(), 16);
     assert_eq!(
-        wire[11],
+        wire[12],
         format!("UID STORE {} +FLAGS (\\Deleted)", ids.join(","))
     );
 }
@@ -820,13 +825,19 @@ async fn r90_fetch_bytes_are_bounded_across_batches_without_partial_cleanup() {
 /// SEARCH observes the initial time; settlement observes time after all FETCHes.
 struct ScanClock {
     inner: TestEnv,
+    advance_after: usize,
     reads: std::sync::atomic::AtomicUsize,
 }
 
 impl MailEnv for ScanClock {
     fn now(&self) -> f64 {
         let read = self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        self.inner.now + if read == 0 { 0.0 } else { 120.0 }
+        self.inner.now
+            + if read < self.advance_after {
+                0.0
+            } else {
+                120.0
+            }
     }
     fn token(&self) -> String {
         self.inner.token()
@@ -873,6 +884,7 @@ async fn r90_age_is_rechecked_after_all_fetches_and_still_retries() {
     r90_finish(&mut empty, false);
     let server = ScriptServer::start(vec![script, empty], false).await;
     let env = ScanClock {
+        advance_after: 1,
         inner: TestEnv::new(),
         reads: Default::default(),
     };
@@ -903,6 +915,7 @@ async fn r90_age_is_rechecked_after_all_fetches_and_still_retries() {
 async fn r90_only_finally_fresh_uids_are_selected_and_deleted() {
     let server = ScriptServer::start(vec![r90_aging_scan(true)], false).await;
     let env = ScanClock {
+        advance_after: 1,
         inner: TestEnv::new(),
         reads: Default::default(),
     };
@@ -915,8 +928,8 @@ async fn r90_only_finally_fresh_uids_are_selected_and_deleted() {
         result.data["matched_uids"],
         PyJson::List(vec![PyJson::from("33")])
     );
-    assert_eq!(wire[5], "UID STORE 33 +FLAGS (\\Deleted)");
-    assert_eq!(wire[7], "UID EXPUNGE 33");
+    assert_eq!(wire[6], "UID STORE 33 +FLAGS (\\Deleted)");
+    assert_eq!(wire[8], "UID EXPUNGE 33");
 }
 
 #[tokio::test]
@@ -943,7 +956,7 @@ async fn r90_future_dates_fail_closed_with_an_inclusive_skew_allowance() {
         let wire = untag(server.transcripts().await.remove(0));
         if accepted {
             assert_eq!(result.status, ResultStatus::Ok, "{date}: {:?}", result.data);
-            assert_eq!(wire[4], "UID STORE 5 +FLAGS (\\Deleted)");
+            assert_eq!(wire[5], "UID STORE 5 +FLAGS (\\Deleted)");
         } else {
             assert_eq!(
                 result.status,
@@ -1014,4 +1027,380 @@ async fn r90_invalid_uid_sets_never_become_fetch_sequence_syntax() {
         );
         assert_eq!(wire[3], "LOGOUT");
     }
+}
+
+fn r102_generation_scan(select: &str, fetch_completion: &str) -> Vec<Step> {
+    let mut script = r90_start("5");
+    script[4] = send(&format!("* 3 EXISTS\r\n{select}"));
+    script.extend([
+        Step::Recv,
+        send("* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n"),
+        tagged(fetch_completion),
+    ]);
+    script
+}
+
+#[tokio::test]
+async fn r102_mailbox_generation_change_blocks_cleanup() {
+    for completion in [
+        "OK [UIDVALIDITY 8] changed",
+        "OK [UIDVALIDITY 0] invalid",
+        "OK [UIDVALIDITY nope] invalid",
+        "OK [UIDVALIDITY] missing",
+        "OK [UIDVALIDITY 7] then back",
+    ] {
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", completion);
+        // The last case changes back before completion: invalidation must latch.
+        if completion.ends_with("back") {
+            script.insert(
+                script.len() - 1,
+                send("* OK [UIDVALIDITY 8] changed\r\n* OK [UIDVALIDITY 7] restored\r\n"),
+            );
+        }
+        r90_finish(&mut script, true);
+        let server = ScriptServer::start(vec![script], false).await;
+        let env = TestEnv::new();
+        let result = execute(&check(server.port, ""), &env).await.unwrap();
+        assert_eq!(result.status, ResultStatus::Error, "{completion}");
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("invalid_mailbox_generation")
+        );
+        assert!(env.sleeps().is_empty());
+        let lines = untag(server.transcripts().await.remove(0));
+        assert!(
+            !lines
+                .iter()
+                .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE")),
+            "{lines:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn r102_missing_or_invalid_selected_generation_cannot_authorize_delete() {
+    for selected in [
+        "",
+        "* OK [UIDVALIDITY 0] bad\r\n",
+        "* OK [UIDVALIDITY 4294967296] overflow\r\n",
+        "* OK [UIDVALIDITY 7 extra] bad\r\n",
+        "* OK [UIDVALIDITY 7] one\r\n* OK [UIDVALIDITY 8] two\r\n",
+    ] {
+        let mut script = r102_generation_scan(selected, "OK fetched");
+        r90_finish(&mut script, true);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("invalid_mailbox_generation"),
+            "{selected}"
+        );
+        let lines = untag(server.transcripts().await.remove(0));
+        assert!(
+            !lines
+                .iter()
+                .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE"))
+        );
+    }
+}
+
+#[tokio::test]
+async fn r102_generation_is_rechecked_before_expunge() {
+    for (change_at, uidplus) in [("STORE", true), ("CAPABILITY", true), ("CAPABILITY", false)] {
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script.extend([
+            Step::Recv,
+            tagged("OK synchronized"),
+            Step::Recv,
+            tagged(if change_at == "STORE" {
+                "OK [UIDVALIDITY 8] stored"
+            } else {
+                "OK stored"
+            }),
+            Step::Recv,
+            send(if uidplus {
+                "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+            } else {
+                "* CAPABILITY IMAP4rev1\r\n"
+            }),
+            tagged("OK [UIDVALIDITY 8] capabilities"),
+            Step::Recv,
+            tagged("OK logout"),
+        ]);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("invalid_mailbox_generation")
+        );
+        let lines = untag(server.transcripts().await.remove(0));
+        assert!(lines.iter().any(|line| line.starts_with("UID STORE")));
+        assert!(
+            !lines.iter().any(|line| line.starts_with("UID EXPUNGE")),
+            "{lines:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn r102_stable_generation_preserves_cleanup() {
+    let mut script = r102_generation_scan(
+        "* OK [UIDVALIDITY 7] selected\r\n",
+        "OK [UIDVALIDITY 7] fetched",
+    );
+    r90_finish(&mut script, true);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new())
+        .await
+        .unwrap();
+    assert_eq!(result.status, ResultStatus::Ok, "{:?}", result.data);
+    let lines = untag(server.transcripts().await.remove(0));
+    assert!(lines.contains(&"UID STORE 5 +FLAGS (\\Deleted)".to_owned()));
+    assert!(lines.contains(&"UID EXPUNGE 5".to_owned()));
+}
+
+#[tokio::test]
+async fn r102_conflicting_fetch_dates_fail_in_both_orders_without_cleanup() {
+    for delete in [true, false] {
+        for (first, second) in [
+            ("09-Oct-2025 08:53:00 +0000", "09-Oct-2025 08:52:00 +0000"),
+            ("09-Oct-2025 08:52:00 +0000", "09-Oct-2025 08:53:00 +0000"),
+            ("09-Oct-2025 08:53:00 +0000", "08-Oct-2025 08:53:00 +0000"),
+            ("08-Oct-2025 08:53:00 +0000", "09-Oct-2025 08:53:00 +0000"),
+        ] {
+            let mut script =
+                r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+            script[10] = send(&format!(
+                "* 1 FETCH (UID 5 INTERNALDATE \"{first}\")\r\n* 1 FETCH (UID 5 INTERNALDATE \"{second}\")\r\n"
+            ));
+            r90_finish(&mut script, delete);
+            let server = ScriptServer::start(vec![script], false).await;
+            let env = TestEnv::new();
+            let result = execute(
+                &check(server.port, &format!(", \"delete_after_check\": {delete}")),
+                &env,
+            )
+            .await
+            .unwrap();
+            assert_eq!(result.status, ResultStatus::Error, "{first}, {second}");
+            assert_eq!(result.data["error_type"], PyJson::from("incomplete_scan"));
+            assert!(env.sleeps().is_empty());
+            let lines = untag(server.transcripts().await.remove(0));
+            assert!(
+                !lines
+                    .iter()
+                    .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE"))
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn r102_consistent_duplicate_fetch_dates_are_one_observation() {
+    let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+    // Sequence numbers and timezone notation need not be identical: compare
+    // the parsed timestamp that will actually authorize health/cleanup.
+    script[10] = send(
+        "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n* 2 FETCH (INTERNALDATE \"09-Oct-2025 10:53:00 +0200\" UID 5)\r\n",
+    );
+    r90_finish(&mut script, true);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new())
+        .await
+        .unwrap();
+    assert_eq!(result.status, ResultStatus::Ok);
+    assert_eq!(
+        result.data["matched_uids"],
+        PyJson::List(vec![PyJson::from("5")])
+    );
+    let lines = untag(server.transcripts().await.remove(0));
+    assert_eq!(
+        lines
+            .iter()
+            .filter(|line| line.starts_with("UID STORE"))
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn r102_fetch_record_without_date_is_not_an_observation() {
+    // Unsolicited FETCH data such as a FLAGS update carries the UID but no
+    // INTERNALDATE; it must neither conflict with nor replace the real date.
+    for reversed in [false, true] {
+        let records = [
+            "* 1 FETCH (UID 5 FLAGS (\\Seen))\r\n",
+            "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n",
+        ];
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script[10] = send(&if reversed {
+            [records[1], records[0]].concat()
+        } else {
+            records.concat()
+        });
+        r90_finish(&mut script, true);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        assert_eq!(result.status, ResultStatus::Ok, "reversed={reversed}");
+        assert_eq!(
+            result.data["matched_uids"],
+            PyJson::List(vec![PyJson::from("5")])
+        );
+    }
+}
+
+#[tokio::test]
+async fn r102_unparseable_fetch_date_conflicts_with_a_present_date() {
+    // Invalid values (month) parse to an error; regex-failing shapes (garbage,
+    // single-digit day, missing zone) parse to "missing" but still name the item.
+    for (bad, reversed) in [
+        "09-Foo-2025 08:53:00 +0000",
+        "garbage",
+        "9-Oct-2025 08:53:00 +0000",
+        "09-Oct-2025 08:53:00",
+        "lowercase item",
+    ]
+    .into_iter()
+    .flat_map(|bad| [(bad, false), (bad, true)])
+    {
+        let bad = if bad == "lowercase item" {
+            // A differently cased item name is still a date observation.
+            "* 1 FETCH (UID 5 internaldate \"09-Oct-2025 09:53:00 +0000\")\r\n".to_owned()
+        } else {
+            format!("* 1 FETCH (UID 5 INTERNALDATE \"{bad}\")\r\n")
+        };
+        let records = [
+            bad.as_str(),
+            "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n",
+        ];
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script[10] = send(&if reversed {
+            [records[1], records[0]].concat()
+        } else {
+            records.concat()
+        });
+        r90_finish(&mut script, true);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("incomplete_scan"),
+            "{bad} reversed={reversed}"
+        );
+        let lines = untag(server.transcripts().await.remove(0));
+        assert!(
+            !lines
+                .iter()
+                .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE"))
+        );
+    }
+}
+
+#[tokio::test]
+async fn r102_late_generation_cannot_replace_missing_select_evidence() {
+    let mut script = r102_generation_scan("", "OK [UIDVALIDITY 7] too late");
+    r90_finish(&mut script, true);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new())
+        .await
+        .unwrap();
+    assert_eq!(
+        result.data["error_type"],
+        PyJson::from("invalid_mailbox_generation")
+    );
+    let lines = untag(server.transcripts().await.remove(0));
+    assert!(
+        !lines
+            .iter()
+            .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE"))
+    );
+}
+
+#[tokio::test]
+async fn r102_read_only_scan_does_not_require_generation_for_cleanup() {
+    let mut script = r102_generation_scan("", "OK fetched");
+    r90_finish(&mut script, false);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(
+        &check(server.port, r#", "delete_after_check": false"#),
+        &TestEnv::new(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(result.status, ResultStatus::Ok);
+    let lines = untag(server.transcripts().await.remove(0));
+    assert!(
+        !lines
+            .iter()
+            .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE"))
+    );
+}
+
+#[tokio::test]
+async fn r102_queued_generation_change_after_fetch_blocks_store() {
+    let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+    // Announce after the tagged FETCH completion, before cleanup starts.
+    script.extend([
+        send("* OK [UIDVALIDITY 8] changed between commands\r\n"),
+        Step::Recv,
+        tagged("OK synchronized"),
+        Step::Recv,
+        tagged("OK logout"),
+    ]);
+    let server = ScriptServer::start(vec![script], false).await;
+    let result = execute(&check(server.port, ""), &TestEnv::new())
+        .await
+        .unwrap();
+    assert_eq!(
+        result.data["error_type"],
+        PyJson::from("invalid_mailbox_generation")
+    );
+    let lines = untag(server.transcripts().await.remove(0));
+    assert!(lines.contains(&"NOOP".to_owned()), "{lines:?}");
+    assert!(
+        !lines
+            .iter()
+            .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE")),
+        "{lines:?}"
+    );
+}
+
+#[tokio::test]
+async fn r102_noop_wait_cannot_keep_aged_evidence_healthy_or_delete_it() {
+    let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+    script.extend([
+        Step::Recv,
+        tagged("OK synchronized"),
+        Step::Recv,
+        tagged("OK logout"),
+    ]);
+    let server = ScriptServer::start(vec![script], false).await;
+    let env = ScanClock {
+        inner: TestEnv::new(),
+        advance_after: 2,
+        reads: Default::default(),
+    };
+    let result = execute(
+        &check(server.port, r#", "max_age_minutes": 1, "timeout": 0.1"#),
+        &env,
+    )
+    .await
+    .unwrap();
+    assert_eq!(result.data["error_type"], PyJson::from("no_recent_message"));
+    let lines = untag(server.transcripts().await.remove(0));
+    assert!(lines.contains(&"NOOP".to_owned()));
+    assert!(
+        !lines
+            .iter()
+            .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE")),
+        "{lines:?}"
+    );
 }

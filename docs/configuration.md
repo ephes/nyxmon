@@ -686,7 +686,7 @@ Sends an authenticated message (typically for outbound flow checks):
 }
 ```
 
-Returns `error_type` on auth failures, 4xx/5xx responses, TLS certificate failures (`tls_error`), or timeouts; includes attempts count for retry visibility. Implicit TLS and STARTTLS always verify the certificate and hostname unless `verify` is set to `false`.
+Returns `error_type` on auth failures, 4xx/5xx responses, TLS certificate failures (`tls_error`), or timeouts; includes attempts count for retry visibility. The Rust agent reports `partial_delivery` (nonretryable, with accepted and refused recipients) when the message was accepted for some recipients only; reconcile the refused recipients by hand instead of expecting a retry. Implicit TLS and STARTTLS always verify the certificate and hostname unless `verify` is set to `false`.
 
 ### IMAP Checks
 
@@ -734,6 +734,11 @@ oversized or malformed selection returns `incomplete_scan`, without a partial
 healthy result, STORE or EXPUNGE. Reduce the matching backlog before retrying;
 these errors do not take the no-recent-message retry path. Results contain at
 most 256 `matched_uids`; cleanup remains scoped to the selected UIDs.
+
+Cleanup (STORE/EXPUNGE) additionally requires the SELECT UIDVALIDITY to stay
+unchanged through a NOOP after the FETCHes; a missing, invalid or changed
+mailbox generation fails with nonretryable `invalid_mailbox_generation` and
+deletes nothing.
 
 ### JSON Metrics Checks
 
