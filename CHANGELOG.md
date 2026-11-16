@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   invalidations (`invalid_mailbox_generation`). Preserve UIDPLUS restrictions;
   the fence relies on truthful server protocol evidence, not external atomicity.
 - Refuse conflicting duplicate UID FETCH timestamps as `incomplete_scan` before
-  success or cleanup; tolerate duplicate observations of the same instant.
+  success or cleanup; tolerate duplicate observations of the same instant and
+  ignore matching records without INTERNALDATE (unsolicited FLAGS updates).
   Update synthetic dialogues with selected-mailbox generation evidence. No
   database migration, version bump or retired Python-agent change.
 

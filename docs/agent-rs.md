@@ -118,10 +118,10 @@ PLAN.md 1.3 defines three parity classes:
 | D-11 | `health_check.data` that is JSON `null` reads as `{}`; other non-objects are "no configuration" for policy, suppression and site dependency. |
 | D-12 | Random values (SMTP correlation token, OpsGate boundary nonce) differ by nature. |
 | D-13, D-15 | Proxy environment variables are not honoured (neither by the notifiers nor by HTTP checks and the suppression fetch); the production unit sets none. |
-| D-14 | SMTP `from_addr`/`to_addr` must be plain ASCII addresses (optionally with a display name); anything else is a `configuration_error`. |
+| D-14 | SMTP `from_addr`/`to_addr` must be plain ASCII addresses (optionally with a display name); anything else is a `configuration_error`. Server replies must use one consistent three-digit code per (multiline) reply. A partial recipient refusal after DATA acceptance is nonretryable `partial_delivery` (Python: retryable `recipient_refused`, which could resend to accepted recipients). |
 | D-16 | DNS: non-ASCII names, DNS-over-HTTPS nameservers in `resolv.conf` and some malformed responses are handled differently from dnspython. |
 | D-17 | Non-UTF-8 `PATH` entries are skipped when looking up `ping`. |
-| D-18 | IMAP: non-string hosts; out-of-range, unparsable or future (`invalid_message_date`) INTERNALDATEs; subjects as one escaped quoted printable-ASCII literal; bounded batched UID FETCH (`incomplete_scan`). |
+| D-18 | IMAP: non-string hosts; out-of-range, unparsable or future (`invalid_message_date`) INTERNALDATEs; subjects as one escaped quoted printable-ASCII literal; bounded batched UID FETCH and conflicting duplicate FETCH dates (`incomplete_scan`; records without INTERNALDATE are ignored instead of Python's first-record rule); destructive cleanup fenced by SELECT UIDVALIDITY plus NOOP (`invalid_mailbox_generation`, nonretryable). |
 | D-19 | A persisted site payload that cannot be restored stops the observer with a log line. |
 | D-20 | Processing leases beyond SQLite's integer range. |
 | D-21 | Rust cleanup batches accept only 1..=1000 rows and continue while either sessions or results fill a batch. The retired Python cleaner has no upper limit and stops on a short result count. Result totals exclude sessions in both agents. |

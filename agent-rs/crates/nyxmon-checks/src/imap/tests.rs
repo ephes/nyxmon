@@ -1228,10 +1228,12 @@ async fn r102_consistent_duplicate_fetch_dates_are_one_observation() {
 }
 
 #[tokio::test]
-async fn r102_missing_fetch_date_conflicts_with_a_present_date() {
+async fn r102_fetch_record_without_date_is_not_an_observation() {
+    // Unsolicited FETCH data such as a FLAGS update carries the UID but no
+    // INTERNALDATE; it must neither conflict with nor replace the real date.
     for reversed in [false, true] {
         let records = [
-            "* 1 FETCH (UID 5 FLAGS ())\r\n",
+            "* 1 FETCH (UID 5 FLAGS (\\Seen))\r\n",
             "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n",
         ];
         let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
@@ -1245,7 +1247,54 @@ async fn r102_missing_fetch_date_conflicts_with_a_present_date() {
         let result = execute(&check(server.port, ""), &TestEnv::new())
             .await
             .unwrap();
-        assert_eq!(result.data["error_type"], PyJson::from("incomplete_scan"));
+        assert_eq!(result.status, ResultStatus::Ok, "reversed={reversed}");
+        assert_eq!(
+            result.data["matched_uids"],
+            PyJson::List(vec![PyJson::from("5")])
+        );
+    }
+}
+
+#[tokio::test]
+async fn r102_unparseable_fetch_date_conflicts_with_a_present_date() {
+    // Invalid values (month) parse to an error; regex-failing shapes (garbage,
+    // single-digit day, missing zone) parse to "missing" but still name the item.
+    for (bad, reversed) in [
+        "09-Foo-2025 08:53:00 +0000",
+        "garbage",
+        "9-Oct-2025 08:53:00 +0000",
+        "09-Oct-2025 08:53:00",
+        "lowercase item",
+    ]
+    .into_iter()
+    .flat_map(|bad| [(bad, false), (bad, true)])
+    {
+        let bad = if bad == "lowercase item" {
+            // A differently cased item name is still a date observation.
+            "* 1 FETCH (UID 5 internaldate \"09-Oct-2025 09:53:00 +0000\")\r\n".to_owned()
+        } else {
+            format!("* 1 FETCH (UID 5 INTERNALDATE \"{bad}\")\r\n")
+        };
+        let records = [
+            bad.as_str(),
+            "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n",
+        ];
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script[10] = send(&if reversed {
+            [records[1], records[0]].concat()
+        } else {
+            records.concat()
+        });
+        r90_finish(&mut script, true);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("incomplete_scan"),
+            "{bad} reversed={reversed}"
+        );
         let lines = untag(server.transcripts().await.remove(0));
         assert!(
             !lines

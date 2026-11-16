@@ -480,9 +480,10 @@
    },
    "name": "literal_in_fetch_response",
    "result": {
-    "attempts": 1,
-    "error_msg": "IMAP scan incomplete: conflicting FETCH INTERNALDATE for selected UID",
-    "error_type": "incomplete_scan"
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "7"
+    ]
    },
    "scripts": [
     [
@@ -538,6 +539,13 @@
       "recv"
      ],
      [
+      "tagged",
+      "OK synchronized"
+     ],
+     [
+      "recv"
+     ],
+     [
       "send",
       "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
@@ -570,13 +578,16 @@
     ]
    ],
    "sleeps": [],
-   "status": "error",
+   "status": "ok",
    "transcripts": [
     [
      "LOGIN monitor \"secret\"",
      "SELECT INBOX",
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 7 (INTERNALDATE)",
+     "NOOP",
+     "UID STORE 7 +FLAGS (\\Deleted)",
+     "CAPABILITY",
      "LOGOUT"
     ]
    ]

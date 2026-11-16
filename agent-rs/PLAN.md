@@ -334,7 +334,8 @@ section 3.6); no other new variable is introduced by the port.
   `invalid_message_date`. Cleanup now also requires pinned SELECT UIDVALIDITY
   with no intervening invalidation (`invalid_mailbox_generation`); conflicting
   duplicate FETCH dates fail with `incomplete_scan`. Identical parsed instants
-  are accepted once. The dialogue fixture records these differences.
+  are accepted once; matching records without INTERNALDATE (unsolicited FLAGS
+  data) are ignored rather than read as a missing date. The dialogue fixture records these differences.
   A truthy `host` that is a JSON list or
   object is a `configuration_error` ("host is not supported by the Rust
   agent: not a string"); Python accepts it and fails later in ways that

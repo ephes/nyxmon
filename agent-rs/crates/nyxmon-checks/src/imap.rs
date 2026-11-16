@@ -948,6 +948,12 @@ async fn search_recent(
                         continue;
                     }
                     let date = parse_internaldate(candidate);
+                    // Unsolicited FETCH data (e.g. a FLAGS update) for the UID
+                    // carries no INTERNALDATE key at all: it is no date
+                    // observation. A present but malformed date still counts.
+                    if date == InternalDate::Missing && !has_internaldate_key(candidate) {
+                        continue;
+                    }
                     if observation
                         .as_ref()
                         .is_some_and(|previous| previous != &date)
@@ -975,6 +981,18 @@ async fn search_recent(
     imap.fetch_bytes_remaining = None;
     outcome?;
     Ok(messages)
+}
+
+/// Whether the record's first line (the scope `parse_internaldate` reads)
+/// names an INTERNALDATE item at all (item names are case-insensitive).
+fn has_internaldate_key(record: &[u8]) -> bool {
+    let first = &record[..record
+        .iter()
+        .position(|&b| b == b'\n')
+        .unwrap_or(record.len())];
+    first
+        .windows(b"INTERNALDATE".len())
+        .any(|w| w.eq_ignore_ascii_case(b"INTERNALDATE"))
 }
 
 /// `ImapLibSession.delete_messages`.
