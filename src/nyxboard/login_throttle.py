@@ -19,6 +19,9 @@ from django.db.models.expressions import CombinedExpression
 from .models import LoginThrottleBucket
 
 MAX_USERNAME = 150  # longer names are cut for the key; they cannot belong to an account
+# One IPv6 client usually controls a whole /64 (SLAAC, privacy addresses), so
+# counting single IPv6 addresses would hand it 2**64 fresh budgets.
+IPV6_BUCKET_PREFIX = 64
 
 
 def client_address(request) -> str:
@@ -46,8 +49,25 @@ def client_address(request) -> str:
         return remote
 
 
+def throttle_bucket(address: str) -> str:
+    """The budget an address is counted against.
+
+    IPv4 addresses (including IPv4-mapped IPv6 ones) count individually; an
+    IPv6 address counts for its /64 network. Anything that is not an address
+    is used as it is."""
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped is not None:
+            return str(ip.ipv4_mapped)
+        return str(ipaddress.IPv6Network((ip, IPV6_BUCKET_PREFIX), strict=False))
+    return str(ip)
+
+
 def _keys(request, username: str) -> tuple[str, str]:
-    address = client_address(request)
+    address = throttle_bucket(client_address(request))
     name = (username or "")[:MAX_USERNAME].casefold()
     pair = hashlib.sha256(f"{name}\x00{address}".encode()).hexdigest()
     return (

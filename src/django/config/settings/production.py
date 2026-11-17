@@ -67,13 +67,13 @@ ALLOWED_HOSTS = env.list(  # noqa
     ],
 )
 
-# CSRF Trusted Origins - must include scheme and use punycode for IDN
+# CSRF Trusted Origins - must include scheme and use punycode for IDN.
+# Exact origins only: a "https://*.<domain>" wildcard would let any sibling
+# subdomain pass the Origin check, and such a site can plant a csrftoken cookie
+# on the parent domain, so one compromised sibling could forge NyxBoard POSTs.
 CSRF_TRUSTED_ORIGINS = env.list(  # noqa
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    default=[
-        "https://nyxmon.home.xn--wersdrfer-47a.de",  # Exact match
-        "https://*.xn--wersdrfer-47a.de",  # Wildcard for all HTTPS subdomains
-    ],
+    default=["https://nyxmon.home.xn--wersdrfer-47a.de"],
 )
 # END SITE CONFIGURATION
 

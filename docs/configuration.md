@@ -524,8 +524,11 @@ modify a replacement window. Expired rows are cleaned in batches of at most 100
 per admission. Cache eviction and restarts no longer reset failure budgets.
 The configured ModelBackend remains available for existing sessions; new password
 authentication is owned by LoginThrottleBackend, including its async entrypoint.
-Limits use exact IP addresses; clients able to rotate addresses (including within
-an IPv6 subnet) receive separate budgets.
+IPv4 addresses (including IPv4-mapped IPv6 addresses) are counted one by one.
+An IPv6 address is counted for its /64 network, because one client usually
+controls a whole /64 and could otherwise rotate through 2^64 fresh budgets;
+clients sharing one /64 share both budgets. Clients able to rotate across many
+IPv4 addresses or IPv6 /64 networks still receive separate budgets.
 
 `NYXBOARD_LOGIN_PROXY_HOPS` defaults to 0 (use `REMOTE_ADDR`, ignore forwarded
 headers in the throttle). For the single loopback proxy setup, keep it at 0
@@ -980,7 +983,7 @@ this environment:
 | `DJANGO_CACHE_LOCATION` | required; directory of the file cache |
 | `DJANGO_ADMIN_URL` | required, for example `admin/` |
 | `DJANGO_ALLOWED_HOSTS` | comma-separated host names; include the public host name and `127.0.0.1` for loopback probes |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | optional; not needed when the browser's origin equals the requested host |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | optional; not needed when the browser's origin equals the requested host. Default: only `https://nyxmon.home.xn--wersdrfer-47a.de`. List exact origins; avoid `https://*.<domain>` wildcards, which let every sibling subdomain pass the CSRF Origin check |
 | `DJANGO_SECURE_HSTS_SECONDS` | optional, default 180 days |
 | `DJANGO_SECURE_SSL_REDIRECT` | optional, default `true` |
 
