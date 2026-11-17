@@ -644,7 +644,9 @@ path evidence, the dashboard admits at most the three established names `dns`,
 `ipv4` and `ipv6`, in that display order, and the observer's states `up`,
 `failing`, `down`, `recovering` and `unobserved`. Unknown names, excess paths or
 malformed path records produce a fixed **Site connectivity evidence unavailable**
-banner; they never imply recovery or echo stored names or values. Only affected
+banner; they never imply recovery or echo stored names or values. That banner
+still reports the pending recovery summary and when the payload was last
+observed, including the stale hint that the observer may be stopped. Only affected
 names, admitted states and formatted usable timestamps enter the normal banner
 context. Missing or unusable path timestamps remain unknown, and incident IDs
 must be usable positive integer epochs (booleans are refused). Other payload

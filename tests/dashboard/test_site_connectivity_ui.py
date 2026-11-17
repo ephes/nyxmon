@@ -115,7 +115,14 @@ class TestDashboardBanner:
         response = client.get(reverse("nyxboard:dashboard"))
 
         assert response.status_code == 200
-        assert response.context["site_connectivity"] == {"invalid_evidence": True}
+        banner_context = response.context["site_connectivity"]
+        assert set(banner_context) == {
+            "invalid_evidence",
+            "summary_pending",
+            "observed_at",
+            "stale",
+        }
+        assert banner_context["invalid_evidence"] is True
         content = response.content.decode()
         banner = content.split('class="site-connectivity-banner"', 1)[1].split(
             '<div class="dashboard-header">', 1
@@ -126,6 +133,39 @@ class TestDashboardBanner:
         assert "outage observed" not in banner
         assert "recovered" not in banner
         assert "No path is currently reported down" not in banner
+
+    @pytest.mark.parametrize(
+        ("age", "observed_at_override", "stale"),
+        [(60, None, False), (3600, None, True), (60, "garbage", True)],
+    )
+    def test_invalid_path_evidence_keeps_freshness_and_pending_summary(
+        self, client, monkeypatch, age, observed_at_override, stale
+    ):
+        _freeze(monkeypatch, OBSERVED_AT + age)
+        overrides = {
+            "paths": {"bogus": {"state": "down"}},
+            "summaries": [{"incident_id": 1757123456, "attempt_at": 0}],
+        }
+        if observed_at_override is not None:
+            overrides["observed_at"] = observed_at_override
+        _incident(_active_payload(**overrides))
+
+        response = client.get(reverse("nyxboard:dashboard"))
+
+        banner = response.context["site_connectivity"]
+        assert banner["invalid_evidence"] is True
+        assert banner["summary_pending"] is True
+        assert banner["stale"] is stale
+        content = response.content.decode()
+        assert "Site connectivity evidence unavailable" in content
+        assert "A recovery summary is still pending delivery" in content
+        assert ("the observer may be stopped" in content) is stale
+        if observed_at_override is None:
+            assert banner["observed_at"] is not None
+        else:
+            assert banner["observed_at"] is None
+            assert "at an unknown time" in content
+        assert "bogus" not in content
 
     @pytest.mark.parametrize("incident_id", [True, 10**100, {}, []])
     def test_incident_id_projection_rejects_unusable_scalars(self, client, incident_id):

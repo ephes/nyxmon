@@ -105,7 +105,8 @@ def site_connectivity_banner():
         the last probe round and ``stale`` (the round is more than
         :data:`SITE_OBSERVATION_STALE_SECONDS` old, in the future, or its
         timestamp is unusable, so the observer may be stopped or clocks skewed);
-        or a fixed ``invalid_evidence`` context for malformed path evidence.
+        or an ``invalid_evidence`` context for malformed path evidence that
+        carries only ``summary_pending``, ``observed_at`` and ``stale``.
         Returns ``None`` when there is no row, nothing to report, or the
         top-level payload is unreadable. Only admitted scalar fields reach the
         context; arbitrary stored keys and nested data are never copied.
@@ -128,6 +129,20 @@ def site_connectivity_banner():
     if not active and not summary_pending:
         return None
 
+    observed_at = payload.get("observed_at")
+    # Validate before arithmetic, retaining subsecond precision for clock skew.
+    stale = _usable_epoch(observed_at) is None or not (
+        0 <= time() - observed_at <= SITE_OBSERVATION_STALE_SECONDS
+    )
+    # Bounded scalars only; kept even for malformed path evidence, because a
+    # stale observation is the most useful hint that the observer stopped.
+    freshness = {"observed_at": _format_epoch(observed_at), "stale": stale}
+    invalid = {
+        "invalid_evidence": True,
+        "summary_pending": summary_pending,
+        **freshness,
+    }
+
     paths = []
     raw_paths = payload.get("paths")
     # Admit the inventory before iterating: at most three entries reach
@@ -137,16 +152,16 @@ def site_connectivity_banner():
         or len(raw_paths) > len(SITE_BANNER_PATHS)
         or any(name not in SITE_BANNER_PATHS for name in raw_paths)
     ):
-        return {"invalid_evidence": True}
+        return invalid
     for name in SITE_BANNER_PATHS:
         if name not in raw_paths:
             continue
         values = raw_paths[name]
         if not isinstance(values, dict):
-            return {"invalid_evidence": True}
+            return invalid
         state = values.get("state")
         if state not in SITE_PATH_STATES:
-            return {"invalid_evidence": True}
+            return invalid
         if state in SITE_BANNER_STATES:
             paths.append(
                 {
@@ -157,11 +172,6 @@ def site_connectivity_banner():
             )
 
     incident_id = payload.get("incident_id")
-    observed_at = payload.get("observed_at")
-    # Validate before arithmetic, retaining subsecond precision for clock skew.
-    stale = _usable_epoch(observed_at) is None or not (
-        0 <= time() - observed_at <= SITE_OBSERVATION_STALE_SECONDS
-    )
     return {
         "active": active,
         "summary_pending": summary_pending,
@@ -169,8 +179,7 @@ def site_connectivity_banner():
         if isinstance(incident_id, int)
         else None,
         "paths": paths,
-        "observed_at": _format_epoch(observed_at),
-        "stale": stale,
+        **freshness,
     }
 
 
