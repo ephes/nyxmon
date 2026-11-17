@@ -996,7 +996,7 @@ parallel with few merge conflicts.
 | TLS for tcp/smtp/imap | `tokio-rustls` + `rustls-native-certs` | Python `ssl.create_default_context()` uses the system store |
 | certificate expiry | `x509-parser` (notAfter only) | `tcp_executor.py:_cert_days_remaining` |
 | DNS checks | own stub resolver on tokio UDP/TCP sockets (`nyxmon-checks/src/dns.rs`, `dns/wire.rs`; S5b) | replaces dnspython: its resolution loop (lifetime, backoff, nameserver dropping, TCP fallback), response matching and record texts are reproduced directly, which a resolver library would hide (section 5.6) |
-| system resolution (probes, ping, happy eyeballs, HTTP clients) | libc `getaddrinfo` via `tokio::net::lookup_host` | same resolver semantics as Python (see 8.1) |
+| system resolution (probes, ping, happy eyeballs, HTTP clients) | libc `getaddrinfo` via `tokio::net::lookup_host`; site probes and `HttpSession` use the same std resolver through the bounded `nyxmon_checks::net::lookup_host` | same resolver semantics as Python (see 8.1) |
 | IMAP | hand-rolled `imaplib.IMAP4` emulation (≈ 900 lines, S7b) | `async-imap` cannot reproduce the error texts the dashboard shows (`command: UID => socket error: EOF`, `UID command error: BAD [b'...']`, `select failed: NO [...]`), imaplib's response store or its quoting; see 5.14 |
 | SMTP | hand-rolled (≈ 400 lines) | `lettre` lacks smtplib's error taxonomy, CRAM-MD5 and the recipient-refused semantics; see 5.7 |
 | SQLite | `rusqlite` (`bundled`) | section 3.2 |
@@ -2769,8 +2769,11 @@ HTTP and site DNS/scoped-IP probes now share mail resolution’s 16-job
 process-wide cap. Jobs queued/running in the blocking pool retain admission
 until the underlying system/NSS call ends, even after caller timeout or
 cancellation. Admission remains inside each caller’s deadline; capacity returns
-when libc returns. Plain IP literals bypass blocking work. Explicit DNS protocol
-checks are unchanged.
+when libc returns. Plain IP literals bypass blocking work. HTTP here means the
+check-side `HttpSession` (HTTP checks and suppression fetches). Explicit DNS
+protocol checks are unchanged, and notification delivery, ping/TCP-check host
+resolution and scoped DNS-check nameserver addresses still resolve outside this
+cap.
 
 
 ### Nonblocking stderr delivery (pending Rust rollout)

@@ -486,8 +486,11 @@ HTTP and site DNS/scoped-IP probes now share mail resolution’s 16-job
 process-wide cap. Jobs queued/running in the blocking pool retain admission
 until the underlying system/NSS call ends, even after caller timeout or
 cancellation. Admission remains inside each caller’s deadline; capacity returns
-when libc returns. Plain IP literals bypass blocking work. Explicit DNS protocol
-checks are unchanged.
+when libc returns. Plain IP literals bypass blocking work. HTTP here means the
+check-side `HttpSession` (HTTP checks and suppression fetches). Explicit DNS
+protocol checks are unchanged, and notification delivery, ping/TCP-check host
+resolution and scoped DNS-check nameserver addresses still resolve outside this
+cap.
 
 
 ### Nonblocking agent diagnostics (pending Rust rollout)

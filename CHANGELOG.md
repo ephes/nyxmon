@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Shared resolver capacity (pending Rust rollout)
 
-- Route HTTP and site DNS/scoped-IP system lookups through the existing 16-job
-  mail resolver pool. Cancelled/timed-out callers cannot free queued or running
+- Route `HttpSession` (HTTP checks, suppression fetches) and site DNS/scoped-IP
+  system lookups through the existing 16-job mail resolver pool. Notification
+  delivery, ping/TCP-check and scoped nameserver resolution are unchanged. Cancelled/timed-out callers cannot free queued or running
   jobs’ admission before libc returns. Preserve caller deadlines, NSS resolution,
   address ordering and literal-IP fast paths; recover capacity after completion.
 

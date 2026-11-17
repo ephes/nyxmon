@@ -609,8 +609,8 @@ not retried. Existing SMTP temporary-response retries (except partial delivery) 
 retries remain unchanged, with at most `retries + 1` attempts and the configured
 `retry_delay` between them. No retry sleeps are inside an attempt budget.
 
-Mail destination lookups, SMTP local-hostname discovery, HTTP (including
-notification/suppression requests), and site DNS/scoped-IP probes share 16 process-wide
+Mail destination lookups, SMTP local-hostname discovery, `HttpSession`
+requests (HTTP checks and suppression fetches), and site DNS/scoped-IP probes share 16 process-wide
 slots for blocking system resolver jobs, including jobs queued in Tokio's
 blocking pool. A job owns its slot until the closure exits, even when its caller
 is cancelled or times out. Destination resolution, including slot admission,
@@ -619,8 +619,12 @@ SMTP attempt deadline. If all slots remain occupied, later callers time out
 without queuing more blocking jobs. Capacity returns when those jobs finish;
 libc calls cannot be cancelled. HTTP and site probes retain their existing caller
 deadlines, NSS address order, and IDNA handling; plain IP literals need no resolver
-slot. Explicit DNS protocol queries do not use this system pool. These changes ship in `agent-rs-v0.1.3` (production: the
-ops-control pin and rollout).
+slot. Explicit DNS protocol queries do not use this system pool. Other direct
+system-resolver paths are unchanged and still unbounded: notification delivery
+(`nyxmon-notify`), ping and TCP-check host resolution (`happy_eyeballs`), and
+scoped DNS-check nameserver addresses. The mail paths ship in `agent-rs-v0.1.3`;
+the `HttpSession` and site-probe routing is pending a later Rust agent release
+and rollout (production: the ops-control pin and rollout).
 
 Scheduling and retention flags (`--interval`, `--cleanup-interval`,
 `--retention-period`) accept strictly positive signed 64-bit seconds (1 through
