@@ -11,7 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Package management: `uv pip install/uninstall <package>`
 - Lint: `uvx pre-commit run --all-files` (ruff runs automatically)
 - Type check: `uv mypy src/`
-- Test (all): `uv run pytest`
+- Test (all): `uv run pytest` (`just test` additionally runs the gates below)
+- Migration drift gate: `just check-migrations` (`makemigrations --check
+  --dry-run`; part of `just test`); a model change must ship its migration
 - Test (single): `uv run pytest path/to/test.py::TestClass::test_function -v`
 - Run Django server: `cd src/django && uv run manage.py runserver`
 - Rust agent (`agent-rs/`, see `agent-rs/README.md`): `just rs-test`,

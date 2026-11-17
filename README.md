@@ -33,7 +33,10 @@ uvx pre-commit install
 uv run pytest
 ```
 The Python suite verifies the synthetic historical notification-migration fixture.
-`just test` also runs Rust's semantic oracle and `just notification-handoff`,
+`just test` first runs `just check-migrations` (`makemigrations --check
+--dry-run` under `config.settings.test`), which fails when a model change has
+no migration; the suite repeats that check as a test. It also runs Rust's
+semantic oracle and `just notification-handoff`,
 which opens an actual migrated scratch DB through Rust. These local commands need
 the pinned toolchain in `agent-rs/rust-toolchain.toml`; the Python-only suite does
 not require Cargo. All fixtures and notification transports are synthetic.
@@ -55,6 +58,15 @@ uv run src/django/manage.py migrate
 ```
 
 This will create an SQLite database file in the project root directory.
+
+Migration `nyxboard.0016` refuses to apply while an *enabled* health check
+still uses a removed check type such as `custom` (SSH-JSON custom checks were
+removed in December 2025); such checks only produce ERROR results. Its error
+names the affected checks. List them with
+`uv run src/django/manage.py find_legacy_checks`, disable them with `--disable`
+(or remove them with `--delete`), then run `migrate` again. Disabled legacy
+checks are kept and remain editable in the dashboard; the migration never
+changes or deletes rows.
 
 ### Starting the monitoring agent and Django dashboard
 
