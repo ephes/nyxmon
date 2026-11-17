@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import parse_qs
 
 import httpx
 import pytest
@@ -165,28 +166,27 @@ async def test_alert_with_backslashes_is_valid_markdown_v2(monkeypatch) -> None:
     assert "Error: C:\\path\\. trailing\\" in _unescape(rest)
 
 
+_HTTPX_CLIENT = httpx.AsyncClient
+
+
 class _Recorder:
-    """Fake ``httpx.AsyncClient`` replaying a scripted list of responses."""
+    """Real HTTPX clients replaying synthetic transport responses."""
 
     def __init__(self, responses: list[httpx.Response]) -> None:
         self.responses = responses
-        self.payloads: list[dict[str, Any]] = []
+        self.payloads: list[dict[str, str]] = []
 
-    def __call__(self) -> _Recorder:
-        return self
+    def __call__(self):
+        return _HTTPX_CLIENT(transport=httpx.MockTransport(self.respond))
 
-    async def __aenter__(self) -> _Recorder:
-        return self
-
-    async def __aexit__(self, *exc: object) -> bool:
-        return False
-
-    async def post(self, url: str, *, data: dict[str, Any], timeout: float):
-        del timeout
-        self.payloads.append(dict(data))
-        response = self.responses.pop(0)
-        response.request = httpx.Request("POST", url)
-        return response
+    def respond(self, request):
+        self.payloads.append(
+            {
+                key: values[0]
+                for key, values in parse_qs(request.content.decode()).items()
+            }
+        )
+        return self.responses.pop(0)
 
 
 _PARSE_ERROR_BODY = {
@@ -199,7 +199,10 @@ _PARSE_ERROR_BODY = {
 @pytest.mark.anyio
 async def test_parse_error_is_resent_once_as_plain_text(monkeypatch) -> None:
     recorder = _Recorder(
-        [httpx.Response(400, json=_PARSE_ERROR_BODY), httpx.Response(200, json={})]
+        [
+            httpx.Response(400, json=_PARSE_ERROR_BODY),
+            httpx.Response(200, json={"ok": True}),
+        ]
     )
     monkeypatch.setattr("nyxmon.adapters.notification.httpx.AsyncClient", recorder)
     notifier = AsyncTelegramNotifier(token="t", chat_id="123")
@@ -213,7 +216,7 @@ async def test_parse_error_is_resent_once_as_plain_text(monkeypatch) -> None:
     assert first["parse_mode"] == "MarkdownV2"
     assert "parse_mode" not in second
     assert second["text"] == "Check Failed\nError: C:\\path\\."
-    assert second["disable_notification"] is False
+    assert second["disable_notification"] == "false"
 
 
 @pytest.mark.anyio

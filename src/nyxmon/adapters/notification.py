@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
 import httpx
+from anyio import fail_after
 from anyio.from_thread import BlockingPortalProvider
 
 from ..domain.models import Check, Result, Service
@@ -38,6 +39,52 @@ ALERT_MAX_ERROR_MSG_CHARS = 2000
 _TELEGRAM_PARSE_ERROR_MARKER = "can't parse entities"
 #: Sentinel returned by ``_post_message`` for that parse error.
 _PARSE_ERROR = object()
+
+TELEGRAM_SEND_TIMEOUT_SECONDS = 10.0
+TELEGRAM_MAX_RESPONSE_BYTES = 64 * 1024
+
+
+def _telegram_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate acknowledgement member")
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError("invalid JSON constant")
+
+
+async def _read_telegram_json(resp: httpx.Response) -> Any:
+    """Read a bounded, uncompressed reply and parse it as strict JSON."""
+    # Do not expand a compressed body before enforcing the cap.
+    if resp.headers.get("content-encoding", "identity").lower() != "identity":
+        raise ValueError("encoded acknowledgement")
+    body = bytearray()
+    async for chunk in resp.aiter_bytes(chunk_size=1024):
+        if len(body) + len(chunk) > TELEGRAM_MAX_RESPONSE_BYTES:
+            raise ValueError("oversized acknowledgement")
+        body.extend(chunk)
+    try:
+        return json.loads(
+            body.decode("utf-8"),
+            object_pairs_hook=_telegram_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except RecursionError:
+        raise ValueError("deeply nested acknowledgement") from None
+
+
+def _is_markdown_parse_refusal(parsed: Any) -> bool:
+    return (
+        isinstance(parsed, dict)
+        and parsed.get("ok") is False
+        and isinstance(parsed.get("description"), str)
+        and _TELEGRAM_PARSE_ERROR_MARKER in parsed["description"].lower()
+    )
+
 
 #: Unescaped MarkdownV2 characters that only switch formatting on or off.
 _MARKDOWN_V2_FORMATTING_CHARS = frozenset("*_~`|")
@@ -89,7 +136,7 @@ def _is_internal_alert(check: Check) -> bool:
     return check.check_id == 0 and check.check_type == INTERNAL_CHECK_TYPE
 
 
-def _sanitize_untrusted_text(value: str, max_chars: int | None) -> str:
+def sanitize_untrusted_text(value: str, max_chars: int | None = None) -> str:
     """Neutralise control/format characters and truncate untrusted text.
 
     Control characters (newlines included) and Unicode format characters
@@ -120,14 +167,14 @@ def sanitize_untrusted_data(value: Any, *, depth: int = 0) -> Any:
     if value is None or isinstance(value, bool | int | float):
         return value
     if isinstance(value, str):
-        return _sanitize_untrusted_text(value, UNTRUSTED_VALUE_MAX_CHARS)
+        return sanitize_untrusted_text(value, UNTRUSTED_VALUE_MAX_CHARS)
     if depth >= UNTRUSTED_MAX_DEPTH and isinstance(value, dict | list | tuple):
         return "[nested data omitted]"
     if isinstance(value, dict):
         sanitized: dict[str, Any] = {}
         items = list(value.items())
         for key, item in items[:UNTRUSTED_MAX_ITEMS]:
-            safe_key = _sanitize_untrusted_text(str(key), UNTRUSTED_VALUE_MAX_CHARS)
+            safe_key = sanitize_untrusted_text(str(key), UNTRUSTED_VALUE_MAX_CHARS)
             sanitized[safe_key] = sanitize_untrusted_data(item, depth=depth + 1)
         if len(items) > UNTRUSTED_MAX_ITEMS:
             sanitized["[omitted]"] = f"{len(items) - UNTRUSTED_MAX_ITEMS} more entries"
@@ -140,7 +187,7 @@ def sanitize_untrusted_data(value: Any, *, depth: int = 0) -> Any:
         if len(value) > UNTRUSTED_MAX_ITEMS:
             kept.append(f"[{len(value) - UNTRUSTED_MAX_ITEMS} more items omitted]")
         return kept
-    return _sanitize_untrusted_text(repr(value), UNTRUSTED_VALUE_MAX_CHARS)
+    return sanitize_untrusted_text(repr(value), UNTRUSTED_VALUE_MAX_CHARS)
 
 
 class Notifier(Protocol):
@@ -278,7 +325,7 @@ class AsyncTelegramNotifier(Notifier):
         def trusted(value: object) -> str:
             # Operator-configured, so never truncated (a long check URL must
             # survive intact), but still kept to one line.
-            return _sanitize_untrusted_text(str(value), None)
+            return sanitize_untrusted_text(str(value), None)
 
         summary_lines = [
             "# Objective",
@@ -461,22 +508,30 @@ class AsyncTelegramNotifier(Notifier):
             logger.warning("Cannot send Telegram notification: missing credentials")
             return None
 
-        delivered = await self._post_message(
-            text, high_priority=high_priority, markdown=True
-        )
-        if delivered is not _PARSE_ERROR:
-            return delivered is True
-        # Telegram could not parse the MarkdownV2 body. Formatting must never
-        # cost an alert, so the same content goes out once more as plain text.
-        logger.warning("Telegram rejected the MarkdownV2 body; resending as plain text")
-        return (
-            await self._post_message(
-                markdown_v2_to_plain_text(text),
-                high_priority=high_priority,
-                markdown=False,
-            )
-            is True
-        )
+        try:
+            # One deadline covers connect, upload, response and the fallback.
+            with fail_after(TELEGRAM_SEND_TIMEOUT_SECONDS):
+                delivered = await self._post_message(
+                    text, high_priority=high_priority, markdown=True
+                )
+                if delivered is not _PARSE_ERROR:
+                    return delivered is True
+                # Telegram could not parse the MarkdownV2 body. Formatting must never
+                # cost an alert, so the same content goes out once more as plain text.
+                logger.warning(
+                    "Telegram rejected the MarkdownV2 body; resending as plain text"
+                )
+                return (
+                    await self._post_message(
+                        markdown_v2_to_plain_text(text),
+                        high_priority=high_priority,
+                        markdown=False,
+                    )
+                    is True
+                )
+        except TimeoutError:
+            logger.error("Failed to send Telegram notification: deadline exceeded")
+            return False
 
     async def _post_message(
         self, text: str, *, high_priority: bool, markdown: bool
@@ -495,35 +550,39 @@ class AsyncTelegramNotifier(Notifier):
             if markdown:
                 payload["parse_mode"] = "MarkdownV2"
             async with httpx.AsyncClient() as client:
-                resp = await client.post(self.url, data=payload, timeout=10.0)
-                resp.raise_for_status()
+                async with client.stream(
+                    "POST",
+                    self.url,
+                    data=payload,
+                    headers={"Accept-Encoding": "identity"},
+                    timeout=TELEGRAM_SEND_TIMEOUT_SECONDS,
+                ) as resp:
+                    status = resp.status_code
+                    if not 200 <= status < 300:
+                        # Only a 400 Markdown refusal needs its body; any other
+                        # status fails without reading the reply.
+                        if markdown and status == 400:
+                            try:
+                                refusal = await _read_telegram_json(resp)
+                            except Exception:
+                                # Unreadable refusal: still report the status.
+                                refusal = None
+                            if _is_markdown_parse_refusal(refusal):
+                                return _PARSE_ERROR
+                        logger.error(
+                            "Failed to send Telegram notification: HTTP status %s",
+                            status,
+                        )
+                        return False
+                    parsed = await _read_telegram_json(resp)
+                    if not isinstance(parsed, dict) or parsed.get("ok") is not True:
+                        raise ValueError("invalid acknowledgement")
             logger.info("Telegram notification delivered")
             return True
-        except httpx.HTTPStatusError as exc:
-            if (
-                markdown
-                and exc.response.status_code == 400
-                and _TELEGRAM_PARSE_ERROR_MARKER in exc.response.text.lower()
-            ):
-                return _PARSE_ERROR
-            response_detail = exc.response.text
-            if self.token:
-                response_detail = response_detail.replace(self.token, "<redacted>")
-            response_detail = response_detail[:500]
+        except Exception:
+            # Never echo provider bodies, URLs or exception text (bot tokens).
             logger.error(
-                "Failed to send Telegram notification: HTTP status %s body=%s",
-                exc.response.status_code,
-                response_detail,
-            )
-            return False
-        except Exception as exc:
-            detail = str(exc)
-            if self.token:
-                detail = detail.replace(self.token, "<redacted>")
-            logger.error(
-                "Failed to send Telegram notification: %s: %s",
-                type(exc).__name__,
-                detail[:500],
+                "Failed to send Telegram notification: invalid response or transport failure"
             )
             return False
 

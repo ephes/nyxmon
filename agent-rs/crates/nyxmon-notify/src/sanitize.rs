@@ -1,5 +1,5 @@
 //! Bounding of monitored-endpoint data before it reaches an OpsGate ticket
-//! (`notification.py:_sanitize_untrusted_text`, `sanitize_untrusted_data`).
+//! (`notification.py:sanitize_untrusted_text`, `sanitize_untrusted_data`).
 
 use std::sync::OnceLock;
 
@@ -59,7 +59,7 @@ pub fn truncate_chars(value: &str, max_chars: usize) -> String {
     format!("{kept}...[truncated {} chars]", len - max_chars)
 }
 
-/// `_sanitize_untrusted_text`: control and format characters become `?`,
+/// `sanitize_untrusted_text`: control and format characters become `?`,
 /// then the text is cut to `max_chars` (`None` keeps the full length).
 pub fn sanitize_untrusted_text(value: &str, max_chars: Option<usize>) -> String {
     let cleaned: String = value

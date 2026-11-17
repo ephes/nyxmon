@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Warning digest delivery
+
+- Require a bounded Telegram `ok: true` acknowledgement before the active Django
+  warning-digest command reports delivery. Bound streaming replies to 64 KiB and
+  both Markdown/plain-text attempts together to ten seconds; close resources on
+  failure, log the HTTP status of non-2xx replies and omit provider bodies and
+  secrets from diagnostics. This changes the
+  Python helper used by the command, without extending the retired Python agent.
+- Neutralize terminal controls in warning names and errors for digest dry-runs,
+  retaining readable Unicode and digest layout without changing stored evidence
+  or Telegram Markdown formatting.
+
 ### Nonblocking diagnostics (pending Rust rollout)
 
 - Move stderr writes and panic diagnostics off Tokio onto one dedicated writer
