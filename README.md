@@ -478,3 +478,23 @@ Shutdown drains accepted DB actor operations before releasing singleton ownershi
 The caller waits up to 15 seconds and reports drain uncertainty as failure; the
 actor keeps its lock until SQLite closes even if an embedded caller times out.
 See [Rust agent contracts](agent-rs/README.md) for migration and shutdown details.
+
+
+### Shared system resolver capacity (pending Rust rollout)
+
+HTTP and site DNS/scoped-IP probes now share mail resolution’s 16-job
+process-wide cap. Jobs queued/running in the blocking pool retain admission
+until the underlying system/NSS call ends, even after caller timeout or
+cancellation. Admission remains inside each caller’s deadline; capacity returns
+when libc returns. Plain IP literals bypass blocking work. Explicit DNS protocol
+checks are unchanged.
+
+
+### Nonblocking agent diagnostics (pending Rust rollout)
+
+Rust agent stderr now uses one dedicated writer with a nonblocking queue of 128
+records (at most 8193 bytes each). A full queue drops new records and increments
+`nyxmon_agent::logging::dropped_log_records()`. Checks, deadlines and signal
+handling continue while the stderr consumer is blocked. Exit drains for at most
+250 ms and never joins the writer; overload or blocked shutdown can lose logs,
+including the payload-free panic diagnostic. See the [stderr delivery contract](agent-rs/README.md#nonblocking-stderr-delivery-pending-rust-rollout).

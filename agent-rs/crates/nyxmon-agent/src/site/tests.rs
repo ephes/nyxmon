@@ -891,3 +891,93 @@ async fn slow_failed_probe_crosses_the_ongoing_notification_threshold_once() {
     site.run_once().await.unwrap();
     assert_eq!(notifier.calls().len(), 1);
 }
+
+#[test]
+fn http_and_site_resolution_share_cancelled_jobs_capacity() {
+    // Isolate the process-wide pool from parallel tests that also resolve names.
+    const CHILD: &str = "NYXMON_RESOLVER_CAPACITY_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "site::tests::http_and_site_resolution_share_cancelled_jobs_capacity",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return;
+    }
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            use nyxmon_checks::http_client::{GetRequest, HttpErrorKind, HttpSession};
+            use nyxmon_checks::net::system_lookup;
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let server = tokio::spawn(async move {
+                loop {
+                    let (mut socket, _) = listener.accept().await.unwrap();
+                    tokio::spawn(async move {
+                        let mut buf = [0; 4096];
+                        let _ = socket.read(&mut buf).await;
+                        let _ = socket
+                            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+                            .await;
+                    });
+                }
+            });
+            let session = HttpSession::new();
+            let url = format!("http://localhost:{port}/");
+            let request = GetRequest {
+                url: &url,
+                timeout: Some(Duration::from_millis(20)),
+                follow_redirects: false,
+                authorization: None,
+            };
+            let dns = target("dns", "localhost", 0);
+            let probes = DefaultProbeRunner {
+                timeout: Duration::from_millis(20),
+            };
+            let mut releases = Vec::new();
+            for _ in 0..16 {
+                let (release, blocked) = std::sync::mpsc::channel();
+                let (started, entered) = tokio::sync::oneshot::channel();
+                let caller = tokio::spawn(system_lookup(move || {
+                    let _ = started.send(());
+                    let _ = blocked.recv_timeout(Duration::from_secs(10));
+                }));
+                entered.await.unwrap();
+                caller.abort();
+                assert!(caller.await.unwrap_err().is_cancelled());
+                releases.push(release);
+            }
+            // Repeated round cancellation cannot free the underlying jobs' slots.
+            for _ in 0..32 {
+                let (http, site) = tokio::join!(session.get(&request), probes.probe(&dns));
+                assert!(
+                    matches!(http, Err(ref err) if err.kind == HttpErrorKind::Timeout),
+                    "HTTP bypassed capacity"
+                );
+                assert!(!site.unwrap(), "site probe bypassed capacity");
+            }
+            for release in releases {
+                release.send(()).unwrap();
+            }
+            assert!(DefaultProbeRunner::new(2).probe(&dns).await.unwrap());
+            let retry = GetRequest {
+                timeout: Some(Duration::from_secs(2)),
+                ..request
+            };
+            assert!(session.get(&retry).await.is_ok());
+            server.abort();
+        });
+}

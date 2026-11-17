@@ -6,10 +6,11 @@ use std::process::ExitCode;
 use clap::Parser;
 use nyxmon_agent::app::start_agent;
 use nyxmon_agent::cli::Args;
-use nyxmon_agent::logging::install_logging;
+use nyxmon_agent::logging::{LoggingShutdownGuard, install_logging};
 use nyxmon_agent::run_check::{RunCheckArgs, run_check};
 
 fn main() -> ExitCode {
+    let _logging_shutdown = LoggingShutdownGuard;
     // `start-agent` takes no positional argument, so a leading `run-check`
     // cannot be a valid agent command line.
     if std::env::args_os()

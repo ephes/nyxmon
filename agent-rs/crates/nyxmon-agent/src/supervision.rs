@@ -139,6 +139,7 @@ mod tests {
         let Ok(role) = std::env::var("NYXMON_TEST_PANIC_ROLE") else {
             return;
         };
+        let _logging_shutdown = crate::logging::LoggingShutdownGuard;
         assert!(crate::logging::install_logging("INFO"));
         if role == "main" {
             panic!("invented-private-panic-value");
@@ -200,6 +201,7 @@ mod tests {
             })
             .await
         });
+        crate::logging::shutdown_logging();
         std::process::exit(i32::from(failed));
     }
 

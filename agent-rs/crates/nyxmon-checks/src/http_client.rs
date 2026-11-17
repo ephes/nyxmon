@@ -448,10 +448,9 @@ impl HttpSession {
         let addrs: Vec<SocketAddr> = match self.overrides.iter().find(|(h, _)| h == host) {
             Some((_, ip)) => vec![SocketAddr::new(*ip, port)],
             None => {
-                let resolved: Vec<SocketAddr> = tokio::net::lookup_host((host, port))
+                let resolved: Vec<SocketAddr> = crate::net::lookup_host(host, port)
                     .await
-                    .map_err(|err| HttpError::new(HttpErrorKind::Connect, err.to_string()))?
-                    .collect();
+                    .map_err(|err| HttpError::new(HttpErrorKind::Connect, err.to_string()))?;
                 happy_eyeballs::order_addresses(&resolved)
             }
         };
