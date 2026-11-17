@@ -410,6 +410,12 @@ reload and reconcile. Runtime-only agent changes do not invalidate an edit.
 Programmatic form saves compare against the definition loaded when the form was
 constructed. Deleted checks are never recreated by an edit.
 
+With read/write database routing, existing-check saves compare the definition,
+update it and read it back inside one transaction on the resolved writer.
+Replica lag cannot supply the save acknowledgement; a failed readback rolls back
+the update. Confirmed deletions likewise reserve, compare and cascade on one
+writer. See [deletion confirmations](docs/configuration.md#private-dashboard-responses-and-deletion-confirmations).
+
 ## Current monitoring evidence
 
 The Rust agent publishes a probe result and its notification transition only

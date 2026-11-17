@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 from django import forms
 from django.core.validators import URLValidator
-from django.db import transaction
+from django.db import router, transaction
 from django.db.models import Case, F, When, PositiveIntegerField, TextField
 from django.db.models.functions import Cast
 from django.utils.crypto import constant_time_compare, salted_hmac
@@ -149,16 +149,21 @@ def check_definition_revision(instance):
     ).hexdigest()
 
 
-def current_definition_rows(instance, definition):
+def current_definition_rows(instance, definition, *, using=None):
     """Fence the eventual UPDATE against every loaded definition field.
 
     Compare decoded JSON semantics, then include the exact stored text in the
     conditional update, accepting compact JSON from the Rust writer.
     """
-    candidates = HealthCheck.objects.filter(
-        pk=instance.pk,
-        **{key: value for key, value in definition.items() if key != "data"},
-    ).annotate(definition_data_text=Cast("data", TextField()))
+    using = using or router.db_for_write(HealthCheck, instance=instance)
+    candidates = (
+        HealthCheck.objects.using(using)
+        .filter(
+            pk=instance.pk,
+            **{key: value for key, value in definition.items() if key != "data"},
+        )
+        .annotate(definition_data_text=Cast("data", TextField()))
+    )
     stored_data = candidates.values_list("definition_data_text", flat=True).first()
     if stored_data is None or json.dumps(
         json.loads(stored_data), sort_keys=True
@@ -217,12 +222,15 @@ class HealthCheckForm(forms.ModelForm):
                 default=F("next_check_time"),
                 output_field=PositiveIntegerField(),
             )
-        candidates = current_definition_rows(instance, self._definition)
-        with transaction.atomic():
+        using = router.db_for_write(HealthCheck, instance=instance)
+        with transaction.atomic(using=using):
+            candidates = current_definition_rows(
+                instance, self._definition, using=using
+            )
             changed = candidates.update(**values)
             if not changed:
                 raise DefinitionConflict(EDIT_CONFLICT)
-            instance.refresh_from_db()
+            instance.refresh_from_db(using=using)
 
     def save(self, commit=True):
         instance = super().save(commit=False)

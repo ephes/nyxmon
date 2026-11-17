@@ -47,16 +47,21 @@ def delete_confirmed(model, pk, submitted_revision):
     read. Row locks also serialize the definition and children on row-locking
     backends. No probe or network operation runs inside this short transaction.
     """
-    with transaction.atomic(using=model.objects.db):
-        model.objects.filter(pk=pk).update(name=F("name"))
-        instance = get_object_or_404(model.objects.select_for_update(), pk=pk)
+    definitions = model.objects.select_for_update()
+    using = definitions.db  # select_for_update resolves write routing.
+    definitions = definitions.using(using)
+    with transaction.atomic(using=using):
+        definitions.filter(pk=pk).update(name=F("name"))
+        instance = get_object_or_404(definitions, pk=pk)
         children = None
         if isinstance(instance, Service):
-            children = list(instance.healthcheck_set.select_for_update().order_by("pk"))
+            children = list(
+                instance.healthcheck_set.using(using).select_for_update().order_by("pk")
+            )
         current = deletion_revision(instance, children=children)
         if not submitted_revision or not constant_time_compare(
             submitted_revision, current
         ):
             return instance, False
-        instance.delete()
+        instance.delete(using=using)
         return instance, True
