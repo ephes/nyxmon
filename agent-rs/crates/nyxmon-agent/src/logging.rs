@@ -8,26 +8,123 @@
 
 use std::fmt::{self, Write as _};
 use std::io::Write as _;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
+use std::time::Duration;
 
 use tracing::field::{Field, Visit};
 use tracing::level_filters::LevelFilter;
 use tracing::subscriber::Interest;
 use tracing::{Event, Level, Metadata, span};
 
+// Fixed-size records and a fixed-capacity std channel bound retained text to
+// 128 * 8193 bytes, plus the record currently held by the writer. No sink I/O
+// or sink lock is ever taken by a submitting runtime thread.
+const STDERR_QUEUE_RECORDS: usize = 128;
+const STDERR_SHUTDOWN_WAIT: Duration = Duration::from_millis(250);
+
+enum WriteCommand {
+    Record(Box<str>),
+    Finish(mpsc::Sender<()>),
+}
+
+struct StderrWriter {
+    sender: mpsc::SyncSender<WriteCommand>,
+    dropped: Arc<AtomicU64>,
+}
+
+impl StderrWriter {
+    fn start() -> Self {
+        let (sender, receiver) = mpsc::sync_channel(STDERR_QUEUE_RECORDS);
+        let dropped = Arc::new(AtomicU64::new(0));
+        let failed = Arc::clone(&dropped);
+        // A plain thread, deliberately outside Tokio's blocking pool. Never
+        // join it: a supervisor may stop draining stderr indefinitely.
+        std::thread::Builder::new()
+            .name("nyxmon-stderr".to_owned())
+            .spawn(move || {
+                let mut stderr = std::io::stderr();
+                while let Ok(command) = receiver.recv() {
+                    match command {
+                        WriteCommand::Record(record) => {
+                            if stderr.write_all(record.as_bytes()).is_err() {
+                                failed.fetch_add(1, Ordering::Relaxed);
+                            }
+                        }
+                        WriteCommand::Finish(done) => {
+                            let _ = stderr.flush();
+                            let _ = done.send(());
+                            break;
+                        }
+                    }
+                }
+            })
+            .expect("cannot start stderr writer");
+        Self { sender, dropped }
+    }
+
+    fn submit(&self, mut record: String) {
+        record.push('\n');
+        if self
+            .sender
+            .try_send(WriteCommand::Record(record.into_boxed_str()))
+            .is_err()
+        {
+            // Drop newest on full/disconnected; never recursively log loss.
+            self.dropped.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    fn finish(&self) {
+        let (done, finished) = mpsc::channel();
+        if self.sender.try_send(WriteCommand::Finish(done)).is_ok() {
+            let _ = finished.recv_timeout(STDERR_SHUTDOWN_WAIT);
+        }
+    }
+}
+
+static STDERR_WRITER: OnceLock<StderrWriter> = OnceLock::new();
+
+fn stderr_writer() -> &'static StderrWriter {
+    STDERR_WRITER.get_or_init(StderrWriter::start)
+}
+
+/// Number of records rejected by the queue or lost to a sink write error.
+/// Reading this counter performs no I/O and cannot recursively log.
+pub fn dropped_log_records() -> u64 {
+    STDERR_WRITER
+        .get()
+        .map_or(0, |writer| writer.dropped.load(Ordering::Relaxed))
+}
+
+/// Best-effort ordered drain, waiting at most 250 ms and never joining a
+/// potentially blocked writer. A saturated queue skips the drain immediately.
+pub fn shutdown_logging() {
+    if let Some(writer) = STDERR_WRITER.get() {
+        writer.finish();
+    }
+}
+
+/// Keep this guard alive until the binary exits, including during unwinding.
+pub struct LoggingShutdownGuard;
+
+impl Drop for LoggingShutdownGuard {
+    fn drop(&mut self) {
+        shutdown_logging();
+    }
+}
+
 /// Install the binary's payload-free panic hook and stderr subscriber.
 pub fn install_logging(log_level: &str) -> bool {
+    let _ = stderr_writer();
     // Install once at command startup, never around individual tasks. Do not
     // invoke the default hook: it prints payloads and possibly a backtrace.
     std::panic::set_hook(Box::new(|_| {
-        let _ = writeln!(
-            std::io::stderr().lock(),
-            "nyxmon-agent: panic (payload withheld)"
-        );
+        stderr_writer().submit("nyxmon-agent: panic (payload withheld)".to_owned());
     }));
     let level = level_filter(log_level).expect("restricted by clap");
     if tracing::subscriber::set_global_default(PyLogSubscriber::stderr(level)).is_err() {
-        eprintln!("cannot install the log subscriber");
+        stderr_writer().submit("cannot install the log subscriber".to_owned());
         return false;
     }
     true
@@ -82,6 +179,7 @@ pub struct PyLogSubscriber {
 impl PyLogSubscriber {
     /// Lines on stderr up to `max_level`.
     pub fn stderr(max_level: LevelFilter) -> Self {
+        let _ = stderr_writer();
         PyLogSubscriber {
             max_level,
             sink: Sink::Stderr,
@@ -240,7 +338,7 @@ impl tracing::Subscriber for PyLogSubscriber {
         };
         match &self.sink {
             Sink::Stderr => {
-                let _ = writeln!(std::io::stderr().lock(), "{}", stderr_record(&line));
+                stderr_writer().submit(stderr_record(&line));
             }
             Sink::Memory(lines) => lines.lock().unwrap_or_else(|e| e.into_inner()).push(line),
         }
@@ -265,6 +363,7 @@ mod tests {
     #[test]
     fn stderr_records_are_bounded_and_cannot_forge_lines() {
         if std::env::var_os("NYXMON_LOG_FRAMING_CHILD").is_some() {
+            let _shutdown = LoggingShutdownGuard;
             let subscriber = PyLogSubscriber::stderr(LevelFilter::INFO);
             let _guard = tracing::subscriber::set_default(subscriber);
             let mut check = crate::testutil::check(1);
@@ -293,6 +392,116 @@ mod tests {
         assert!(text.contains("bad\\nfield\\r\\u{0}"));
         assert!(!text.contains('\x1b'));
         assert!(text.contains("[truncated]"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unread_stderr_keeps_both_workers_timers_and_sigterm_live() {
+        use std::io::{BufRead, BufReader};
+        use std::process::{Command, Stdio};
+        use std::time::Duration;
+        const CHILD: &str = "NYXMON_LOG_BACKPRESSURE_CHILD";
+        if std::env::var_os(CHILD).is_some() {
+            assert!(install_logging("INFO"));
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async {
+                let mut term =
+                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                        .unwrap();
+                let mut floods = Vec::new();
+                for _ in 0..2 {
+                    floods.push(tokio::spawn(async {
+                        let payload = "x".repeat(8192);
+                        for _ in 0..2048 {
+                            tracing::info!(target: "nyxmon.test", "{payload}");
+                        }
+                    }));
+                }
+                let heartbeat = tokio::spawn(async {
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                });
+                let probe = tokio::spawn(async {
+                    assert!(
+                        tokio::time::timeout(
+                            Duration::from_millis(20),
+                            std::future::pending::<()>()
+                        )
+                        .await
+                        .is_err()
+                    );
+                });
+                for flood in floods {
+                    flood.await.unwrap();
+                }
+                heartbeat.await.unwrap();
+                probe.await.unwrap();
+                assert!(dropped_log_records() > 0);
+                println!("LIVE");
+                term.recv().await.unwrap();
+                let before = std::time::Instant::now();
+                shutdown_logging();
+                assert!(before.elapsed() < Duration::from_secs(1));
+                println!("STOPPED");
+            });
+            return;
+        }
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "logging::tests::unread_stderr_keeps_both_workers_timers_and_sigterm_live",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        // Keep stderr open but never read it. More than 32 MiB is submitted.
+        let stdout = child.stdout.take().unwrap();
+        let (lines, received) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines() {
+                if lines.send(line.unwrap()).is_err() {
+                    break;
+                }
+            }
+        });
+        let result = (|| -> Result<(), String> {
+            for expected in ["LIVE", "STOPPED"] {
+                loop {
+                    let line = received
+                        .recv_timeout(Duration::from_secs(5))
+                        .map_err(|e| e.to_string())?;
+                    if line == expected {
+                        break;
+                    }
+                }
+                if expected == "LIVE" {
+                    assert!(
+                        Command::new("kill")
+                            .args(["-TERM", &child.id().to_string()])
+                            .status()
+                            .unwrap()
+                            .success()
+                    );
+                }
+            }
+            Ok(())
+        })();
+        // Bound failure cleanup as well, even if both old workers wedged.
+        if result.is_err() {
+            let _ = child.kill();
+        }
+        let status = child.wait().unwrap();
+        assert!(
+            result.is_ok(),
+            "runtime or signal handling stalled: {result:?}"
+        );
+        assert!(status.success());
     }
 
     #[test]

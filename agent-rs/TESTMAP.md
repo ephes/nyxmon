@@ -440,3 +440,23 @@ against a temporary database from the schema fixture and fake servers).
   defers a synthetic executor, edits URL/data/type/interval/disabled or deletes
   through a second SQLite connection, then resumes through the real result
   handler and store. An unchanged control publishes and notifies normally.
+
+
+## Round 135 — shared resolver admission
+
+- `site::tests::http_and_site_resolution_share_cancelled_jobs_capacity` occupies
+  all 16 production resolver slots with stalled closures, cancels their callers,
+  then repeats real HTTP and site DNS probes against localhost. Both time out
+  without bypassing admission and recover after releasing the jobs.
+- `net::tests` also exercises queued and running closure ownership after cancellation.
+
+
+## Round 135 — nonblocking diagnostic delivery
+
+- `logging::tests::unread_stderr_keeps_both_workers_timers_and_sigterm_live`
+  runs the real subscriber in a subprocess with an unread stderr pipe, submits
+  over 32 MiB from two Tokio workers, checks loss accounting, heartbeat and probe
+  timeout completion, sends SIGTERM, and verifies bounded writer shutdown.
+- `logging::tests::stderr_records_are_bounded_and_cannot_forge_lines` and
+  `supervision::tests::panic_payloads_never_reach_real_stderr` retain the framing
+  and payload-free panic contracts with explicit asynchronous writer retirement.

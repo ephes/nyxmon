@@ -74,16 +74,19 @@ impl DefaultProbeRunner {
             // encoded first, as anyio does.
             ProbeKind::Dns => {
                 let name = idna2008_resolve(&target.host).map_err(|err| err.to_string())?;
-                let mut infos = tokio::net::lookup_host((name.as_str(), 0))
+                let infos = nyxmon_checks::net::lookup_host(&name, 0)
                     .await
                     .map_err(|err| err.to_string())?;
-                Ok(infos.next().is_some())
+                Ok(!infos.is_empty())
             }
             // `anyio.connect_tcp(host, port)` then `aclose()`. The host is a
             // validated IP literal; a zone id (`fe80::1%eth0`) goes through
             // `getaddrinfo` like Python's socket module does.
             ProbeKind::Tcp => {
-                let stream = tokio::net::TcpStream::connect((target.host.as_str(), target.port))
+                let addrs = nyxmon_checks::net::lookup_host(&target.host, target.port)
+                    .await
+                    .map_err(|err| err.to_string())?;
+                let stream = tokio::net::TcpStream::connect(addrs.as_slice())
                     .await
                     .map_err(|err| err.to_string())?;
                 drop(stream);

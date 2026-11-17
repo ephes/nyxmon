@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Nonblocking diagnostics (pending Rust rollout)
+
+- Move stderr writes and panic diagnostics off Tokio onto one dedicated writer
+  with a nonblocking 128-record queue and a loss counter. Drop newest records on
+  saturation; preserve bounded, escaped record formatting. Keep checks, timers,
+  and SIGTERM handling live with an unread pipe. Limit shutdown drain to 250 ms
+  without joining a blocked writer; overload/shutdown may lose diagnostics.
+
+### Shared resolver capacity (pending Rust rollout)
+
+- Route `HttpSession` (HTTP checks, suppression fetches) and site DNS/scoped-IP
+  system lookups through the existing 16-job mail resolver pool. Notification
+  delivery, ping/TCP-check and scoped nameserver resolution are unchanged. Cancelled/timed-out callers cannot free queued or running
+  jobs’ admission before libc returns. Preserve caller deadlines, NSS resolution,
+  address ordering and literal-IP fast paths; recover capacity after completion.
+
 ### Bounded site connectivity banner
 
 - Admit only the three established site paths and observer states before banner

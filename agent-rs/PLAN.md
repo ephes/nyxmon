@@ -996,7 +996,7 @@ parallel with few merge conflicts.
 | TLS for tcp/smtp/imap | `tokio-rustls` + `rustls-native-certs` | Python `ssl.create_default_context()` uses the system store |
 | certificate expiry | `x509-parser` (notAfter only) | `tcp_executor.py:_cert_days_remaining` |
 | DNS checks | own stub resolver on tokio UDP/TCP sockets (`nyxmon-checks/src/dns.rs`, `dns/wire.rs`; S5b) | replaces dnspython: its resolution loop (lifetime, backoff, nameserver dropping, TCP fallback), response matching and record texts are reproduced directly, which a resolver library would hide (section 5.6) |
-| system resolution (probes, ping, happy eyeballs, HTTP clients) | libc `getaddrinfo` via `tokio::net::lookup_host` | same resolver semantics as Python (see 8.1) |
+| system resolution (probes, ping, happy eyeballs, HTTP clients) | libc `getaddrinfo` via `tokio::net::lookup_host`; site probes and `HttpSession` use the same std resolver through the bounded `nyxmon_checks::net::lookup_host` | same resolver semantics as Python (see 8.1) |
 | IMAP | hand-rolled `imaplib.IMAP4` emulation (≈ 900 lines, S7b) | `async-imap` cannot reproduce the error texts the dashboard shows (`command: UID => socket error: EOF`, `UID command error: BAD [b'...']`, `select failed: NO [...]`), imaplib's response store or its quoting; see 5.14 |
 | SMTP | hand-rolled (≈ 400 lines) | `lettre` lacks smtplib's error taxonomy, CRAM-MD5 and the recipient-refused semantics; see 5.7 |
 | SQLite | `rusqlite` (`bundled`) | section 3.2 |
@@ -2761,3 +2761,34 @@ shutdown, and the actor retains AgentLock until its connection closes even if it
 caller/runtime disappears. Lock admission verifies the named inode and parent
 identity after acquisition; namespace stability remains required during a run.
 Stderr escapes controls and caps each physical record at 8192 bytes plus newline.
+
+
+### Shared system resolver capacity (pending Rust rollout)
+
+HTTP and site DNS/scoped-IP probes now share mail resolution’s 16-job
+process-wide cap. Jobs queued/running in the blocking pool retain admission
+until the underlying system/NSS call ends, even after caller timeout or
+cancellation. Admission remains inside each caller’s deadline; capacity returns
+when libc returns. Plain IP literals bypass blocking work. HTTP here means the
+check-side `HttpSession` (HTTP checks and suppression fetches). Explicit DNS
+protocol checks are unchanged, and notification delivery, ping/TCP-check host
+resolution and scoped DNS-check nameserver addresses still resolve outside this
+cap.
+
+
+### Nonblocking stderr delivery (pending Rust rollout)
+
+One dedicated standard thread owns stderr writes outside Tokio and its blocking
+pool. Subscriber submission uses a nonblocking 128-record queue. Each queued
+record is at most 8193 UTF-8 bytes including newline (1,048,704 queued text bytes,
+plus one record held by the writer). A full/disconnected queue drops the newest
+record. `nyxmon_agent::logging::dropped_log_records()` exposes queue rejections and
+sink write failures without logging recursively. Panic-hook text uses the same
+queue and may also be lost during overload. Retained records keep their order,
+control escaping, and truncation markers; notifications are unchanged.
+
+On normal exit or main-thread unwind the binary requests an ordered drain. It
+waits at most 250 ms; a full queue skips this wait. The writer is never joined,
+so an unread pipe cannot prevent exit. Accepted records may be lost if the sink
+stays blocked at shutdown. Restore the stderr consumer to resume delivery; this
+change requires a later owner-managed Rust agent rollout.

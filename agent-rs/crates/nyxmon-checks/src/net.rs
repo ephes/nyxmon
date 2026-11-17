@@ -3,7 +3,7 @@
 //! socket timeout per I/O operation, and `str(OSError)` texts.
 
 use std::io;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
 use std::task::{Context, Poll};
@@ -61,10 +61,10 @@ pub async fn with_timeout<T>(
         .unwrap_or_else(|_| Err(timed_out()))
 }
 
-/// Cap running AND queued blocking mail lookups process-wide. Dropping a
+/// Cap running AND queued blocking system lookups process-wide. Dropping a
 /// caller cannot cancel libc; the closure must own its permit until it exits.
 /// Callers bound admission and completion with their operation/attempt deadline.
-pub(crate) async fn system_lookup<T: Send + 'static>(
+pub async fn system_lookup<T: Send + 'static>(
     lookup: impl FnOnce() -> T + Send + 'static,
 ) -> Result<T, NetError> {
     static SLOTS: OnceLock<Arc<Semaphore>> = OnceLock::new();
@@ -86,6 +86,23 @@ async fn system_lookup_with_slots<T: Send + 'static>(
     })
     .await
     .map_err(|err| NetError::Other(err.to_string()))
+}
+
+/// System/NSS resolution for HTTP and site probes, sharing mail's admission.
+/// Literal IP addresses need no blocking work. A cancelled caller leaves any
+/// admitted job's permit with its closure until libc returns.
+pub async fn lookup_host(host: &str, port: u16) -> io::Result<Vec<SocketAddr>> {
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        return Ok(vec![SocketAddr::new(ip, port)]);
+    }
+    let host = host.to_owned();
+    system_lookup(move || {
+        (host.as_str(), port)
+            .to_socket_addrs()
+            .map(Iterator::collect)
+    })
+    .await
+    .map_err(|err| io::Error::other(format!("system resolver task failed: {err:?}")))?
 }
 
 /// `socket.getaddrinfo(host, port, 0, SOCK_STREAM)` (blocking libc call on

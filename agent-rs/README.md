@@ -609,16 +609,22 @@ not retried. Existing SMTP temporary-response retries (except partial delivery) 
 retries remain unchanged, with at most `retries + 1` attempts and the configured
 `retry_delay` between them. No retry sleeps are inside an attempt budget.
 
-Mail destination lookups and SMTP local-hostname discovery share 16 process-wide
+Mail destination lookups, SMTP local-hostname discovery, `HttpSession`
+requests (HTTP checks and suppression fetches), and site DNS/scoped-IP probes share 16 process-wide
 slots for blocking system resolver jobs, including jobs queued in Tokio's
 blocking pool. A job owns its slot until the closure exits, even when its caller
 is cancelled or times out. Destination resolution, including slot admission,
 is bounded by the per-operation `timeout`; hostname discovery is inside the
 SMTP attempt deadline. If all slots remain occupied, later callers time out
 without queuing more blocking jobs. Capacity returns when those jobs finish;
-libc calls cannot be cancelled. Other check executors' resolver paths are
-unchanged. These changes ship in `agent-rs-v0.1.3` (production: the
-ops-control pin and rollout).
+libc calls cannot be cancelled. HTTP and site probes retain their existing caller
+deadlines, NSS address order, and IDNA handling; plain IP literals need no resolver
+slot. Explicit DNS protocol queries do not use this system pool. Other direct
+system-resolver paths are unchanged and still unbounded: notification delivery
+(`nyxmon-notify`), ping and TCP-check host resolution (`happy_eyeballs`), and
+scoped DNS-check nameserver addresses. The mail paths ship in `agent-rs-v0.1.3`;
+the `HttpSession` and site-probe routing is pending a later Rust agent release
+and rollout (production: the ops-control pin and rollout).
 
 Scheduling and retention flags (`--interval`, `--cleanup-interval`,
 `--retention-period`) accept strictly positive signed 64-bit seconds (1 through
@@ -912,3 +918,21 @@ dashboard form mirrors this admission (parity test in `config/tests.rs`). The su
 retains all severity counts under a 4096-byte limit; every failure retains its
 severity and explicit field truncation markers. See `docs/configuration.md` for
 accounting and the serialized envelope guarantee.
+
+
+### Nonblocking stderr delivery (pending Rust rollout)
+
+One dedicated standard thread owns stderr writes outside Tokio and its blocking
+pool. Subscriber submission uses a nonblocking 128-record queue. Each queued
+record is at most 8193 UTF-8 bytes including newline (1,048,704 queued text bytes,
+plus one record held by the writer). A full/disconnected queue drops the newest
+record. `nyxmon_agent::logging::dropped_log_records()` exposes queue rejections and
+sink write failures without logging recursively. Panic-hook text uses the same
+queue and may also be lost during overload. Retained records keep their order,
+control escaping, and truncation markers; notifications are unchanged.
+
+On normal exit or main-thread unwind the binary requests an ordered drain. It
+waits at most 250 ms; a full queue skips this wait. The writer is never joined,
+so an unread pipe cannot prevent exit. Accepted records may be lost if the sink
+stays blocked at shutdown. Restore the stderr consumer to resume delivery; this
+change requires a later owner-managed Rust agent rollout.
