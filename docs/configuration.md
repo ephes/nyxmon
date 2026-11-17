@@ -1222,7 +1222,11 @@ Reload the confirmation and review the linked checks before confirming again.
 Missing or altered confirmations also return 409. Agent status, claim, schedule
 and result updates do not invalidate confirmation. The final comparison and
 cascade share a short database write transaction (SQLite reserves its writer
-before reading the definition), with no network work inside it.
+before reading the definition), with no network work inside it. With read/write
+database routing, deletion resolves the authoritative writer once and uses that
+alias for the reservation, definition and child locks, revision comparison and
+cascade. Replica lag cannot admit a stale confirmation, and a deletion failure
+rolls back the writer's entire cascade.
 
 Service lists/details and the check list share the dashboard's request-local
 five-result prefetch, ordered by descending timestamp then result ID. Their

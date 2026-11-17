@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dashboard definition database routing
+
+- Keep confirmed service/check deletion, writer reservation, definition/child
+  locks and revision comparison on one resolved writer alias and transaction,
+  including cascade rollback when read and write databases differ.
+
 ### Policy diagnostics (pending Rust rollout)
 
 - Replace full rejected notification-policy values with static type names in
