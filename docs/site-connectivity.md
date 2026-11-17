@@ -639,7 +639,17 @@ dashboard server clock; there is no future-clock-skew tolerance. If `observed_at
 is in the future, more than ten minutes old, missing or unusable, the banner
 marks the observation stale and adds that the observer may be stopped. This
 also covers clock skew, `off` mode, and stale persisted incidents. A malformed
-payload produces no banner rather than an error.
+top-level payload produces no banner rather than an error. Before projecting
+path evidence, the dashboard admits at most the three established names `dns`,
+`ipv4` and `ipv6`, in that display order, and the observer's states `up`,
+`failing`, `down`, `recovering` and `unobserved`. Unknown names, excess paths or
+malformed path records produce a fixed **Site connectivity evidence unavailable**
+banner; they never imply recovery or echo stored names or values. Only affected
+names, admitted states and formatted usable timestamps enter the normal banner
+context. Missing or unusable path timestamps remain unknown, and incident IDs
+must be usable positive integer epochs (booleans are refused). Other payload
+fields are ignored. This bounds projection and rendered evidence after Django
+has decoded the stored JSON; it does not cap the database payload's size.
 
 A check detail page reports a hold from the **newest stored result**, not from
 `held_since`:

@@ -48,6 +48,11 @@ SITE_INCIDENT_KEY = "site:connectivity"
 #: Path states that make a path worth naming in the dashboard banner.
 SITE_BANNER_STATES = ("down", "recovering")
 
+# Fixed vocabulary shared with the observer's path/state contract. Keep these
+# local so rendering never imports agent adapters or sorts restored JSON keys.
+SITE_BANNER_PATHS = ("dns", "ipv4", "ipv6")
+SITE_PATH_STATES = ("up", "failing", "down", "recovering", "unobserved")
+
 #: How old ``observed_at`` may be before the banner stops presenting the payload
 #: as a current observation. The worker distrusts its own snapshot after three
 #: probe intervals; the dashboard uses a laxer ten minutes, so a single slow or
@@ -100,8 +105,10 @@ def site_connectivity_banner():
         the last probe round and ``stale`` (the round is more than
         :data:`SITE_OBSERVATION_STALE_SECONDS` old, in the future, or its
         timestamp is unusable, so the observer may be stopped or clocks skewed);
-        or ``None`` when there is no row, nothing to report, or the payload is
-        malformed. Nothing in here raises: a payload the dashboard cannot read simply produces no banner.
+        or a fixed ``invalid_evidence`` context for malformed path evidence.
+        Returns ``None`` when there is no row, nothing to report, or the
+        top-level payload is unreadable. Only admitted scalar fields reach the
+        context; arbitrary stored keys and nested data are never copied.
     """
     try:
         incident = CollectorIncident.objects.filter(
@@ -123,16 +130,27 @@ def site_connectivity_banner():
 
     paths = []
     raw_paths = payload.get("paths")
-    if isinstance(raw_paths, dict):
-        for name, values in sorted(raw_paths.items()):
-            if not isinstance(values, dict):
-                continue
-            state = values.get("state")
-            if state not in SITE_BANNER_STATES:
-                continue
+    # Admit the inventory before iterating: at most three entries reach
+    # projection, even when a restored incident has a huge path mapping.
+    if (
+        not isinstance(raw_paths, dict)
+        or len(raw_paths) > len(SITE_BANNER_PATHS)
+        or any(name not in SITE_BANNER_PATHS for name in raw_paths)
+    ):
+        return {"invalid_evidence": True}
+    for name in SITE_BANNER_PATHS:
+        if name not in raw_paths:
+            continue
+        values = raw_paths[name]
+        if not isinstance(values, dict):
+            return {"invalid_evidence": True}
+        state = values.get("state")
+        if state not in SITE_PATH_STATES:
+            return {"invalid_evidence": True}
+        if state in SITE_BANNER_STATES:
             paths.append(
                 {
-                    "name": str(name),
+                    "name": name,
                     "state": state,
                     "down_since": _format_epoch(values.get("down_since")),
                 }
@@ -147,7 +165,9 @@ def site_connectivity_banner():
     return {
         "active": active,
         "summary_pending": summary_pending,
-        "incident_id": incident_id if isinstance(incident_id, int) else None,
+        "incident_id": _usable_epoch(incident_id)
+        if isinstance(incident_id, int)
+        else None,
         "paths": paths,
         "observed_at": _format_epoch(observed_at),
         "stale": stale,

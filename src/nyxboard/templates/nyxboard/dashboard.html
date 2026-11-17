@@ -10,7 +10,10 @@
 {% if site_connectivity %}
 <div class="site-connectivity-banner" role="status" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
     <div class="help-text" style="color: #856404;">
-        {% if site_connectivity.active %}
+        {% if site_connectivity.invalid_evidence %}
+            <strong>Site connectivity evidence unavailable.</strong>
+            The stored incident contains malformed path evidence.
+        {% elif site_connectivity.active %}
             <strong>Site connectivity outage observed.</strong>
             {% if site_connectivity.paths %}
                 Affected paths:
