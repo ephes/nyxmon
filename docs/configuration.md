@@ -278,7 +278,10 @@ Validation is fail-safe and follows the `notification_suppression` precedent:
   policy, site dependency, unobserved-path and runtime-estimate warnings. New
   keys evict the oldest first-seen key; repeats do not refresh FIFO order.
   A rejected field can warn again after eviction. New warnings are never
-  globally silenced by a full cache. Environment-variable warnings use separate
+  globally silenced by a full cache. With more than 1024 distinct warning keys
+  recurring every cycle, keys are evicted before they repeat and each
+  evaluation warns again (memory stays bounded; log volume follows the number
+  of malformed fields per cycle). Environment-variable warnings use separate
   bookkeeping.
 - Rust policy warnings include the policy key, check ID, fixed rejection reason
   and type name only. Rejected values and nested contents are never formatted or

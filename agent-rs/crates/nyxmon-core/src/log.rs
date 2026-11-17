@@ -254,6 +254,21 @@ mod tests {
     }
 
     #[test]
+    fn cyclic_keys_beyond_capacity_rewarn_every_round_with_bounded_state() {
+        // Documented worst case (PLAN.md D-24): more distinct recurring keys
+        // than capacity are evicted before they repeat.
+        let sink = Arc::new(RecordingSink::default());
+        let warnings = WarnOnce::with_capacity(sink.clone(), NonZeroUsize::new(3).unwrap());
+        for _round in 0..5 {
+            for id in 0..4 {
+                assert!(warn(&warnings, "policy", id, "field"));
+            }
+            assert_retained(&warnings, 3);
+        }
+        assert_eq!(sink.take().len(), 20);
+    }
+
+    #[test]
     fn dedup_churn_rewarns_evicted_keys_without_silencing_new_keys() {
         let sink = Arc::new(RecordingSink::default());
         let warnings = WarnOnce::new(sink.clone());

@@ -413,7 +413,13 @@ section 3.6); no other new variable is introduced by the port.
   one; suppressed repeats do not refresh its position. Evicted keys may warn
   again, unlike Python's lifetime sets. Scope reset removes both membership and
   FIFO entries. Environment readers keep their separate deduplication contract.
-  `log::tests` covers small injected capacities, churn, reset and concurrency.
+  Worst case: more than 1024 distinct warning keys that recur cyclically (for
+  example over 1024 malformed policy fields re-evaluated every cycle) are each
+  evicted before they repeat, so every evaluation warns again; log volume is
+  then bounded by evaluations per cycle instead of by distinct keys. This is
+  accepted in exchange for bounded memory; no rate limit is applied.
+  `log::tests` covers small injected capacities, churn, cyclic overflow, reset and
+  concurrency.
 
 ### 1.6 Result `data` shapes per check type (P1)
 
@@ -2075,10 +2081,10 @@ level, stable inputs, injected clocks/nonces/env via monkeypatching):
 | `pyjson.json` | `json.dumps`, `repr(float)`, `format(g)`, `round`, rich comparisons | value/op corpus incl. bool/int/float mixes, nested lists/dicts, unicode, control chars, astral chars |
 | `env.json` | all env readers of 1.4 | raw value → parsed value + warning emitted |
 | `config_<type>.json` | `*_config.py` `from_dict` + `validate` and the executors' pre-I/O steps | data corpus → `ok` (normalised config) / `configuration_error` message / Python exception class |
-| `policy.json` | `resolve_notification_policy` | check data × status × env → policy + warnings |
+| `policy.json` | `resolve_notification_policy` | check data × status × env → policy + warnings; warning text Rust-owned since D-23: edited by hand, not regenerated from Python |
 | `site_dependency.json` | `resolve_site_dependency` | raw → requirements / unclassified + warning |
 | `suppression_rules.json` | `_lookup`, `_rule_matches`, `_finite_seconds`, `_int_or_none`, and `notification_suppression_details` with a stubbed fetch | payload × config × now → details |
-| `decision.json` | `_should_notify_check_result` with a stub UoW/snapshot | state × result × snapshot × env × now → decision + annotated data |
+| `decision.json` | `_should_notify_check_result` with a stub UoW/snapshot | state × result × snapshot × env × now → decision + annotated data; warning text Rust-owned since D-23: edited by hand, not regenerated from Python |
 | `site_snapshot.json` | `SiteConnectivitySnapshot` methods | snapshot × dependency × claim × now |
 | `site_replay/*.json` | `SiteConnectivityObserver` driven by a scripted probe runner, clock, in-memory store and recording notifier | per round: probe outcomes, store failures injected → payload after the round, snapshot, notifications, log events |
 | `metrics_eval.json` (S5) | `JsonMetricsExecutor._evaluate`, `_resolve_path`, `_build_failure_summary`, `_bounded_actual` | payload × checks → failures/status/summary |

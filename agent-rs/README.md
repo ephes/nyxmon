@@ -306,7 +306,10 @@ Current fixtures:
   whose key order matters is stored as JSON text (`*_json`) because the
   files are written with sorted keys. `decision.json` was generated under
   `sys.monitoring` line tracing and the generator failed unless the corpus
-  executes every line of `_should_notify_check_result`.
+  executes every line of `_should_notify_check_result`. `policy.json` and
+  `decision.json` are hand-edited since 2026-11-17 for the intentional
+  policy-warning text (type names instead of raw values, PLAN.md D-23);
+  regenerating them from Python would restore the raw-value text.
 - `site_replay/*.json` (`gen_site.py`): the real `SiteConnectivityObserver`
   driven round by round by a scripted probe runner, clock, in-memory store
   and scheduler (with injected read/write/query failures) and a recording
