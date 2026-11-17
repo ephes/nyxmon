@@ -143,7 +143,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type int); using the global default"
      ]
     ]
    }
@@ -161,7 +161,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type int); using the global default"
      ]
     ]
    }
@@ -179,7 +179,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type list); using the global default"
      ]
     ]
    }
@@ -197,7 +197,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type list); using the global default"
      ]
     ]
    }
@@ -215,7 +215,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type str); using the global default"
      ]
     ]
    }
@@ -233,7 +233,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type str); using the global default"
      ]
     ]
    }
@@ -355,7 +355,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -373,7 +373,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -391,7 +391,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -409,7 +409,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -427,7 +427,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -445,7 +445,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -463,7 +463,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -481,7 +481,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -499,7 +499,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ]
     ]
    }
@@ -517,7 +517,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ]
     ]
    }
@@ -535,7 +535,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -553,7 +553,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -571,7 +571,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type NoneType); using the global default"
      ]
     ]
    }
@@ -589,7 +589,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type NoneType); using the global default"
      ]
     ]
    }
@@ -607,7 +607,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -625,7 +625,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -643,7 +643,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type list); using the global default"
      ]
     ]
    }
@@ -661,7 +661,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type list); using the global default"
      ]
     ]
    }
@@ -679,7 +679,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type dict); using the global default"
      ]
     ]
    }
@@ -697,7 +697,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type dict); using the global default"
      ]
     ]
    }
@@ -741,7 +741,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -759,7 +759,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -803,7 +803,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -821,7 +821,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -839,7 +839,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -857,7 +857,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -875,7 +875,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -893,7 +893,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -911,7 +911,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -929,7 +929,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -986,11 +986,11 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 10); using the global default"
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -1008,11 +1008,11 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -1030,19 +1030,19 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got 'x'); using the global default"
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got False); using the global default"
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -1286,7 +1286,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type int); using the global default"
      ]
     ]
    }
@@ -1308,7 +1308,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type int); using the global default"
      ]
     ]
    }
@@ -1330,7 +1330,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type list); using the global default"
      ]
     ]
    }
@@ -1352,7 +1352,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type list); using the global default"
      ]
     ]
    }
@@ -1374,7 +1374,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type str); using the global default"
      ]
     ]
    }
@@ -1396,7 +1396,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type str); using the global default"
      ]
     ]
    }
@@ -1554,7 +1554,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1576,7 +1576,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1598,7 +1598,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1620,7 +1620,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1642,7 +1642,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1664,7 +1664,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1686,7 +1686,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -1708,7 +1708,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -1730,7 +1730,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ]
     ]
    }
@@ -1752,7 +1752,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ]
     ]
    }
@@ -1774,7 +1774,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -1796,7 +1796,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -1818,7 +1818,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type NoneType); using the global default"
      ]
     ]
    }
@@ -1840,7 +1840,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type NoneType); using the global default"
      ]
     ]
    }
@@ -1862,7 +1862,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1884,7 +1884,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -1906,7 +1906,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type list); using the global default"
      ]
     ]
    }
@@ -1928,7 +1928,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type list); using the global default"
      ]
     ]
    }
@@ -1950,7 +1950,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type dict); using the global default"
      ]
     ]
    }
@@ -1972,7 +1972,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type dict); using the global default"
      ]
     ]
    }
@@ -2028,7 +2028,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -2050,7 +2050,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -2106,7 +2106,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -2128,7 +2128,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -2150,7 +2150,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -2172,7 +2172,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -2194,7 +2194,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -2216,7 +2216,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -2238,7 +2238,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -2260,7 +2260,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -2333,11 +2333,11 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 10); using the global default"
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -2359,11 +2359,11 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -2385,19 +2385,19 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got 'x'); using the global default"
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got False); using the global default"
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -2779,7 +2779,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type int); using the global default"
      ]
     ]
    }
@@ -2809,7 +2809,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 5); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type int); using the global default"
      ]
     ]
    }
@@ -2843,7 +2843,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type list); using the global default"
      ]
     ]
    }
@@ -2873,7 +2873,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got [1, 2]); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type list); using the global default"
      ]
     ]
    }
@@ -2907,7 +2907,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type str); using the global default"
      ]
     ]
    }
@@ -2937,7 +2937,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got 'x'); using the global default"
+      "notification_policy.notification_policy for check_id=7 is invalid (must be an object, got type str); using the global default"
      ]
     ]
    }
@@ -3195,7 +3195,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3225,7 +3225,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3259,7 +3259,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3289,7 +3289,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 101); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3323,7 +3323,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3353,7 +3353,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got -1); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3387,7 +3387,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -3417,7 +3417,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got 2.0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -3451,7 +3451,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ]
     ]
    }
@@ -3481,7 +3481,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got True); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ]
     ]
    }
@@ -3515,7 +3515,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -3545,7 +3545,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got '3'); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -3579,7 +3579,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type NoneType); using the global default"
      ]
     ]
    }
@@ -3609,7 +3609,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got None); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type NoneType); using the global default"
      ]
     ]
    }
@@ -3643,7 +3643,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3673,7 +3673,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 1000000000000000000000000000000); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    }
@@ -3707,7 +3707,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type list); using the global default"
      ]
     ]
    }
@@ -3737,7 +3737,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got [3]); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type list); using the global default"
      ]
     ]
    }
@@ -3771,7 +3771,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type dict); using the global default"
      ]
     ]
    }
@@ -3801,7 +3801,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got {'n': \"it's\"}); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be an integer, got type dict); using the global default"
      ]
     ]
    }
@@ -3891,7 +3891,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -3921,7 +3921,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 59); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -4011,7 +4011,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -4041,7 +4041,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 2592001); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -4075,7 +4075,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -4105,7 +4105,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 3600.5); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -4139,7 +4139,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -4169,7 +4169,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got nan); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -4203,7 +4203,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -4233,7 +4233,7 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got '\u00fc\\n'); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ]
     ]
    }
@@ -4349,11 +4349,11 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got 10); using the global default"
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    }
@@ -4387,11 +4387,11 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -4421,19 +4421,19 @@
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got 'x'); using the global default"
+      "notification_policy.warning_consecutive_failures for check_id=7 is invalid (must be an integer, got type str); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=7 is invalid (must be between 1 and 100, got type int); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got False); using the global default"
+      "notification_policy.warning_reminder_seconds for check_id=7 is invalid (must be an integer, got type bool); using the global default"
      ],
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got 1000000000.0); using the global default"
+      "notification_policy.reminder_seconds for check_id=7 is invalid (must be an integer, got type float); using the global default"
      ]
     ]
    }
@@ -4562,7 +4562,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=1 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=1 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    },
@@ -4587,7 +4587,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.reminder_seconds for check_id=1 is invalid (must be between 60 and 2592000, got 1); using the global default"
+      "notification_policy.reminder_seconds for check_id=1 is invalid (must be between 60 and 2592000, got type int); using the global default"
      ]
     ]
    },
@@ -4602,7 +4602,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.consecutive_failures for check_id=2 is invalid (must be between 1 and 100, got 0); using the global default"
+      "notification_policy.consecutive_failures for check_id=2 is invalid (must be between 1 and 100, got type int); using the global default"
      ]
     ]
    },
@@ -4617,7 +4617,7 @@
     "warnings": [
      [
       "nyxmon.service_layer.notification_policy",
-      "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got 1); using the global default"
+      "notification_policy.notification_policy for check_id=0 is invalid (must be an object, got type int); using the global default"
      ]
     ]
    },

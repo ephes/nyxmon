@@ -80,7 +80,7 @@ fn status(name: &str) -> ResultStatus {
 }
 
 #[test]
-fn policy_matches_python() {
+fn policy_matches_fixture() {
     let fixture = load(include_str!("../../../fixtures/policy.json"));
     let mut count = 0;
     for scenario in fixture.list_field("scenarios") {

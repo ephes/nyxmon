@@ -398,6 +398,29 @@ section 3.6); no other new variable is introduced by the port.
   Frozen Rust-owned notifier fixtures and `nyxmon-notify/src/tests/http.rs`
   cover these changes from the retired Python behavior.
 
+- **D-23 Policy warning projection.** Invalid per-check notification policy
+  diagnostics retain only the allowlisted policy key, check ID, fixed validation
+  reason and static Python type name. They never format or traverse the rejected
+  value, including nested objects, strings and large integers. Fallback resolution
+  and warning keys are unchanged. `fixtures/policy.json` and `decision.json`
+  intentionally update only these diagnostics from the historical Python oracle;
+  `policy::tests` covers large nested private synthetic values.
+
+- **D-24 Bounded warning deduplication.** The process-shared `WarnOnce` retains
+  at most 1024 `(scope, check_id, field)` keys across notification policy, site
+  dependency, unobserved paths and collector runtime estimates. A standard
+  HashSet plus FIFO evicts the oldest first-seen key before admitting a new
+  one; suppressed repeats do not refresh its position. Evicted keys may warn
+  again, unlike Python's lifetime sets. Scope reset removes both membership and
+  FIFO entries. Environment readers keep their separate deduplication contract.
+  Worst case: more than 1024 distinct warning keys that recur cyclically (for
+  example over 1024 malformed policy fields re-evaluated every cycle) are each
+  evicted before they repeat, so every evaluation warns again; log volume is
+  then bounded by evaluations per cycle instead of by distinct keys. This is
+  accepted in exchange for bounded memory; no rate limit is applied.
+  `log::tests` covers small injected capacities, churn, cyclic overflow, reset and
+  concurrency.
+
 ### 1.6 Result `data` shapes per check type (P1)
 
 Order of keys as written. `[x]` = present only under the stated condition.
@@ -1085,6 +1108,9 @@ behaviour is pinned by a Python-generated fixture (section 7.2).
   rejects bools, non-ints (JSON `2.0` is a float → rejected), out-of-range;
   warn once per `(check_id, key)`; non-object `notification_policy` warns once
   under key `notification_policy`; `null` means "absent" (no warning).
+- Warning evidence is a static type name, never a raw value (D-23).
+- Warn-once keys share a process-wide 1024-key FIFO; eviction permits a later
+  repeat warning (D-24). Recent repeats remain suppressed.
 - `global_reminder_seconds` checks the deprecated variable on every call
   (warning once per value).
 
@@ -2055,10 +2081,10 @@ level, stable inputs, injected clocks/nonces/env via monkeypatching):
 | `pyjson.json` | `json.dumps`, `repr(float)`, `format(g)`, `round`, rich comparisons | value/op corpus incl. bool/int/float mixes, nested lists/dicts, unicode, control chars, astral chars |
 | `env.json` | all env readers of 1.4 | raw value → parsed value + warning emitted |
 | `config_<type>.json` | `*_config.py` `from_dict` + `validate` and the executors' pre-I/O steps | data corpus → `ok` (normalised config) / `configuration_error` message / Python exception class |
-| `policy.json` | `resolve_notification_policy` | check data × status × env → policy + warnings |
+| `policy.json` | `resolve_notification_policy` | check data × status × env → policy + warnings; warning text Rust-owned since D-23: edited by hand, not regenerated from Python |
 | `site_dependency.json` | `resolve_site_dependency` | raw → requirements / unclassified + warning |
 | `suppression_rules.json` | `_lookup`, `_rule_matches`, `_finite_seconds`, `_int_or_none`, and `notification_suppression_details` with a stubbed fetch | payload × config × now → details |
-| `decision.json` | `_should_notify_check_result` with a stub UoW/snapshot | state × result × snapshot × env × now → decision + annotated data |
+| `decision.json` | `_should_notify_check_result` with a stub UoW/snapshot | state × result × snapshot × env × now → decision + annotated data; warning text Rust-owned since D-23: edited by hand, not regenerated from Python |
 | `site_snapshot.json` | `SiteConnectivitySnapshot` methods | snapshot × dependency × claim × now |
 | `site_replay/*.json` | `SiteConnectivityObserver` driven by a scripted probe runner, clock, in-memory store and recording notifier | per round: probe outcomes, store failures injected → payload after the round, snapshot, notifications, log events |
 | `metrics_eval.json` (S5) | `JsonMetricsExecutor._evaluate`, `_resolve_path`, `_build_failure_summary`, `_bounded_actual` | payload × checks → failures/status/summary |
