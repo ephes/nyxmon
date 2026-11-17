@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep confirmed service/check deletion, writer reservation, definition/child
   locks and revision comparison on one resolved writer alias and transaction,
   including cascade rollback when read and write databases differ.
+- Compare health-check JSON, conditionally update its definition and read back
+  the saved instance in one resolved writer transaction. Roll back on readback
+  failure, avoid stale replica acknowledgements and preserve concurrent runtime
+  claims and schedules.
 
 ### Policy diagnostics (pending Rust rollout)
 

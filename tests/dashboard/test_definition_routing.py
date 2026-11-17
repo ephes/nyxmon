@@ -8,6 +8,7 @@ from django.db import connection, connections
 from django.test.utils import CaptureQueriesContext
 
 from nyxboard import deletion
+from nyxboard.forms import DefinitionConflict, HttpHealthCheckForm
 from nyxboard.models import HealthCheck, Result, Service
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -19,6 +20,9 @@ class DefinitionRouter:
 
     def db_for_write(self, model, **hints):
         return "definition_writer"
+
+    def allow_relation(self, obj1, obj2, **hints):
+        return True  # All aliases represent the same replicated database.
 
 
 @pytest.fixture
@@ -136,3 +140,114 @@ def test_routed_delete_failure_rolls_back_cascade(
         assert Service.objects.using(alias).count() == 1
         assert HealthCheck.objects.using(alias).count() == 1
         assert Result.objects.using(alias).count() == 1
+
+
+def edit_form(db, *, source=None):
+    check = HealthCheck.objects.using(source or db.writer).get(pk=db.check.pk)
+    form = HttpHealthCheckForm(
+        {
+            "name": "Edited",
+            "service": check.service_id,
+            "check_type": "http",
+            "url": check.url,
+            "check_interval": 60,
+            "definition_revision": HttpHealthCheckForm(instance=check)._revision,
+        },
+        instance=check,
+        require_revision=True,
+    )
+    assert form.is_valid(), form.errors
+    return form
+
+
+@pytest.mark.parametrize(
+    "runtime",
+    [
+        dict(status="processing", processing_started_at=111, next_check_time=9000),
+        dict(status="idle", processing_started_at=0, next_check_time=12000),
+    ],
+)
+@pytest.mark.parametrize("different_replica_json", [False, True])
+def test_routed_save_admits_writer_json_and_returns_current_runtime(
+    routed_definitions, runtime, different_replica_json
+):
+    db = routed_definitions
+    form = edit_form(db)
+    if different_replica_json:
+        HealthCheck.objects.using(db.replica).filter(pk=db.check.pk).update(
+            data={"replica": "outdated"}
+        )
+    runtime = {**runtime, "claim_generation": "a" * 32}
+    HealthCheck.objects.using(db.writer).filter(pk=db.check.pk).update(**runtime)
+    # Rust's compact JSON has different text but the same decoded definition.
+    with connections[db.writer].cursor() as cursor:
+        cursor.execute(
+            "UPDATE health_check SET data=%s WHERE id=%s",
+            ['{"timeout":7,"label":"café"}', db.check.pk],
+        )
+    admissions = []
+
+    def check_transaction(execute, sql, params, many, context):
+        if sql.lstrip().upper().startswith("SELECT"):
+            admissions.append(context["connection"].in_atomic_block)
+        return execute(sql, params, many, context)
+
+    with (
+        connections[db.writer].execute_wrapper(check_transaction),
+        CaptureQueriesContext(connection) as default_queries,
+        CaptureQueriesContext(connections[db.replica]) as replica_queries,
+    ):
+        saved = form.save()
+    assert not default_queries and not replica_queries
+    assert admissions and all(admissions)
+    assert saved._state.db == db.writer
+    assert saved.name == "Edited"
+    assert saved.check_interval == 60
+    assert saved.data == {}  # The HTTP form clears its legacy configuration.
+    assert {key: getattr(saved, key) for key in runtime} == runtime
+    stored = HealthCheck.objects.using(db.writer).get(pk=db.check.pk)
+    assert stored.name == saved.name
+    assert stored.data == saved.data
+    assert {key: getattr(stored, key) for key in runtime} == runtime
+    for alias in ("default", db.replica):
+        assert (
+            HealthCheck.objects.using(alias).get(pk=db.check.pk).name == db.check.name
+        )
+
+
+def test_routed_save_refuses_stale_replica_definition(routed_definitions):
+    db = routed_definitions
+    form = edit_form(db, source=db.replica)
+    HealthCheck.objects.using(db.writer).filter(pk=db.check.pk).update(
+        data={"timeout": 9}
+    )
+    with pytest.raises(DefinitionConflict):
+        form.save()
+    stored = HealthCheck.objects.using(db.writer).get(pk=db.check.pk)
+    assert stored.name == db.check.name
+    assert stored.data == {"timeout": 9}
+
+
+def test_routed_save_readback_failure_rolls_back_writer(
+    routed_definitions, monkeypatch
+):
+    db = routed_definitions
+    form = edit_form(db)
+    readbacks = []
+
+    def fail_readback(instance, *args, **kwargs):
+        # The update really happened before the injected readback failure.
+        stored = HealthCheck.objects.using(db.writer).get(pk=instance.pk)
+        readbacks.append((stored.name, stored.check_interval))
+        raise RuntimeError("synthetic readback failure")
+
+    monkeypatch.setattr(HealthCheck, "refresh_from_db", fail_readback)
+    with pytest.raises(RuntimeError, match="synthetic readback failure"):
+        form.save()
+    assert readbacks == [("Edited", 60)]
+    for alias in ("default", db.writer, db.replica):
+        stored = HealthCheck.objects.using(alias).get(pk=db.check.pk)
+        assert stored.name == db.check.name
+        assert stored.check_interval == db.check.check_interval
+        assert stored.next_check_time == db.check.next_check_time
+        assert stored.data == db.check.data

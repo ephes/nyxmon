@@ -1228,6 +1228,14 @@ alias for the reservation, definition and child locks, revision comparison and
 cascade. Replica lag cannot admit a stale confirmation, and a deletion failure
 rolls back the writer's entire cascade.
 
+Existing health-check form saves also resolve the authoritative writer once.
+Candidate admission (including decoded-JSON comparison), the conditional
+definition update and the instance readback share that writer transaction.
+Only a successful authoritative readback can acknowledge the edit; a readback
+failure rolls back the update. Replica lag cannot reject a current writer
+definition or return an old saved instance. Runtime status, claim generation,
+claim timestamp and newer schedules remain owned by the agent/scheduling action.
+
 Service lists/details and the check list share the dashboard's request-local
 five-result prefetch, ordered by descending timestamp then result ID. Their
 status query counts stay constant as the number of checks grows (three queries
