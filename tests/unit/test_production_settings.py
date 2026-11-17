@@ -34,11 +34,14 @@ settings.STORAGES["staticfiles"]["BACKEND"] = (
 call_command("migrate", verbosity=0)
 out = {"settings": {n: getattr(settings, n) for n in json.loads(sys.argv[1])}}
 for name, case in json.loads(sys.argv[2]).items():
+    body = case.get("body", "").encode()
     environ = {
-        "REQUEST_METHOD": "GET", "PATH_INFO": case["path"], "QUERY_STRING": "",
+        "REQUEST_METHOD": case.get("method", "GET"), "PATH_INFO": case["path"],
+        "QUERY_STRING": "", "CONTENT_LENGTH": str(len(body)),
+        "CONTENT_TYPE": "application/x-www-form-urlencoded",
         "SERVER_NAME": "127.0.0.1", "SERVER_PORT": "10017",
         "SERVER_PROTOCOL": "HTTP/1.1", "wsgi.url_scheme": "http",
-        "wsgi.input": io.BytesIO(), "wsgi.errors": sys.stderr,
+        "wsgi.input": io.BytesIO(body), "wsgi.errors": sys.stderr,
         "REMOTE_ADDR": case.get("peer", "127.0.0.1"),
         "HTTP_HOST": case.get("host", "127.0.0.1:10017"),
     }
@@ -70,9 +73,28 @@ PINNED = [
     "USE_X_FORWARDED_HOST",
     "NYXBOARD_REQUIRE_LOGIN",
     "NYXBOARD_LOGIN_PROXY_HOPS",
+    "CSRF_TRUSTED_ORIGINS",
 ]
 
 HTTPS = {"HTTP_X_FORWARDED_PROTO": "https"}
+# A CSRF secret a sibling subdomain could plant as a parent-domain cookie.
+TOSSED_TOKEN = "a" * 32
+
+
+def login_post(origin):
+    return {
+        "method": "POST",
+        "path": "/accounts/login/",
+        "host": HOST,
+        "body": f"csrfmiddlewaretoken={TOSSED_TOKEN}&username=nobody&password=wrong",
+        "headers": {
+            **HTTPS,
+            "HTTP_ORIGIN": origin,
+            "HTTP_COOKIE": f"csrftoken={TOSSED_TOKEN}",
+        },
+    }
+
+
 CASES = {
     "plain_probe": {"path": "/admin/login/"},
     "https_probe": {"path": "/admin/login/", "headers": HTTPS},
@@ -88,6 +110,8 @@ CASES = {
         "host": "evil.example",
         "headers": {**HTTPS, "HTTP_X_FORWARDED_HOST": HOST},
     },
+    "same_origin_login_post": login_post(f"https://{HOST}"),
+    "sibling_subdomain_login_post": login_post("https://evil.xn--wersdrfer-47a.de"),
     "untrusted_peer_claims_https": {
         "path": "/accounts/login/",
         "host": HOST,
@@ -149,6 +173,9 @@ def test_production_settings_pin_security_values(production):
         "USE_X_FORWARDED_HOST": False,
         "NYXBOARD_REQUIRE_LOGIN": True,
         "NYXBOARD_LOGIN_PROXY_HOPS": 0,
+        # Exact origin only: a wildcard would let any sibling subdomain pass
+        # the Origin check (and so a cookie-tossed token) for CSRF.
+        "CSRF_TRUSTED_ORIGINS": ["https://nyxmon.home.xn--wersdrfer-47a.de"],
     }
 
 
@@ -179,6 +206,13 @@ def test_proxied_requests_reach_the_login(production):
 @pytest.mark.parametrize("case", ["bogus_host", "bogus_host_with_forwarded_host"])
 def test_unknown_host_is_rejected(production, case):
     assert production[case]["status"] == 400
+
+
+def test_csrf_origin_check_accepts_only_the_site_itself(production):
+    # The same token passes from the site's own origin (the wrong password
+    # re-renders the form), so the sibling's 403 is the Origin check alone.
+    assert production["same_origin_login_post"]["status"] == 200
+    assert production["sibling_subdomain_login_post"]["status"] == 403
 
 
 def test_forwarded_proto_from_untrusted_peer_is_ignored(production):

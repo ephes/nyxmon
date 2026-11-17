@@ -210,3 +210,52 @@ def test_proxy_fallback_and_multiple_hops(settings, hops, forwarded, expected):
     settings.NYXBOARD_LOGIN_PROXY_HOPS = hops
     request = RequestFactory().post("/", HTTP_X_FORWARDED_FOR=forwarded)
     assert client_address(request) == expected
+
+
+def test_ipv6_addresses_in_one_slash64_share_the_address_budget(client, operator):
+    """Rotating through one /64 must not open a fresh address budget each time."""
+    url = reverse("nyxboard:login")
+    for i in range(5):
+        attempt(
+            client, url, username=f"missing{i}", REMOTE_ADDR=f"2001:db8:0:1::{i + 1}"
+        )
+    assert (
+        attempt(
+            client, url, "test-password", REMOTE_ADDR="2001:db8:0:1:ffff::9"
+        ).status_code
+        == 200
+    )
+    assert "_auth_user_id" not in client.session
+    assert (
+        attempt(client, url, "test-password", REMOTE_ADDR="2001:db8:0:2::1").status_code
+        == 302
+    )
+
+
+def test_ipv6_pair_budget_follows_the_slash64(client, operator):
+    url = reverse("nyxboard:login")
+    for i in range(2):
+        attempt(client, url, REMOTE_ADDR=f"2001:db8:0:1::{i + 1}")
+    assert (
+        attempt(
+            client, url, "test-password", REMOTE_ADDR="2001:db8:0:1::99"
+        ).status_code
+        == 200
+    )
+
+
+def test_ipv4_mapped_address_is_counted_as_its_ipv4_address(client, operator):
+    url = reverse("nyxboard:login")
+    for _ in range(2):
+        attempt(client, url, REMOTE_ADDR="::ffff:198.51.100.7")
+    assert (
+        attempt(client, url, "test-password", REMOTE_ADDR="198.51.100.7").status_code
+        == 200
+    )
+    # Other IPv4 clients are not folded into one IPv6 /64 bucket.
+    assert (
+        attempt(
+            client, url, "test-password", REMOTE_ADDR="::ffff:198.51.100.8"
+        ).status_code
+        == 302
+    )

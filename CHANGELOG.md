@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security audit 2026-11-17
+
+- Count failed NyxBoard and Django admin logins for an IPv6 client against its
+  /64 network instead of the single address, so rotating addresses inside one
+  /64 no longer opens a fresh address and username/address budget each time.
+  IPv4-mapped IPv6 addresses count as their IPv4 address.
+- Production settings trust only the exact origin
+  `https://nyxmon.home.xn--wersdrfer-47a.de` for CSRF by default. The former
+  `https://*.xn--wersdrfer-47a.de` wildcard let any sibling subdomain pass the
+  Origin check, so a compromised sibling site could plant a parent-domain
+  `csrftoken` cookie and forge dashboard POSTs. `DJANGO_CSRF_TRUSTED_ORIGINS`
+  still overrides the default.
+- Update `dnspython` to 2.9.2 (CVE-2026-128089, WKS record parsing in zone
+  text) and the test-only `soupsieve` to 4.1.1 (CVE-2026-126190..126193,
+  selector parsing/matching complexity).
+
 ### nyxboard migration drift
 
 - Add migration `nyxboard.0016`, which records the removal of the `custom`
