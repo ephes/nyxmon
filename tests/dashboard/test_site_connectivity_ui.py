@@ -1,8 +1,8 @@
 """Dashboard rendering of the site connectivity incident and held alerts.
 
 The banner and the held indicator are rendered from rows the worker writes, so
-every test here builds those rows directly. A payload the dashboard cannot read
-must never raise: the malformed cases assert a normal page without a banner.
+every test here builds those rows directly. Unreadable payloads must never
+raise; malformed path evidence produces a fixed unavailable banner.
 
 The dashboard cannot see the worker's mode and cannot re-run the hold decision,
 so both surfaces must report an observation rather than an outcome: the banner
@@ -98,6 +98,106 @@ def _active_payload(**overrides):
 
 @pytest.mark.django_db
 class TestDashboardBanner:
+    @pytest.mark.parametrize(
+        "paths",
+        [
+            {f"unknown-{i}-" + "x" * 256: {"state": "down"} for i in range(1000)},
+            {"x" * 4096: {"state": "recovering"}},
+            {"ipv4": "broken"},
+            {"dns": {"state": {"unexpected": "down"}}},
+            {"ipv6": {"state": "x" * 4096}},
+            [],
+        ],
+    )
+    def test_invalid_path_evidence_has_a_fixed_unavailable_banner(self, client, paths):
+        _incident(_active_payload(paths=paths))
+
+        response = client.get(reverse("nyxboard:dashboard"))
+
+        assert response.status_code == 200
+        banner_context = response.context["site_connectivity"]
+        assert set(banner_context) == {
+            "invalid_evidence",
+            "summary_pending",
+            "observed_at",
+            "stale",
+        }
+        assert banner_context["invalid_evidence"] is True
+        content = response.content.decode()
+        banner = content.split('class="site-connectivity-banner"', 1)[1].split(
+            '<div class="dashboard-header">', 1
+        )[0]
+        assert len(banner) < 600
+        assert "Site connectivity evidence unavailable" in banner
+        assert "malformed path evidence" in banner
+        assert "outage observed" not in banner
+        assert "recovered" not in banner
+        assert "No path is currently reported down" not in banner
+
+    @pytest.mark.parametrize(
+        ("age", "observed_at_override", "stale"),
+        [(60, None, False), (3600, None, True), (60, "garbage", True)],
+    )
+    def test_invalid_path_evidence_keeps_freshness_and_pending_summary(
+        self, client, monkeypatch, age, observed_at_override, stale
+    ):
+        _freeze(monkeypatch, OBSERVED_AT + age)
+        overrides = {
+            "paths": {"bogus": {"state": "down"}},
+            "summaries": [{"incident_id": 1757123456, "attempt_at": 0}],
+        }
+        if observed_at_override is not None:
+            overrides["observed_at"] = observed_at_override
+        _incident(_active_payload(**overrides))
+
+        response = client.get(reverse("nyxboard:dashboard"))
+
+        banner = response.context["site_connectivity"]
+        assert banner["invalid_evidence"] is True
+        assert banner["summary_pending"] is True
+        assert banner["stale"] is stale
+        content = response.content.decode()
+        assert "Site connectivity evidence unavailable" in content
+        assert "A recovery summary is still pending delivery" in content
+        assert ("the observer may be stopped" in content) is stale
+        if observed_at_override is None:
+            assert banner["observed_at"] is not None
+        else:
+            assert banner["observed_at"] is None
+            assert "at an unknown time" in content
+        assert "bogus" not in content
+
+    @pytest.mark.parametrize("incident_id", [True, 10**100, {}, []])
+    def test_incident_id_projection_rejects_unusable_scalars(self, client, incident_id):
+        _incident(_active_payload(incident_id=incident_id))
+
+        response = client.get(reverse("nyxboard:dashboard"))
+
+        assert response.context["site_connectivity"]["incident_id"] is None
+
+    def test_banner_projects_only_known_path_fields(self, client, monkeypatch):
+        _freeze(monkeypatch, OBSERVED_AT + 60)
+        paths = {
+            name: {"state": state, "down_since": OBSERVED_AT, "extra": ["x" * 4096]}
+            for name, state in (
+                ("ipv6", "recovering"),
+                ("ipv4", "down"),
+                ("dns", "down"),
+            )
+        }
+        _incident(_active_payload(paths=paths, extra={"untrusted": "x" * 4096}))
+
+        response = client.get(reverse("nyxboard:dashboard"))
+
+        banner = response.context["site_connectivity"]
+        assert [path["name"] for path in banner["paths"]] == ["dns", "ipv4", "ipv6"]
+        assert all(
+            set(path) == {"name", "state", "down_since"} for path in banner["paths"]
+        )
+        assert banner["incident_id"] == 1757123456
+        assert banner["stale"] is False
+        assert "x" * 4096 not in response.content.decode()
+
     def test_no_banner_without_an_incident_row(self, client):
         response = client.get(reverse("nyxboard:dashboard"))
 

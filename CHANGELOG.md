@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bounded site connectivity banner
+
+- Admit only the three established site paths and observer states before banner
+  projection. Replace malformed path evidence with a fixed unavailable message
+  rather than sorting or echoing arbitrary restored names. Keep stale observation
+  and pending-summary reporting (also on the unavailable banner) and unknown path
+  timestamps, and bound incident IDs to usable epochs.
+
 ### Dashboard definition database routing
 
 - Keep confirmed service/check deletion, writer reservation, definition/child
