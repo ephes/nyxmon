@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### nyxboard migration drift
+
+- Add migration `nyxboard.0016`, which records the removal of the `custom`
+  check type (December 2025) and the `warning` result status. It changes no
+  schema, but refuses to apply while an enabled health check still uses a
+  removed check type such as `custom` (it can only produce ERROR results),
+  naming up to 20 of them and pointing to `manage.py find_legacy_checks
+  --disable`/`--delete`. Disabled legacy checks do not block it; rows are never
+  changed or deleted. Reverse is a no-op.
+  The Rust schema contract fixture gains the new migration row; the Rust
+  agent's minimum migration stays at 0015.
+- Add `just check-migrations` (`makemigrations --check --dry-run` with the
+  test settings) and run it at the start of `just test`; a pytest test repeats
+  the check, so model/migration drift fails the local gate.
+
 ### Warning digest delivery
 
 - Require a bounded Telegram `ok: true` acknowledgement before the active Django

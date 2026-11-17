@@ -39,8 +39,9 @@ typecheck:
     uv run mypy
     cd agent-rs && cargo check --workspace --all-targets --locked
 
-# Run all tests (Python suite incl. the Rust schema contract test, then the Rust agent)
+# Run all tests (migration drift gate, Python suite incl. the Rust schema contract test, then the Rust agent)
 test:
+    just check-migrations
     uv run pytest
     just rs-test
     just notification-handoff
@@ -52,6 +53,10 @@ js-audit:
 # Run the live historical Django DB -> Rust decision journey locally.
 notification-handoff:
     NYXMON_TEST_LIVE_HANDOFF=1 uv run pytest tests/dashboard/test_notification_migration_handoff.py -q
+
+# Fail when Django models and migrations have drifted (no migration is written)
+check-migrations:
+    cd src/django && DJANGO_SETTINGS_MODULE=config.settings.test uv run python manage.py makemigrations --check --dry-run
 
 # Run specific test
 test-one TEST_PATH:

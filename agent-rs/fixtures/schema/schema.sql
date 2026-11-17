@@ -79,4 +79,5 @@ INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0012_not
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0013_site_connectivity_state', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0014_login_throttle_bucket', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0015_healthcheck_claim_generation', '2000-01-01 00:00:00');
+INSERT INTO django_migrations (app, name, applied) VALUES ('nyxboard', '0016_alter_healthcheck_check_type_alter_result_status', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('sessions', '0001_initial', '2000-01-01 00:00:00');
