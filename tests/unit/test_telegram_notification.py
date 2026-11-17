@@ -6,108 +6,54 @@ import pytest
 from nyxmon.adapters.notification import AsyncTelegramNotifier
 
 
+_HTTPX_CLIENT = httpx.AsyncClient
+
+
+def _client_returning(response=None, *, raises=None):
+    def respond(request):
+        if raises is not None:
+            raise raises
+        return response
+
+    return lambda: _HTTPX_CLIENT(transport=httpx.MockTransport(respond))
+
+
 @pytest.mark.anyio
-async def test_http_failure_log_redacts_bot_token(monkeypatch, caplog) -> None:
+async def test_http_failure_log_omits_bot_token_and_body(monkeypatch, caplog):
     token = "secret-bot-token"
-    response = httpx.Response(
-        400,
-        json={"ok": False, "description": f"bad token {token}"},
-        request=httpx.Request(
-            "POST", f"https://api.telegram.org/bot{token}/sendMessage"
-        ),
+    body = {"ok": False, "description": f"synthetic private response {token}"}
+    monkeypatch.setattr(
+        "nyxmon.adapters.notification.httpx.AsyncClient",
+        _client_returning(httpx.Response(400, json=body)),
     )
-
-    class FakeClient:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, traceback):
-            return False
-
-        async def post(self, *args, **kwargs):
-            return response
-
-    monkeypatch.setattr("nyxmon.adapters.notification.httpx.AsyncClient", FakeClient)
     notifier = AsyncTelegramNotifier(token=token, chat_id="123")
 
-    await notifier.async_send("test")
-
+    assert await notifier.async_send("test") is False
     assert token not in caplog.text
-    assert "<redacted>" in caplog.text
+    assert "synthetic private response" not in caplog.text
     assert "HTTP status 400" in caplog.text
 
 
 @pytest.mark.anyio
-async def test_http_failure_redacts_before_detail_truncation(
-    monkeypatch, caplog
-) -> None:
+async def test_http_failure_omits_long_details(monkeypatch, caplog):
     token = "TOPSECRETVALUE"
-    response = httpx.Response(
-        400,
-        text=("x" * 495) + token,
-        request=httpx.Request(
-            "POST", f"https://api.telegram.org/bot{token}/sendMessage"
-        ),
+    monkeypatch.setattr(
+        "nyxmon.adapters.notification.httpx.AsyncClient",
+        _client_returning(httpx.Response(400, text=("x" * 495) + token)),
     )
-
-    class FakeClient:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, traceback):
-            return False
-
-        async def post(self, *args, **kwargs):
-            return response
-
-    monkeypatch.setattr("nyxmon.adapters.notification.httpx.AsyncClient", FakeClient)
     notifier = AsyncTelegramNotifier(token=token, chat_id="123")
-
-    await notifier.async_send("test")
-
+    assert await notifier.async_send("test") is False
     assert token[:5] not in caplog.text
-
-
-class _FakeResponse:
-    def __init__(self, status_code: int = 200) -> None:
-        self.status_code = status_code
-        self.text = "{}"
-
-    def raise_for_status(self) -> None:
-        if self.status_code >= 400:
-            raise httpx.HTTPStatusError(
-                "boom",
-                request=httpx.Request(
-                    "POST", "https://api.telegram.org/bot/sendMessage"
-                ),
-                response=httpx.Response(self.status_code, text=self.text),
-            )
-
-
-def _client_returning(response, *, raises: Exception | None = None):
-    class FakeClient:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, traceback):
-            return False
-
-        async def post(self, *args, **kwargs):
-            if raises is not None:
-                raise raises
-            return response
-
-    return FakeClient
+    assert "xxxxx" not in caplog.text
 
 
 @pytest.mark.anyio
 async def test_async_send_reports_delivery(monkeypatch) -> None:
     monkeypatch.setattr(
         "nyxmon.adapters.notification.httpx.AsyncClient",
-        _client_returning(_FakeResponse(200)),
+        _client_returning(httpx.Response(200, json={"ok": True})),
     )
     notifier = AsyncTelegramNotifier(token="t", chat_id="123")
-
     assert await notifier.async_send("hello") is True
 
 
@@ -115,22 +61,21 @@ async def test_async_send_reports_delivery(monkeypatch) -> None:
 async def test_async_send_reports_an_http_failure(monkeypatch) -> None:
     monkeypatch.setattr(
         "nyxmon.adapters.notification.httpx.AsyncClient",
-        _client_returning(_FakeResponse(500)),
+        _client_returning(httpx.Response(500, json={"ok": True})),
     )
     notifier = AsyncTelegramNotifier(token="t", chat_id="123")
-
     assert await notifier.async_send("hello") is False
 
 
 @pytest.mark.anyio
-async def test_async_send_reports_a_transport_failure(monkeypatch) -> None:
+async def test_async_send_reports_a_transport_failure(monkeypatch, caplog) -> None:
     monkeypatch.setattr(
         "nyxmon.adapters.notification.httpx.AsyncClient",
-        _client_returning(None, raises=httpx.ConnectError("no route to host")),
+        _client_returning(raises=httpx.ConnectError("synthetic-secret-token")),
     )
-    notifier = AsyncTelegramNotifier(token="t", chat_id="123")
-
+    notifier = AsyncTelegramNotifier(token="synthetic-secret-token", chat_id="123")
     assert await notifier.async_send("hello") is False
+    assert "synthetic-secret-token" not in caplog.text
 
 
 @pytest.mark.anyio

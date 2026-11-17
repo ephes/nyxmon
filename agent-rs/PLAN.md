@@ -420,6 +420,11 @@ section 3.6); no other new variable is introduced by the port.
   accepted in exchange for bounded memory; no rate limit is applied.
   `log::tests` covers small injected capacities, churn, cyclic overflow, reset and
   concurrency.
+- **D-25 Telegram failure diagnostics.** The Python helper (used only by the
+  Django `send_warning_digest` command since the Python agent's retirement)
+  logs only `HTTP status N` or a fixed failure message and never a provider
+  body. The Rust agent keeps the token-redacted body of up to 500 characters
+  (section 1.7). Both never log the bot token.
 
 ### 1.6 Result `data` shapes per check type (P1)
 
@@ -579,7 +584,9 @@ exact text:
   `site_dependency for check_id=<id> is invalid (…)`,
   `check_id=<id> requires the unobserved path(s) …`
 - `Telegram notification delivered`;
-  `Failed to send Telegram notification: …` (token redacted, body ≤ 500 chars);
+  `Failed to send Telegram notification: …` (token redacted, body ≤ 500 chars;
+  the Rust agent keeps this redact-and-truncate form, while the Python digest
+  helper now logs only `HTTP status N` or a fixed message, without any body);
   `Telegram rejected the MarkdownV2 body; resending as plain text`;
   `Cannot send Telegram notification: missing credentials`;
   `OpsGate …` submit lines of `_create_opsgate_ticket`.
@@ -587,7 +594,8 @@ exact text:
 Security rule (P1): no log line, error string or `error_msg` may contain the
 Telegram bot token. `reqwest::Error` includes the URL in `Display`; the
 notifier must use `err.without_url()` and additionally replace the token with
-`<redacted>` (`notification.py:_post_message`, `cli.py:setup_logging`).
+`<redacted>` (`cli.py:setup_logging`; `notification.py:_post_message` now omits
+bodies, URLs and exception text entirely).
 
 ---
 
@@ -1005,7 +1013,7 @@ parallel with few merge conflicts.
 | JSON | own `pyjson` parser/serialiser on `indexmap` + `num-bigint` (4.2); `serde`/`serde_json` only for request bodies we build | CPython `json` parity incl. NaN and big ints |
 | time | `chrono` (UTC formatting, ISO, `datetime.isoformat` parity) | |
 | regex | `regex` (ping/IMAP/STARTTLS patterns; the one lookbehind in `ping_executor.py:_SOURCE_RE` is implemented as a manual preceding-char check) | |
-| unicode categories | `unicode-general-category` | `_sanitize_untrusted_text` (Cc, Cf, Zl, Zp) |
+| unicode categories | `unicode-general-category` | `sanitize_untrusted_text` (Cc, Cf, Zl, Zp) |
 | locking | `rustix` `flock` (or `fs4`) | section 3.6 |
 | randomness | `rand` (`token_hex`) | SMTP token, OpsGate boundary |
 | tests | `tokio-test`, `rcgen` (test certificates), `tempfile` | |

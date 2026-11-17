@@ -18,7 +18,7 @@ from django.db.models import OuterRef, Subquery
 
 from nyxboard.models import HealthCheck, Result
 from nyxboard.timestamps import usable_epoch
-from nyxmon.adapters.notification import AsyncTelegramNotifier
+from nyxmon.adapters.notification import AsyncTelegramNotifier, sanitize_untrusted_text
 from nyxmon.domain import ResultStatus
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,8 @@ class Command(BaseCommand):
             self.stdout.write("No open warnings; nothing to send.")
             return
         if options["dry_run"]:
-            self.stdout.write(render(warnings))
+            # Project fields before adding digest-owned physical line breaks.
+            self.stdout.write(render(warnings, sanitize_untrusted_text))
             return
         notifier = AsyncTelegramNotifier()
         text = render(warnings, notifier.escape_markdown_v2)

@@ -1155,6 +1155,27 @@ loaded into the digest. Concurrent recovery/reopen cannot mix incident dates.
 
 Warning digests include a complete prefix of warnings and the exact omitted count
 within 3,800 characters, including Markdown escapes and the overflow summary.
+
+The active Django `send_warning_digest` command uses the Python Telegram helper.
+It reports success only after a 2xx response containing a valid UTF-8 JSON object
+with literal `ok: true`. Empty, HTML, malformed, duplicate-member and negative
+acknowledgements fail the command. Responses are streamed with a 64 KiB limit;
+compressed responses are refused. A ten-second deadline covers the entire send,
+including the one plain-text fallback for a valid HTTP 400 Markdown parse refusal.
+Responses and clients close on refusal or timeout. A non-2xx reply logs its HTTP
+status; only a 400 reply to a Markdown send has its body read. Failure diagnostics
+contain no provider body, URL or exception text. An accepted message with a lost response
+still counts as failure, so a manual retry can duplicate it. These helper changes
+serve the active command; they do not extend the retired Python monitoring agent
+or require a Rust agent rollout.
+
+`send_warning_digest --dry-run` projects each field through the existing
+untrusted-text sanitizer before adding the digest's line separators. Terminal
+controls (including ESC, C1, carriage return and field newlines) and Unicode
+format/line-separator characters become `?`. Names and errors retain ordinary
+Unicode; the digest keeps its intentional multiline layout. This projection
+changes neither stored evidence nor the separate Telegram Markdown formatting.
+
 Collector-incident delivery intent includes a random `delivery_generation` token
 in the existing payload. Acknowledgements must match both it and the attempt
 number. Refreshes preserve the token; a new send replaces it. Closing/reopening

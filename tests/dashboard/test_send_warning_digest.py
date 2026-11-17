@@ -4,6 +4,7 @@ from io import StringIO
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import httpx
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
@@ -98,6 +99,52 @@ def test_dry_run_prints_and_sends_nothing(make_check):
     send.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    "control",
+    [
+        "\x1b]8;;https://synthetic.invalid\x1b\\link\x1b]8;;\x1b\\",
+        "\x1b[2J\x1b[H",
+        "\x9b2J\x9bH",
+        "\rFORGED",
+        "\b\t\x00\x07\x7f",
+        "\u202e\u2066\u2028\u2029",
+        "\nFORGED",
+    ],
+)
+def test_dry_run_neutralizes_field_controls_without_changing_evidence(
+    make_check, control
+):
+    import unicodedata
+
+    name = f"Prüfung 東京 {control}"
+    error = f"Speicher fast voll ⚠️ {control}"
+    check = make_check(name, warning(error))
+    before = list(check.results.values())
+    with patch(SEND, new_callable=AsyncMock) as send:
+        output = run(dry_run=True)
+    send.assert_not_awaited()
+    assert "Prüfung 東京" in output
+    assert "Speicher fast voll ⚠️" in output
+    assert all(
+        char == "\n" or unicodedata.category(char) not in {"Cc", "Cf", "Zl", "Zp"}
+        for char in output
+    )
+    # Only digest-owned separators may create physical lines.
+    assert len(output.splitlines()) == 4
+    check.refresh_from_db()
+    assert check.name == name
+    assert list(check.results.values()) == before
+
+
+def test_telegram_projection_remains_separate_from_terminal_projection(make_check):
+    make_check("Prüfung\x1b[2J", warning("evidence\runchanged"))
+    with patch(SEND, new_callable=AsyncMock, return_value=True) as send:
+        run()
+    text = send.await_args.args[0]
+    assert "\x1b\\[2J" in text
+    assert "evidence\runchanged" in text
+
+
 @pytest.mark.parametrize("delivered", [False, None])
 def test_an_undelivered_digest_fails_the_command(make_check, delivered):
     make_check("standing", warning())
@@ -106,6 +153,41 @@ def test_an_undelivered_digest_fails_the_command(make_check, delivered):
         pytest.raises(CommandError),
     ):
         run()
+
+
+@pytest.mark.parametrize(
+    "body,accepted",
+    [
+        (b"<html>synthetic login page</html>", False),
+        (b"", False),
+        (b"{", False),
+        (b"{}", False),
+        (b'{"ok":false}', False),
+        (b'{"ok":1}', False),
+        (b'{"ok":"true"}', False),
+        (b"[]", False),
+        (b'{"ok":true,"result":{"message_id":1}}', True),
+    ],
+)
+def test_command_requires_provider_acknowledgement(
+    make_check, monkeypatch, body, accepted
+):
+    make_check("synthetic warning", warning())
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "synthetic-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "1")
+    client_class = httpx.AsyncClient
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=body))
+    monkeypatch.setattr(
+        "nyxmon.adapters.notification.httpx.AsyncClient",
+        lambda: client_class(transport=transport),
+    )
+    if accepted:
+        assert "Sent a digest of 1" in run()
+    else:
+        out = StringIO()
+        with pytest.raises(CommandError, match="Telegram did not accept"):
+            call_command("send_warning_digest", stdout=out)
+        assert "Sent a digest" not in out.getvalue()
 
 
 def test_long_digest_stays_in_the_limit_and_counts_the_rest():
