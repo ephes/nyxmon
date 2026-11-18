@@ -45,12 +45,14 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shlex
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import tomllib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -620,6 +622,13 @@ def ensure_release(
         steps.append(f"created release {tag} with {len(files)} assets")
     else:
         check_assets(tag, release, expected)
+        if release.prerelease != prerelease:
+            # Checked before any upload: an archive never lands in a release
+            # with the wrong prerelease flag.
+            raise ReleaseError(
+                f"release {tag} is {'a' if release.prerelease else 'not a'} prerelease, "
+                f"expected {'a' if prerelease else 'no'} prerelease; settle it by hand"
+            )
         missing = sorted(set(files) - set(release.assets))
         if missing:
             github.upload(tag, [files[name] for name in missing])
@@ -746,8 +755,8 @@ ENV DEBIAN_FRONTEND=noninteractive \\
     PATH=/opt/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 RUN apt-get update \\
     && apt-get install -y --no-install-recommends {" ".join(packages)} \\
-    && rm -rf /var/lib/apt/lists/*
-RUN dpkg --compare-versions "$(dpkg-query -W -f '${{Version}}' ca-certificates)" \\
+    && rm -rf /var/lib/apt/lists/* \\
+    && dpkg --compare-versions "$(dpkg-query -W -f '${{Version}}' ca-certificates)" \\
         ge {CA_CERTIFICATES_MINIMUM} \\
     && python3 -I -c {shlex.quote(TRUST_CHECK)} {" ".join(BLOCKED_ROOTS)}
 RUN curl --proto '=https' --tlsv1.2 -sSfL -o /tmp/rustup-init {url} \\
@@ -891,11 +900,65 @@ def host_checks(config: Config, repo: Path, log: Log) -> None:
         run(argv, cwd=repo, timeout=JOB_TIMEOUT, capture=False)
 
 
+def pinned_toolchain(crate: Path) -> tuple[str, list[str]]:
+    """The channel and the components rust-toolchain.toml pins."""
+    try:
+        data = tomllib.loads(
+            (crate / "rust-toolchain.toml").read_text(encoding="utf-8")
+        )
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise ReleaseError(
+            f"cannot read {crate}/rust-toolchain.toml: {error}"
+        ) from None
+    toolchain = data.get("toolchain")
+    channel = toolchain.get("channel") if isinstance(toolchain, dict) else None
+    components = toolchain.get("components", []) if isinstance(toolchain, dict) else []
+    if not isinstance(channel, str) or not re.fullmatch(
+        r"[0-9A-Za-z][0-9A-Za-z._-]*", channel
+    ):
+        raise ReleaseError(f"{crate}/rust-toolchain.toml names no valid channel")
+    if not isinstance(components, list) or not all(
+        isinstance(name, str) and re.fullmatch(r"[a-z0-9][a-z0-9-]*", name)
+        for name in components
+    ):
+        raise ReleaseError(f"{crate}/rust-toolchain.toml lists invalid components")
+    return channel, list(components)
+
+
+def pinned_channel(crate: Path) -> str:
+    return pinned_toolchain(crate)[0]
+
+
+def pinned_cargo_environment(crate: Path) -> dict[str, str]:
+    """The environment for the pinned toolchain: `RUSTUP_TOOLCHAIN` set to
+    the pin (an ambient override cannot win) and the toolchain's own bin
+    directory first on PATH, so `cargo` is that toolchain whatever else PATH
+    holds. The toolchain is installed only when it is missing. Without rustup
+    the environment is unchanged."""
+    env = dict(os.environ)
+    rustup = shutil.which("rustup")
+    if rustup is None:
+        return env
+    channel = pinned_channel(crate)
+    env["RUSTUP_TOOLCHAIN"] = channel
+    which = [rustup, "which", "--toolchain", channel, "cargo"]
+    try:
+        cargo = run(which, cwd=crate, env=env).strip()
+    except ReleaseError:
+        run(
+            [rustup, "toolchain", "install", channel],
+            cwd=crate,
+            env=env,
+            timeout=IMAGE_TIMEOUT,
+        )
+        cargo = run(which, cwd=crate, env=env).strip()
+    env["PATH"] = f"{Path(cargo).parent}{os.pathsep}{env.get('PATH', '')}"
+    return env
+
+
 def crate_version(crate: Path) -> str:
-    metadata = run(
-        ["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"],
-        cwd=crate,
-    )
+    argv = ["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]
+    metadata = run(argv, cwd=crate, env=pinned_cargo_environment(crate))
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
         handle.write(metadata)
     try:
@@ -925,6 +988,9 @@ def build_linux(
         *(p for p in config.apt_packages if p not in BASE_PACKAGES),
     ]
     base = docker.pinned(RUNNER_IMAGE)
+    run_id = f"{os.getpid()}-{secrets.token_hex(4)}"
+    # The version only as a short digest: tags are limited to 128 characters.
+    version_key = hashlib.sha256(version.encode()).hexdigest()[:12]
     built: dict[str, str] = {}
     env = {
         "CARGO_NET_OFFLINE": "true",
@@ -941,8 +1007,10 @@ def build_linux(
                 dockerfile(base, packages, platform, CRATE.name), encoding="utf-8"
             )
             slug = platform.replace("/", "-")
+            # One tag per invocation: a concurrent build of the same commit never
+            # removes this build's images.
             built[platform] = (
-                f"{config.binary}-local-release:{version}-{slug}-{commit[:12]}"
+                f"{config.binary}-local-release:{version_key}-{slug}-{commit[:12]}-{run_id}"
             )
             log(f"== image {built[platform]} from {base} ({platform})")
             docker.build_image(built[platform], context, platform)
@@ -1019,17 +1087,24 @@ def build_macos(
         "VERSION": version,
     }
     log("== pinned toolchain and locked dependencies (network)")
+    channel = pinned_channel(crate)
+    env["RUSTUP_TOOLCHAIN"] = channel  # no ambient toolchain override wins
+    components = "".join(f" --component {name}" for name in pinned_toolchain(crate)[1])
     host.shell(
-        f"rustup toolchain install && rustup target add {config.target}", crate, env
+        f"rustup toolchain install {channel} --profile minimal{components}"
+        f" && rustup target add --toolchain {channel} {config.target}",
+        crate,
+        env,
     )
+    # The toolchain's own bin directory first: its cargo, rustc, rustfmt and
+    # clippy whatever else PATH holds.
+    cargo = host.output(
+        ["rustup", "which", "--toolchain", channel, "cargo"], crate, env
+    )
+    env["PATH"] = f"{Path(cargo.strip()).parent}{os.pathsep}{env['PATH']}"
     toolchain = host.output(["rustc", "--version"], crate, env).strip()
-    channel = re.search(
-        r'^channel = "(.*)"$', (crate / "rust-toolchain.toml").read_text(), re.M
-    )
-    if channel is None or not toolchain.startswith(f"rustc {channel.group(1)} "):
-        raise ReleaseError(
-            f"{toolchain!r} is not the pinned toolchain; put rustup first in PATH"
-        )
+    if not toolchain.startswith(f"rustc {channel} "):
+        raise ReleaseError(f"{toolchain!r} is not the pinned toolchain {channel}")
     host.shell("cargo fetch --locked", crate, env)
     offline = {**env, "CARGO_NET_OFFLINE": "true"}
     log(f"== checks: {'; '.join(config.checks)}")
