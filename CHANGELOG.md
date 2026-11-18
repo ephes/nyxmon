@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent 0.1.6
+
+- Release the Rust agent as `agent-rs-v0.1.6` (crate version 0.1.6), the first
+  agent release built and published locally by `agent-rs/scripts/local_release.py`
+  (see *Rust agent release process*). Compared with `agent-rs-v0.1.5`
+  (`1a22db0`) it ships the entries marked "pending Rust rollout" below:
+  nonblocking diagnostics, shared resolver capacity, policy diagnostics,
+  ping process retirement, DNS answer evidence, metric evaluation limits, HTTP
+  execution limits, IMAP cleanup evidence, SMTP transaction evidence, site
+  lifecycle safety, and agent startup, claim identity and store retirement.
+  Schema: the agent's minimum migration is
+  `nyxboard.0015_healthcheck_claim_generation` (0016 adds no schema the agent
+  needs). Upgrade notes: a ping whose process group cannot be retired fails
+  with `process_retirement_error`; a JSON-metrics check with excessive rule
+  work is refused before HTTP; partial SMTP acceptance after DATA reports
+  `partial_delivery`; conflicting duplicate IMAP FETCH dates fail as
+  `incomplete_scan`; oversized cookies are ignored instead of failing.
+- `agent-rs/deny.toml` ignores RUSTSEC-2026-0543 (chrono unmaintained, no
+  known vulnerability, no safe upgrade) until the replacement (work item
+  `rust-chrono-replacement`).
+
 ### Rust agent release process
 
 - Release the Rust agent locally with `agent-rs/scripts/local_release.py`
