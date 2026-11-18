@@ -1,0 +1,20 @@
+{
+  "comment": "Local release of the Rust agent (agent-rs/README.md \"Releases\", agent-rs/scripts/local_release.py). The checks are the old agent-rs-release.yml workflow's fmt, clippy and test steps; src/nyxmon is in the source for the Python side of the agent lock test (nyxmon-store/tests/agent_lock.rs).",
+  "github_repository": "ephes/nyxmon",
+  "binary": "nyxmon-agent",
+  "tag_prefix": "agent-rs-v",
+  "target": "x86_64-unknown-linux-gnu",
+  "mode": "linux-container",
+  "commit_env": "NYXMON_AGENT_GIT_COMMIT",
+  "glibc_floor": "2.35",
+  "source_paths": [
+    "agent-rs",
+    "LICENSE",
+    "src/nyxmon"
+  ],
+  "checks": [
+    "cargo fmt --all --check",
+    "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "cargo test --workspace --locked"
+  ]
+}

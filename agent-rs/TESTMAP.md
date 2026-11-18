@@ -265,10 +265,10 @@ No Python agent behaviour is ported; the release checks are new.
 | Behaviour | Test | Status |
 | --- | --- | --- |
 | tag `agent-rs-v<version>` equals the `nyxmon-agent` crate version (semver, no build metadata) | `tests/unit/test_agent_rs_release_checks.py::test_version_*`, `::test_tag_must_equal_the_crate_version`, `::test_cli_version_and_tag` | done |
-| GLIBC floor 2.35 (numeric comparison, `GLIBC_PRIVATE` rejected) and glibc/libgcc-only `NEEDED` libraries | `test_agent_rs_release_checks.py::test_glibc_floor_*`; the real binary in every run of `agent-rs-release.yml` | done |
+| GLIBC floor 2.35 (numeric comparison, `GLIBC_PRIVATE` rejected) and glibc/libgcc-only `NEEDED` libraries | `test_agent_rs_release_checks.py::test_glibc_floor_*`; the real binary in every `agent-rs/scripts/local_release.py build` | done |
 | `--version` prints `nyxmon-agent <version> (<commit>)`; `build.rs` reruns when HEAD moves (incl. the first commit after `git pack-refs`) | `crates/nyxmon-agent/tests/binary.rs::version_prints_the_package_version_and_the_git_commit`, `tests/build_script.rs`; `test_agent_rs_release_checks.py::test_version_output_must_name_version_and_commit`, `::test_cli_smoke_runs_the_binary` | done |
 | deterministic archive (binary 0755 + LICENSE 0644 at the root) and `sha256sum` line | `test_agent_rs_release_checks.py::test_archive_is_deterministic_and_holds_binary_and_license`, `::test_cli_pack_writes_archive_and_sha256sum_line` | done |
-| workflow runs every check | `test_agent_rs_release_checks.py::test_release_workflow_runs_every_check` | done |
+| the local release runs every check (the workflow was replaced on 2026-11-18) | `test_agent_rs_release_checks.py::test_local_release_runs_every_check` (configuration), `tests/unit/test_local_release.py` (`agent-rs/scripts/local_release.py`: scripts, builder image, build and publish) | done |
 
 ## S11 — site observer runtime
 

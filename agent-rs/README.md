@@ -190,34 +190,79 @@ Run these offline cases with `cargo test -p nyxmon-notify --locked` in `agent-rs
 
 ## Releases
 
-`.github/workflows/agent-rs-release.yml` builds the binary the deployment
-role installs (PLAN.md 8.2):
+Releases are built and published locally by `scripts/local_release.py`,
+driven by `local-release.json` (PLAN.md 8.2); there is no release workflow
+and no CI run (the tag-triggered `.github/workflows/agent-rs-release.yml` was
+removed on 2026-11-18). The same program releases mailgun-relay, opsgate and
+the graphyard agent; ops-deploy's `rust/scripts/release.py` follows the same
+approach. Needs Docker with working `linux/amd64` containers (on an Apple
+silicon Mac: colima with `vmType: vz` and `rosetta: true`; the build checks
+that `docker run --platform linux/amd64 ubuntu:22.04 uname -m` prints
+`x86_64`), `git`, `cargo` (for `cargo metadata`) and an authenticated `gh`
+2.74.0 or newer.
 
-- Push a tag `agent-rs-v<version>` whose version equals the `nyxmon-agent`
-  crate version (`version` in `Cargo.toml`'s `[workspace.package]`; the
-  workflow fails otherwise). A semver pre-release (`0.2.0-rc.1`) becomes a
-  GitHub pre-release.
-- The build job runs on `ubuntu-22.04` (glibc 2.35) without a cargo cache:
-  fmt, clippy, `cargo test`, `cargo build --release --locked --target
-  x86_64-unknown-linux-gnu`, then `scripts/release_checks.py`:
-  `glibc-floor` (no symbol version newer than `GLIBC_2.35`, only
-  glibc/libgcc libraries linked), `smoke` (`--version` prints exactly
-  `nyxmon-agent <version> (<commit>)`), `pack`.
+- Bump `version` in `Cargo.toml`'s `[workspace.package]` (and `Cargo.lock`),
+  add the CHANGELOG entry, merge to `main` and push, then from a clean
+  checkout of that commit run `just rs-release` (builds and checks,
+  publishes nothing) and `just rs-release-publish`. `just rs-release
+  --compare-released` builds an already tagged version as a dry run that
+  `publish` refuses.
+- `build` refuses a worktree with changes or untracked files, a commit that
+  is not on `main` on GitHub, a non-empty output directory and a version
+  whose tag `agent-rs-v<version>` already exists.
+- Image phase, the only one with network: two `ubuntu:22.04` images (base
+  pinned by digest), one of the Docker engine's own platform and one
+  `linux/amd64` (glibc 2.35), each with `ca-certificates` at least at the
+  USN-8944-1 version and a CA bundle without the 2026-10-21 incident roots
+  (checked after the APT installation that brings the CA update, before the
+  rustup, toolchain and dependency downloads), rustup 1.29.2 (sha256-checked), the
+  source as `git archive` of the build commit (`agent-rs/`, `LICENSE`, and
+  `src/nyxmon` for the Python side of the agent lock test), the
+  pinned toolchain and `cargo fetch --locked`.
+- Checks job on the engine's own platform (under Rosetta, emulation artefacts
+  could fail tests that are about the code, not the target): `cargo fmt --all
+  --check`, clippy with `-D warnings`, `cargo test --workspace --locked`.
+- Release job on `linux/amd64`: the tag must equal the crate version, `cargo
+  build --release --locked --target x86_64-unknown-linux-gnu` with
+  `NYXMON_AGENT_GIT_COMMIT` set to the build commit, then
+  `scripts/release_checks.py`: `glibc-floor` (no symbol version newer than
+  `GLIBC_2.35`, only glibc/libgcc libraries linked), `smoke` (`--version`
+  prints exactly `nyxmon-agent <version> (<commit>)`), `pack` and
+  `sha256sum --check`. Both jobs run with `--network none`, no mounts, and
+  memory, process and time limits.
 - The archive `nyxmon-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` holds
   `nyxmon-agent` (0755) and `LICENSE` (0644) at its root, owned by root, all
   timestamps set to the commit time, so a rebuild of the same binary gives
-  the same archive. `<archive>.sha256` is `sha256sum` output. The job summary
-  shows the sha256 that ops-control pins (`nyxmon_agent_rust_sha256`).
-- The release job (the only one with `contents: write`) verifies the checksum
-  again and creates the GitHub release with both files.
-- `workflow_dispatch` (Actions tab or
-  `gh workflow run agent-rs-release.yml --ref main`) runs the same build and
-  checks without the tag check and uploads the two files as a workflow
-  artifact only; nothing is released.
+  the same archive. `<archive>.sha256` is `sha256sum` output. Both, with
+  `build.json` and `notes.md` (naming the sha256 that ops-control pins as
+  `nyxmon_agent_rust_sha256`), land in
+  `agent-rs/target/local-release/nyxmon-agent-<version>/`.
+
+Remote facts (is the commit on `main`, does the tag exist) are read from
+GitHub, and the tag is created there, through `gh api --hostname github.com`
+on `ephes/nyxmon`: nothing is pushed with git, so no git remote, URL rewrite
+or `GH_HOST` decides where the tag or the release goes (a gh `api_host`
+override for github.com is refused; `main` is the branch `refs/heads/main`,
+resolved exactly). `publish` checks the archive against `build.json` and that
+`gh` is 2.74.0 or newer (older versions report no asset digests), creates the
+annotated tag `agent-rs-v<version>` on the build commit (only when that commit is
+on `main`; an existing tag must be annotated and point at that commit, it is
+never moved), creates the GitHub release with exactly the archive and its
+`.sha256` (`gh release create --verify-tag`; a semver pre-release such as
+`0.4.0-rc.1` becomes a GitHub pre-release), then downloads both again and
+compares them byte for byte. It succeeds only when afterwards the same
+release (same release and asset ids) is published, with the expected
+prerelease flag, exactly those two assets and GitHub's sha256 of each equal
+to the built one. A draft (left by an interrupted `gh release create`) is
+refused: check it, delete the draft by hand (the tag stays) and run
+`publish` again. It never replaces an asset and can be rerun until that end
+state is reached; fetch the tag afterwards with `git fetch --tags`. The
+output directory is staged privately and moved into place in one rename, so
+a concurrent build never mixes into it.
 
 `nyxmon-agent --version` prints the version and the git commit, which
 `crates/nyxmon-agent/build.rs` takes from `NYXMON_AGENT_GIT_COMMIT` (set by
-the release workflow and `just rs-build-linux`), else from `git rev-parse
+the local release and `just rs-build-linux`), else from `git rev-parse
 HEAD`, else `unknown`. A local build from a dirty tree reports the HEAD
 commit.
 

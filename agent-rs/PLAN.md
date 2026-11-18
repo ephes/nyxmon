@@ -2299,6 +2299,10 @@ difference (Q1).
 
 ### 8.2 Release pipeline (decision): GitHub Actions release artifact
 
+*Superseded 2026-11-18:* the workflow is removed; releases are built and
+published locally by `agent-rs/scripts/local_release.py` with the same checks
+in local containers (agent-rs/README.md "Releases"). Kept as history.
+
 - Workflow `.github/workflows/agent-rs-release.yml`, triggered by tags
   `agent-rs-v<semver>` (and `workflow_dispatch` producing a build artifact
   without a release). Runs on `ubuntu-22.04` (glibc 2.35), full test suite,
