@@ -259,8 +259,9 @@ to the built one. A draft (left by an interrupted `gh release create`) is
 refused: check it, delete the draft by hand (the tag stays) and run
 `publish` again. It never replaces an asset and can be rerun until that end
 state is reached; fetch the tag afterwards with `git fetch --tags`. The
-output directory is staged privately and moved into place in one rename, so
-a concurrent build never mixes into it.
+output directory is staged privately. The build checks the tar listing and
+gzip integrity before the rename, so an invalid archive leaves the destination
+available for a retry. The rename keeps concurrent builds from mixing files.
 
 `nyxmon-agent --version` prints the version and the git commit, which
 `crates/nyxmon-agent/build.rs` takes from `NYXMON_AGENT_GIT_COMMIT` (set by

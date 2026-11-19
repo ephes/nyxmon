@@ -8,6 +8,7 @@ network, no GitHub).
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import importlib.util
 import io
@@ -483,6 +484,59 @@ def test_linux_build_and_publish(release: ModuleType, tmp_path: Path) -> None:
     assert lines[0] == "tag rs-v1.2.3 already on GitHub"
     assert "already holds every asset" in lines[1]
     assert len(github.tagged) == 1 and len(github.created) == 1
+
+
+@pytest.mark.parametrize(
+    "damage", ["not-gzip", "missing-gzip-trailer", "bad-tar-header"]
+)
+def test_bad_archive_leaves_output_available_for_retry(
+    release: ModuleType, tmp_path: Path, damage: str
+) -> None:
+    config = release.parse_config(linux_data())
+    archive = config.archive("1.2.3")
+
+    class CorruptDocker(FakeDocker):
+        def job(
+            self,
+            image: str,
+            name: str,
+            script: str,
+            env: Mapping[str, str],
+            out_dir: Path,
+            platform: str,
+        ) -> None:
+            super().job(image, name, script, env, out_dir, platform)
+            if "cargo build --release" in script:
+                path = out_dir / "dist" / archive
+                data = path.read_bytes()
+                if damage == "not-gzip":
+                    data = b"invalid tarball"
+                elif damage == "missing-gzip-trailer":
+                    data = data[:-8]
+                else:
+                    # Corrupt the header after the first member's data block.
+                    raw = bytearray(gzip.decompress(data))
+                    raw[2 * tarfile.BLOCKSIZE] = ord("x")
+                    data = gzip.compress(raw)
+                path.write_bytes(data)
+                digest = hashlib.sha256(data).hexdigest()
+                path.with_name(f"{archive}.sha256").write_text(f"{digest}  {archive}\n")
+
+    out = tmp_path / "out"
+    options = dict(
+        config=config,
+        git=FakeGit(REPO),
+        github=FakeGitHub(),
+        version="1.2.3",
+        run_host_checks=no_host_checks,
+    )
+    with pytest.raises(release.ReleaseError, match="invalid archive"):
+        release.build(False, out, docker=CorruptDocker(), **options)
+    assert not out.exists()
+    lines: list[str] = []
+    release.build(False, out, docker=FakeDocker(), log=lines.append, **options)
+    assert (out / archive).is_file()
+    assert "    example (0o755, 3 bytes)" in lines
 
 
 def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) -> None:

@@ -41,6 +41,7 @@ release asset.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -53,6 +54,7 @@ import sys
 import tarfile
 import tempfile
 import tomllib
+import zlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -1197,6 +1199,7 @@ def build(
         shutil.rmtree(jobs, ignore_errors=True)
     try:
         digest = check_sha256_file(staging, archive)
+        listing = archive_listing(staging / archive)
         record = {
             "binary": config.binary,
             "version": version,
@@ -1219,14 +1222,35 @@ def build(
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     log(f"{digest}  {archive}")
-    with tarfile.open(out / archive, "r:gz") as tar:
-        for member in tar.getmembers():
-            log(f"    {member.name} ({oct(member.mode)}, {member.size} bytes)")
+    for line in listing:
+        log(line)
     if compare_released:
         log(
             f"dry run of the released {config.binary} {version}: {out} cannot be published"
         )
     return out
+
+
+def archive_listing(path: Path) -> list[str]:
+    try:
+        with gzip.open(path, "rb") as compressed:
+            with tarfile.open(fileobj=compressed, mode="r:") as tar:
+                listing = [
+                    f"    {member.name} ({oct(member.mode)}, {member.size} bytes)"
+                    for member in tar
+                ]
+                # tarfile can also stop at a malformed header after a valid
+                # member. Our packer writes the standard two zero end blocks.
+                compressed.seek(tar.offset)
+                end_marker = bytes(2 * tarfile.BLOCKSIZE)
+                if compressed.read(len(end_marker)) != end_marker:
+                    raise tarfile.ReadError("missing tar end marker")
+            # Read through the gzip trailer to verify its checksum and size.
+            while compressed.read(1 << 20):
+                pass
+    except (tarfile.TarError, OSError, EOFError, zlib.error) as error:
+        raise ReleaseError(f"invalid archive {path.name}: {error}") from None
+    return listing
 
 
 def install_dir(staging: Path, out: Path) -> None:

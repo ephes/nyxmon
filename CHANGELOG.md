@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Rust agent release process
 
+- Validate the staged tarball before installing local Rust release output, so
+  a corrupt archive leaves the destination available for a retry.
+
 - Release the Rust agent locally with `agent-rs/scripts/local_release.py`
   (configuration `agent-rs/local-release.json`, `just rs-release` and
   `just rs-release-publish`, agent-rs/README.md "Releases") instead of GitHub
