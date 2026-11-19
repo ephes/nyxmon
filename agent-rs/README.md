@@ -244,7 +244,14 @@ that `docker run --platform linux/amd64 ubuntu:22.04 uname -m` prints
 
 In `macos-native` mode the release notes include up to 16 KiB of the
 binary-check log and mark truncation explicitly. The workspace check commands
-remain listed and failed checks abort the build.
+remain listed and failed checks abort the build. The native Cargo fetch,
+workspace checks and release build inherit only the host tool path, home and
+temporary directories, basic locale, and dependency-fetch settings for proxies,
+CA certificates and the SSH agent.
+The release sets its own Rust toolchain, target directory and deployment floor.
+Ambient compiler, wrapper, linker, SDK and flag variables are discarded.
+The repository's explicit `check_env` applies only to workspace checks.
+The host's Cargo and rustup configuration files are trusted.
 
 Remote facts (is the commit on `main`, does the tag exist) are read from
 GitHub, and the tag is created there, through `gh api --hostname github.com`
@@ -253,11 +260,11 @@ or `GH_HOST` decides where the tag or the release goes (a gh `api_host`
 override for github.com is refused; `main` is the branch `refs/heads/main`,
 resolved exactly). `publish` requires a complete,
 well-typed `build.json` with a boolean dry-run flag and a build mode that
-matches the current release configuration before checking the archive checksum. With those checks passed and `gh` 2.74.0 or newer (older
-versions report no asset digests), it creates the
-annotated tag `agent-rs-v<version>` on the build commit (only when that commit is
-on `main`; an existing tag must be annotated and point at that commit, it is
-never moved), creates the GitHub release with exactly the archive and its
+matches the current release configuration before checking the archive checksum.
+With those checks passed and `gh` 2.74.0 or newer (for asset digests), it
+creates the annotated tag `agent-rs-v<version>` on the build commit, which
+must be on `main`. An existing tag must be annotated and point at that commit.
+It then creates the GitHub release with exactly the archive and its
 `.sha256` (`gh release create --verify-tag`; a semver pre-release such as
 `0.4.0-rc.1` becomes a GitHub pre-release), then downloads both again and
 compares them byte for byte. It succeeds only when afterwards the same

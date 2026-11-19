@@ -68,6 +68,35 @@ CONFIG_PATH = CRATE / "local-release.json"
 MAIN = "main"
 AMD64 = "linux/amd64"
 MAX_HOST_CHECK_LOG_BYTES = 16 * 1024
+# Host paths, locale and dependency-fetch settings. Build settings are
+# supplied below or by check_env for the workspace checks.
+MACOS_HOST_ENV = (
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "CARGO_HOME",
+    "RUSTUP_HOME",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+    "no_proxy",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "CARGO_HTTP_CAINFO",
+    "CARGO_HTTP_PROXY",
+    "CARGO_HTTP_PROXY_CAINFO",
+    "SSH_AUTH_SOCK",
+)
 MODES = ("linux-container", "macos-native")
 RUNNER_IMAGE = "ubuntu:22.04"
 BASE_PACKAGES = (
@@ -1071,7 +1100,7 @@ def build_macos(
     out = jobs / "out"
     out.mkdir()
     env = {
-        **os.environ,
+        **{name: os.environ[name] for name in MACOS_HOST_ENV if name in os.environ},
         "PATH": f"{Path(rustup).parent}{os.pathsep}{os.environ.get('PATH', '')}",
         "CARGO_TARGET_DIR": str(crate / "target"),
         "CARGO_TERM_COLOR": "never",

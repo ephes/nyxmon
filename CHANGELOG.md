@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Rust release configuration.
 - Cap the macOS binary-check excerpt in Rust release notes at 16 KiB and mark
   truncation.
+- Use an explicit environment for macOS release Cargo commands so ambient
+  compiler and flag overrides cannot affect checks or the release build.
 
 - Release the Rust agent locally with `agent-rs/scripts/local_release.py`
   (configuration `agent-rs/local-release.json`, `just rs-release` and

@@ -576,6 +576,65 @@ def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) ->
     assert github.created == [("rs-v1.2.3-rc.1", True)]
 
 
+def test_macos_release_uses_an_explicit_compiler_environment(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    which_rustup: None,
+) -> None:
+    overrides = (
+        "RUSTC",
+        "RUSTC_WRAPPER",
+        "RUSTC_WORKSPACE_WRAPPER",
+        "RUSTC_BOOTSTRAP",
+        "RUSTFLAGS",
+        "CARGO_ENCODED_RUSTFLAGS",
+        "CARGO_BUILD_RUSTC",
+        "CARGO_BUILD_RUSTFLAGS",
+        "CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER",
+        "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS",
+        "CC",
+        "CFLAGS",
+        "SDKROOT",
+        "DEVELOPER_DIR",
+        "BASH_ENV",
+    )
+    for name in overrides:
+        monkeypatch.setenv(name, "ambient-override")
+    monkeypatch.setenv("RUSTUP_TOOLCHAIN", "unselected")
+    monkeypatch.setenv("MACOSX_DEPLOYMENT_TARGET", "99.9")
+    monkeypatch.setenv("CARGO_TARGET_DIR", "/fake/ambient-target")
+    monkeypatch.setenv("CARGO_HOME", "/fake/cargo-home")
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid")
+    host = FakeHost()
+    config = release.parse_config(
+        macos_data(
+            check_env={"EXAMPLE_REQUIRE": "1", "RUSTFLAGS": "--cfg compatibility"}
+        )
+    )
+    release.build(
+        False,
+        tmp_path / "out",
+        config=config,
+        git=FakeGit(REPO),
+        github=FakeGitHub(),
+        host=host,
+        version="1.2.3",
+        run_host_checks=no_host_checks,
+    )
+    fetch_env, check_env, build_env = [env for _, env in host.scripts[1:]]
+    assert not set(overrides).intersection(fetch_env)
+    assert not set(overrides).intersection(build_env)
+    assert not (set(overrides) - {"RUSTFLAGS"}).intersection(check_env)
+    assert check_env["RUSTFLAGS"] == "--cfg compatibility"
+    assert check_env["EXAMPLE_REQUIRE"] == "1" and "EXAMPLE_REQUIRE" not in build_env
+    assert build_env["RUSTUP_TOOLCHAIN"] == "1.99.0"
+    assert build_env["MACOSX_DEPLOYMENT_TARGET"] == "14.0"
+    assert build_env["CARGO_TARGET_DIR"].endswith(f"/{CRATE.name}/target")
+    assert fetch_env["CARGO_HOME"] == "/fake/cargo-home"
+    assert fetch_env["HTTPS_PROXY"] == "http://proxy.invalid"
+
+
 @pytest.mark.parametrize("checks_fail", [False, True])
 def test_macos_build_bounds_the_check_log(
     release: ModuleType,
