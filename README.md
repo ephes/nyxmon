@@ -252,22 +252,20 @@ the time the collector stamps them before recovery, avoiding duplicate work.
 Rust reclaim and legacy timestamp repair share a positive batch-size write cap
 per transaction. Expired claims take priority; repairs proceed in ID order with
 the remaining allowance and continue on later collector iterations.
-That reclaimed result is kept in the check's history so the gap is explainable,
-but it never becomes a per-check notification: reclaiming a batch of checks
-after a restart is reported once, as a collector-level incident, not once per
-check. Reclaim is drained within a single collector iteration so that one alert
-reports the real size of the sweep.
+A recorded stale-lease result explains the gap in the check's history. The
+collector reports committed recovery results together in a single incident.
+It excludes samples superseded by a newer claim or check definition before
+publication. Recovery results never trigger a per-check notification.
 
 Nyxmon sends two kinds of alert. A per-check alert names one check and keys its
 OpsGate ticket on `nyxmon-check-<check_id>`. A collector incident describes the
 monitoring worker itself, is deduplicated across collector iterations and across
 process restarts, reminds hourly, and keys its ticket on
 `nyxmon-collector-<incident_key>`. There are two incident keys:
-`collector:stale_processing_lease` (expired leases were reclaimed; resolves
-after fifteen quiet minutes) and `collector:execution_paused` (a batch exceeded
-its deadline and new executions are paused; resolves when the wedged thread
-exits, and is closed automatically on the next worker startup because such a
-thread cannot outlive its process). Incident state lives in the
+`collector:stale_processing_lease` opens when a recovery result is recorded and
+resolves after fifteen quiet minutes. `collector:execution_paused` opens when
+a batch exceeds its deadline and new executions pause. It resolves when the
+wedged thread exits or on the next worker startup. Incident state lives in the
 `collector_incident` table, so a deploy in the middle of an incident does not
 restart its alert cadence.
 

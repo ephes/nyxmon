@@ -161,6 +161,12 @@ impl From<NotifyRaised> for HandlerError {
     }
 }
 
+/// Whether the store recorded the sample and whether a notification was triggered.
+pub(crate) struct ResultReceipt {
+    pub(crate) persisted: bool,
+    notification_triggered: bool,
+}
+
 /// The result handler of one agent process.
 pub struct ResultHandler<S> {
     store: S,
@@ -272,9 +278,20 @@ impl<S: ResultStore> ResultHandler<S> {
     pub async fn add_check_result(
         &self,
         check: &Check,
-        mut result: CheckResult,
+        result: CheckResult,
         force_notification: bool,
     ) -> Result<bool, HandlerError> {
+        self.add_check_result_with_receipt(check, result, force_notification)
+            .await
+            .map(|receipt| receipt.notification_triggered)
+    }
+
+    pub(crate) async fn add_check_result_with_receipt(
+        &self,
+        check: &Check,
+        mut result: CheckResult,
+        force_notification: bool,
+    ) -> Result<ResultReceipt, HandlerError> {
         if matches!(result.status, ResultStatus::Error | ResultStatus::Warning)
             && !force_notification
             && !result.data.get("collector_internal").is_some_and(py_truthy)
@@ -299,7 +316,7 @@ impl<S: ResultStore> ResultHandler<S> {
         }
         let retry_seconds = delivery_retry_seconds(&self.env);
         let mut attempt = 0;
-        let (result, should_notify, attempt_seq) = loop {
+        let (result, receipt, attempt_seq) = loop {
             attempt += 1;
             // Keep the sample and its one-time suppression metadata as the
             // baseline. Site annotations belong to this attempt's snapshot.
@@ -336,7 +353,10 @@ impl<S: ResultStore> ResultHandler<S> {
                 Ok(persisted) => {
                     break (
                         result,
-                        persisted && decision.should_notify,
+                        ResultReceipt {
+                            persisted,
+                            notification_triggered: persisted && decision.should_notify,
+                        },
                         decision.attempt_seq,
                     );
                 }
@@ -357,8 +377,10 @@ impl<S: ResultStore> ResultHandler<S> {
                         complete_check: !force_notification,
                         hold_marker: decision.held.then_some(decision.now),
                     };
-                    self.store.persist_check_result(fallback).await?;
-                    return Ok(false);
+                    return Ok(ResultReceipt {
+                        persisted: self.store.persist_check_result(fallback).await?,
+                        notification_triggered: false,
+                    });
                 }
                 Err(StoreError::NotificationStateConflict { .. }) => {
                     tracing::warn!(
@@ -371,7 +393,7 @@ impl<S: ResultStore> ResultHandler<S> {
             }
         };
 
-        if should_notify {
+        if receipt.notification_triggered {
             let delivery = self.notifier.notify_check_failed(check, &result).await?;
             // Acknowledged unless the send failed, whatever the retry knob.
             if !delivery.is_failure()
@@ -389,7 +411,7 @@ impl<S: ResultStore> ResultHandler<S> {
                 );
             }
         }
-        Ok(should_notify)
+        Ok(receipt)
     }
 }
 

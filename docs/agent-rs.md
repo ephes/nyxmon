@@ -174,9 +174,10 @@ SIGTERM and SIGINT stop new claims, give a running batch
 that finished in time, abort the rest and release their claims (idle again,
 next run one check interval later), so they never turn into stale-lease
 results. After SIGKILL the
-claims stay until the processing lease expires; the next start then records
-one `stale_processing_lease` result per check and sends one batch alert,
-exactly like the Python agent.
+claims stay until the processing lease expires. On restart the collector
+reclaims expired leases and records `stale_processing_lease` results for the
+enabled checks whose samples are still current at publication. It reports the
+committed results together in one batch alert.
 
 ### Deployment and rollback
 

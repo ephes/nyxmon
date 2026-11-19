@@ -286,14 +286,14 @@ The synthetic check row it uses is never stored; its OpsGate ticket key is
 
 | Incident key | Error type | Opened when | Reminder | Resolved when |
 | --- | --- | --- | --- | --- |
-| `collector:stale_processing_lease` | `stale_processing_lease_batch` | an iteration reclaims at least one expired processing lease | hourly | no lease has been reclaimed for 15 minutes |
+| `collector:stale_processing_lease` | `stale_processing_lease_batch` | an iteration records at least one stale-lease result | hourly | no stale-lease results have been recorded for 15 minutes |
 | `collector:execution_paused` | `collector_execution_paused` | a batch exceeds its execution/result deadline and new executions are paused | hourly | the wedged executor thread exits, or the worker restarts |
 
-The stale-lease message reports how many leases were reclaimed, over what
-window, across how many collector iterations, and a bounded sample of the
-affected check ids (at most ten in the message, twenty retained). The
-execution-paused message reports how long execution has been paused and how many
-checks the wedged batch holds.
+The stale-lease message counts committed recovery results over time and across
+collector iterations, with a bounded sample of their check IDs (at most ten in
+the message, twenty retained). A newer claim or check edit can supersede a
+recovery result before it is stored. The execution-paused message reports how
+long execution has been paused and how many checks the wedged batch holds.
 
 Because the state lives in the `collector_incident` table, a deploy in the
 middle of an incident does not restart its alert cadence. The one deliberate
@@ -313,11 +313,11 @@ lease, preventing an immediate duplicate run while still guaranteeing recovery.
 The reclaimed result is stored so a check's history shows why it has a gap, but
 it never produces a per-check notification. It is marked as collector-internal:
 it neither advances nor resets that check's own incident, and it does not alert
-even when the check carries `consecutive_failures: 1`. Reclaiming 36 checks
-after a restart therefore produces 36 result rows and exactly one
-`collector:stale_processing_lease` alert. Reclaim is drained within a single
-collector iteration (up to 20 bounded rounds), so that one alert reports the
-real size of the event rather than one batch-sized slice of it.
+even when the check carries `consecutive_failures: 1`. Recording 36 recovery
+results after a restart produces 36 history rows and one
+`collector:stale_processing_lease` alert. The collector drains reclaim within
+a single iteration (up to 20 bounded rounds) and reports the recorded results
+together.
 
 Nyxmon cannot forcibly cancel an executor that remains hung outside its worker;
 use finite executor timeouts and keep the lease above the longest valid runtime.
@@ -550,13 +550,11 @@ mean a check needs a timeout, not a longer lease.
 
 ### "One restart produced dozens of stale-lease results"
 
-Expected, and it is one alert. Every check that was `processing` when the worker
-stopped has its lease reclaimed on the next iteration; each one gets a
-`stale_processing_lease` result in its history so the gap is explainable, and
-the whole sweep is reported once as the `collector:stale_processing_lease`
-incident. Those results never page per check, so a routine deploy costs one
-notification rather than one per in-flight check. The incident resolves once no
-lease has been reclaimed for fifteen minutes.
+After a worker restart, the collector reclaims expired leases and attempts to
+write a `stale_processing_lease` result for each enabled check. It reports the
+results it stored together in the `collector:stale_processing_lease` incident.
+These results never page per check. The incident resolves after fifteen
+minutes without a recorded stale-lease result.
 
 If the incident keeps reminding hourly, leases are still expiring: look for a
 check that runs longer than the lease, or a worker that keeps dying.

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rebuild site connectivity annotations on notification-state retries so a
   recovered path does not leave a stale hold in history or notifications.
+- Include only committed stale-lease results in collector incident counts and
+  sampled check IDs, omitting results superseded by newer claims or edits.
 
 ### Rust agent retention
 

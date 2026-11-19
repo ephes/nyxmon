@@ -140,6 +140,50 @@ async fn one_stale_result_failure_does_not_block_other_recoveries() {
 }
 
 #[tokio::test]
+async fn a_superseded_stale_result_is_excluded_from_incident_evidence() {
+    let setup = Setup::new(&[]);
+    setup.db.insert(&Check {
+        next_check_time: T0,
+        ..wedged(1)
+    });
+    setup.db.insert(&wedged(2));
+    let contender = setup.db.store();
+    let collector = setup
+        .build(
+            setup.db.store(),
+            &[],
+            ScriptedNotifier::new(None),
+            ok_executor,
+        )
+        .with_recovery_gate(Arc::new(move || {
+            let contender = contender.clone();
+            Box::pin(async move {
+                // Only check 1 is due as soon as the expired claims are released.
+                contender.claim_due_checks(T0, 1).await.unwrap();
+            })
+        }));
+
+    collector
+        .recover_stale_leases(&BigInt::from(LEASE_SECONDS))
+        .await;
+
+    assert_eq!(setup.db.schedule(1), ("processing".to_owned(), T0, T0));
+    let results = setup.db.results();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].0, 2);
+    assert!(results[0].2.contains("stale_processing_lease"));
+    let incident = incident(&setup, STALE_BATCH_INCIDENT_KEY).await.unwrap();
+    assert_eq!(
+        incident.payload.get("check_ids"),
+        Some(&PyJson::List(vec![PyJson::Int(2)]))
+    );
+    assert_eq!(
+        incident.payload.get("reclaimed_count"),
+        Some(&PyJson::Int(1))
+    );
+}
+
+#[tokio::test]
 async fn a_reclaim_failure_does_not_block_due_checks() {
     let setup = Setup::new(&[7]);
     setup.db.insert(&wedged(1));
@@ -701,7 +745,7 @@ async fn stale_recovery_cannot_release_a_newer_claim() {
     setup.db.execute(&format!(
         "UPDATE health_check SET status = 'processing', processing_started_at = {T0} WHERE id = 1"
     ));
-    assert!(collector.record_stale_check(reclaimed[0].clone()).await);
+    assert!(!collector.record_stale_check(reclaimed[0].clone()).await);
     assert_eq!(
         setup.db.schedule(1),
         ("processing".to_owned(), T0 + 300, T0)
@@ -724,7 +768,7 @@ async fn stale_recovery_does_not_resurrect_a_deleted_check() {
         .await
         .unwrap();
     setup.db.execute("DELETE FROM health_check WHERE id = 1");
-    assert!(collector.record_stale_check(reclaimed[0].clone()).await);
+    assert!(!collector.record_stale_check(reclaimed[0].clone()).await);
     assert!(setup.db.results().is_empty());
     let rows: i64 = setup
         .db

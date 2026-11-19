@@ -554,8 +554,12 @@ impl Collector {
         data.insert("collector_internal".to_owned(), PyJson::Bool(true));
         let result = CheckResult::new(check.check_id, ResultStatus::Error, data);
         check.schedule_next_check(self.handler.now());
-        match self.handler.add_check_result(&check, result, false).await {
-            Ok(_) => true,
+        match self
+            .handler
+            .add_check_result_with_receipt(&check, result, false)
+            .await
+        {
+            Ok(receipt) => receipt.persisted,
             Err(err) => {
                 if let HandlerError::Store(err) = &err {
                     self.store_failed(err);

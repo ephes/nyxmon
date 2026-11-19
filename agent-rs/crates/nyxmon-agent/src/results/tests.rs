@@ -379,7 +379,12 @@ async fn contention_never_discards_the_result() {
     );
     let check = stored(&setup, 1, "{}");
     let (capture, _guard) = logging::capture();
-    assert!(!submit(&handler, &check, ERROR).await);
+    let receipt = handler
+        .add_check_result_with_receipt(&check, result(1, ERROR, "{}"), false)
+        .await
+        .unwrap();
+    assert!(receipt.persisted);
+    assert!(!receipt.notification_triggered);
     assert_eq!(store.attempts.load(Ordering::SeqCst), 4);
     assert_eq!(setup.db.results().len(), 1);
     assert_eq!(setup.notifier.count(), 0);
