@@ -1342,6 +1342,10 @@ def admit_build_record(record: object, config: Config, out: Path) -> dict[str, A
 
     if record["binary"] != config.binary or record["target"] != config.target:
         raise ReleaseError(f"{out} holds a build of something else")
+    if record["mode"] != config.mode:
+        raise ReleaseError(
+            f"{out} holds a build in mode {record['mode']!r}; expected {config.mode!r}"
+        )
     if record["compare_released"]:
         raise ReleaseError(
             f"{out} is a --compare-released dry run; it is never published"

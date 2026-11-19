@@ -803,6 +803,25 @@ def test_publish_refuses_malformed_build_records(
         assert not github.tagged and not github.created and not github.uploaded
 
 
+def test_publish_refuses_a_build_from_another_mode(
+    release: ModuleType, built: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record_path = built / "build.json"
+    record = json.loads(record_path.read_text())
+    record_path.write_text(json.dumps({**record, "mode": "macos-native"}))
+    github = FakeGitHub()
+
+    def unexpected_checksum(*args: Any) -> None:
+        pytest.fail("checked archive before matching the build mode")
+
+    monkeypatch.setattr(release, "check_sha256_file", unexpected_checksum)
+    with pytest.raises(
+        release.ReleaseError, match=r"macos-native.*expected.*linux-container"
+    ):
+        publish(release, built, github=github)
+    assert not github.tagged and not github.created and not github.uploaded
+
+
 def test_publish_never_moves_a_tag(release: ModuleType, built: Path) -> None:
     github = FakeGitHub()
     github.tags["rs-v1.2.3"] = OTHER

@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changing tags and releases.
 - Resolve the Rust release version from the same pinned source archive the
   builder uses.
+- Refuse publication when the recorded build mode differs from the current
+  Rust release configuration.
 
 - Release the Rust agent locally with `agent-rs/scripts/local_release.py`
   (configuration `agent-rs/local-release.json`, `just rs-release` and
