@@ -31,6 +31,9 @@ Django sessions from the shared SQLite database when its `django_session` table
 exists. A full session batch keeps the cycle running even when no results expire.
 When either table had deletions, the cleaner logs the separate result and session
 totals. The batch-limit warning includes both totals as well.
+If a batch fails, the cycle logs the store error and the completed batch, result
+and session counts. Earlier batches stay committed and the cleaner retries at
+the next scheduled cycle.
 `--batch-size` and direct Rust cleaner/store calls accept only 1..=1000 rows.
 Both backlogs share the 100-batch cycle budget; any remainder continues next cycle. With `--disable-cleaner`, schedule Django's `clearsessions` separately.
 

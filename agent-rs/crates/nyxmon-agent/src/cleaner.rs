@@ -90,7 +90,8 @@ impl<S: ResultsPruner> Cleaner<S> {
     /// `max_batches_per_cycle` batches. Returns the number of results deleted.
     ///
     /// # Errors
-    /// The store error of a batch (the rows deleted before stay deleted).
+    /// Logs the completed batches and returns the original store error if a
+    /// batch fails. Rows deleted by earlier batches stay deleted.
     pub async fn run_cleanup_cycle(&self) -> Result<u64, StoreError> {
         let batch_size = usize::try_from(self.batch_size).expect("validated batch size");
         let mut total_results: u64 = 0;
@@ -98,10 +99,21 @@ impl<S: ResultsPruner> Cleaner<S> {
         let mut batches: i64 = 0;
         let mut drained = false;
         while batches < self.max_batches_per_cycle {
-            let batch = self
+            let batch = match self
                 .store
                 .delete_old_results(self.retention_period, self.batch_size)
-                .await?;
+                .await
+            {
+                Ok(batch) => batch,
+                Err(err) => {
+                    tracing::error!(
+                        target: "nyxmon.adapters.cleaner",
+                        "Error during result cleanup after {batches} completed batch(es) \
+                         ({total_results} check results, {total_sessions} expired sessions): {err}"
+                    );
+                    return Err(err);
+                }
+            };
             batches += 1;
             total_results = total_results
                 .saturating_add(u64::try_from(batch.results_deleted).unwrap_or(u64::MAX));
@@ -136,12 +148,8 @@ impl<S: ResultsPruner> Cleaner<S> {
     pub async fn run(&self) {
         let sleeper = Sleeper::real();
         loop {
-            if let Err(err) = self.run_cleanup_cycle().await {
-                tracing::error!(
-                    target: "nyxmon.adapters.cleaner",
-                    "Error during result cleanup: {err}"
-                );
-            }
+            // The cycle logs failures with its progress before returning.
+            let _ = self.run_cleanup_cycle().await;
             sleeper.sleep(self.interval as f64).await;
         }
     }

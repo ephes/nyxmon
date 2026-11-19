@@ -188,9 +188,43 @@ async fn the_loop_runs_a_cycle_at_once_and_survives_errors() {
         capture.messages(),
         [
             "Cleaned up 12 old check results and 0 expired sessions in 3 batch(es)",
-            "Error during result cleanup: database is locked",
+            "Error during result cleanup after 0 completed batch(es) (0 check results, \
+             0 expired sessions): database is locked",
             "Cleaned up 1 old check results and 0 expired sessions in 1 batch(es)",
         ]
+    );
+}
+
+#[tokio::test]
+async fn a_later_batch_error_logs_only_completed_work_and_propagates() {
+    let results = FakeResults::with_batches([
+        Ok(CleanupBatch {
+            results_deleted: 5,
+            sessions_deleted: 3,
+        }),
+        Err(()),
+        Ok(CleanupBatch {
+            results_deleted: 2,
+            sessions_deleted: 1,
+        }),
+    ]);
+    let cleaner = cleaner(&results, 86400, 5, 100);
+    let (capture, _guard) = logging::capture();
+
+    assert!(matches!(
+        cleaner.run_cleanup_cycle().await,
+        Err(StoreError::Json(message)) if message == "database is locked"
+    ));
+    assert_eq!(results.calls(), [(86400, 5); 2]);
+    assert_eq!(
+        capture.lines(),
+        [logging::LogLine {
+            level: "ERROR",
+            logger: "nyxmon.adapters.cleaner".to_owned(),
+            message: "Error during result cleanup after 1 completed batch(es) (5 check results, \
+                      3 expired sessions): database is locked"
+                .to_owned(),
+        }]
     );
 }
 

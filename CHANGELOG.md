@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Report deleted results and expired sessions separately in cleanup logs,
   including session-only cycles and batch-limit warnings.
+- Include completed batch and deletion counts in the cleanup error log when a
+  later batch fails.
 
 ### Rust agent 0.1.6
 

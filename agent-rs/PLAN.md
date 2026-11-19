@@ -576,6 +576,8 @@ exact text:
 - `configured processing lease <c>s is below the estimated maximum check runtime <r>s; using <e>s`
 - `Cleaned up <n> old check results and <s> expired sessions in <b> batch(es)`;
   `Result cleanup stopped after …` includes both counts.
+- `Error during result cleanup after …` includes completed batch, result and
+  session counts and the store error.
 - `site connectivity observation is <mode>`;
   `site connectivity incident <id> opened: <paths> down`;
   `site connectivity incident <id> closed after <dur> (summary: yes|no)`;
