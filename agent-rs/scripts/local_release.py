@@ -1309,6 +1309,53 @@ def release_notes(config: Config, record: Mapping[str, Any], checks_log: str) ->
 # --- publish -------------------------------------------------------------------------
 
 
+def admit_build_record(record: object, config: Config, out: Path) -> dict[str, Any]:
+    label = f"invalid {BUILD_JSON} in {out}"
+    if not isinstance(record, dict):
+        raise ReleaseError(f"{label}: expected an object")
+    for field in (
+        "binary",
+        "version",
+        "tag",
+        "commit",
+        "target",
+        "mode",
+        "archive",
+        "sha256",
+    ):
+        if not isinstance(record.get(field), str):
+            raise ReleaseError(f"{label}: {field} must be a string")
+    if not isinstance(record.get("compare_released"), bool):
+        raise ReleaseError(f"{label}: compare_released must be a boolean")
+    checks = record.get("checks")
+    if not isinstance(checks, list) or not all(
+        isinstance(check, str) for check in checks
+    ):
+        raise ReleaseError(f"{label}: checks must be a list of strings")
+    environment = record.get("environment")
+    if not isinstance(environment, dict) or not all(
+        isinstance(value, str) for value in environment.values()
+    ):
+        raise ReleaseError(f"{label}: environment must be an object with string values")
+
+    if record["binary"] != config.binary or record["target"] != config.target:
+        raise ReleaseError(f"{out} holds a build of something else")
+    if record["compare_released"]:
+        raise ReleaseError(
+            f"{out} is a --compare-released dry run; it is never published"
+        )
+    version = record["version"]
+    if not (
+        VERSION.fullmatch(version)
+        and record["tag"] == config.tag(version)
+        and record["archive"] == config.archive(version)
+        and COMMIT.fullmatch(record["commit"])
+        and re.fullmatch(r"[0-9a-f]{64}", record["sha256"])
+    ):
+        raise ReleaseError(f"{out}/{BUILD_JSON} is inconsistent")
+    return record
+
+
 def publish(
     out_dir: Path | None = None,
     *,
@@ -1325,26 +1372,13 @@ def publish(
         record = json.loads((out / BUILD_JSON).read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise ReleaseError(f"no build in {out}: {error}") from None
-    if record.get("binary") != config.binary or record.get("target") != config.target:
-        raise ReleaseError(f"{out} holds a build of something else")
-    if record.get("compare_released"):
-        raise ReleaseError(
-            f"{out} is a --compare-released dry run; it is never published"
-        )
+    record = admit_build_record(record, config, out)
     version, tag, commit, archive = (
         record["version"],
         record["tag"],
         record["commit"],
         record["archive"],
     )
-    consistent = (
-        VERSION.fullmatch(version)
-        and tag == config.tag(version)
-        and archive == config.archive(version)
-        and COMMIT.fullmatch(commit)
-    )
-    if not consistent:
-        raise ReleaseError(f"{out}/{BUILD_JSON} is inconsistent")
     if check_sha256_file(out, archive) != record["sha256"]:
         raise ReleaseError(f"{archive} changed since the build")
     files = {archive: out / archive, f"{archive}.sha256": out / f"{archive}.sha256"}

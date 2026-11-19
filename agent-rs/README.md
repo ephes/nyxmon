@@ -245,8 +245,10 @@ GitHub, and the tag is created there, through `gh api --hostname github.com`
 on `ephes/nyxmon`: nothing is pushed with git, so no git remote, URL rewrite
 or `GH_HOST` decides where the tag or the release goes (a gh `api_host`
 override for github.com is refused; `main` is the branch `refs/heads/main`,
-resolved exactly). `publish` checks the archive against `build.json` and that
-`gh` is 2.74.0 or newer (older versions report no asset digests), creates the
+resolved exactly). `publish` requires a complete,
+well-typed `build.json` with a boolean dry-run flag before checking the
+archive checksum. With those checks passed and `gh` 2.74.0 or newer (older
+versions report no asset digests), it creates the
 annotated tag `agent-rs-v<version>` on the build commit (only when that commit is
 on `main`; an existing tag must be annotated and point at that commit, it is
 never moved), creates the GitHub release with exactly the archive and its

@@ -699,6 +699,54 @@ def test_publish_refuses_a_dry_run_and_changed_builds(
         publish(release, built)
 
 
+@pytest.mark.parametrize(
+    ("field", "bad_value"),
+    [
+        (None, []),
+        ("binary", []),
+        ("version", 123),
+        ("tag", []),
+        ("commit", None),
+        ("target", {}),
+        ("mode", []),
+        ("compare_released", 0),
+        ("compare_released", "false"),
+        ("archive", []),
+        ("sha256", None),
+        ("checks", [False]),
+        ("environment", {"host": 42}),
+    ],
+)
+def test_publish_refuses_malformed_build_records(
+    release: ModuleType,
+    built: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str | None,
+    bad_value: Any,
+) -> None:
+    record_path = built / "build.json"
+    record = json.loads(record_path.read_text())
+    github = FakeGitHub()
+
+    def unexpected_checksum(*args: Any) -> None:
+        pytest.fail("checked archive before admitting the build record")
+
+    monkeypatch.setattr(release, "check_sha256_file", unexpected_checksum)
+    malformed = (
+        [bad_value]
+        if field is None
+        else [
+            {**record, field: bad_value},
+            {key: value for key, value in record.items() if key != field},
+        ]
+    )
+    for value in malformed:
+        record_path.write_text(json.dumps(value))
+        with pytest.raises(release.ReleaseError, match=r"invalid build.json"):
+            publish(release, built, github=github)
+        assert not github.tagged and not github.created and not github.uploaded
+
+
 def test_publish_never_moves_a_tag(release: ModuleType, built: Path) -> None:
     github = FakeGitHub()
     github.tags["rs-v1.2.3"] = OTHER
