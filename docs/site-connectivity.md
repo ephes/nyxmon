@@ -181,6 +181,10 @@ same spirit as `notification_suppressed`:
 }
 ```
 
+If the notification-state write conflicts, the Rust agent evaluates the hold
+again from the original sample and a fresh site snapshot. The stored metadata
+and any notification use the decision from the attempt that publishes the result.
+
 `reason` is one of:
 
 | Reason | Meaning |

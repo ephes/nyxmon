@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent result handling
+
+- Rebuild site connectivity annotations on notification-state retries so a
+  recovered path does not leave a stale hold in history or notifications.
+
 ### Rust agent retention
 
 - Report deleted results and expired sessions separately in cleanup logs,

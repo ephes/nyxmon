@@ -298,9 +298,12 @@ impl<S: ResultStore> ResultHandler<S> {
             }
         }
         let retry_seconds = delivery_retry_seconds(&self.env);
-        let mut should_notify = false;
-        let mut attempt_seq = 0;
-        for attempt in 0..MAX_NOTIFICATION_STATE_ATTEMPTS {
+        let mut attempt = 0;
+        let (result, should_notify, attempt_seq) = loop {
+            attempt += 1;
+            // Keep the sample and its one-time suppression metadata as the
+            // baseline. Site annotations belong to this attempt's snapshot.
+            let mut result = result.clone();
             let cooldown = notify_immediate_cooldown_seconds(&self.env);
             let state = self.store.get_notification_state(check.check_id).await?;
             let snapshot = self.site.snapshot();
@@ -331,12 +334,14 @@ impl<S: ResultStore> ResultHandler<S> {
             };
             match self.store.persist_check_result(request).await {
                 Ok(persisted) => {
-                    should_notify = persisted && decision.should_notify;
-                    attempt_seq = if persisted { decision.attempt_seq } else { 0 };
-                    break;
+                    break (
+                        result,
+                        persisted && decision.should_notify,
+                        decision.attempt_seq,
+                    );
                 }
                 Err(StoreError::NotificationStateConflict { .. })
-                    if attempt == MAX_NOTIFICATION_STATE_ATTEMPTS - 1 =>
+                    if attempt == MAX_NOTIFICATION_STATE_ATTEMPTS =>
                 {
                     tracing::error!(
                         target: "nyxmon.service_layer.handlers",
@@ -347,15 +352,13 @@ impl<S: ResultStore> ResultHandler<S> {
                     // The streak bookkeeping is dropped, but a hold is not.
                     let fallback = PersistRequest {
                         check: check.clone(),
-                        result: result.clone(),
+                        result,
                         transition: None,
                         complete_check: !force_notification,
                         hold_marker: decision.held.then_some(decision.now),
                     };
                     self.store.persist_check_result(fallback).await?;
-                    should_notify = false;
-                    attempt_seq = 0;
-                    break;
+                    return Ok(false);
                 }
                 Err(StoreError::NotificationStateConflict { .. }) => {
                     tracing::warn!(
@@ -366,7 +369,7 @@ impl<S: ResultStore> ResultHandler<S> {
                 }
                 Err(err) => return Err(err.into()),
             }
-        }
+        };
 
         if should_notify {
             let delivery = self.notifier.notify_check_failed(check, &result).await?;

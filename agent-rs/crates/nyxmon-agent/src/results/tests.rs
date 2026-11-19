@@ -302,6 +302,7 @@ struct ConflictingStore {
     conflicts: AtomicUsize,
     attempts: AtomicUsize,
     requests: Mutex<Vec<PersistRequest>>,
+    recover_site: Option<Arc<StubSite>>,
 }
 
 impl ResultStore for Arc<ConflictingStore> {
@@ -318,6 +319,9 @@ impl ResultStore for Arc<ConflictingStore> {
                 .try_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
                 .is_ok()
         {
+            if let Some(site) = &self.recover_site {
+                *site.holding.lock().unwrap() = false;
+            }
             return Err(StoreError::NotificationStateConflict {
                 check_id: request.check.check_id,
             });
@@ -342,6 +346,7 @@ fn conflicting(setup: &Setup, conflicts: usize) -> Arc<ConflictingStore> {
         conflicts: AtomicUsize::new(conflicts),
         attempts: AtomicUsize::new(0),
         requests: Mutex::new(Vec::new()),
+        recover_site: None,
     })
 }
 
@@ -430,6 +435,38 @@ impl SiteState for StubSite {
 const IPV4_DEPENDENCY: &str = r#"{"site_dependency": {"requires": ["ipv4"]}}"#;
 
 #[tokio::test]
+async fn a_retry_after_site_recovery_drops_the_uncommitted_hold_annotation() {
+    let setup = Setup::new();
+    let site = Arc::new(StubSite {
+        holding: Mutex::new(true),
+        clock: setup.clock.clone(),
+    });
+    let mut store = conflicting(&setup, 1);
+    Arc::get_mut(&mut store).unwrap().recover_site = Some(site.clone());
+    let handler = handler(
+        store.clone(),
+        setup.notifier.clone(),
+        &[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")],
+        &setup.clock,
+    )
+    .with_site_state(site);
+    let check = stored(&setup, 1, IPV4_DEPENDENCY);
+
+    assert!(submit_data(&handler, &check, ERROR, r#"{"probe": "failed"}"#).await);
+    assert_eq!(setup.db.state(1).held_since, 0);
+    let requests = store.requests.lock().unwrap();
+    assert_eq!(requests.len(), 2);
+    assert!(requests[0].result.data.contains_key("site_connectivity"));
+    assert_eq!(
+        setup.db.results(),
+        [(1, "error".to_owned(), r#"{"probe": "failed"}"#.to_owned())]
+    );
+    let calls = setup.notifier.calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].1.data, dict(r#"{"probe": "failed"}"#));
+}
+
+#[tokio::test]
 async fn the_contention_fallback_keeps_the_hold_marker() {
     let setup = Setup::new();
     let store = conflicting(&setup, 3);
@@ -445,7 +482,7 @@ async fn the_contention_fallback_keeps_the_hold_marker() {
     let last = store.requests.lock().unwrap().pop().unwrap();
     assert_eq!((last.transition, last.hold_marker), (None, Some(T0)));
     assert_eq!(setup.db.state(1).held_since, T0);
-    // The stored sample carries the hold annotation of every round.
+    // The stored sample carries the final attempt’s hold annotation.
     let (_, _, data) = setup.db.results().pop().unwrap();
     assert_eq!(
         data,
