@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tarfile
 from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -573,6 +574,69 @@ def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) ->
     github = FakeGitHub()
     release.publish(out, config=config, github=github, log=lambda line: None)
     assert github.created == [("rs-v1.2.3-rc.1", True)]
+
+
+@pytest.mark.parametrize("checks_fail", [False, True])
+def test_macos_build_bounds_the_check_log(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    which_rustup: None,
+    checks_fail: bool,
+) -> None:
+    config = release.parse_config(macos_data())
+    failure = release.ReleaseError("cargo test --locked exited 17")
+
+    class NoisyHost(FakeHost):
+        def shell(self, script: str, cwd: Path, env: Mapping[str, str]) -> None:
+            if checks_fail and script == release.check_script(config):
+                raise failure
+            super().shell(script, cwd, env)
+            if "cargo build --release" in script:
+                (Path(env["OUT"]) / "checks.log").write_bytes(
+                    b"macho OK\n" + b"x" * (256 * 1024) + b"unread tail"
+                )
+
+    reads: list[int] = []
+    path_open = Path.open
+
+    @contextmanager
+    def guarded_open(path: Path, *args: Any, **kwargs: Any) -> Iterator[Any]:
+        with path_open(path, *args, **kwargs) as handle:
+            if path.name != "checks.log" or not handle.readable():
+                yield handle
+                return
+
+            def read(size: int = -1) -> Any:
+                assert 0 < size <= 16 * 1024 + 1
+                reads.append(size)
+                return handle.read(size)
+
+            yield SimpleNamespace(read=read)
+
+    monkeypatch.setattr(Path, "open", guarded_open)
+    out = tmp_path / "out"
+    options = dict(
+        config=config,
+        git=FakeGit(REPO),
+        github=FakeGitHub(),
+        host=NoisyHost(),
+        version="1.2.3",
+        run_host_checks=no_host_checks,
+    )
+    if checks_fail:
+        with pytest.raises(release.ReleaseError) as error:
+            release.build(False, out, **options)
+        assert error.value is failure
+        assert not reads and not out.exists()
+        return
+
+    release.build(False, out, **options)
+    notes = (out / "notes.md").read_text()
+    assert len(reads) == 1
+    assert "macho OK" in notes and "truncated" in notes
+    assert "unread tail" not in notes and len(notes) < 17 * 1024
+    assert "Checks: `cargo fmt --check`; `cargo test --locked`." in notes
 
 
 @pytest.mark.parametrize("compare_released", [False, True])

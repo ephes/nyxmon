@@ -67,6 +67,7 @@ CONFIG_PATH = CRATE / "local-release.json"
 
 MAIN = "main"
 AMD64 = "linux/amd64"
+MAX_HOST_CHECK_LOG_BYTES = 16 * 1024
 MODES = ("linux-container", "macos-native")
 RUNNER_IMAGE = "ubuntu:22.04"
 BASE_PACKAGES = (
@@ -1108,9 +1109,14 @@ def build_macos(
     log(f"== release build for {config.target}")
     host.shell(release_script(config, python=sys.executable), crate, offline)
     macos = host.output(["sw_vers", "-productVersion"], crate, env).strip()
+    with (out / "checks.log").open("rb") as handle:
+        check_log = handle.read(MAX_HOST_CHECK_LOG_BYTES + 1)
+    excerpt = check_log[:MAX_HOST_CHECK_LOG_BYTES].decode("utf-8", errors="replace")
+    if len(check_log) > MAX_HOST_CHECK_LOG_BYTES:
+        excerpt += f"\n[Check log truncated after {MAX_HOST_CHECK_LOG_BYTES} bytes.]"
     return {
         "dist": out / "dist",
-        "checks_log": (out / "checks.log").read_text(encoding="utf-8"),
+        "checks_log": excerpt,
         "environment": {"host": f"macOS {macos}", "toolchain": toolchain},
     }
 

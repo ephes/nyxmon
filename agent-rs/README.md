@@ -242,6 +242,10 @@ that `docker run --platform linux/amd64 ubuntu:22.04 uname -m` prints
   `nyxmon_agent_rust_sha256`), land in
   `agent-rs/target/local-release/nyxmon-agent-<version>/`.
 
+In `macos-native` mode the release notes include up to 16 KiB of the
+binary-check log and mark truncation explicitly. The workspace check commands
+remain listed and failed checks abort the build.
+
 Remote facts (is the commit on `main`, does the tag exist) are read from
 GitHub, and the tag is created there, through `gh api --hostname github.com`
 on `ephes/nyxmon`: nothing is pushed with git, so no git remote, URL rewrite
