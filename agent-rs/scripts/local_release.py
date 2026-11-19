@@ -984,7 +984,7 @@ def build_linux(
     native = docker.preflight()
     context = jobs / "context"
     context.mkdir()
-    git.archive(commit, config.source_paths, context / "source.tar")
+    (jobs / "source.tar").rename(context / "source.tar")
     packages = [
         *BASE_PACKAGES,
         *(p for p in config.apt_packages if p not in BASE_PACKAGES),
@@ -1063,13 +1063,7 @@ def build_macos(
     jobs: Path,
     log: Log,
 ) -> dict[str, Any]:
-    source = jobs / "source"
-    source.mkdir()
-    archive = jobs / "source.tar"
-    git.archive(commit, config.source_paths, archive)
-    with tarfile.open(archive) as tar:
-        tar.extractall(source, filter="data")
-    crate = source / CRATE.name
+    crate = jobs / "source" / CRATE.name
     rustup = shutil.which("rustup")
     if rustup is None:
         raise ReleaseError("rustup is not on PATH (README)")
@@ -1149,26 +1143,34 @@ def build(
     commit = git.head()
     if not github.on_main(commit):
         raise ReleaseError(f"HEAD {commit} is not on {MAIN} on GitHub; push it first")
-    version = version or crate_version(CRATE)
-    if not VERSION.fullmatch(version):
-        raise ReleaseError(f"crate version {version!r} is not semver")
-    tag = config.tag(version)
-    taken = github.tag(tag) is not None
-    if taken and not compare_released:
-        raise ReleaseError(
-            f"{config.binary} {version} is already released (tag {tag}); "
-            "bump the version, or pass --compare-released for a dry run"
-        )
-    if compare_released and not taken:
-        raise ReleaseError(
-            f"{config.binary} {version} is not released; drop --compare-released"
-        )
-    out = out_dir or default_out_dir(config, version)
-    if out.exists() and any(out.iterdir()):
-        raise ReleaseError(f"{out} is not empty; remove it first")
-    run_host_checks(config, git.repo, log)
     jobs = Path(tempfile.mkdtemp(prefix=f"release-{config.binary}-"))
     try:
+        source = jobs / "source"
+        source_archive = jobs / "source.tar"
+        git.archive(commit, config.source_paths, source_archive)
+        # Use the same snapshot for metadata and for the selected builder.
+        if version is None or config.mode == "macos-native":
+            source.mkdir()
+            with tarfile.open(source_archive) as tar:
+                tar.extractall(source, filter="data")
+        version = crate_version(source / CRATE.name) if version is None else version
+        if not VERSION.fullmatch(version):
+            raise ReleaseError(f"crate version {version!r} is not semver")
+        tag = config.tag(version)
+        taken = github.tag(tag) is not None
+        if taken and not compare_released:
+            raise ReleaseError(
+                f"{config.binary} {version} is already released (tag {tag}); "
+                "bump the version, or pass --compare-released for a dry run"
+            )
+        if compare_released and not taken:
+            raise ReleaseError(
+                f"{config.binary} {version} is not released; drop --compare-released"
+            )
+        out = out_dir or default_out_dir(config, version)
+        if out.exists() and any(out.iterdir()):
+            raise ReleaseError(f"{out} is not empty; remove it first")
+        run_host_checks(config, git.repo, log)
         if config.mode == "linux-container":
             result = build_linux(
                 config, git, docker or Docker(), commit, version, jobs, log

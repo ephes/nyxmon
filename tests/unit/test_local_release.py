@@ -575,6 +575,62 @@ def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) ->
     assert github.created == [("rs-v1.2.3-rc.1", True)]
 
 
+@pytest.mark.parametrize("compare_released", [False, True])
+def test_build_version_comes_from_the_pinned_source(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    which_rustup: None,
+    compare_released: bool,
+) -> None:
+    live_crate = tmp_path / CRATE.name
+    live_crate.mkdir()
+    monkeypatch.setattr(release, "CRATE", live_crate)
+    manifest = b"1.2.3"
+    live_manifest = live_crate / "Cargo.toml"
+    live_manifest.write_bytes(manifest)
+    archived: list[str] = []
+
+    class SwitchingGit(FakeGit):
+        def head(self) -> str:
+            live_manifest.write_text("9.9.9")
+            return COMMIT
+
+        def archive(self, commit: str, paths: Sequence[str], output: Path) -> None:
+            archived.append(commit)
+            super().archive(commit, paths, output)
+            with tarfile.open(output, "a") as tar:
+                info = tarfile.TarInfo(f"{CRATE.name}/Cargo.toml")
+                info.size = len(manifest)
+                tar.addfile(info, io.BytesIO(manifest))
+
+    monkeypatch.setattr(
+        release, "crate_version", lambda crate: (crate / "Cargo.toml").read_text()
+    )
+    # Exercise Linux and macOS, including comparison against the pinned tag.
+    config = release.parse_config(macos_data() if compare_released else linux_data())
+    github = FakeGitHub()
+    if compare_released:
+        github.tags[config.tag("1.2.3")] = COMMIT
+    out = release.build(
+        compare_released,
+        config=config,
+        git=SwitchingGit(tmp_path),
+        github=github,
+        docker=FakeDocker(),
+        host=FakeHost(),
+        run_host_checks=no_host_checks,
+    )
+    assert live_manifest.read_text() == "9.9.9"
+    assert archived == [COMMIT]
+    assert out.name == "example-1.2.3"
+    record = json.loads((out / "build.json").read_text())
+    assert record["commit"] == COMMIT
+    assert record["tag"] == "rs-v1.2.3"
+    assert record["compare_released"] is compare_released
+    assert (out / config.archive("1.2.3")).is_file()
+
+
 def test_pinned_toolchain_reads_rust_toolchain_toml(
     release: ModuleType, tmp_path: Path
 ) -> None:

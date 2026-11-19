@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a corrupt archive leaves the destination available for a retry.
 - Refuse malformed Rust release build records before reading checksums or
   changing tags and releases.
+- Resolve the Rust release version from the same pinned source archive the
+  builder uses.
 
 - Release the Rust agent locally with `agent-rs/scripts/local_release.py`
   (configuration `agent-rs/local-release.json`, `just rs-release` and

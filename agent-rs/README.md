@@ -211,7 +211,9 @@ that `docker run --platform linux/amd64 ubuntu:22.04 uname -m` prints
   `publish` refuses.
 - `build` refuses a worktree with changes or untracked files, a commit that
   is not on `main` on GitHub, a non-empty output directory and a version
-  whose tag `agent-rs-v<version>` already exists.
+  whose tag `agent-rs-v<version>` already exists. It reads the crate version
+  from the same pinned commit archive used for the build, including when
+  selecting the tag for `--compare-released`.
 - Image phase, the only one with network: two `ubuntu:22.04` images (base
   pinned by digest), one of the Docker engine's own platform and one
   `linux/amd64` (glibc 2.35), each with `ca-certificates` at least at the
