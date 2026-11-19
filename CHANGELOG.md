@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent retention
+
+- Report deleted results and expired sessions separately in cleanup logs,
+  including session-only cycles and batch-limit warnings.
+
 ### Rust agent 0.1.6
 
 - Release the Rust agent as `agent-rs-v0.1.6` (crate version 0.1.6), the first

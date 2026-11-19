@@ -86,14 +86,15 @@ impl<S: ResultsPruner> Cleaner<S> {
         })
     }
 
-    /// `run_cleanup_cycle`: delete expired results batch by batch until a
-    /// both tables come back short, at most `max_batches_per_cycle` batches.
+    /// Delete expired rows until both tables come back short, at most
+    /// `max_batches_per_cycle` batches. Returns the number of results deleted.
     ///
     /// # Errors
     /// The store error of a batch (the rows deleted before stay deleted).
     pub async fn run_cleanup_cycle(&self) -> Result<u64, StoreError> {
         let batch_size = usize::try_from(self.batch_size).expect("validated batch size");
-        let mut total_deleted: u64 = 0;
+        let mut total_results: u64 = 0;
+        let mut total_sessions: u64 = 0;
         let mut batches: i64 = 0;
         let mut drained = false;
         while batches < self.max_batches_per_cycle {
@@ -102,8 +103,10 @@ impl<S: ResultsPruner> Cleaner<S> {
                 .delete_old_results(self.retention_period, self.batch_size)
                 .await?;
             batches += 1;
-            let deleted = u64::try_from(batch.results_deleted).unwrap_or(u64::MAX);
-            total_deleted = total_deleted.saturating_add(deleted);
+            total_results = total_results
+                .saturating_add(u64::try_from(batch.results_deleted).unwrap_or(u64::MAX));
+            total_sessions = total_sessions
+                .saturating_add(u64::try_from(batch.sessions_deleted).unwrap_or(u64::MAX));
             if batch.results_deleted < batch_size && batch.sessions_deleted < batch_size {
                 drained = true;
                 break;
@@ -111,20 +114,21 @@ impl<S: ResultsPruner> Cleaner<S> {
             // Let the collector write results between batches.
             tokio::task::yield_now().await;
         }
-        if total_deleted > 0 {
+        if total_results > 0 || total_sessions > 0 {
             tracing::info!(
                 target: "nyxmon.adapters.cleaner",
-                "Cleaned up {total_deleted} old check results in {batches} batch(es)"
+                "Cleaned up {total_results} old check results and {total_sessions} expired sessions \
+                 in {batches} batch(es)"
             );
         }
         if !drained {
             tracing::warn!(
                 target: "nyxmon.adapters.cleaner",
-                "Result cleanup stopped after {batches} batches ({total_deleted} rows); the \
-                 remaining backlog is deleted next cycle"
+                "Result cleanup stopped after {batches} batches ({total_results} check results, \
+                 {total_sessions} expired sessions); the remaining backlog is deleted next cycle"
             );
         }
-        Ok(total_deleted)
+        Ok(total_results)
     }
 
     /// `_async_start`: a cycle at once, then one every `interval` seconds,

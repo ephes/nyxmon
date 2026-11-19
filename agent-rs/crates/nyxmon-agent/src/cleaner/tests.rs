@@ -11,15 +11,25 @@ use crate::testutil::TestDb;
 /// `Err` entry fails that batch.
 #[derive(Clone, Default)]
 struct FakeResults {
-    counts: Arc<Mutex<Vec<Result<usize, ()>>>>,
+    counts: Arc<Mutex<Vec<Result<CleanupBatch, ()>>>>,
     calls: Arc<Mutex<Vec<(i64, i64)>>>,
 }
 
 impl FakeResults {
     fn new(counts: impl IntoIterator<Item = usize>) -> Self {
-        let results = FakeResults::default();
-        *results.counts.lock().unwrap() = counts.into_iter().map(Ok).collect();
-        results
+        Self::with_batches(counts.into_iter().map(|results_deleted| {
+            Ok(CleanupBatch {
+                results_deleted,
+                sessions_deleted: 0,
+            })
+        }))
+    }
+
+    fn with_batches(batches: impl IntoIterator<Item = Result<CleanupBatch, ()>>) -> Self {
+        Self {
+            counts: Arc::new(Mutex::new(batches.into_iter().collect())),
+            ..Self::default()
+        }
     }
 
     fn calls(&self) -> Vec<(i64, i64)> {
@@ -40,10 +50,6 @@ impl ResultsPruner for FakeResults {
         }
         counts
             .remove(0)
-            .map(|results_deleted| CleanupBatch {
-                results_deleted,
-                sessions_deleted: 0,
-            })
             .map_err(|()| StoreError::Json("database is locked".to_owned()))
     }
 }
@@ -80,13 +86,47 @@ async fn the_cycle_cap_stops_a_runaway_loop() {
     assert_eq!(
         capture.messages(),
         [
-            "Cleaned up 150 old check results in 3 batch(es)",
-            "Result cleanup stopped after 3 batches (150 rows); the remaining backlog is \
-             deleted next cycle",
+            "Cleaned up 150 old check results and 0 expired sessions in 3 batch(es)",
+            "Result cleanup stopped after 3 batches (150 check results, 0 expired sessions); \
+             the remaining backlog is deleted next cycle",
         ]
     );
     assert_eq!(capture.lines()[1].level, "WARNING");
     assert_eq!(capture.lines()[1].logger, "nyxmon.adapters.cleaner");
+}
+
+#[tokio::test]
+async fn a_session_only_cycle_logs_progress_and_warns_only_at_the_cap() {
+    for (cap, last_batch, sessions_deleted) in [(2, 50, 100), (3, 7, 57)] {
+        let results = FakeResults::with_batches([50, last_batch].map(|sessions_deleted| {
+            Ok(CleanupBatch {
+                results_deleted: 0,
+                sessions_deleted,
+            })
+        }));
+        let cleaner = cleaner(&results, 86400, 50, cap);
+        let (capture, _guard) = logging::capture();
+
+        assert_eq!(cleaner.run_cleanup_cycle().await.unwrap(), 0);
+        assert_eq!(results.calls(), [(86400, 50); 2]);
+        let lines = capture.lines();
+        assert_eq!(lines.len(), if cap == 2 { 2 } else { 1 });
+        assert_eq!(lines[0].level, "INFO");
+        assert_eq!(
+            lines[0].message,
+            format!(
+                "Cleaned up 0 old check results and {sessions_deleted} expired sessions in 2 batch(es)"
+            )
+        );
+        if cap == 2 {
+            assert_eq!(lines[1].level, "WARNING");
+            assert_eq!(
+                lines[1].message,
+                "Result cleanup stopped after 2 batches (0 check results, 100 expired sessions); \
+                 the remaining backlog is deleted next cycle"
+            );
+        }
+    }
 }
 
 #[tokio::test]
@@ -100,7 +140,8 @@ async fn a_cycle_logs_the_total_deleted() {
         logging::LogLine {
             level: "INFO",
             logger: "nyxmon.adapters.cleaner".to_owned(),
-            message: "Cleaned up 14 old check results in 2 batch(es)".to_owned(),
+            message: "Cleaned up 14 old check results and 0 expired sessions in 2 batch(es)"
+                .to_owned(),
         }
     );
 }
@@ -122,8 +163,8 @@ fn non_positive_limits_are_rejected() {
 
 #[tokio::test(start_paused = true)]
 async fn the_loop_runs_a_cycle_at_once_and_survives_errors() {
-    let results = FakeResults::default();
-    *results.counts.lock().unwrap() = vec![Ok(5), Ok(5), Ok(2), Err(()), Ok(1)];
+    let results = FakeResults::new([5, 5, 2, 0, 1]);
+    results.counts.lock().unwrap()[3] = Err(());
     let cleaner = Cleaner::new(results.clone(), 3600, 86400, 5, 100).unwrap();
     let (capture, _guard) = logging::capture();
     let run = cleaner.run();
@@ -146,9 +187,9 @@ async fn the_loop_runs_a_cycle_at_once_and_survives_errors() {
     assert_eq!(
         capture.messages(),
         [
-            "Cleaned up 12 old check results in 3 batch(es)",
+            "Cleaned up 12 old check results and 0 expired sessions in 3 batch(es)",
             "Error during result cleanup: database is locked",
-            "Cleaned up 1 old check results in 1 batch(es)",
+            "Cleaned up 1 old check results and 0 expired sessions in 1 batch(es)",
         ]
     );
 }

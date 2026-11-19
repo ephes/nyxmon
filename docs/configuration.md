@@ -26,10 +26,11 @@ own short transaction, and keeps going until both tables return a short batch, s
 whole expired backlog is removed in one cycle. It yields between batches so the
 collector can keep writing. One cycle runs at most 100 batches (100,000 rows
 with the default batch size); a larger backlog continues on the next cycle and
-the cleaner logs a warning. Each cycle logs the total results it deleted. Each result batch also removes up
-to `--batch-size` expired Django sessions from the shared SQLite database, when
-its `django_session` table exists. A full session batch keeps the cycle running
-even when no results expire; sessions do not count towards reported result totals.
+the cleaner logs a warning. Each batch also removes up to `--batch-size` expired
+Django sessions from the shared SQLite database when its `django_session` table
+exists. A full session batch keeps the cycle running even when no results expire.
+When either table had deletions, the cleaner logs the separate result and session
+totals. The batch-limit warning includes both totals as well.
 `--batch-size` and direct Rust cleaner/store calls accept only 1..=1000 rows.
 Both backlogs share the 100-batch cycle budget; any remainder continues next cycle. With `--disable-cleaner`, schedule Django's `clearsessions` separately.
 
