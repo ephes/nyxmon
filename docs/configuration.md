@@ -1361,7 +1361,10 @@ admitted configurations the serialized failure evidence and summary stay below
 ### Cleaning legacy check definitions
 
 `uv run src/django/manage.py find_legacy_checks` lists unsupported checks;
-`--disable` disables them and `--delete` requires interactive confirmation.
+`--disable` disables them and `--delete` requires interactive confirmation when
+the inventory contains at least one check. If the last candidate is repaired or
+removed before it can be inventoried, the command reports no legacy checks and
+exits without prompting.
 Cleanup rechecks each inventoried definition and supported-type eligibility
 inside its write transaction. Edited, repaired or deleted entries are skipped;
 new entries require another invocation. Runtime-only agent changes do not

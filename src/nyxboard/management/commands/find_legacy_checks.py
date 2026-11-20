@@ -65,11 +65,7 @@ class Command(BaseCommand):
         candidates = HealthCheck.objects.exclude(check_type__in=SUPPORTED_CHECK_TYPES)
         horizon = candidates.order_by("-pk").values_list("pk", flat=True).first()
         if horizon is None:
-            self.stdout.write(
-                self.style.SUCCESS(
-                    "No legacy check types found. All checks are using supported types."
-                )
-            )
+            self._report_no_candidates()
             return
         # Anonymous disk-backed receipt stores only IDs and opaque revisions;
         # no full fleet or credentials remain in application memory.
@@ -96,6 +92,9 @@ class Command(BaseCommand):
                         f"Type: {check.check_type}, Service: {check.service.name}, Status: {status}"
                     )
                 cursor = batch[-1].pk
+            if not count:
+                self._report_no_candidates()
+                return
             self.stdout.write(
                 self.style.WARNING(
                     f"Found {count} check(s) with legacy/unsupported types."
@@ -151,6 +150,13 @@ class Command(BaseCommand):
                     f"{already} already disabled."
                 )
             )
+
+    def _report_no_candidates(self):
+        self.stdout.write(
+            self.style.SUCCESS(
+                "No legacy check types found. All checks are using supported types."
+            )
+        )
 
     def _mutate_batch(self, revisions, delete):
         changed = already = 0

@@ -14,6 +14,33 @@ def legacy(service, **kwargs):
     )
 
 
+def test_delete_does_not_prompt_when_last_candidate_becomes_supported(monkeypatch):
+    from nyxboard.management.commands import find_legacy_checks
+
+    service = Service.objects.create(name="synthetic")
+    check = legacy(service)
+    temporary_file = find_legacy_checks.tempfile.TemporaryFile
+
+    def open_receipt(*args, **kwargs):
+        HealthCheck.objects.filter(pk=check.pk).update(check_type="http")
+        return temporary_file(*args, **kwargs)
+
+    def confirm(_):
+        pytest.fail("Delete requested confirmation for an empty receipt")
+
+    monkeypatch.setattr(find_legacy_checks.tempfile, "TemporaryFile", open_receipt)
+    monkeypatch.setattr("builtins.input", confirm)
+    output = StringIO()
+    call_command("find_legacy_checks", delete=True, stdout=output)
+
+    assert output.getvalue() == (
+        "No legacy check types found. All checks are using supported types.\n"
+    )
+    check.refresh_from_db()
+    assert check.check_type == "http"
+    assert not check.disabled
+
+
 @pytest.mark.parametrize("action", ["delete", "disable"])
 @pytest.mark.parametrize(
     "change", [{"check_type": "http"}, {"data": {"new": 1}}, {"url": "changed"}]
