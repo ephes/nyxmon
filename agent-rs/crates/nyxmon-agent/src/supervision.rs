@@ -3,6 +3,7 @@ use std::future::{Future, pending, ready};
 use std::pin::pin;
 use std::time::Duration;
 use tokio::task::{JoinError, JoinHandle};
+use tokio::time::{Instant, timeout_at};
 
 async fn optional_join(task: &mut Option<JoinHandle<()>>) -> Result<(), JoinError> {
     match task {
@@ -21,6 +22,24 @@ fn category(result: &Result<(), JoinError>) -> &'static str {
 
 fn report(task: &str, category: &str) {
     tracing::error!(target: "nyxmon.entrypoints.cli", "monitoring task {task} unexpectedly {category}");
+}
+
+async fn auxiliary_failed(name: &str, task: Option<JoinHandle<()>>, deadline: Instant) -> bool {
+    let Some(task) = task else {
+        return false;
+    };
+    match timeout_at(deadline, task).await {
+        Ok(Ok(())) => false,
+        Ok(Err(err)) if err.is_cancelled() => false,
+        Ok(result) => {
+            report(name, category(&result));
+            true
+        }
+        Err(_) => {
+            report(name, "did not stop");
+            true
+        }
+    }
 }
 
 type MonitoringTasks = (
@@ -67,24 +86,16 @@ pub(crate) async fn supervise(
         },
     }
     request_stop();
-    // Once shutdown starts, auxiliary normal completion and abort are intentional.
-    for (name, slot) in [("observer", &mut observer), ("cleaner", &mut cleaner)] {
-        if let Some(task) = slot.take() {
-            task.abort();
-            match tokio::time::timeout(Duration::from_secs(1), task).await {
-                Ok(Ok(())) => {}
-                Ok(Err(err)) if err.is_cancelled() => {}
-                Ok(result) => {
-                    report(name, category(&result));
-                    failed = true;
-                }
-                Err(_) => {
-                    report(name, "did not stop");
-                    failed = true;
-                }
-            }
-        }
+    // Request cancellation of both tasks before waiting on either.
+    let auxiliary_deadline = Instant::now() + Duration::from_secs(1);
+    for task in [&observer, &cleaner].into_iter().flatten() {
+        task.abort();
     }
+    let (observer_failed, cleaner_failed) = tokio::join!(
+        auxiliary_failed("observer", observer, auxiliary_deadline),
+        auxiliary_failed("cleaner", cleaner, auxiliary_deadline),
+    );
+    failed |= observer_failed || cleaner_failed;
     if !collector_done {
         match tokio::time::timeout(Duration::from_secs(60), &mut collector).await {
             Ok(Ok(())) => {}
@@ -323,6 +334,104 @@ mod tests {
             )
             .await
         );
+    }
+
+    // Keep simulated non-cooperative work off the test runtime so its
+    // paused clock can advance independently.
+    fn stalled_task(
+        runtime: &tokio::runtime::Runtime,
+    ) -> (JoinHandle<()>, std::sync::mpsc::Sender<()>) {
+        let (started, wait_for_start) = std::sync::mpsc::channel();
+        let (release, wait_for_release) = std::sync::mpsc::channel();
+        let task = runtime.spawn_blocking(move || {
+            started.send(()).unwrap();
+            let _ = wait_for_release.recv();
+        });
+        wait_for_start.recv().unwrap();
+        (task, release)
+    }
+
+    #[test]
+    fn cleaner_is_aborted_while_observer_is_still_draining() {
+        let blocking = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        let (observer, _release_observer) = stalled_task(&blocking);
+        tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .start_paused(true)
+            .build()
+            .unwrap()
+            .block_on(async {
+                let (started, wait_for_start) = tokio::sync::oneshot::channel();
+                let (held_by_cleaner, cleaner_dropped) = tokio::sync::oneshot::channel::<()>();
+                let start = tokio::time::Instant::now();
+                let stop = Arc::new(Flag::new());
+                let collector_stop = stop.clone();
+                let supervisor = supervise(
+                    || {
+                        let cleaner = tokio::spawn(async move {
+                            started.send(()).unwrap();
+                            pending::<()>().await;
+                            drop(held_by_cleaner);
+                        });
+                        (
+                            tokio::spawn(async move { collector_stop.wait().await }),
+                            Some(observer),
+                            Some(cleaner),
+                        )
+                    },
+                    async { wait_for_start.await.unwrap() },
+                    || stop.set(),
+                );
+                tokio::pin!(supervisor);
+                tokio::select! {
+                    biased;
+                    result = cleaner_dropped => assert!(result.is_err()),
+                    _ = &mut supervisor => panic!("cleaner was still live when shutdown returned"),
+                }
+                assert_eq!(
+                    start.elapsed(),
+                    Duration::ZERO,
+                    "cleaner abort waited for observer"
+                );
+                assert!(supervisor.await);
+            });
+    }
+
+    #[test]
+    fn stalled_auxiliaries_share_one_deadline_and_report_both_tasks() {
+        let blocking = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        let (observer, _release_observer) = stalled_task(&blocking);
+        let (cleaner, _release_cleaner) = stalled_task(&blocking);
+        tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .start_paused(true)
+            .build()
+            .unwrap()
+            .block_on(async {
+                let (capture, _guard) = crate::logging::capture();
+                let start = tokio::time::Instant::now();
+                let stop = Arc::new(Flag::new());
+                let collector_stop = stop.clone();
+                assert!(
+                    supervise(
+                        || (
+                            tokio::spawn(async move { collector_stop.wait().await }),
+                            Some(observer),
+                            Some(cleaner),
+                        ),
+                        tokio::task::yield_now(),
+                        || stop.set(),
+                    )
+                    .await
+                );
+                assert_eq!(start.elapsed(), Duration::from_secs(1));
+                assert!(capture.contains("monitoring task observer unexpectedly did not stop"));
+                assert!(capture.contains("monitoring task cleaner unexpectedly did not stop"));
+            });
     }
 
     #[tokio::test(start_paused = true)]

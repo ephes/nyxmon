@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Honor a buffered SIGTERM or SIGINT before starting monitoring tasks, so
   shutdown at startup does not claim checks.
+- Cancel the observer and results cleaner together on shutdown and give them
+  one shared second to stop, with separate failure diagnostics.
 
 ### Rust agent result handling
 

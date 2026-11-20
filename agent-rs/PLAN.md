@@ -1552,7 +1552,8 @@ and cancellation tests and barrier-driven registration/check interleavings pin
 this contract without signal or platform dependencies.
 
 - SIGTERM/SIGINT → log `Received signal <n>, shutting down...` → request
-  stop (no new claims).
+  stop (no new claims). The supervisor aborts the enabled observer and cleaner
+  before awaiting either, using one shared one-second deadline for their joins.
 - If at that moment an active batch exists or an abandoned batch is still
   running → wait up to `NYXMON_SHUTDOWN_GRACE_SECONDS` for it; otherwise
   cancel immediately. A batch finishing within the grace is persisted normally
