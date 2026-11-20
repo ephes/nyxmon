@@ -772,6 +772,37 @@ fn run_check_prints_one_result_without_writing_the_database() {
 }
 
 #[test]
+fn run_check_reports_a_closed_stdout_pipe() {
+    let db = migrated_db();
+    add_http_check(&db.path, 1, "https://example.test", "{}");
+    Connection::open(&db.path)
+        .unwrap()
+        .execute_batch("UPDATE health_check SET check_type = 'legacy' WHERE id = 1")
+        .unwrap();
+    let (reader, writer) = std::io::pipe().unwrap();
+    drop(reader);
+
+    let output = agent(&[
+        "run-check",
+        "--db",
+        db.path.to_str().unwrap(),
+        "--check-id",
+        "1",
+    ])
+    .stdout(Stdio::from(writer))
+    .output()
+    .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(1), "{stderr}");
+    assert!(
+        stderr.contains("cannot write the result to stdout"),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("panic"), "{stderr}");
+}
+
+#[test]
 fn run_check_leaves_an_untouched_database_unmodified() {
     let db = migrated_db();
     add_http_check(&db.path, 1, &fake_server(true), "{}");

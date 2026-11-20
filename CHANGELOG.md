@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Validate the database schema and load the selected check from one read-only
   SQLite snapshot.
+- Report stdout write failures with exit status 1 after the check runs.
 
 ### Rust agent supervision
 

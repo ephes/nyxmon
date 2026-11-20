@@ -7,6 +7,7 @@
 //! of PLAN.md 1.6), and the database is never written. Disabled checks run
 //! too, because the shadow copy disables the mail checks that phase C runs.
 
+use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -130,16 +131,19 @@ pub fn run_check(args: &RunCheckArgs) -> ExitCode {
     let executors: Arc<dyn Executors> = Arc::new(Registry::new());
     let result = runtime.block_on(execute(executors, check.clone()));
     runtime.shutdown_background();
-    match result_document(&check, &result).to_json_string() {
-        Ok(text) => {
-            println!("{text}");
-            ExitCode::SUCCESS
-        }
+    let text = match result_document(&check, &result).to_json_string() {
+        Ok(text) => text,
         Err(err) => {
             run_check_error!("cannot serialise the result: {err:?}");
-            ExitCode::FAILURE
+            return ExitCode::FAILURE;
         }
+    };
+    let mut stdout = io::stdout().lock();
+    if let Err(err) = writeln!(stdout, "{text}").and_then(|()| stdout.flush()) {
+        run_check_error!("cannot write the result to stdout: {err}");
+        return ExitCode::FAILURE;
     }
+    ExitCode::SUCCESS
 }
 
 #[cfg(test)]

@@ -155,6 +155,8 @@ schema, a held agent lock or a fatal database error, 2 for usage errors.
 
 `run-check` verifies the schema and reads the selected check from the same
 read-only SQLite snapshot. It closes the snapshot before executing the check.
+If writing the JSON line fails, for example because stdout is a closed pipe,
+it logs the error and exits with status 1.
 
 ### One agent per database
 

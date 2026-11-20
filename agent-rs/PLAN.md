@@ -2231,8 +2231,10 @@ panics give the runner results of 1.6), also when the check is disabled.
 IMAP check's data before it runs. stdout is one line,
 `{"check_id": N, "check_type": "...", "status": "...", "data": {...}}`
 (`json.dumps` format, data keys in result order); log lines go to stderr.
-Exit 0 when the check ran (whatever its status), 1 for a missing database,
-an old schema or an unknown check id, 2 for usage errors.
+Exit 0 when the check ran (whatever its status) and its result was written.
+Exit 1 for a missing database, an old schema, an unknown check id or a result
+output failure. Stdout write failures are logged to stderr. Exit 2 for usage
+errors.
 
 Implementation of the harness (S12, `agent-rs/parity/run_parity.py` with
 the fake servers in `parity/fakes.py`; CI job `parity`): 18 checks (17

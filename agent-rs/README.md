@@ -165,8 +165,9 @@ read-only SQLite snapshot. It releases the snapshot before executing the check
 (no lock, no result row, no notification; disabled checks run too) and prints one
 JSON line, `{"check_id": N, "check_type": "...", "status": "...", "data":
 {...}}`, on stdout; logs go to stderr. `--imap-no-delete` keeps the matched
-messages of an IMAP check in the mailbox. Exit status 0 when the check ran,
-1 for a missing database, an old schema or an unknown id (PLAN.md 7.4).
+messages of an IMAP check in the mailbox. Exit status 0 when the check ran and
+its result was written, or 1 for a missing database, an old schema, an unknown
+id or an output failure such as a closed stdout pipe (PLAN.md 7.4).
 
 `--shadow` replaces only the notifier: checks run, results and notification
 state are written and the cleaner deletes as in production. Use it only on a
