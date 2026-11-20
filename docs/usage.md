@@ -36,6 +36,13 @@ per POST, so two concurrent toggles cancel each other. Disabling resets the next
 scheduled time; enabling preserves it. Both actions preserve agent status,
 claim timestamps and configuration, then reload the check for the response.
 
+### Editing service definitions
+
+In deployments with Django database routers, service renames compare the loaded
+name and save the edit on the write database selected for that service. If the
+name has changed or the service was deleted there, reload and reconcile your
+edits before submitting again.
+
 ### Creating Development Data
 
 For development and testing, generate sample services and checks:

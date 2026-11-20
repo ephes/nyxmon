@@ -8,7 +8,7 @@ from django.db import connection, connections
 from django.test.utils import CaptureQueriesContext
 
 from nyxboard import deletion
-from nyxboard.forms import DefinitionConflict, HttpHealthCheckForm
+from nyxboard.forms import DefinitionConflict, HttpHealthCheckForm, ServiceForm
 from nyxboard.models import HealthCheck, Result, Service
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -66,6 +66,30 @@ def confirmed_definition(db, kind):
     )
     instance = model.objects.using(db.replica).get(pk=pk)
     return model, pk, deletion.deletion_revision(instance)
+
+
+@pytest.mark.parametrize("stale", [False, True])
+def test_service_edit_uses_instance_write_route(routed_definitions, settings, stale):
+    db = routed_definitions
+
+    class ServiceEditRouter(DefinitionRouter):
+        def db_for_write(self, model, **hints):
+            return db.writer if hints.get("instance") is not None else db.replica
+
+    settings.DATABASE_ROUTERS = [ServiceEditRouter()]
+    service = Service.objects.using(db.replica).get(pk=db.service.pk)
+    form = ServiceForm({"name": "Edited"}, instance=service)
+    assert form.is_valid(), form.errors
+    writer_row = Service.objects.using(db.writer).filter(pk=service.pk)
+    if stale:
+        writer_row.update(name="Concurrent")
+        with pytest.raises(DefinitionConflict):
+            form.save()
+    else:
+        form.save()
+    assert writer_row.get().name == ("Concurrent" if stale else "Edited")
+    for alias in ("default", db.replica):
+        assert Service.objects.using(alias).get(pk=service.pk).name == db.service.name
 
 
 @pytest.mark.parametrize("kind", ["service", "healthcheck"])

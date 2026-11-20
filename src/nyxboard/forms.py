@@ -106,13 +106,15 @@ class ServiceForm(forms.ModelForm):
         if commit:
             if instance._state.adding:
                 instance.save()
-            elif (
-                Service.objects.filter(pk=instance.pk, name=self._original_name).update(
-                    name=instance.name
+            else:
+                using = router.db_for_write(Service, instance=instance)
+                changed = (
+                    Service.objects.using(using)
+                    .filter(pk=instance.pk, name=self._original_name)
+                    .update(name=instance.name)
                 )
-                != 1
-            ):
-                raise DefinitionConflict
+                if changed != 1:
+                    raise DefinitionConflict
         return instance
 
     class Meta:

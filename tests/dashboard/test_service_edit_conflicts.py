@@ -12,14 +12,22 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 
 @pytest.fixture
-def edit_db(tmp_path, monkeypatch, django_db_blocker):
+def edit_db(tmp_path, settings, django_db_blocker):
     service = Service.objects.create(name="Before")
     path = tmp_path / "edit.sqlite3"
     with sqlite3.connect(path) as copied:
         connection.connection.backup(copied)
     alias = "service_edit"
     connections.databases[alias] = {**connection.settings_dict, "NAME": str(path)}
-    monkeypatch.setattr(Service, "objects", Service.objects.db_manager(alias))
+
+    class ServiceRouter:
+        def db_for_read(self, model, **hints):
+            if model is Service:
+                return alias
+
+        db_for_write = db_for_read
+
+    settings.DATABASE_ROUTERS = [ServiceRouter()]
     with django_db_blocker.unblock():
         yield service, path
     connections[alias].close()
