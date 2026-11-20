@@ -25,8 +25,11 @@ from django.db import DatabaseError, connection, transaction
 from django.db.models import F
 
 from nyxboard.forms import DEFINITION_FIELDS, check_definition_revision
-
 from nyxboard.models import HealthCheck
+from nyxmon.adapters.notification import (
+    UNTRUSTED_VALUE_MAX_CHARS,
+    sanitize_untrusted_text,
+)
 from nyxmon.domain import CheckType
 
 
@@ -87,9 +90,18 @@ class Command(BaseCommand):
                     count += 1
                     enabled += not check.disabled
                     status = "DISABLED" if check.disabled else "ENABLED"
+                    name = sanitize_untrusted_text(
+                        check.name, UNTRUSTED_VALUE_MAX_CHARS
+                    )
+                    check_type = sanitize_untrusted_text(
+                        check.check_type, UNTRUSTED_VALUE_MAX_CHARS
+                    )
+                    service_name = sanitize_untrusted_text(
+                        check.service.name, UNTRUSTED_VALUE_MAX_CHARS
+                    )
                     self.stdout.write(
-                        f"  - ID: {check.id}, Name: {check.name}, "
-                        f"Type: {check.check_type}, Service: {check.service.name}, Status: {status}"
+                        f"  - ID: {check.id}, Name: {name}, Type: {check_type}, "
+                        f"Service: {service_name}, Status: {status}"
                     )
                 cursor = batch[-1].pk
             if not count:

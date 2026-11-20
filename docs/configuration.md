@@ -1377,6 +1377,11 @@ credentials and whole model inventories are not spooled. No writes happen before
 inventory completes and delete confirmation succeeds. Disable remains
 noninteractive.
 
+Each inventory row appears on one line. Check names, check types and service
+names display `?` in place of control characters, Unicode formatting characters
+and line or paragraph separators. Longer labels show the first 200 characters
+followed by a truncation marker. Definition rechecks use the stored values.
+
 Mutation uses batches of at most 100 IDs (smaller for backend parameter limits),
 with an independent transaction and definition recheck per batch. Progress reports
 completed mutations, changed/deleted skips, already-disabled rows and remaining

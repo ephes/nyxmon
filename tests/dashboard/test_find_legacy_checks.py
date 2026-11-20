@@ -41,6 +41,22 @@ def test_delete_does_not_prompt_when_last_candidate_becomes_supported(monkeypatc
     assert not check.disabled
 
 
+def test_inventory_renders_persisted_labels_on_one_bounded_line():
+    service = Service.objects.create(name="S\u2028" + "x" * 205)
+    check = HealthCheck.objects.create(
+        service=service, name="check\nfake row\x1b", check_type="custom\r\u202e"
+    )
+    output = StringIO()
+    call_command("find_legacy_checks", stdout=output)
+
+    lines = output.getvalue().splitlines()
+    assert lines[0] == (
+        f"  - ID: {check.pk}, Name: check?fake row?, Type: custom??, "
+        f"Service: S?{'x' * 198}...[truncated 7 chars], Status: ENABLED"
+    )
+    assert lines[1] == "Found 1 check(s) with legacy/unsupported types."
+
+
 @pytest.mark.parametrize("action", ["delete", "disable"])
 @pytest.mark.parametrize(
     "change", [{"check_type": "http"}, {"data": {"new": 1}}, {"url": "changed"}]

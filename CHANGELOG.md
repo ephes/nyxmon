@@ -190,6 +190,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Legacy check cleanup
 
 - Skip delete confirmation when no legacy checks survive inventory.
+- Keep each legacy inventory row on one line by sanitizing and bounding its
+  check name, check type and service name.
 - Recheck inventoried definitions under writer ownership before disabling or
   deleting legacy checks; skip concurrent repairs/edits and new entries. Count
   deleted checks independently of cascaded results.
