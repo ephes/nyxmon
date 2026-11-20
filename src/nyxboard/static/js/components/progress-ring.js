@@ -1,3 +1,5 @@
+import { parseCheckTimestamp } from './check-timing.js';
+
 /**
  * Custom element for displaying a progress ring with percentage.
  * Used for visualizing the time until the next health check.
@@ -172,24 +174,7 @@ class ProgressRing extends HTMLElement {
       console.log(`ProgressRing attribute changed: ${name} = ${newValue}`);
     }
     
-    if (name === 'mode' && newValue === 'due') {
-      // Reset the fired event flag when mode is explicitly set to due
-      this._hasFiredDueEvent = true;
-      this.progressRing.classList.add('due');
-      this.updateProgressRing(100);
-    } else if (name === 'mode' && newValue !== 'due') {
-      // When mode changes from due to normal, remove due class
-      this.progressRing.classList.remove('due');
-      this._hasFiredDueEvent = false;
-      this.updateProgress();
-    } else if (name === 'next-check' || name === 'check-interval') {
-      // When timing attributes change, reset the fired event flag
-      this._hasFiredDueEvent = false;
-      this.updateProgress();
-    } else {
-      // For other attribute changes, update the progress ring
-      this.updateProgress();
-    }
+    this.updateProgress();
   }
   
   startUpdates() {
@@ -209,25 +194,16 @@ class ProgressRing extends HTMLElement {
   }
   
   updateProgress() {
-    const nextCheck = this.getAttribute('next-check');
-    const checkInterval = this.getAttribute('check-interval');
-    const mode = this.getAttribute('mode');
-    
-    if (!nextCheck || !checkInterval) {
+    const progress = this.readProgress();
+    const dueMode = this.getAttribute('mode') === 'due';
+    this.progressRing.classList.toggle('due', dueMode && progress !== null);
+
+    if (progress === null || dueMode) {
       this.cancelDueEvent();
-      this.progressRing.classList.remove('due');
-      this.updateProgressRing(0);
+      this.updateProgressRing(progress === null ? 0 : 100);
       return;
     }
-    
-    // If in "due" mode, always show 100%
-    if (mode === 'due') {
-      this._hasFiredDueEvent = true; // Prevent firing while in due mode
-      this.updateProgressRing(100);
-      return;
-    }
-    
-    const progress = this.calculateProgress(nextCheck, checkInterval);
+
     this.updateProgressRing(progress);
     
     // One notification for the current connected schedule. Timing/mode edits
@@ -236,7 +212,7 @@ class ProgressRing extends HTMLElement {
       this._dueTimer = setTimeout(() => {
         this._dueTimer = null;
         if (!this.isConnected || this.getAttribute('mode') === 'due' ||
-            this.calculateProgress(this.getAttribute('next-check'), this.getAttribute('check-interval')) < 100) return;
+            this.readProgress() !== 100) return;
         this._hasFiredDueEvent = true;
         this.dispatchEvent(new CustomEvent('check-due', { bubbles: true, composed: true }));
       }, 100);
@@ -249,26 +225,25 @@ class ProgressRing extends HTMLElement {
     this._hasFiredDueEvent = false;
   }
 
-  calculateProgress(nextCheckTimestamp, checkInterval) {
-    const now = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
-    const nextCheck = parseInt(nextCheckTimestamp);
-    const interval = parseInt(checkInterval);
-    
-    // If next check time is in the past, return 100% progress
-    if (nextCheck <= now) {
-      return 100;
-    }
-    
-    // Calculate when the last check should have been
-    const lastCheck = nextCheck - interval;
-    
-    // Calculate progress
-    const elapsed = now - lastCheck;
-    const progress = Math.min(100, Math.max(0, (elapsed / interval) * 100));
-    
-    return progress;
+  readProgress() {
+    const nextCheck = parseCheckTimestamp(this.getAttribute('next-check'));
+    const intervalAttribute = this.getAttribute('check-interval');
+    if (nextCheck === null || !/^\d+$/.test(intervalAttribute)) return null;
+
+    const interval = Number(intervalAttribute);
+    if (!Number.isSafeInteger(interval) || interval <= 0) return null;
+
+    return this.calculateProgress(nextCheck, interval);
   }
-  
+
+  calculateProgress(nextCheckTimestamp, checkInterval) {
+    const remaining = nextCheckTimestamp - Math.floor(Date.now() / 1000);
+    if (remaining <= 0) return 100;
+
+    const elapsed = checkInterval - remaining;
+    return Math.max(0, (elapsed / checkInterval) * 100);
+  }
+
   updateProgressRing(progress) {
     // Update the ring visualization
     const circumference = 2 * Math.PI * 26; // r = 26

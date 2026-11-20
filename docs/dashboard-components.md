@@ -43,10 +43,12 @@ Successfully replaced nodes retire their request state before disconnect.
 Late results from prior requests cannot replace the current check.
 
 Removing card timing, mode or health attributes removes the corresponding child
-attributes too. Missing timing clears the countdown and ring and cancels obsolete
-due callbacks; re-adding timing starts the current schedule. Health removal still
-notifies the containing service.
+attributes too. Re-adding valid timing starts the current schedule. Health
+removal still notifies the containing service.
 
+Progress rings require a valid timestamp and a positive interval in whole
+decimal seconds within the JavaScript safe integer range. Missing or invalid
+timing resets the ring to 0% and cancels pending due events.
 Progress rings cancel delayed due events on timing/mode edits and disconnect,
 and recheck attachment and the current schedule before dispatch. Each schedule
 notifies once; reconnect of an overdue normal ring starts a fresh schedule.

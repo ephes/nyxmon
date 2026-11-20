@@ -54,6 +54,50 @@ describe('production progress ring arithmetic', () => {
 });
 
 describe('production due callback lifetime', () => {
+  it.each([
+    ['check-interval', 'bad'],
+    ['check-interval', '60seconds'],
+    ['check-interval', '0'],
+    ['check-interval', '-60'],
+    ['check-interval', '1.5'],
+    ['check-interval', 'Infinity'],
+    ['check-interval', '9007199254740992'],
+    ['next-check', '1800000000seconds'],
+    ['next-check', 'bad'],
+    ['next-check', '-8640000000001'],
+  ])('resets progress and withholds due events for %s=%j', (attribute, invalid) => {
+    const element = ring(now);
+    const due = vi.fn();
+    element.addEventListener('check-due', due);
+    expect(element.progressText.textContent).toBe('100%');
+
+    element.setAttribute(attribute, invalid);
+    vi.advanceTimersByTime(100);
+    expect(due).not.toHaveBeenCalled();
+    expect(element.progressText.textContent).toBe('0%');
+    expect(Number(element.progressRing.style.strokeDashoffset)).toBeCloseTo(2 * Math.PI * 26);
+
+    element.setAttribute(attribute, attribute === 'next-check' ? now + 1 : 60);
+    vi.advanceTimersByTime(2100);
+    expect(element.progressText.textContent).toBe('100%');
+    expect(due).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the due display once an explicitly due ring has valid timing', () => {
+    const element = ring(now, 0);
+    const due = vi.fn();
+    element.addEventListener('check-due', due);
+    element.setAttribute('mode', 'due');
+    expect(element.progressText.textContent).toBe('0%');
+    expect(element.progressRing.classList.contains('due')).toBe(false);
+
+    element.setAttribute('check-interval', 60);
+    expect(element.progressText.textContent).toBe('100%');
+    expect(element.progressRing.classList.contains('due')).toBe(true);
+    vi.advanceTimersByTime(1000);
+    expect(due).not.toHaveBeenCalled();
+  });
+
   it('cancels a due callback when rescheduled into the future', () => {
     const element = ring(now);
     const due = vi.fn();
