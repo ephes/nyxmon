@@ -1,6 +1,7 @@
 """Synthetic interleavings through the real edit forms and view."""
 
 import pytest
+from django.db import connection
 from django.urls import reverse
 from nyxboard.forms import GenericHealthCheckForm
 from nyxboard.models import HealthCheck
@@ -111,19 +112,31 @@ def test_missing_or_invalid_revision_is_not_saved(client, check, revision):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("operation", ["edit", "delete"])
+@pytest.mark.parametrize("operation", ["edit", "delete", "malformed_json"])
 def test_change_after_validation_is_conflict(client, check, monkeypatch, operation):
     from nyxboard.forms import HttpHealthCheckForm
 
     data = payload(client.get(edit_url(check)).context["form"])
     original = HttpHealthCheckForm.save
     injected = []
+    malformed_data = '{"truncated":'
 
     def save(form, *args, **kwargs):
         injected.append(True)
         row = HealthCheck.objects.filter(pk=check.pk)
         if operation == "delete":
             row.delete()
+        elif operation == "malformed_json":
+            # Simulate a damaged stored definition after the form was validated.
+            with connection.cursor() as cursor:
+                cursor.execute("PRAGMA ignore_check_constraints = ON")
+                try:
+                    cursor.execute(
+                        "UPDATE health_check SET data = %s WHERE id = %s",
+                        [malformed_data, check.pk],
+                    )
+                finally:
+                    cursor.execute("PRAGMA ignore_check_constraints = OFF")
         else:
             row.update(data={"owner": "new"})
         return original(form, *args, **kwargs)
@@ -136,6 +149,12 @@ def test_change_after_validation_is_conflict(client, check, monkeypatch, operati
     assert "reload" in response.content.decode().lower()
     if operation == "delete":
         assert not HealthCheck.objects.filter(pk=check.pk).exists()
+    elif operation == "malformed_json":
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT name, data FROM health_check WHERE id = %s", [check.pk]
+            )
+            assert cursor.fetchone() == ("Original", malformed_data)
     else:
         check.refresh_from_db()
         assert check.data == {"owner": "new"}
@@ -204,7 +223,6 @@ def test_definition_fingerprint_covers_probe_and_enablement(client, check, chang
 @pytest.mark.django_db
 def test_compact_json_is_editable_and_revision_stays_hidden(client, check):
     from bs4 import BeautifulSoup
-    from django.db import connection
 
     check.check_type = "custom"
     check.save()

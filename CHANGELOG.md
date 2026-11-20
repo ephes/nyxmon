@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clear the normal check timer labels when its next-check timestamp is invalid.
 - Reset progress rings and suppress due events when their timing is invalid.
 - Compare and save service renames on the write database selected for the service.
+- Keep submitted health check edits on screen with a reload message when the
+  stored configuration cannot be decoded during save.
 
 ### Rust agent run-check
 

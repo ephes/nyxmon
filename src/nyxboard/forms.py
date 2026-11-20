@@ -167,9 +167,15 @@ def current_definition_rows(instance, definition, *, using=None):
         .annotate(definition_data_text=Cast("data", TextField()))
     )
     stored_data = candidates.values_list("definition_data_text", flat=True).first()
-    if stored_data is None or json.dumps(
-        json.loads(stored_data), sort_keys=True
-    ) != json.dumps(definition["data"], sort_keys=True):
+    if stored_data is None:
+        raise DefinitionConflict(EDIT_CONFLICT)
+    try:
+        decoded_data = json.loads(stored_data)
+    except (ValueError, RecursionError):
+        raise DefinitionConflict(EDIT_CONFLICT) from None
+    if json.dumps(decoded_data, sort_keys=True) != json.dumps(
+        definition["data"], sort_keys=True
+    ):
         raise DefinitionConflict(EDIT_CONFLICT)
     return candidates.filter(definition_data_text=stored_data)
 
