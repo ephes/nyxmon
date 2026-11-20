@@ -1,3 +1,5 @@
+import { parseCheckTimestamp } from './check-timing.js';
+
 /**
  * Custom element for displaying the next check time and countdown.
  */
@@ -182,7 +184,6 @@ class CheckTimer extends HTMLElement {
   }
   
   updateDisplay() {
-    const nextCheck = this.getAttribute('next-check');
     const mode = this.getAttribute('mode');
     const status = this.getAttribute('status');
     
@@ -205,7 +206,8 @@ class CheckTimer extends HTMLElement {
       this.nextCheckCountdown.style.display = 'block';
       this.checkStatus.style.display = 'none';
       
-      if (nextCheck) {
+      const nextCheck = parseCheckTimestamp(this.getAttribute('next-check'));
+      if (nextCheck !== null) {
         // The heading also depends on the clock (deadline and calendar day).
         const heading = this.formatNextCheckTime(nextCheck);
         if (this.nextCheckTime.textContent !== heading) {
@@ -223,9 +225,8 @@ class CheckTimer extends HTMLElement {
   }
   
   formatTimeRemaining(nextCheckTimestamp) {
-    const nextCheck = parseInt(nextCheckTimestamp);
     const now = Math.floor(Date.now() / 1000);
-    const remaining = nextCheck - now;
+    const remaining = nextCheckTimestamp - now;
     
     if (remaining <= 0) return "Due now";
     
@@ -243,7 +244,7 @@ class CheckTimer extends HTMLElement {
   }
   
   formatNextCheckTime(nextCheckTimestamp) {
-    const nextCheck = new Date(parseInt(nextCheckTimestamp) * 1000);
+    const nextCheck = new Date(nextCheckTimestamp * 1000);
     const now = new Date();
     
     // If next check is in the past, return "Due now"

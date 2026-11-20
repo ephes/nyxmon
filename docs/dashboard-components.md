@@ -50,6 +50,8 @@ notifies the containing service.
 Progress rings cancel delayed due events on timing/mode edits and disconnect,
 and recheck attachment and the current schedule before dispatch. Each schedule
 notifies once; reconnect of an overdue normal ring starts a fresh schedule.
+In normal mode, the timer requires whole decimal Unix seconds within the
+JavaScript Date range. Missing or invalid timestamps clear both labels.
 Timer headings update with the countdown at the deadline and at local midnight.
 Tomorrow means the next calendar date, including 23/25-hour DST days. Unchanged
 heading text retains its DOM node. Tests fix the DST timezone in a child Node

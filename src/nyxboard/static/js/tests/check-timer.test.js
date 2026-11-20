@@ -26,6 +26,23 @@ it('changes the heading and countdown together at the deadline', () => {
   expect(element.nextCheckTime.textContent).toBe('Due now');
   expect(element.nextCheckCountdown.textContent).toBe('Due now');
 });
+it.each(['123seconds', '1e12', ' ', 'Infinity', '8640000000001', '-8640000000001'])(
+  'clears both labels for invalid next-check %j and restores them for a valid deadline',
+  (invalid) => {
+    vi.setSystemTime(new Date(2026, 0, 2, 12));
+    const element = timer(new Date(2026, 0, 2, 12, 0, 2));
+    expect(element.nextCheckTime.textContent).toMatch(/^Today at /);
+    expect(element.nextCheckCountdown.textContent).toBe('2s');
+
+    element.setAttribute('next-check', invalid);
+    expect(element.nextCheckTime.textContent).toBe('');
+    expect(element.nextCheckCountdown.textContent).toBe('');
+
+    element.setAttribute('next-check', Date.now() / 1000 + 5);
+    expect(element.nextCheckTime.textContent).toMatch(/^Today at /);
+    expect(element.nextCheckCountdown.textContent).toBe('5s');
+  },
+);
 it('reclassifies Tomorrow as Today at midnight without an attribute change', () => {
   vi.setSystemTime(new Date(2026, 0, 2, 23, 59, 59));
   const element = timer(new Date(2026, 0, 3, 12));
