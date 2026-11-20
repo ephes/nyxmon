@@ -1,16 +1,57 @@
 //! Check scheduling: claims, stale reclaim, release, holds
 //! (`SqliteCheckRepository`; PLAN.md section 3.4).
 
+use std::path::Path;
+
 use nyxmon_core::env::{MAX_CHECK_BATCH_SIZE, MIN_PROCESSING_LEASE_SECONDS};
 use nyxmon_core::model::{Check, HeldCheck, NotificationState};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params, params_from_iter};
 
-use crate::actor::Store;
+use crate::actor::{Store, open_read_only};
 use crate::error::StoreError;
 use crate::rows::{
     CHECK_COLUMNS, decode_check_data, int_or_zero, row_to_check, select_notification_state,
     text_or_empty, truthy,
 };
+use crate::schema::{SchemaReport, verify_schema};
+
+/// The stage at which a read-only check could not be loaded.
+#[derive(Debug)]
+pub enum ReadValidatedCheckError {
+    VerifySchema(StoreError),
+    InvalidSchema(SchemaReport),
+    ReadCheck(StoreError),
+}
+
+/// Validate the schema and load one check on the same read-only SQLite snapshot.
+/// The snapshot ends before the caller executes the check.
+///
+/// # Errors
+/// Opening or verifying the database failed, the schema is incompatible, or
+/// reading the row failed. A compatible schema with no matching row gives `Ok(None)`.
+pub fn read_validated_check(
+    path: &Path,
+    check_id: i64,
+) -> Result<Option<Check>, ReadValidatedCheckError> {
+    read_check_after_schema(path, check_id, || {})
+}
+
+fn read_check_after_schema(
+    path: &Path,
+    check_id: i64,
+    after_schema: impl FnOnce(),
+) -> Result<Option<Check>, ReadValidatedCheckError> {
+    let mut connection = open_read_only(path).map_err(ReadValidatedCheckError::VerifySchema)?;
+    let snapshot = connection
+        .transaction()
+        .map_err(|err| ReadValidatedCheckError::VerifySchema(err.into()))?;
+    let report = verify_schema(&snapshot).map_err(ReadValidatedCheckError::VerifySchema)?;
+    if !report.is_ok() {
+        return Err(ReadValidatedCheckError::InvalidSchema(report));
+    }
+    after_schema();
+    select_check(&snapshot, check_id).map_err(ReadValidatedCheckError::ReadCheck)
+}
 
 fn validate_batch_size(batch_size: i64) -> Result<(), StoreError> {
     if !(1..=MAX_CHECK_BATCH_SIZE).contains(&batch_size) {
@@ -26,10 +67,13 @@ pub(crate) fn list_checks(connection: &Connection) -> Result<Vec<Check>, StoreEr
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
-/// One check by id, from a read-only connection (`run-check`, PLAN.md 7.4):
-/// no lock, no write, the row as the claim would load it.
-pub fn read_check(path: &std::path::Path, check_id: i64) -> Result<Option<Check>, StoreError> {
-    let connection = crate::actor::open_read_only(path)?;
+/// One check by id, from a read-only connection, as the claim would load it.
+pub fn read_check(path: &Path, check_id: i64) -> Result<Option<Check>, StoreError> {
+    let connection = open_read_only(path)?;
+    select_check(&connection, check_id)
+}
+
+fn select_check(connection: &Connection, check_id: i64) -> Result<Option<Check>, StoreError> {
     let check = connection
         .query_row(
             &format!("SELECT {CHECK_COLUMNS} FROM health_check WHERE id = ?"),
@@ -369,6 +413,65 @@ impl Store {
 mod tests {
     use super::*;
     use rusqlite::limits::Limit;
+
+    fn snapshot_fixture(path: &Path) -> Connection {
+        let connection = Connection::open(path).unwrap();
+        connection
+            .execute_batch(concat!(
+                include_str!("../../../fixtures/schema/schema.sql"),
+                "INSERT INTO service (id, name) VALUES (1, 'service');
+                 INSERT INTO health_check (id, service_id, name, check_type, url,
+                     check_interval, next_check_time, processing_started_at, status, disabled, data)
+                 VALUES (1, 1, 'admitted', 'http', '', 60, 0, 0, 'idle', 0, '{}');"
+            ))
+            .unwrap();
+        connection
+    }
+
+    #[test]
+    fn validated_check_uses_admitted_file_after_path_replacement() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        let replacement = dir.path().join("replacement.sqlite3");
+        drop(snapshot_fixture(&path));
+        snapshot_fixture(&replacement)
+            .execute_batch(
+                "DELETE FROM django_migrations;
+                 UPDATE health_check SET name = 'replacement';",
+            )
+            .unwrap();
+
+        let check = read_check_after_schema(&path, 1, || {
+            std::fs::rename(&replacement, &path).unwrap();
+        })
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(check.name, "admitted");
+    }
+
+    #[test]
+    fn validated_check_uses_admitted_snapshot_after_wal_commit() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        let writer = snapshot_fixture(&path);
+        writer.execute_batch("PRAGMA journal_mode = WAL").unwrap();
+
+        let check = read_check_after_schema(&path, 1, || {
+            writer
+                .execute_batch(
+                    "BEGIN;
+                     DELETE FROM django_migrations;
+                     UPDATE health_check SET name = 'updated';
+                     COMMIT;",
+                )
+                .unwrap();
+        })
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(check.name, "admitted");
+    }
 
     fn fixture() -> Connection {
         let connection = Connection::open_in_memory().unwrap();

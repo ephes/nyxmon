@@ -15,7 +15,7 @@ use clap::Parser;
 use nyxmon_checks::registry::{Executors, Registry};
 use nyxmon_core::model::{Check, CheckResult};
 use nyxmon_core::pyjson::{PyDict, PyJson};
-use nyxmon_store::{check_schema, read_check};
+use nyxmon_store::{ReadValidatedCheckError, read_validated_check};
 
 use crate::cli::{VERSION, py_path_str};
 use crate::logging::LOG_LEVELS;
@@ -91,24 +91,21 @@ pub fn run_check(args: &RunCheckArgs) -> ExitCode {
         run_check_error!("Database file not found: {}", py_path_str(&args.db));
         return ExitCode::FAILURE;
     }
-    match check_schema(db_path) {
-        Ok(report) if report.is_ok() => {}
-        Ok(report) => {
-            run_check_error!("{report}");
-            return ExitCode::FAILURE;
-        }
-        Err(err) => {
-            run_check_error!("cannot verify the database schema: {err}");
-            return ExitCode::FAILURE;
-        }
-    }
-    let check = match read_check(db_path, args.check_id) {
+    let check = match read_validated_check(db_path, args.check_id) {
         Ok(Some(check)) => check,
         Ok(None) => {
             run_check_error!("check {} not found in {}", args.check_id, args.db);
             return ExitCode::FAILURE;
         }
-        Err(err) => {
+        Err(ReadValidatedCheckError::InvalidSchema(report)) => {
+            run_check_error!("{report}");
+            return ExitCode::FAILURE;
+        }
+        Err(ReadValidatedCheckError::VerifySchema(err)) => {
+            run_check_error!("cannot verify the database schema: {err}");
+            return ExitCode::FAILURE;
+        }
+        Err(ReadValidatedCheckError::ReadCheck(err)) => {
             run_check_error!("cannot read check {}: {err}", args.check_id);
             return ExitCode::FAILURE;
         }

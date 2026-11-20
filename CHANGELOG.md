@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent run-check
+
+- Validate the database schema and load the selected check from one read-only
+  SQLite snapshot.
+
 ### Rust agent supervision
 
 - Honor a buffered SIGTERM or SIGINT before starting monitoring tasks, so

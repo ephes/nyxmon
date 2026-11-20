@@ -160,8 +160,9 @@ nyxmon-agent run-check --db PATH --check-id N [--imap-no-delete] [--log-level LE
 nyxmon-agent --version
 ```
 
-`run-check` executes one check from a database opened read-only (no lock,
-no result row, no notification; disabled checks run too) and prints one
+`run-check` verifies the schema and reads the selected check from the same
+read-only SQLite snapshot. It releases the snapshot before executing the check
+(no lock, no result row, no notification; disabled checks run too) and prints one
 JSON line, `{"check_id": N, "check_type": "...", "status": "...", "data":
 {...}}`, on stdout; logs go to stderr. `--imap-no-delete` keeps the matched
 messages of an IMAP check in the mailbox. Exit status 0 when the check ran,

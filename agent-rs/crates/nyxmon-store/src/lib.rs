@@ -25,7 +25,7 @@ mod rows;
 pub mod schema;
 
 pub use actor::{MAX_PENDING_JOBS, Store, StoreOptions};
-pub use checks::read_check;
+pub use checks::{ReadValidatedCheckError, read_check, read_validated_check};
 pub use cleaner::{CleanupBatch, MAX_CLEANUP_BATCH_SIZE};
 pub use error::StoreError;
 pub use lock::{AgentLock, LockError, agent_lock_path};

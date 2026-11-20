@@ -153,6 +153,9 @@ Log lines go to stderr in the Python format
 names). Exit status: 0 after SIGTERM/SIGINT, 1 for a missing database, an old
 schema, a held agent lock or a fatal database error, 2 for usage errors.
 
+`run-check` verifies the schema and reads the selected check from the same
+read-only SQLite snapshot. It closes the snapshot before executing the check.
+
 ### One agent per database
 
 The Rust agent resolves the existing database path and takes an exclusive
