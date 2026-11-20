@@ -1,5 +1,6 @@
 //! Own the monitoring tasks and classify unexpected completion without payloads.
-use std::future::{Future, pending};
+use std::future::{Future, pending, ready};
+use std::pin::pin;
 use std::time::Duration;
 use tokio::task::{JoinError, JoinHandle};
 
@@ -22,16 +23,28 @@ fn report(task: &str, category: &str) {
     tracing::error!(target: "nyxmon.entrypoints.cli", "monitoring task {task} unexpectedly {category}");
 }
 
-/// Wait for a stop signal or a required task, then stop and reap owned tasks.
+type MonitoringTasks = (
+    JoinHandle<()>,
+    Option<JoinHandle<()>>,
+    Option<JoinHandle<()>>,
+);
+
+/// Check for a buffered stop signal before starting tasks, then supervise them.
 /// The collector gets 60s (max 30s grace + 15s flush + DB cleanup allowance).
 /// Observer/cleaner cancellation is intentional only after shutdown starts.
 pub(crate) async fn supervise(
-    mut collector: JoinHandle<()>,
-    mut observer: Option<JoinHandle<()>>,
-    mut cleaner: Option<JoinHandle<()>>,
+    start: impl FnOnce() -> MonitoringTasks,
     shutdown: impl Future<Output = ()>,
     request_stop: impl FnOnce(),
 ) -> bool {
+    // Keep the same signal future for both the startup check and supervision.
+    let mut shutdown = pin!(shutdown);
+    tokio::select! {
+        biased;
+        () = &mut shutdown => return false,
+        () = ready(()) => {},
+    }
+    let (mut collector, mut observer, mut cleaner) = start();
     let mut failed = false;
     let mut collector_done = false;
     tokio::select! {
@@ -196,9 +209,11 @@ mod tests {
                 }
                 pending::<()>().await;
             });
-            supervise(collector, Some(observer), Some(cleaner), pending(), || {
-                stop.set()
-            })
+            supervise(
+                || (collector, Some(observer), Some(cleaner)),
+                pending(),
+                || stop.set(),
+            )
             .await
         });
         crate::logging::shutdown_logging();
@@ -230,8 +245,11 @@ mod tests {
             });
             let (capture, _guard) = crate::logging::capture();
             assert!(
-                supervise(collector, Some(observer), Some(cleaner), pending(), || stop
-                    .set())
+                supervise(
+                    || (collector, Some(observer), Some(cleaner)),
+                    pending(),
+                    || stop.set()
+                )
                 .await
             );
             let logs = capture.messages().join("\n");
@@ -239,6 +257,30 @@ mod tests {
             assert!(!logs.contains("panic-sentinel-secret"));
             assert!(stop.is_set());
         }
+    }
+
+    #[tokio::test]
+    async fn pending_startup_signal_prevents_first_claim() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let claims = Arc::new(AtomicUsize::new(0));
+        let collector_claims = claims.clone();
+        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
+        stop_tx.send(()).unwrap();
+        let failed = supervise(
+            || {
+                let collector = tokio::spawn(async move {
+                    collector_claims.fetch_add(1, Ordering::Relaxed);
+                });
+                (collector, None, None)
+            },
+            async { stop_rx.await.unwrap() },
+            || {},
+        )
+        .await;
+
+        assert_eq!(claims.load(Ordering::Relaxed), 0);
+        assert!(!failed);
     }
 
     #[tokio::test(start_paused = true)]
@@ -250,10 +292,12 @@ mod tests {
         });
         assert!(
             !supervise(
-                collector,
-                Some(tokio::spawn(pending())),
-                Some(tokio::spawn(pending())),
-                async {},
+                || (
+                    collector,
+                    Some(tokio::spawn(pending())),
+                    Some(tokio::spawn(pending()))
+                ),
+                tokio::task::yield_now(),
                 || stop.set()
             )
             .await
@@ -271,7 +315,14 @@ mod tests {
         while !observer.is_finished() {
             tokio::task::yield_now().await;
         }
-        assert!(!supervise(collector, Some(observer), None, async {}, || stop.set()).await);
+        assert!(
+            !supervise(
+                || (collector, Some(observer), None),
+                tokio::task::yield_now(),
+                || stop.set()
+            )
+            .await
+        );
     }
 
     #[tokio::test(start_paused = true)]
@@ -282,9 +333,23 @@ mod tests {
             stopped.wait().await;
             panic!("secret");
         });
-        assert!(supervise(collector, None, None, async {}, || stop.set()).await);
+        assert!(
+            supervise(
+                || (collector, None, None),
+                tokio::task::yield_now(),
+                || stop.set()
+            )
+            .await
+        );
         let start = tokio::time::Instant::now();
-        assert!(supervise(tokio::spawn(pending()), None, None, async {}, || {}).await);
+        assert!(
+            supervise(
+                || (tokio::spawn(pending()), None, None),
+                tokio::task::yield_now(),
+                || {}
+            )
+            .await
+        );
         assert_eq!(start.elapsed(), Duration::from_secs(60));
     }
 }

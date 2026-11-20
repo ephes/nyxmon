@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent supervision
+
+- Honor a buffered SIGTERM or SIGINT before starting monitoring tasks, so
+  shutdown at startup does not claim checks.
+
 ### Rust agent result handling
 
 - Rebuild site connectivity annotations on notification-state retries so a

@@ -239,9 +239,7 @@ async fn a_restore_that_raises_stops_the_observer_with_a_log_line() {
     });
     assert!(
         crate::supervision::supervise(
-            collector,
-            Some(tokio::spawn(site.run(stop.clone()))),
-            None,
+            || (collector, Some(tokio::spawn(site.run(stop.clone()))), None),
             std::future::pending(),
             || stop.set(),
         )

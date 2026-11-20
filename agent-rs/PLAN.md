@@ -1091,9 +1091,10 @@ behaviour is pinned by a Python-generated fixture (section 7.2).
   config (`site connectivity observation is <mode>` when not off) →
   `validate_check_types` (logs only: `No checks found …`, or warnings listing
   unregistered types, or `Validated <n> check(s) - all types registered: …`) →
-  install SIGTERM/SIGINT handlers **before** starting the collector (Python
-  registers the receiver first, `run_monitoring_services`) → start collector,
-  observer, cleaner → `Monitoring started with <n>s check interval`.
+  install SIGTERM/SIGINT handlers → poll for a buffered stop signal → start
+  collector, observer, cleaner → `Monitoring started with <n>s check interval`.
+  If a signal is already available at that poll, log it and close the store
+  without starting the monitoring tasks.
 - No HTTP library request logging at INFO (`setup_logging` silences httpx);
   reqwest/hyper/rustls targets are set to WARN.
 - Implementation (S9b): `nyxmon-agent/src/{cli,app,startup,logging}.rs`.

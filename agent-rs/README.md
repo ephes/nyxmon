@@ -702,9 +702,12 @@ nonpositive-delay semantics. Direct cleaner/store calls also reject nonpositive
 retention before deleting results or expired sessions.
 
 The Rust agent supervises its collector and enabled observer/cleaner tasks.
+If SIGTERM or SIGINT is already available on the registered signal stream when
+monitoring is about to start, the agent logs the signal and exits through normal
+database shutdown without starting any of these tasks or claiming checks.
 Unexpected task return, panic or cancellation logs only the task/category and
-exits unsuccessfully after stopping owned work. SIGTERM/SIGINT still drain the
-collector successfully; observer/cleaner aborts during shutdown are intentional.
+exits unsuccessfully after stopping owned work. During monitoring, SIGTERM/SIGINT
+trigger collector draining; observer/cleaner aborts during shutdown are intentional.
 Collector draining has a 60-second outer deadline (30s maximum configured grace,
 15s result flush and cleanup allowance); auxiliary joins have a one-second bound.
 A deadline breach or panic during drain also fails the process for restart.

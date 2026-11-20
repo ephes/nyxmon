@@ -204,25 +204,29 @@ async fn run_monitoring_services(args: &Args, store: Store) -> ExitCode {
         env,
         args.interval,
     ));
-    let collecting = tokio::spawn(collector.clone().run());
-    // A second task beside the collector: probing never blocks collection.
     let site_stop = Arc::new(Flag::new());
-    let observing = site.map(|site| tokio::spawn(site.run(site_stop.clone())));
-    let cleaning = cleaner.map(|cleaner| tokio::spawn(async move { cleaner.run().await }));
-    cli_info!("Monitoring started with {}s check interval", args.interval);
-
     let shutdown = async {
         tokio::select! {
             _ = sigterm.recv() => { received(15); },
             _ = sigint.recv() => { received(2); },
         }
     };
-    let task_failed =
-        crate::supervision::supervise(collecting, observing, cleaning, shutdown, || {
+    let task_failed = crate::supervision::supervise(
+        || {
+            let collecting = tokio::spawn(collector.clone().run());
+            // A second task beside the collector: probing never blocks collection.
+            let observing = site.map(|site| tokio::spawn(site.run(site_stop.clone())));
+            let cleaning = cleaner.map(|cleaner| tokio::spawn(async move { cleaner.run().await }));
+            cli_info!("Monitoring started with {}s check interval", args.interval);
+            (collecting, observing, cleaning)
+        },
+        shutdown,
+        || {
             collector.request_stop();
             site_stop.set();
-        })
-        .await;
+        },
+    )
+    .await;
     monitoring_exit(task_failed, collector.failed())
 }
 
