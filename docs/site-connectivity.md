@@ -320,6 +320,11 @@ unknown. Writing an empty lifecycle over the persisted row would erase the
 pending summaries, the undelivered ongoing intent and the release watermarks. An
 absent row counts as restored — there is simply nothing to load.
 
+The retained Python observer also refuses unsupported payload versions. It
+logs an incompatibility and skips probe rounds and lifecycle writes until it
+can read a supported row. Use a compatible agent or repair the lifecycle
+while preserving any pending notifications.
+
 Rust validates the complete supported payload in a temporary candidate before
 installing paths, pending messages, rechecks or the restored flag. Invalid
 numbers/timestamps, including pending summary fields, leave the row and published

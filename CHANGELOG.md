@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Retained Python agent
+
+- Preserve the site connectivity incident and pending notifications when its
+  stored payload version is unsupported.
+
 ### Dashboard
 
 - Read each check card and its recent results on the same routed database

@@ -1056,8 +1056,8 @@ class SiteConnectivityObserver:
         whose ``observed_at`` is stale is downgraded to ``idle`` (plan 7.6):
         after a long disable the persisted outage is no longer evidence.
 
-        A failed read leaves the observer unrestored: no round runs and
-        nothing is written until a later call succeeds, because an empty
+        A failed read or unsupported version leaves the observer unrestored.
+        No round runs or writes until a later call succeeds, because an empty
         lifecycle written over the persisted row would erase pending
         summaries, the ongoing intent and the release watermarks. An absent
         row counts as restored; there is simply nothing to load.
@@ -1069,20 +1069,21 @@ class SiteConnectivityObserver:
         except Exception:
             logger.exception("failed to restore the site connectivity incident")
             return
-        self._restored = True
         if incident is None:
+            self._restored = True
             self._publish_snapshot()
             return
-        self._row_present = True
         payload = incident.payload or {}
         version = payload.get("version", SITE_PAYLOAD_VERSION)
         if version != SITE_PAYLOAD_VERSION:
+            self._restored = False
             logger.warning(
-                "ignoring the site connectivity payload: unknown version %r", version
+                "incompatible site connectivity payload version; preserving the "
+                "stored lifecycle. Use a compatible agent or repair the lifecycle."
             )
-            self._publish_snapshot()
             return
 
+        self._row_present = True
         raw_paths = payload.get("paths")
         if isinstance(raw_paths, dict):
             for name, raw in raw_paths.items():
@@ -1145,6 +1146,7 @@ class SiteConnectivityObserver:
             self._phase = PHASE_IDLE
             self._incident_id = 0
         self._publish_snapshot()
+        self._restored = True
 
     async def run_once(self) -> None:
         """Run one round: probe, state machine, persistence, alerts, recheck.

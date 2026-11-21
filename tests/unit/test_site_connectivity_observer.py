@@ -32,6 +32,7 @@ from nyxmon.adapters.site_connectivity import (
     SITE_DELIVERY_RETRY_SECONDS,
     SITE_INCIDENT_KEY,
     SITE_ONGOING_ERROR_TYPE,
+    SITE_PAYLOAD_VERSION,
     SITE_SUMMARY_ERROR_TYPE,
     SITE_SUMMARY_MAX_CHARS,
     SITE_SUMMARY_MAX_RECORDS,
@@ -1214,6 +1215,27 @@ async def test_a_failed_restore_never_writes_over_the_persisted_lifecycle() -> N
     assert summaries[-1].at == T0 + 2340
     assert f"outage {T0 + 120} lasted" in summaries[-1].error_msg
     assert harness.payload["summaries"] == []
+
+
+@pytest.mark.anyio
+async def test_unknown_payload_version_preserves_pending_notification(caplog) -> None:
+    harness = Harness()
+    row = harness.store.open_collector_incident(
+        SITE_INCIDENT_KEY,
+        now=T0,
+        payload={
+            "version": SITE_PAYLOAD_VERSION + 1,
+            "summaries": [{"incident_id": T0, "pending": True}],
+        },
+    )
+    await harness.respawn(T0 + 60)
+    await harness.round(T0 + 60)
+
+    assert harness.store.rows[SITE_INCIDENT_KEY] is row
+    assert harness.store.writes == [row.payload]
+    assert harness.probes.probed == []
+    assert harness.notifier.sent == []
+    assert "incompatible site connectivity payload version" in caplog.text
 
 
 @pytest.mark.anyio
