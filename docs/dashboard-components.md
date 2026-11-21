@@ -76,6 +76,11 @@ Cancel share a Django-resolved destination, including invalid bound POSTs.
 
 ## Live check interaction
 
+Status, Run now and toggle fragments load the check, its service and up to
+five recent results on the database selected for the check read. On SQLite
+these reads share one snapshot. Template rendering happens after the read
+transaction closes.
+
 A mutating toggle or Run now action owns its card while pending; its controls are disabled and duplicate
 card requests are suppressed. A definite 4xx rejection restores the last
 confirmed checkbox/text and announces failure. Network, timeout and 5xx outcomes

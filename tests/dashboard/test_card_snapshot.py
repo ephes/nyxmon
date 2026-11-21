@@ -1,6 +1,7 @@
 """Real SQLite WAL completion between a card's definition and result reads."""
 
 import sqlite3
+from itertools import cycle
 
 import pytest
 from django.db import connection, connections, router
@@ -49,6 +50,33 @@ def card_db(
     connections[alias].close()
     del connections[alias]
     del connections.databases[alias]
+
+
+def test_card_pins_check_and_results_when_read_routing_varies(
+    client, card_db, monkeypatch
+):
+    check, sample, conn, _ = card_db
+    HealthCheck.objects.using("default").filter(pk=check.pk).update(name="Other check")
+    Result.objects.using("default").filter(pk=sample.pk).update(status="error")
+
+    aliases = cycle([conn.alias, "default"])
+    original_read = router.db_for_read
+
+    def route_read(model, **hints):
+        if model in (HealthCheck, Result):
+            return next(aliases)
+        return original_read(model, **hints)
+
+    monkeypatch.setattr(router, "db_for_read", route_read)
+    response = client.get(
+        reverse("nyxboard:healthcheck_update_status", args=[check.pk])
+    )
+
+    assert response.status_code == 200
+    assert response.context["check"].name == check.name
+    assert response.context["last_result"].status == sample.status
+    assert response.context["check"]._state.db == conn.alias
+    assert response.context["last_result"]._state.db == conn.alias
 
 
 @pytest.mark.parametrize(

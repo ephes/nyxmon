@@ -200,12 +200,12 @@ def _site_connectivity_badge(result):
     return "held" if metadata.get("held") is True else "observed"
 
 
-def _checks_with_recent_results():
+def _checks_with_recent_results(*, using=None):
     # A window per check fetches at most five samples, including timestamp ties.
-    return HealthCheck.objects.prefetch_related(
+    return HealthCheck.objects.using(using).prefetch_related(
         Prefetch(
             "results",
-            queryset=Result.objects.order_by("-created_at", "-id")[:5],
+            queryset=Result.objects.using(using).order_by("-created_at", "-id")[:5],
             to_attr="recent_results",
         )
     )
@@ -658,7 +658,8 @@ def _card_response(request, check_id, *, conflict=False):
     alias = HealthCheck.objects.db
     with transaction.atomic(using=alias):
         health_check = get_object_or_404(
-            _checks_with_recent_results().select_related("service"), pk=check_id
+            _checks_with_recent_results(using=alias).select_related("service"),
+            pk=check_id,
         )
         last_result = (
             health_check.recent_results[0] if health_check.recent_results else None
