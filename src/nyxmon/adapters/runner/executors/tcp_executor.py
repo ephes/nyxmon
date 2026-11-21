@@ -136,6 +136,7 @@ class TcpCheckExecutor:
         try:
             config = TcpCheckConfig.from_dict(check.data)
             config.validate()
+            host = self._resolve_host(config, check.url)
         except ValueError as exc:
             return self._error(
                 check.check_id,
@@ -144,7 +145,6 @@ class TcpCheckExecutor:
                 {},
             )
 
-        host = self._resolve_host(config, check.url)
         if not host:
             return self._error(
                 check.check_id,
@@ -492,11 +492,10 @@ class TcpCheckExecutor:
         if not url:
             return None
 
-        parsed = urlparse(url)
-        if parsed.hostname:
-            return parsed.hostname
-
-        return url
+        try:
+            return urlparse(url).hostname or url
+        except ValueError as exc:
+            raise ValueError("invalid TCP check URL") from exc
 
     def _cert_days_remaining(self, cert: Any) -> Optional[int]:
         """Calculate days remaining before certificate expiry."""

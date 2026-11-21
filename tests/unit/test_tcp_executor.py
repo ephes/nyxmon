@@ -4,6 +4,7 @@ import asyncio
 import socket
 import ssl
 from typing import Any, Awaitable, Callable
+from unittest.mock import AsyncMock
 
 import anyio
 import pytest
@@ -171,6 +172,37 @@ async def test_plain_tcp_success() -> None:
 
     assert result.status == ResultStatus.OK
     assert result.data["connect_time_ms"] >= 0
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("url", "expected_host"),
+    [
+        ("tcp://synthetic-user:synthetic-password@[::1", None),
+        ("example.test", "example.test"),
+        ("tcp://example.test:443/path", "example.test"),
+    ],
+)
+async def test_tcp_host_admission(monkeypatch, url, expected_host) -> None:
+    connect = AsyncMock(return_value=AsyncMock())
+    monkeypatch.setattr(anyio, "connect_tcp", connect)
+    check = _tcp_check(443, retries=2)
+    check.url = url
+
+    result = await TcpCheckExecutor().execute(check)
+
+    assert result.check_id == check.check_id
+    if expected_host is None:
+        connect.assert_not_called()
+        assert result.status == ResultStatus.ERROR
+        assert result.data == {
+            "error_type": "configuration_error",
+            "error_msg": "invalid TCP check URL",
+        }
+    else:
+        connect.assert_awaited_once_with(expected_host, 443)
+        assert result.status == ResultStatus.OK
+        assert result.data["host"] == expected_host
 
 
 @pytest.mark.anyio
