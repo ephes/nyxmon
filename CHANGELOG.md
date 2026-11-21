@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shutdown at startup does not claim checks.
 - Cancel the observer and results cleaner together on shutdown and give them
   one shared second to stop, with separate failure diagnostics.
+- Start the collector's 60-second shutdown deadline at the stop request so its
+  drain limit is independent of observer and results cleaner shutdown.
 
 ### Rust agent collector
 
@@ -67,6 +69,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recovered path does not leave a stale hold in history or notifications.
 - Include only committed stale-lease results in collector incident counts and
   sampled check IDs, omitting results superseded by newer claims or edits.
+
+### Rust agent IMAP
+
+- Index FETCH date observations once per batch, preserving SEARCH order for
+  date ties and rejecting conflicting dates for selected UIDs.
 
 ### Rust agent retention
 

@@ -8,9 +8,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use indexmap::IndexMap;
-use nyxmon_core::config::imap::{
-    ImapConfig, ImapTls, InternalDate, fetch_uid, iso_utc, parse_internaldate,
-};
+#[cfg(not(test))]
+use nyxmon_core::config::imap::fetch_uid;
+use nyxmon_core::config::imap::{ImapConfig, ImapTls, InternalDate, iso_utc, parse_internaldate};
 use nyxmon_core::config::{ConfigError, PyException};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
 use nyxmon_core::pyjson::{
@@ -23,6 +23,9 @@ use crate::mail::MailEnv;
 use crate::net::{Conn, MailStream, NetError, connect_tcp, os_error_text, tls_handshake};
 use crate::smtp::ascii_error;
 use crate::tls;
+
+#[cfg(test)]
+use tests::fetch_uid;
 
 /// `imaplib._MAXLINE`.
 const MAX_LINE: usize = 1_000_000;
@@ -937,35 +940,43 @@ async fn search_recent(
         for batch in ids.chunks(FETCH_BATCH_SIZE) {
             let args = vec![ascii(&batch.join(","))?, b"(INTERNALDATE)".to_vec()];
             let data = checked("uid", imap.uid("FETCH", args).await?)?;
-            for id in batch {
-                let mut observation = None;
-                for entry in &data {
-                    let candidate = match entry {
-                        Some(Datum::Bytes(b)) | Some(Datum::Literal(b, _)) => b,
-                        None => continue,
-                    };
-                    if fetch_uid(candidate) != Some(id.as_bytes()) {
-                        continue;
-                    }
-                    let date = parse_internaldate(candidate);
-                    // Unsolicited FETCH data (e.g. a FLAGS update) for the UID
-                    // carries no INTERNALDATE key at all: it is no date
-                    // observation. A present but malformed date still counts.
-                    if date == InternalDate::Missing && !has_internaldate_key(candidate) {
-                        continue;
-                    }
-                    if observation
-                        .as_ref()
-                        .is_some_and(|previous| previous != &date)
-                    {
-                        return Err(ImapExc::Incomplete(
-                            "IMAP scan incomplete: conflicting FETCH INTERNALDATE for selected UID"
-                                .to_owned(),
-                        ));
-                    }
-                    observation = Some(date);
+            let mut observations: HashMap<&[u8], Result<Option<InternalDate>, ImapExc>> =
+                batch.iter().map(|id| (id.as_bytes(), Ok(None))).collect();
+            for entry in &data {
+                let candidate = match entry {
+                    Some(Datum::Bytes(b)) | Some(Datum::Literal(b, _)) => b,
+                    None => continue,
+                };
+                let Some(uid) = fetch_uid(candidate) else {
+                    continue;
+                };
+                let Some(observation) = observations.get_mut(uid) else {
+                    continue;
+                };
+                let Ok(previous) = observation else { continue };
+                let date = parse_internaldate(candidate);
+                // Unsolicited FETCH data (e.g. FLAGS) carries no INTERNALDATE.
+                // A present but malformed date still counts as an observation.
+                if date == InternalDate::Missing && !has_internaldate_key(candidate) {
+                    continue;
                 }
-                let Some(date) = observation else { continue };
+                if previous.as_ref().is_some_and(|previous| previous != &date) {
+                    *observation = Err(ImapExc::Incomplete(
+                        "IMAP scan incomplete: conflicting FETCH INTERNALDATE for selected UID"
+                            .to_owned(),
+                    ));
+                } else {
+                    *previous = Some(date);
+                }
+            }
+            // Preserve SEARCH order for both results and error precedence.
+            for id in batch {
+                let Some(date) = observations
+                    .remove(id.as_bytes())
+                    .expect("requested UID was indexed")?
+                else {
+                    continue;
+                };
                 match date {
                     InternalDate::At(at) if (at as f64) >= cutoff => {
                         messages.push((id.clone(), at))

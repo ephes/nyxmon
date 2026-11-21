@@ -4,6 +4,7 @@
 //! differences of PLAN.md D-18), and Rust-only tests for TLS and timeouts.
 //! Transcripts drop the random tag prefix `imaplib` uses.
 
+use std::cell::Cell;
 use std::time::Duration;
 
 use nyxmon_core::config::PyException;
@@ -1161,6 +1162,60 @@ async fn r102_stable_generation_preserves_cleanup() {
     let lines = untag(server.transcripts().await.remove(0));
     assert!(lines.contains(&"UID STORE 5 +FLAGS (\\Deleted)".to_owned()));
     assert!(lines.contains(&"UID EXPUNGE 5".to_owned()));
+}
+
+thread_local! {
+    static FETCH_UID_PARSES: Cell<usize> = const { Cell::new(0) };
+}
+
+pub(super) fn fetch_uid(record: &[u8]) -> Option<&[u8]> {
+    FETCH_UID_PARSES.set(FETCH_UID_PARSES.get() + 1);
+    nyxmon_core::config::imap::fetch_uid(record)
+}
+
+#[tokio::test]
+async fn fetch_batch_parses_each_uid_once_and_preserves_search_order() {
+    // Equal dates retain SEARCH order in the final stable date sort.
+    for conflict in [false, true] {
+        let duplicate_date = if conflict {
+            "09-Oct-2025 08:52:00 +0000"
+        } else {
+            "09-Oct-2025 10:53:00 +0200"
+        };
+        let mut script = r90_start("7 5 6");
+        script.extend([
+            Step::Recv,
+            send(&format!(
+                "* 1 FETCH (UID 5 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n\
+                 * 2 FETCH (UID 9 INTERNALDATE \"09-Foo-2025 08:53:00 +0000\")\r\n\
+                 * 3 FETCH (UID 7 FLAGS (\\Seen))\r\n\
+                 * 3 FETCH (UID 7 INTERNALDATE \"09-Oct-2025 08:53:00 +0000\")\r\n\
+                 * 1 FETCH (UID 5 INTERNALDATE \"{duplicate_date}\")\r\n"
+            )),
+            tagged("OK fetched"),
+        ]);
+        r90_finish(&mut script, !conflict);
+        let server = ScriptServer::start(vec![script], false).await;
+        FETCH_UID_PARSES.set(0);
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        let wire = untag(server.transcripts().await.remove(0));
+        assert!(wire.contains(&"UID FETCH 7,5,6 (INTERNALDATE)".to_owned()));
+        if conflict {
+            assert_eq!(result.status, ResultStatus::Error);
+            assert_eq!(result.data["error_type"], PyJson::from("incomplete_scan"));
+            assert!(!wire.iter().any(|line| line.starts_with("UID STORE")));
+        } else {
+            assert_eq!(result.status, ResultStatus::Ok);
+            assert_eq!(
+                result.data["matched_uids"],
+                PyJson::List(vec![PyJson::from("7"), PyJson::from("5")])
+            );
+            assert!(wire.contains(&"UID STORE 7,5 +FLAGS (\\Deleted)".to_owned()));
+        }
+        assert_eq!(FETCH_UID_PARSES.get(), 5);
+    }
 }
 
 #[tokio::test]

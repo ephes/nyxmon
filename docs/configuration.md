@@ -754,7 +754,11 @@ unsolicited data and literals), in addition to the per-command limits. An
 oversized or malformed selection returns `incomplete_scan`, without a partial
 healthy result, STORE or EXPUNGE. Reduce the matching backlog before retrying;
 these errors do not take the no-recent-message retry path. Results contain at
-most 256 `matched_uids`; cleanup remains scoped to the selected UIDs.
+most 256 `matched_uids`; cleanup remains scoped to the selected UIDs. Within
+each batch the agent indexes FETCH dates by requested UID, ignores unrelated
+UIDs and date-free updates, and sorts matches by date with ties in SEARCH
+order. Conflicting date observations for a requested UID fail the scan before
+cleanup.
 
 Cleanup (STORE/EXPUNGE) additionally requires the SELECT UIDVALIDITY to stay
 unchanged through a NOOP after the FETCHes; a missing, invalid or changed
@@ -1109,6 +1113,10 @@ schedule. If SQLite rejects the release, the collector retries before claiming
 another batch or during shutdown. An abandoned batch that the shutdown intake
 stop ends also keeps its unfinished leases for the shutdown release. A failure
 to release leases at shutdown is logged and falls back to expiry recovery.
+
+The Rust supervisor allows up to 60 seconds to drain the collector from the stop
+request. The observer and results cleaner share a separate one-second limit
+within that window.
 
 The ops-library `roles/nyxmon_deploy/templates/nyxmon-monitor.service.j2` template
 has no explicit `TimeoutStopSec`. Assume systemd's usual 90-second manager default;
