@@ -73,8 +73,19 @@ class HttpCheckExecutor:
         for attempt in range(1, attempts + 1):
             start = time.monotonic_ns()
             try:
-                response = await self._fetch_headers(client, check.url, config)
+                response, close_failed = await self._fetch_headers(
+                    client, check.url, config
+                )
                 status_code = self._response_status_code(response)
+                location = getattr(response, "headers", {}).get("location")
+                data: dict[str, Any] = {}
+                if close_failed:
+                    data.update(
+                        cleanup_error_type="response_close_error",
+                        status_code=status_code,
+                    )
+                    if config.expected_location is not None:
+                        data["location"] = location
                 if (
                     config.expected_status is not None
                     and status_code != config.expected_status
@@ -87,6 +98,7 @@ class HttpCheckExecutor:
                         "unexpected_status",
                         f"Expected HTTP {config.expected_status}, got {status_code}",
                         {
+                            **data,
                             "expected_status": config.expected_status,
                             "status_code": status_code,
                             "attempt": attempt,
@@ -107,11 +119,11 @@ class HttpCheckExecutor:
                     )
                     if result is None:
                         continue
+                    result.data.update(data)
                     return result
                 if status_code is None:
                     response.raise_for_status()
 
-                location = getattr(response, "headers", {}).get("location")
                 if (
                     config.expected_location is not None
                     and location != config.expected_location
@@ -121,6 +133,7 @@ class HttpCheckExecutor:
                         "unexpected_location",
                         "HTTP Location header does not match the configured target",
                         {
+                            **data,
                             "expected_location": config.expected_location,
                             "location": location,
                             "attempt": attempt,
@@ -129,7 +142,6 @@ class HttpCheckExecutor:
                     )
 
                 duration_ms = (time.monotonic_ns() - start) // 1_000_000
-                data: dict[str, Any] = {}
                 if attempt > 1 or attempts > 1:
                     data.update(
                         {
@@ -221,21 +233,28 @@ class HttpCheckExecutor:
 
     async def _fetch_headers(
         self, client: httpx.AsyncClient, url: str, config: HttpCheckConfig
-    ) -> httpx.Response:
-        """GET ``url`` and return the response without reading its body.
+    ) -> tuple[httpx.Response, bool]:
+        """Return the streamed response and whether closing it failed.
 
         The check only looks at the status line and headers. Streaming and
         closing the response keeps a check on a large resource (an audio file,
         a feed) from downloading it on every run. Status and headers stay
         readable after the stream is closed.
         """
-        async with client.stream(
-            "GET",
-            url,
-            timeout=config.timeout,
-            follow_redirects=config.follow_redirects,
-        ) as response:
-            return response
+        response: httpx.Response | None = None
+        try:
+            async with client.stream(
+                "GET",
+                url,
+                timeout=config.timeout,
+                follow_redirects=config.follow_redirects,
+            ) as response:
+                return response, False
+        except Exception:  # noqa: BLE001
+            if response is None:
+                raise
+            # The context yielded headers. Only stream cleanup can fail now.
+            return response, True
 
     def _response_status_code(self, response: httpx.Response) -> int | None:
         status_code = getattr(response, "status_code", None)

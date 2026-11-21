@@ -392,3 +392,58 @@ async def test_attempt_duration_survives_wall_clock_rollback(monkeypatch) -> Non
     assert result.status == ResultStatus.OK
     assert retry_delays == [1]
     assert result.data == {"attempt": 2, "attempts": 2, "duration_ms": 125}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("status_code", "location", "redirect_check", "error_type"),
+    [
+        (200, None, False, None),
+        (301, "/ready", True, None),
+        (302, "/ready", True, "unexpected_status"),
+        (301, "/elsewhere", True, "unexpected_location"),
+        (404, None, False, "http_error"),
+        (502, None, False, "http_error"),
+    ],
+)
+async def test_close_failure_preserves_admitted_headers(
+    status_code: int,
+    location: str | None,
+    redirect_check: bool,
+    error_type: str | None,
+) -> None:
+    class FailingCloseBody(_UnreadableBody):
+        async def aclose(self) -> None:
+            await super().aclose()
+            raise httpx.ReadError("synthetic private detail")
+
+    bodies = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        headers = {"Location": location} if location is not None else {}
+        body = FailingCloseBody()
+        bodies.append(body)
+        return httpx.Response(status_code, headers=headers, stream=body)
+
+    config: dict[str, Any] = {"retries": 1, "retry_delay": 0}
+    if redirect_check:
+        config.update(
+            follow_redirects=False, expected_status=301, expected_location="/ready"
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        executor = HttpCheckExecutor(client=client)
+        result = await executor.execute(_build_check(config=config))
+
+    assert result.status == (
+        ResultStatus.OK if error_type is None else ResultStatus.ERROR
+    )
+    assert result.data["status_code"] == status_code
+    if redirect_check:
+        assert result.data["location"] == location
+    assert result.data.get("error_type") == error_type
+    assert result.data["cleanup_error_type"] == "response_close_error"
+    assert "synthetic private detail" not in str(result.data)
+    assert all(body.closed for body in bodies)
+    expected_attempt = 2 if status_code == 502 else 1
+    assert len(bodies) == result.data["attempt"] == expected_attempt

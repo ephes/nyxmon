@@ -90,6 +90,13 @@ For the retained Python HTTP executor, a successful retry-enabled check reports
 stream close. It uses a monotonic clock, and retry sleeps are outside that
 measurement. Result timestamps still use wall time.
 
+If the HTTP response stream fails to close after headers arrive, the result
+uses the received status and configured Location validation as usual. It
+includes `cleanup_error_type: response_close_error`, the observed status code,
+and the received Location when the check validates that header. Retryable
+status codes still follow the configured retry policy. A close error by itself
+never starts another attempt.
+
 ## 6. Returning to the Synchronous Callback
 
 `_async_run_batch` awaits the result callback for each sample as soon as it

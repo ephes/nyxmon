@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Treat future-dated connectivity observations as stale when restoring an
   outage or evaluating notification holds.
 - Measure HTTP attempt duration with a monotonic clock.
+- Keep HTTP status and required Location evidence when response close fails,
+  and record a separate cleanup diagnostic.
 
 ### Dashboard
 
