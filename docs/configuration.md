@@ -629,6 +629,11 @@ seconds. `verify`, `check_cert_expiry` and `starttls_read_greeting` require
 JSON booleans (`true`/`false`). Strings such as `"false"` or `"443"`, booleans
 in numeric fields, and floats in integer fields are rejected.
 
+The retained Python executor uses `data.host` when set. It otherwise accepts a
+bare host or extracts the host from `check.url`. A URL the parser rejects
+returns `configuration_error` with the fixed message `invalid TCP check URL`
+before any connection attempt.
+
 The TCP executor validates that a port is reachable and, optionally, that TLS negotiation works and certificates are not close to expiry:
 
 ```python
@@ -650,6 +655,11 @@ The TCP executor validates that a port is reachable and, optionally, that TLS ne
 ```
 
 If certificate expiry falls below `min_cert_days`, the executor returns an error result with `error_type="cert_expiry"` and `severity="warning"` in the payload.
+
+When the retained Python executor decodes a DER certificate for expiry
+checking, it cleans up its temporary PEM file after writing, flushing,
+closing, or decoding fails. If removal also fails, the original error
+remains the reported diagnostic.
 
 #### STARTTLS protocols
 

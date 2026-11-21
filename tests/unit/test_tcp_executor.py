@@ -3,7 +3,10 @@
 import asyncio
 import socket
 import ssl
+import tempfile
+from pathlib import Path
 from typing import Any, Awaitable, Callable
+from unittest.mock import AsyncMock, Mock
 
 import anyio
 import pytest
@@ -174,6 +177,37 @@ async def test_plain_tcp_success() -> None:
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("url", "expected_host"),
+    [
+        ("tcp://synthetic-user:synthetic-password@[::1", None),
+        ("example.test", "example.test"),
+        ("tcp://example.test:443/path", "example.test"),
+    ],
+)
+async def test_tcp_host_admission(monkeypatch, url, expected_host) -> None:
+    connect = AsyncMock(return_value=AsyncMock())
+    monkeypatch.setattr(anyio, "connect_tcp", connect)
+    check = _tcp_check(443, retries=2)
+    check.url = url
+
+    result = await TcpCheckExecutor().execute(check)
+
+    assert result.check_id == check.check_id
+    if expected_host is None:
+        connect.assert_not_called()
+        assert result.status == ResultStatus.ERROR
+        assert result.data == {
+            "error_type": "configuration_error",
+            "error_msg": "invalid TCP check URL",
+        }
+    else:
+        connect.assert_awaited_once_with(expected_host, 443)
+        assert result.status == ResultStatus.OK
+        assert result.data["host"] == expected_host
+
+
+@pytest.mark.anyio
 async def test_connection_error_returns_error() -> None:
     # Bind to an ephemeral port and close to ensure nothing is listening
     sock = socket.socket()
@@ -240,6 +274,39 @@ async def test_starttls_flow_succeeds(tls_files) -> None:
 
     assert result.status == ResultStatus.OK
     assert result.data["tls_handshake_ms"] >= 0
+
+
+@pytest.mark.parametrize(
+    ("stage", "unlink_fails"),
+    [("write", False), ("flush", False), ("decode", False), ("decode", True)],
+)
+def test_tcp_certificate_scratch_cleanup(monkeypatch, tmp_path, stage, unlink_fails):
+    primary_error = OSError(f"certificate {stage} failed")
+    create_file = tempfile.NamedTemporaryFile
+
+    def create_scratch_file(**kwargs):
+        scratch = create_file(dir=tmp_path, **kwargs)
+        if stage in {"write", "flush"}:
+            monkeypatch.setattr(scratch, stage, Mock(side_effect=primary_error))
+        return scratch
+
+    monkeypatch.setattr(tempfile, "NamedTemporaryFile", create_scratch_file)
+    if stage == "decode":
+        monkeypatch.setattr(
+            ssl._ssl, "_test_decode_cert", Mock(side_effect=primary_error)
+        )
+    if unlink_fails:
+        unlink = Mock(side_effect=PermissionError("scratch unlink failed"))
+        monkeypatch.setattr(Path, "unlink", unlink)
+
+    with pytest.raises(OSError) as exc_info:
+        TcpCheckExecutor()._cert_days_remaining(ssl.PEM_cert_to_DER_cert(TEST_CERT))
+
+    assert exc_info.value is primary_error
+    if unlink_fails:
+        unlink.assert_called_once_with(missing_ok=True)
+    else:
+        assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.anyio
