@@ -1,7 +1,9 @@
 """Deletion must confirm the current definition, including a service's children."""
 
 import pytest
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from nyxboard.models import HealthCheck, Result, Service
@@ -13,6 +15,56 @@ def revision(client, url):
     response = client.get(url)
     assert response.status_code == 200
     return response.context.get("definition_revision", "unprotected-old-form")
+
+
+@pytest.fixture
+def signed_in_client(client, settings, django_user_model):
+    settings.NYXBOARD_REQUIRE_LOGIN = True
+    client.force_login(
+        django_user_model.objects.create_user(username="synthetic-operator")
+    )
+    return client
+
+
+@pytest.mark.parametrize("kind", ["service", "healthcheck"])
+@pytest.mark.parametrize("method", ["DELETE", "OPTIONS", "PUT"])
+@pytest.mark.parametrize("exists", [True, False])
+def test_delete_rejects_unsupported_methods_before_definition_lookup(
+    signed_in_client, service_factory, healthcheck_factory, kind, method, exists
+):
+    service = service_factory()
+    check = healthcheck_factory(service)
+    target = service if kind == "service" else check
+    pk = target.pk if exists else target.pk + 1
+    url = reverse(f"nyxboard:{kind}_delete", args=[pk])
+
+    with CaptureQueriesContext(connection) as queries:
+        response = signed_in_client.generic(method, url)
+
+    assert response.status_code == 405
+    assert set(response["Allow"].split(", ")) == {"GET", "HEAD", "POST"}
+    assert "no-store" in response["Cache-Control"]
+    assert all(
+        f'"{model._meta.db_table}"' not in query["sql"]
+        for model in (Service, HealthCheck)
+        for query in queries
+    )
+
+
+@pytest.mark.parametrize("kind", ["service", "healthcheck"])
+def test_delete_allows_authenticated_head(
+    signed_in_client, service_factory, healthcheck_factory, kind
+):
+    service = service_factory()
+    check = healthcheck_factory(service)
+    target = service if kind == "service" else check
+    url = reverse(f"nyxboard:{kind}_delete", args=[target.pk])
+
+    response = signed_in_client.head(url)
+
+    assert response.status_code == 200
+    assert response.content == b""
+    assert target.__class__.objects.filter(pk=target.pk).exists()
 
 
 @pytest.mark.parametrize("kind", ["service", "healthcheck"])

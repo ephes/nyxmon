@@ -1247,6 +1247,9 @@ their separate cache contract. Logout followed by another private read must
 reauthenticate when login is enabled; the browser must not reuse a stored card.
 
 Deletion confirmation pages carry an opaque signed definition fingerprint.
+Both deletion endpoints accept GET and HEAD for confirmation and POST to submit
+it. After the dashboard's access checks, other methods return 405 with an
+`Allow: GET, HEAD, POST` header before looking up the service or check.
 Deleting a check requires its current definition; deleting a service also
 requires its current name and complete ordered child-check definitions and IDs.
 The service confirmation reads the service and its ordered children in one

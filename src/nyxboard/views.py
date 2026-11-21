@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 import json
 from datetime import datetime, timezone
 from time import time
@@ -367,6 +367,7 @@ def service_update(request, service_id):
 
 
 @nyxboard_login_required
+@require_http_methods(["GET", "HEAD", "POST"])
 def service_delete(request, service_id):
     """
     Delete a service.
@@ -619,6 +620,7 @@ def healthcheck_update(request, check_id):
 
 
 @nyxboard_login_required
+@require_http_methods(["GET", "HEAD", "POST"])
 def healthcheck_delete(request, check_id):
     """
     Delete a health check.

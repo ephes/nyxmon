@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stored configuration cannot be decoded during save.
 - Sign and display the same snapshot of a service's health checks on deletion
   confirmation pages.
+- Return 405 for unsupported methods on service and health check deletion
+  endpoints before looking up the target.
 
 ### Rust agent run-check
 
