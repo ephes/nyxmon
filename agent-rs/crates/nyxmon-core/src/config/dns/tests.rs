@@ -1,5 +1,7 @@
 //! `config_dns.json` (`cases`) and the pure parts of `dns_text.json`.
 
+use std::cell::Cell;
+
 use super::*;
 use crate::fixture::{Field, load};
 
@@ -95,4 +97,31 @@ fn text_helpers_match_python() {
             "{case:?}"
         );
     }
+}
+
+thread_local! {
+    pub(super) static NORMALIZATION_CALLS: Cell<usize> = const { Cell::new(0) };
+}
+
+#[test]
+fn ip_matching_stops_normalizing_at_the_first_expected_match() {
+    let resolved = ["2001:db8::1".to_owned()];
+    let mut expected = vec!["2001:db8::2".to_owned(); 4096];
+    expected[0] = " 2001:0DB8:0:0:0:0:0:1 ".to_owned();
+
+    NORMALIZATION_CALLS.set(0);
+    assert!(check_ip_match(&resolved, &expected, true));
+    assert_eq!(NORMALIZATION_CALLS.get(), resolved.len() + 1);
+}
+
+#[test]
+fn exact_matching_preserves_txt_case_with_duplicates_in_either_order() {
+    let resolved = ["v=spf1 -all", "unrelated", "v=spf1 -all"].map(str::to_owned);
+    let mut expected = ["V=SPF1 -all", "other", "V=SPF1 -all"].map(str::to_owned);
+    assert!(!check_ip_match(&resolved, &expected, false));
+
+    expected[2] = resolved[0].clone();
+    assert!(check_ip_match(&resolved, &expected, false));
+    expected.reverse();
+    assert!(check_ip_match(&resolved, &expected, false));
 }

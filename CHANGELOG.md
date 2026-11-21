@@ -89,6 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Discard truncated TCP fallback replies before interpreting their answers and
   continue with remaining nameservers.
+- Stop DNS record comparison at the first matching expectation and avoid
+  copying returned strings during exact comparisons.
 
 ### Rust agent 0.1.6
 
