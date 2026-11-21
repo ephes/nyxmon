@@ -49,7 +49,7 @@ type MonitoringTasks = (
 );
 
 /// Check for a buffered stop signal before starting tasks, then supervise them.
-/// The collector gets 60s (max 30s grace + 15s flush + DB cleanup allowance).
+/// The collector gets 60s from the stop request (max 30s grace + 15s flush + DB cleanup allowance).
 /// Observer/cleaner cancellation is intentional only after shutdown starts.
 pub(crate) async fn supervise(
     start: impl FnOnce() -> MonitoringTasks,
@@ -85,6 +85,7 @@ pub(crate) async fn supervise(
             failed = true;
         },
     }
+    let collector_deadline = Instant::now() + Duration::from_secs(60);
     request_stop();
     // Request cancellation of both tasks before waiting on either.
     let auxiliary_deadline = Instant::now() + Duration::from_secs(1);
@@ -97,7 +98,7 @@ pub(crate) async fn supervise(
     );
     failed |= observer_failed || cleaner_failed;
     if !collector_done {
-        match tokio::time::timeout(Duration::from_secs(60), &mut collector).await {
+        match timeout_at(collector_deadline, &mut collector).await {
             Ok(Ok(())) => {}
             Ok(result) => {
                 report("collector", category(&result));
@@ -431,6 +432,36 @@ mod tests {
                 assert_eq!(start.elapsed(), Duration::from_secs(1));
                 assert!(capture.contains("monitoring task observer unexpectedly did not stop"));
                 assert!(capture.contains("monitoring task cleaner unexpectedly did not stop"));
+            });
+    }
+
+    #[test]
+    fn collector_deadline_is_independent_of_auxiliary_drain() {
+        let blocking = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        let (observer, _release_observer) = stalled_task(&blocking);
+        tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .start_paused(true)
+            .build()
+            .unwrap()
+            .block_on(async {
+                for observer in [None, Some(observer)] {
+                    let mut stop_requested_at = None;
+                    assert!(
+                        supervise(
+                            || (tokio::spawn(pending()), observer, None),
+                            tokio::task::yield_now(),
+                            || stop_requested_at = Some(Instant::now()),
+                        )
+                        .await
+                    );
+                    assert_eq!(
+                        stop_requested_at.unwrap().elapsed(),
+                        Duration::from_secs(60)
+                    );
+                }
             });
     }
 

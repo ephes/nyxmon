@@ -1110,6 +1110,10 @@ another batch or during shutdown. An abandoned batch that the shutdown intake
 stop ends also keeps its unfinished leases for the shutdown release. A failure
 to release leases at shutdown is logged and falls back to expiry recovery.
 
+The Rust supervisor allows up to 60 seconds to drain the collector from the stop
+request. The observer and results cleaner share a separate one-second limit
+within that window.
+
 The ops-library `roles/nyxmon_deploy/templates/nyxmon-monitor.service.j2` template
 has no explicit `TimeoutStopSec`. Assume systemd's usual 90-second manager default;
 host overrides have not been inspected. Keep the grace period plus the 15

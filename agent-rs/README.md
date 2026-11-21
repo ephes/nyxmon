@@ -710,9 +710,10 @@ database shutdown without starting any of these tasks or claiming checks.
 Unexpected task return, panic or cancellation logs only the task/category and
 exits unsuccessfully after stopping owned work. During monitoring, SIGTERM/SIGINT
 trigger collector draining; observer/cleaner aborts during shutdown are intentional.
-Collector draining has a 60-second outer deadline (30s maximum configured grace,
-15s result flush and cleanup allowance). The supervisor requests cancellation of
-both auxiliary tasks before awaiting either and gives them one shared second to stop.
+Collector draining has a 60-second outer deadline starting at the stop request
+(30s maximum configured grace, 15s result flush and cleanup allowance).
+The supervisor cancels both auxiliary tasks before awaiting either and gives them
+one shared second to stop within that collector deadline.
 A deadline breach or panic during drain also fails the process for restart.
 Probe panics/cancellations count conservatively as failed connectivity but are
 classified as internal probe errors with a target index/type, without panic
