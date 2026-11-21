@@ -170,8 +170,9 @@ impl Collector {
     }
 
     /// Step 1 (`_reconcile_incidents_after_restart`): the abandoned batch
-    /// of a previous process did not survive it.
-    pub(super) async fn reconcile_incidents_after_restart(&self) {
+    /// of a previous process did not survive it. Return whether the store
+    /// acknowledged the close, including when there was no incident.
+    pub(super) async fn reconcile_incidents_after_restart(&self) -> bool {
         match self.close_incident(PAUSED_INCIDENT_KEY).await {
             Ok(Some(closed)) => collector_log!(
                 warn,
@@ -186,8 +187,10 @@ impl Collector {
                     error,
                     "failed to reconcile collector incidents on startup\n{err}"
                 );
+                return false;
             }
         }
+        true
     }
 
     /// Step 4 (`_sync_stale_batch_incident`): fold a burst of expired

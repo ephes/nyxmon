@@ -51,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cancel the observer and results cleaner together on shutdown and give them
   one shared second to stop, with separate failure diagnostics.
 
+### Rust agent collector
+
+- Retry closing a previous process's execution-paused incident until SQLite
+  acknowledges it, before reporting a pause for the current process.
+
 ### Rust agent result handling
 
 - Rebuild site connectivity annotations on notification-state retries so a

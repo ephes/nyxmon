@@ -265,9 +265,10 @@ process restarts, reminds hourly, and keys its ticket on
 `collector:stale_processing_lease` opens when a recovery result is recorded and
 resolves after fifteen quiet minutes. `collector:execution_paused` opens when
 a batch exceeds its deadline and new executions pause. It resolves when the
-wedged thread exits or on the next worker startup. Incident state lives in the
-`collector_incident` table, so a deploy in the middle of an incident does not
-restart its alert cadence.
+wedged thread exits or on the next worker startup. If SQLite rejects the
+startup close, the Rust collector retries on the next iteration. Incident state
+lives in the `collector_incident` table, so a deploy in the middle of an incident
+does not restart its alert cadence.
 
 Recovery cannot cancel an executor that is still hung outside Nyxmon, so every
 executor must have a finite timeout and the lease must exceed its longest valid

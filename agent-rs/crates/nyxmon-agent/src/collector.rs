@@ -1,8 +1,8 @@
 //! The collector loop and its shutdown (`adapters/collector.py:
 //! AsyncCheckCollector`, PLAN.md 5.8).
 //!
-//! One iteration (`_collect_once`): on the first one, close an
-//! execution-paused incident left by a previous process; derive the
+//! One iteration (`_collect_once`): retry closing an execution-paused
+//! incident left by a previous process until acknowledged; derive the
 //! processing lease from the configured checks; reclaim expired leases,
 //! record their collector-internal results and fold them into one
 //! stale-lease incident; while an abandoned batch is still running, keep
@@ -282,10 +282,9 @@ impl Collector {
 
     /// One iteration of `_collect_once`.
     async fn collect_once(&self, cancel: &Flag) {
-        if !self.reconciled.swap(true, Ordering::SeqCst) {
-            self.reconcile_incidents_after_restart().await;
-            // `_warn_unobserved_site_requirements` needs the site observer
-            // (S11); without one it does nothing.
+        if !self.reconciled.load(Ordering::SeqCst) && self.reconcile_incidents_after_restart().await
+        {
+            self.reconciled.store(true, Ordering::SeqCst);
         }
         let effective_lease = self.effective_lease().await;
         // Reclaiming commits before the stale results and the batch alert
@@ -293,14 +292,19 @@ impl Collector {
         // cancelling it halfway and losing that crash evidence.
         self.recover_stale_leases(&effective_lease).await;
 
+        // Keep this process's pause incident separate from any startup
+        // close that still needs to be retried.
+        let reconciled = self.reconciled.load(Ordering::SeqCst);
         if self.abandoned_running() {
-            tokio::select! {
-                () = self.sync_paused_batch_incident() => {}
-                () = cancel.wait() => {}
+            if reconciled {
+                tokio::select! {
+                    () = self.sync_paused_batch_incident() => {}
+                    () = cancel.wait() => {}
+                }
             }
             return;
         }
-        if locked(&self.abandoned).take().is_some() {
+        if locked(&self.abandoned).take().is_some() && reconciled {
             self.resolve_paused_batch_incident().await;
         }
 

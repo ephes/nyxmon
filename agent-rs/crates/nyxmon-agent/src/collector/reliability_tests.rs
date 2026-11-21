@@ -696,8 +696,8 @@ async fn a_wedged_batch_resolves_and_a_later_wedge_alerts_again() {
 }
 
 #[tokio::test]
-async fn a_paused_incident_of_a_previous_process_is_resolved_on_startup() {
-    let setup = Setup::new(&[]);
+async fn startup_retries_a_failed_paused_incident_close() {
+    let setup = Setup::new(&[1]);
     let mut payload = PyDict::new();
     payload.insert(
         "incident_type".to_owned(),
@@ -714,9 +714,19 @@ async fn a_paused_incident_of_a_previous_process_is_resolved_on_startup() {
         )
         .await
         .unwrap();
+    setup.db.execute(
+        "CREATE TRIGGER fail_paused_close BEFORE DELETE ON collector_incident
+         WHEN OLD.incident_key = 'collector:execution_paused'
+         BEGIN SELECT RAISE(ABORT, 'database unavailable'); END;",
+    );
     let notifier = ScriptedNotifier::new(None);
     let collector = setup.build(setup.db.store(), &[], notifier.clone(), ok_executor);
     let (capture, _guard) = logging::capture();
+    collector.collect_once(&Flag::new()).await;
+    assert!(incident(&setup, PAUSED_INCIDENT_KEY).await.is_some());
+    assert_eq!(setup.db.results().len(), 1);
+
+    setup.db.execute("DROP TRIGGER fail_paused_close");
     collector.collect_once(&Flag::new()).await;
     assert!(incident(&setup, PAUSED_INCIDENT_KEY).await.is_none());
     assert_eq!(notifier.count(), 0);
@@ -725,8 +735,7 @@ async fn a_paused_incident_of_a_previous_process_is_resolved_on_startup() {
          alert(s); the abandoned batch thread did not survive the restart",
         T0 - 10
     )));
-    // Only on the first iteration.
-    collector.collect_once(&Flag::new()).await;
+    assert!(collector.reconciled.load(Ordering::SeqCst));
 }
 
 #[tokio::test]

@@ -1534,7 +1534,10 @@ continues. S10 adds steps 1 (restart reconciliation; the unobserved-site
 warning is emitted by the site observer task when it starts, S11, 6.13),
 2–5 and the step-7 deadline: the pure payload/message helpers are
 `nyxmon_core::collector_incident` (fixture `collector_incidents.json`), the
-incident state machine is `collector/incidents.rs`. Stale results go
+incident state machine is `collector/incidents.rs`. The Rust collector retries
+the startup close until SQLite acknowledges it. It waits for that
+acknowledgement before updating the paused incident for its own batch.
+Stale results go
 through `ResultHandler::add_check_result(.., false)` on the handler's
 clock; the abandoned batch is its own field (task, done flag, claims) and
 shutdown waits for it, aborts it (D-3) and releases its claims with the

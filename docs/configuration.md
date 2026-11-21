@@ -125,7 +125,10 @@ Telegram notifications read:
   recovery within twenty minutes. New executions
   stay paused while that single abandoned thread remains alive, and the pause is
   reported as one collector incident with hourly reminders. A failed reminder
-  attempt is retried after one minute. Stale-lease reclaim uses the same batch
+  attempt is retried after one minute. On restart, the Rust collector retries
+  closing any previous execution-paused incident on each iteration until SQLite
+  confirms the close. It waits for that confirmation before reporting a new
+  execution-paused incident. Stale-lease reclaim uses the same batch
   size but is drained in up to 20 rounds per iteration, so a restart that
   strands dozens of claims is recovered — and reported — in one go.
 - `NYXMON_NOTIFY_DELIVERY_RETRY_SECONDS`: Retry a per-check alert whose send
