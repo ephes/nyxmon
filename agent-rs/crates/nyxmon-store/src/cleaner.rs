@@ -36,7 +36,6 @@ pub(crate) fn delete_old_results(
             "batch_size must be in 1..=1000",
         ));
     }
-    let mut batch = CleanupBatch::default();
     // Reserve the writer before probing so a migration cannot change the
     // optional table between the probe and DELETE.
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -47,16 +46,40 @@ pub(crate) fn delete_old_results(
             |_| Ok(()),
         )
         .optional()?;
-    if sessions.is_some() {
-        batch.sessions_deleted = transaction.execute(
+    let sessions_deleted = if sessions.is_some() {
+        transaction.execute(
             "DELETE FROM django_session WHERE session_key IN \
              (SELECT session_key FROM django_session \
              WHERE expire_date < datetime('now') ORDER BY expire_date LIMIT ?)",
             [batch_size],
-        )?;
-    }
+        )?
+    } else {
+        0
+    };
     transaction.commit()?;
 
+    let results_deleted = delete_expired_results(connection, retention_seconds, batch_size)
+        .map_err(|error| {
+            if sessions_deleted == 0 {
+                StoreError::Sqlite(error)
+            } else {
+                StoreError::CleanupAfterSessionCommit {
+                    sessions_deleted,
+                    error,
+                }
+            }
+        })?;
+    Ok(CleanupBatch {
+        results_deleted,
+        sessions_deleted,
+    })
+}
+
+fn delete_expired_results(
+    connection: &mut Connection,
+    retention_seconds: i64,
+    batch_size: i64,
+) -> rusqlite::Result<usize> {
     // `created_at` is SQLite's UTC `datetime('now')`, so the cutoff is
     // computed by SQLite on the same clock.
     let modifier = format!("-{retention_seconds} seconds");
@@ -71,7 +94,7 @@ pub(crate) fn delete_old_results(
     };
     if ids.is_empty() {
         transaction.commit()?;
-        return Ok(batch);
+        return Ok(0);
     }
     let placeholders = vec!["?"; ids.len()].join(",");
     let deleted = transaction.execute(
@@ -79,14 +102,15 @@ pub(crate) fn delete_old_results(
         params_from_iter(&ids),
     )?;
     transaction.commit()?;
-    batch.results_deleted = deleted;
-    Ok(batch)
+    Ok(deleted)
 }
 
 impl Store {
     /// One cleaner batch (`delete_old_results_async`). `batch_size` must be
     /// in `1..=MAX_CLEANUP_BATCH_SIZE`, retention strictly positive. Returns
     /// separate result and session counts; either full count warrants a retry.
+    /// If results fail after sessions were deleted, the error carries the
+    /// committed session count.
     pub async fn delete_old_results(
         &self,
         retention_seconds: i64,

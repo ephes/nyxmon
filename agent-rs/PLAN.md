@@ -848,6 +848,8 @@ are part of the contract.
   `created_at < datetime('now', '-<retention> seconds') ORDER BY id`, delete
   them, commit, return separate `CleanupBatch` result/session counts. Validate
   `batch_size` in 1..=1000 before any deletion.
+  If the result phase fails after deleting sessions, report the committed
+  session count alongside the SQLite error.
 
 ### 3.5 Reading rows
 

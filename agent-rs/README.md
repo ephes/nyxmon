@@ -530,8 +530,9 @@ Never add DDL to the Python agent; a new required column raises
   cycle. The cleaner logs separate result and session totals when either table
   had deletions and includes both counts in the batch-limit warning.
   `Cleaner::run_cleanup_cycle` returns the result count on success. On failure
-  it logs separate totals from completed batches alongside the store error and
-  returns that error to the caller.
+  it logs committed result and session totals, including sessions deleted in
+  the batch whose result transaction failed. It returns the original store
+  error to the caller. The next cycle can retry result pruning.
 - A `health_check.data` value that cannot be decoded reads as `PyJson::Null`
   (`nyxmon_store::data_is_undecodable`; valid `null` reads as `{}`, D-11).
   The runner reports such a check as `configuration_error` (D-8).
