@@ -102,7 +102,8 @@ pub struct Collector {
     stop: Flag,
     fatal: Flag,
     intake: Arc<IntakeStop>,
-    /// Claims of the batch in progress (`_active_batch_checks`).
+    /// Claims of the batch in progress or awaiting release after a panic
+    /// (`_active_batch_checks`).
     active: Mutex<Vec<Check>>,
     abandoned: Mutex<Option<Abandoned>>,
     lease: Mutex<LeaseEstimate>,
@@ -304,11 +305,18 @@ impl Collector {
             }
             return;
         }
-        if locked(&self.abandoned).take().is_some() && reconciled {
-            self.resolve_paused_batch_incident().await;
+        let abandoned = locked(&self.abandoned).take();
+        if let Some(abandoned) = abandoned {
+            if abandoned.task.await.is_err_and(|err| err.is_panic()) {
+                collector_log!(error, "check collector iteration failed\npanic");
+                *self.active() = abandoned.checks;
+            }
+            if reconciled {
+                self.resolve_paused_batch_incident().await;
+            }
         }
 
-        if self.stop.is_set() {
+        if self.stop.is_set() || !self.release_active_claims().await {
             return;
         }
         // The claim is never cut short: claimed rows must reach the active
@@ -356,41 +364,53 @@ impl Collector {
                 .await;
             })
         };
-        let mut abandon = false;
         tokio::select! {
             joined = &mut batch => {
-                if let Err(err) = joined
-                    && err.is_panic()
-                {
+                if joined.is_err_and(|err| err.is_panic()) {
                     collector_log!(error, "check collector iteration failed\npanic");
+                    self.release_active_claims().await;
+                } else if !self.intake.requested.is_set() {
+                    self.active().clear();
                 }
             }
-            () = tokio::time::sleep(deadline) => abandon = true,
+            () = tokio::time::sleep(deadline) => {
+                *locked(&self.abandoned) = Some(Abandoned {
+                    task: batch,
+                    done,
+                    checks,
+                });
+                self.active().clear();
+                collector_log!(
+                    error,
+                    "check batch exceeded its {deadline_seconds}s execution/result deadline; new \
+                     executions are paused while lease recovery and alerts continue"
+                );
+            }
             () = cancel.wait() => {
                 // D-3: no result is written after the release.
                 batch.abort();
                 let _ = batch.await;
-                return;
             }
         }
-        // A finished batch is no longer released at shutdown; one that ended
-        // through the intake stop keeps its claims for the release. An
-        // abandoned batch keeps them in its own record.
-        if !self.intake.requested.is_set() {
-            self.active().clear();
+    }
+
+    /// Release a retired batch's still-owned claims. Keep them for retry
+    /// or shutdown if the store does not acknowledge the release.
+    async fn release_active_claims(&self) -> bool {
+        let claims = self.active().clone();
+        if claims.is_empty() {
+            return true;
         }
-        if abandon {
-            *locked(&self.abandoned) = Some(Abandoned {
-                task: batch,
-                done,
-                checks,
-            });
+        if let Err(err) = self.store.release_claims(self.handler.now(), &claims).await {
+            self.store_failed(&err);
             collector_log!(
                 error,
-                "check batch exceeded its {deadline_seconds}s execution/result deadline; new \
-                 executions are paused while lease recovery and alerts continue"
+                "failed to release check leases after batch panic\n{err}"
             );
+            return false;
         }
+        self.active().clear();
+        true
     }
 
     /// Steps 2 of `_collect_once`: `max(configured, required)`, the

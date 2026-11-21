@@ -1102,8 +1102,12 @@ could not be persisted is logged as `result handling failed for check_id=…`.
 If its batch had already finished, the check keeps its lease and is reclaimed
 and alerted after expiry like any other unrecorded execution; if shutdown
 interrupts that batch, the check's lease is released with the rest of the
-batch, so the log line is the only trace. A failure to release leases at
-shutdown is logged and falls back to expiry recovery.
+batch, so the log line is the only trace. When a Rust batch task panics,
+the collector releases its unfinished leases after the task exits using the
+same ownership check as on shutdown. Completed results keep their original
+schedule. If SQLite rejects the release, the collector retries before claiming
+another batch or during shutdown. A failure to release leases at shutdown is
+logged and falls back to expiry recovery.
 
 The ops-library `roles/nyxmon_deploy/templates/nyxmon-monitor.service.j2` template
 has no explicit `TimeoutStopSec`. Assume systemd's usual 90-second manager default;

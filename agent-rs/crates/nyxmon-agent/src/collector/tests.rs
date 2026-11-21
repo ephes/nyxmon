@@ -188,6 +188,98 @@ async fn a_result_finishing_within_the_grace_is_recorded_promptly() {
     assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 300, 0));
 }
 
+#[tokio::test]
+async fn a_panicked_batch_releases_its_unfinished_claims() {
+    let setup = Setup::new(&[1, 2]);
+    setup
+        .db
+        .execute("UPDATE health_check SET check_interval = 600 WHERE id = 1");
+    let notifier = ScriptedNotifier::new(None);
+    notifier.set_outcome({
+        let clock = setup.clock.clone();
+        move |_| {
+            // The result was committed before the send. Advance the clock
+            // so an accidental reschedule of check 1 would be visible.
+            clock.advance(7);
+            panic!("synthetic result-handler panic");
+        }
+    });
+    let collector = setup.collector(
+        &[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")],
+        notifier,
+        |check| {
+            Box::pin(async move {
+                if check.check_id == 1 {
+                    Ok(result(&check, ResultStatus::Error))
+                } else {
+                    std::future::pending().await
+                }
+            })
+        },
+    );
+    collector.collect_once(&Flag::new()).await;
+
+    assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 600, 0));
+    let results = setup.db.results();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].0, 1);
+    assert_eq!(setup.db.schedule(2), ("idle".to_owned(), T0 + 307, 0));
+    let due = setup
+        .db
+        .store()
+        .claim_due_checks(T0 + 307, 5)
+        .await
+        .unwrap();
+    assert_eq!(due.len(), 1);
+    assert_eq!(due[0].check_id, 2);
+}
+
+#[tokio::test]
+async fn an_abandoned_batch_panic_keeps_claims_if_release_fails() {
+    let setup = Setup::new(&[1, 2]);
+    let finish = Arc::new(Flag::new());
+    let notifier = ScriptedNotifier::new(None);
+    notifier.set_outcome(|_| panic!("synthetic result-handler panic"));
+    let collector = setup
+        .build(
+            setup.db.store(),
+            &[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")],
+            notifier,
+            {
+                let finish = finish.clone();
+                move |check| {
+                    let finish = finish.clone();
+                    Box::pin(async move {
+                        if check.check_id == 1 {
+                            finish.wait().await;
+                            Ok(result(&check, ResultStatus::Error))
+                        } else {
+                            std::future::pending().await
+                        }
+                    })
+                }
+            },
+        )
+        .with_batch_deadline(Duration::ZERO);
+    collector.collect_once(&Flag::new()).await;
+    assert!(collector.abandoned_running());
+    finish.set();
+    until(|| !collector.abandoned_running()).await;
+
+    setup.db.execute(
+        "CREATE TRIGGER fail_release BEFORE UPDATE OF status ON health_check
+         WHEN OLD.id = 2 AND OLD.status = 'processing' AND NEW.status = 'idle'
+         BEGIN SELECT RAISE(ABORT, 'database unavailable'); END;",
+    );
+    collector.collect_once(&Flag::new()).await;
+    assert_eq!(setup.db.schedule(2), ("processing".to_owned(), 0, T0));
+
+    setup.db.execute("DROP TRIGGER fail_release");
+    collector.collect_once(&Flag::new()).await;
+    assert_eq!(setup.db.schedule(2), ("idle".to_owned(), T0 + 300, 0));
+    assert_eq!(setup.db.results().len(), 1);
+}
+
 /// Takes `delay` to deliver.
 struct SlowNotifier {
     delay: Duration,

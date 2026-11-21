@@ -55,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Retry closing a previous process's execution-paused incident until SQLite
   acknowledges it, before reporting a pause for the current process.
+- Release unfinished claims after a Rust batch task panics, preserving
+  completed results and retrying unacknowledged releases.
 
 ### Rust agent result handling
 
