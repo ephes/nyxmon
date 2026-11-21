@@ -3,7 +3,8 @@ Management command to create development data for testing.
 """
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import router, transaction
+from django.db import connections, router, transaction
+from django.db.models import F
 
 from nyxboard.devdata import create_sample_data
 from nyxboard.models import HealthCheck, Service
@@ -30,7 +31,12 @@ class Command(BaseCommand):
 
         try:
             with transaction.atomic(using=using):
-                existing_services = Service.objects.using(using).count()
+                services = Service.objects.using(using)
+                if connections[using].vendor == "sqlite":
+                    # Reserve SQLite's writer before taking the read snapshot.
+                    # No service can match this predicate, even on a seeded DB.
+                    services.filter(pk__isnull=True).update(name=F("name"))
+                existing_services = services.count()
                 existing_checks = HealthCheck.objects.using(using).count()
                 has_data = bool(existing_services or existing_checks)
                 created = None

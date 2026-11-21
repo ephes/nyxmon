@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Count and create development fixtures atomically on one write database.
   Reject routing configurations that split services and health checks.
+- Serialize concurrent SQLite development seeds so only one unforced
+  invocation fills an empty database.
 
 ### Rust agent run-check
 

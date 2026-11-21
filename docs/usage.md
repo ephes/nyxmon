@@ -65,6 +65,10 @@ write database and creates all fixtures in a single transaction there. If
 Django routes the two models to different writers, the command stops before
 any fixture writes.
 
+On SQLite, concurrent invocations without `--force` serialize the emptiness
+check and fixture creation. One invocation seeds an empty database and the
+next reports that data already exists.
+
 To add fixtures even if services or checks already exist:
 
 ```bash
