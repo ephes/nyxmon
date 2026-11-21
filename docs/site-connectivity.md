@@ -323,7 +323,11 @@ absent row counts as restored — there is simply nothing to load.
 The retained Python observer also refuses unsupported payload versions. It
 logs an incompatibility and skips probe rounds and lifecycle writes until it
 can read a supported row. Use a compatible agent or repair the lifecycle
-while preserving any pending notifications.
+while preserving any pending notifications. The Python observer and result
+handler treat an observation as fresh only when its age is between zero and
+three probe intervals, inclusive. A future observation after a clock rollback
+cannot justify a hold. At restore, a future-dated active outage goes through
+the same idle transition as an expired outage.
 
 Rust validates the complete supported payload in a temporary candidate before
 installing paths, pending messages, rechecks or the restored flag. Invalid

@@ -1126,6 +1126,30 @@ async def test_restart_after_a_long_disable_drops_the_stale_outage() -> None:
 
 
 @pytest.mark.anyio
+async def test_restart_drops_an_outage_observed_in_the_future() -> None:
+    harness = Harness()
+    harness.probes.down_paths = {"ipv4"}
+    await harness.round(T0 + 60)
+    await harness.round(T0 + 120)
+    assert harness.payload["phase"] == PHASE_ACTIVE
+
+    now = T0 + 119
+    observer = await harness.respawn(now)
+    snapshot = observer.snapshot()
+    assert snapshot is not None
+    assert snapshot.incident_id == 0
+    assert snapshot.paths["ipv4"].state == PathState.UP
+    assert not snapshot.is_fresh(now, 180)
+    assert snapshot.hold_reason(IPV4_ONLY, now, now, stale_after=180) is None
+
+    await harness.round(now)
+    snapshot = observer.snapshot()
+    assert snapshot is not None
+    assert snapshot.is_fresh(now, 180)
+    assert snapshot.paths["ipv4"].state == PathState.FAILING
+
+
+@pytest.mark.anyio
 async def test_restart_after_every_single_write_is_consistent() -> None:
     """A crash between any write and its send is recoverable from the row."""
     harness = Harness()
@@ -1653,6 +1677,7 @@ def test_hold_reason_is_none_for_a_stale_snapshot() -> None:
         ipv6=PathSnapshot(state=str(PathState.DOWN), down_since=T0),
         observed_at=T0,
     )
+    assert snapshot.hold_reason(INTERNET, T0 - 1, T0 - 1, stale_after=180) is None
     assert snapshot.hold_reason(INTERNET, T0 + 500, T0 + 181, stale_after=180) is None
     assert (
         snapshot.hold_reason(INTERNET, T0 + 500, T0 + 180, stale_after=180) is not None

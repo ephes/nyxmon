@@ -433,6 +433,10 @@ class SiteConnectivityConfig:
 # ---------------------------------------------------------------- snapshot
 
 
+def _observation_is_fresh(observed_at: int, now: int, stale_after: int) -> bool:
+    return 0 <= now - observed_at <= stale_after
+
+
 @dataclass(frozen=True, slots=True)
 class PathSnapshot:
     """Immutable view of one path at the end of a probe round."""
@@ -462,7 +466,7 @@ class SiteConnectivitySnapshot:
 
     def is_fresh(self, now: int, stale_after: int) -> bool:
         """Whether the snapshot is recent enough to base decisions on."""
-        return now - self.observed_at <= stale_after
+        return _observation_is_fresh(self.observed_at, now, stale_after)
 
     def _observed(self, requirement: Sequence[str]) -> list[PathSnapshot]:
         observed: list[PathSnapshot] = []
@@ -1126,7 +1130,9 @@ class SiteConnectivityObserver:
         self._recheck = dict(recheck) if isinstance(recheck, dict) else {}
 
         now = int(self._clock())
-        if self._phase == PHASE_ACTIVE and not self._is_fresh(now):
+        if self._phase == PHASE_ACTIVE and not _observation_is_fresh(
+            self._observed_at, now, self._config.stale_after_seconds
+        ):
             logger.warning(
                 "site connectivity state observed at %s is stale; the active "
                 "outage %s is set to idle, keeping release watermarks, pending "
@@ -1612,9 +1618,6 @@ class SiteConnectivityObserver:
         await self._write_payload(now)
 
     # ------------------------------------------------------- persistence
-
-    def _is_fresh(self, now: int) -> bool:
-        return now - self._observed_at <= self._config.stale_after_seconds
 
     def _publish_snapshot(self) -> None:
         snapshot = SiteConnectivitySnapshot(
