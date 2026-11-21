@@ -329,6 +329,8 @@ fn compress_hextets(segments: &[u16; 8]) -> String {
 /// `normalize_dns_value`: the canonical text of an IP address (after
 /// `strip()`), any other value unchanged.
 pub fn normalize_dns_value(value: &str) -> String {
+    #[cfg(test)]
+    tests::NORMALIZATION_CALLS.set(tests::NORMALIZATION_CALLS.get() + 1);
     match py_ip_address(py_strip(value)) {
         Some(address) => py_ip_text(&address),
         None => value.to_owned(),
@@ -353,20 +355,20 @@ pub fn expected_ip_error(value: &str, query_type: QueryType) -> Option<String> {
 /// `DnsCheckExecutor._check_ip_match`: any common value, compared as IP
 /// addresses (normalised) for A/AAAA queries and exactly otherwise.
 pub fn check_ip_match(resolved: &[String], expected: &[String], compare_addresses: bool) -> bool {
-    let set = |values: &[String]| -> HashSet<String> {
-        values
+    if compare_addresses {
+        let resolved: HashSet<String> = resolved
             .iter()
-            .map(|value| {
-                if compare_addresses {
-                    normalize_dns_value(value)
-                } else {
-                    value.clone()
-                }
-            })
-            .collect()
-    };
-    let resolved = set(resolved);
-    set(expected).iter().any(|value| resolved.contains(value))
+            .map(|value| normalize_dns_value(value))
+            .collect();
+        expected
+            .iter()
+            .any(|value| resolved.contains(&normalize_dns_value(value)))
+    } else {
+        let resolved: HashSet<&str> = resolved.iter().map(String::as_str).collect();
+        expected
+            .iter()
+            .any(|value| resolved.contains(value.as_str()))
+    }
 }
 
 #[cfg(test)]

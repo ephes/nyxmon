@@ -336,7 +336,9 @@ Current fixtures:
   DNS server on `127.0.0.1` (UDP and TCP on one port; response templates
   whose ID the server replaces), with the result, key order and the queries
   received; the Rust tests replay the same scripts on their own fake DNS
-  server.
+  server. The `rust_outcome` override covers a complete-looking TCP reply
+  with TC set. The Rust resolver rejects the reply even if it contains a
+  matching record.
 - `dns_text.json` (`gen_dns.py`): `normalize_dns_value`,
   `expected_ip_error`, `_check_ip_match`, query names
   (`dns.name.from_text` + `to_text`), `dns.ipv6.inet_ntoa` and CPython's

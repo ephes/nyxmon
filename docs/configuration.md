@@ -893,7 +893,10 @@ The NyxBoard form ("📡 Ping Check") stores the host in `url` and `timeout`,
 
 ### DNS Checks
 
-DNS checks verify that resolved records include at least one expected IP and support optional resolver overrides:
+DNS checks verify that resolved records include at least one expected value and
+support optional resolver overrides. The Rust agent compares normalized IP
+addresses for A and AAAA queries and exact, case-sensitive text for other
+record types such as TXT. Comparison stops at the first matching expectation.
 
 ```python
 {
@@ -916,6 +919,11 @@ For HTTP, TCP and DNS, these constraints also apply to direct configuration
 raise `ValueError` and the executor returns `configuration_error` before any
 connection or DNS resolution. Existing configurations using numeric strings,
 coerced booleans, or values beyond these bounds must be updated.
+
+The Rust agent retries over TCP when a DNS server returns a truncated UDP
+reply. If the TCP reply is also truncated, the agent discards that reply and
+tries any remaining configured nameservers. If none can answer, the check
+reports a resolver error.
 
 See {doc}`dns-check-examples` for more configuration scenarios.
 

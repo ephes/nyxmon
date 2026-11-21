@@ -85,6 +85,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Log completed batch and deletion totals on cleanup failure. If result
   pruning fails, include session deletions committed in that batch.
 
+### Rust agent DNS
+
+- Discard truncated TCP fallback replies before interpreting their answers and
+  continue with remaining nameservers.
+- Stop DNS record comparison at the first matching expectation and avoid
+  copying returned strings during exact comparisons.
+
 ### Rust agent 0.1.6
 
 - Release the Rust agent as `agent-rs-v0.1.6` (crate version 0.1.6), the first

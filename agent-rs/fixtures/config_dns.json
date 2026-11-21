@@ -3593,6 +3593,17 @@
     }
    ],
    "resolv_conf": "nameserver 127.0.0.1\n",
+   "rust_outcome": {
+    "data": {
+     "error_msg": "<P2>",
+     "error_type": "unexpected_error"
+    },
+    "keys": [
+     "error_type",
+     "error_msg"
+    ],
+    "status": "error"
+   },
    "steps": [
     {
      "id": "match",

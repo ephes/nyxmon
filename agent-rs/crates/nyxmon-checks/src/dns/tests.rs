@@ -227,7 +227,10 @@ async fn executor_cases_match_python() {
         let label = format!("case {index}: {url:?} {data:?}");
         let result = execute(&check(url, data), &settings).await;
 
-        let outcome = case.get("outcome").unwrap();
+        let outcome = case
+            .get("rust_outcome")
+            .or_else(|| case.get("outcome"))
+            .unwrap();
         assert_eq!(
             Some(result.status.as_str()),
             outcome.get("status").and_then(PyJson::as_str),
@@ -446,6 +449,94 @@ fn a_response(id: u16, octets: [u8; 4]) -> Vec<u8> {
     wire.extend([0, 1, 0, 1, 0, 0, 1, 44, 0, 4]);
     wire.extend(octets);
     wire
+}
+
+/// `a_response` with the TC flag set.
+fn a_truncated_response(octets: [u8; 4]) -> Vec<u8> {
+    let mut wire = a_response(0, octets);
+    wire[2..4].copy_from_slice(&(wire::FLAG_QR | wire::FLAG_TC | wire::FLAG_RD).to_be_bytes());
+    wire
+}
+
+fn transports(server: &FakeDns) -> Vec<&'static str> {
+    server
+        .received
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|received| received.transport)
+        .collect()
+}
+
+#[tokio::test]
+async fn a_truncated_tcp_reply_is_discarded_and_the_next_nameserver_answers() {
+    // The first nameserver truncates over UDP and over TCP, even though its
+    // TCP reply carries a record; the second one answers.
+    let truncated = |octets| Step::Reply {
+        templates: vec![a_truncated_response(octets)],
+        other_id: false,
+    };
+    let server = FakeDns::start(vec![
+        truncated([192, 0, 2, 1]),
+        truncated([192, 0, 2, 1]),
+        Step::Reply {
+            templates: vec![a_response(0, [192, 0, 2, 2])],
+            other_id: false,
+        },
+    ])
+    .await;
+    let dir = tempdir();
+    let settings = DnsSettings {
+        resolv_conf: write(&dir, "nameserver 127.0.0.1\nnameserver 127.0.0.1\n"),
+        port: server.port,
+    };
+    let result = execute(
+        &check(
+            "a.test",
+            data(r#"{"expected_ips": ["192.0.2.2"], "timeout": 2}"#),
+        ),
+        &settings,
+    )
+    .await;
+    assert_eq!(result.status.as_str(), "ok", "{result:?}");
+    assert_eq!(
+        result.data["rrset"],
+        PyJson::List(vec![PyJson::from("192.0.2.2")])
+    );
+    assert_eq!(transports(&server), ["udp", "tcp", "udp"]);
+}
+
+#[tokio::test]
+async fn a_truncated_tcp_reply_from_the_only_nameserver_reports_truncation() {
+    let truncated = || Step::Reply {
+        templates: vec![a_truncated_response([192, 0, 2, 1])],
+        other_id: false,
+    };
+    let server = FakeDns::start(vec![truncated(), truncated()]).await;
+    let dir = tempdir();
+    let settings = DnsSettings {
+        resolv_conf: write(&dir, "nameserver 127.0.0.1\n"),
+        port: server.port,
+    };
+    let result = execute(
+        &check(
+            "a.test",
+            data(r#"{"expected_ips": ["192.0.2.1"], "dns_server": "127.0.0.1", "timeout": 2}"#),
+        ),
+        &settings,
+    )
+    .await;
+    assert_eq!(result.status.as_str(), "error", "{result:?}");
+    let message = result.data["error_msg"].as_str().unwrap();
+    assert!(message.starts_with("All nameservers failed"), "{message}");
+    assert_eq!(
+        message
+            .matches("answered The DNS response was truncated.")
+            .count(),
+        2,
+        "{message}"
+    );
+    assert_eq!(transports(&server), ["udp", "tcp"]);
 }
 
 #[tokio::test]
