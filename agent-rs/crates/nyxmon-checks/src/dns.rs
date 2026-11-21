@@ -322,6 +322,9 @@ async fn tcp_attempt(
             "A DNS query response does not respond to the question asked.".to_owned(),
         ));
     }
+    if message.flags & wire::FLAG_TC != 0 {
+        return Err(AttemptError::Truncated);
+    }
     Ok(message)
 }
 

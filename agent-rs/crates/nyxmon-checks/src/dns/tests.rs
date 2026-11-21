@@ -227,7 +227,10 @@ async fn executor_cases_match_python() {
         let label = format!("case {index}: {url:?} {data:?}");
         let result = execute(&check(url, data), &settings).await;
 
-        let outcome = case.get("outcome").unwrap();
+        let outcome = case
+            .get("rust_outcome")
+            .or_else(|| case.get("outcome"))
+            .unwrap();
         assert_eq!(
             Some(result.status.as_str()),
             outcome.get("status").and_then(PyJson::as_str),

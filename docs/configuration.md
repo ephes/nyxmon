@@ -917,6 +917,11 @@ raise `ValueError` and the executor returns `configuration_error` before any
 connection or DNS resolution. Existing configurations using numeric strings,
 coerced booleans, or values beyond these bounds must be updated.
 
+The Rust agent retries over TCP when a DNS server returns a truncated UDP
+reply. If the TCP reply is also truncated, the agent discards that reply and
+tries any remaining configured nameservers. If none can answer, the check
+reports a resolver error.
+
 See {doc}`dns-check-examples` for more configuration scenarios.
 
 ## Deployment Configuration
