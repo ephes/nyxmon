@@ -656,6 +656,11 @@ The TCP executor validates that a port is reachable and, optionally, that TLS ne
 
 If certificate expiry falls below `min_cert_days`, the executor returns an error result with `error_type="cert_expiry"` and `severity="warning"` in the payload.
 
+When the retained Python executor decodes a DER certificate for expiry
+checking, it cleans up its temporary PEM file after writing, flushing,
+closing, or decoding fails. If removal also fails, the original error
+remains the reported diagnostic.
+
 #### STARTTLS protocols
 
 Mail servers speak first and expect a short dialogue before they accept

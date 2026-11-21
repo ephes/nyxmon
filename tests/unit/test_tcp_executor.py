@@ -3,8 +3,10 @@
 import asyncio
 import socket
 import ssl
+import tempfile
+from pathlib import Path
 from typing import Any, Awaitable, Callable
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import anyio
 import pytest
@@ -272,6 +274,39 @@ async def test_starttls_flow_succeeds(tls_files) -> None:
 
     assert result.status == ResultStatus.OK
     assert result.data["tls_handshake_ms"] >= 0
+
+
+@pytest.mark.parametrize(
+    ("stage", "unlink_fails"),
+    [("write", False), ("flush", False), ("decode", False), ("decode", True)],
+)
+def test_tcp_certificate_scratch_cleanup(monkeypatch, tmp_path, stage, unlink_fails):
+    primary_error = OSError(f"certificate {stage} failed")
+    create_file = tempfile.NamedTemporaryFile
+
+    def create_scratch_file(**kwargs):
+        scratch = create_file(dir=tmp_path, **kwargs)
+        if stage in {"write", "flush"}:
+            monkeypatch.setattr(scratch, stage, Mock(side_effect=primary_error))
+        return scratch
+
+    monkeypatch.setattr(tempfile, "NamedTemporaryFile", create_scratch_file)
+    if stage == "decode":
+        monkeypatch.setattr(
+            ssl._ssl, "_test_decode_cert", Mock(side_effect=primary_error)
+        )
+    if unlink_fails:
+        unlink = Mock(side_effect=PermissionError("scratch unlink failed"))
+        monkeypatch.setattr(Path, "unlink", unlink)
+
+    with pytest.raises(OSError) as exc_info:
+        TcpCheckExecutor()._cert_days_remaining(ssl.PEM_cert_to_DER_cert(TEST_CERT))
+
+    assert exc_info.value is primary_error
+    if unlink_fails:
+        unlink.assert_called_once_with(missing_ok=True)
+    else:
+        assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.anyio

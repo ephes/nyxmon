@@ -6,6 +6,7 @@ import re
 import ssl
 import tempfile
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
@@ -507,16 +508,18 @@ class TcpCheckExecutor:
         if isinstance(cert, (bytes, bytearray)):
             pem_data = ssl.DER_cert_to_PEM_cert(cert)
             # stdlib lacks a public DER-to-dict helper; _test_decode_cert is stable enough for this
-            with tempfile.NamedTemporaryFile(
-                mode="w+", suffix=".pem", delete=False
-            ) as tmp:
-                tmp.write(pem_data)
-                tmp.flush()
-                temp_path = Path(tmp.name)
-
+            tmp = tempfile.NamedTemporaryFile(mode="w+", suffix=".pem", delete=False)
+            temp_path = Path(tmp.name)
             try:
+                with tmp:
+                    tmp.write(pem_data)
+                    tmp.flush()
                 cert_dict = ssl._ssl._test_decode_cert(str(temp_path))  # type: ignore[attr-defined]
-            finally:
+            except BaseException:
+                with suppress(OSError):
+                    temp_path.unlink(missing_ok=True)
+                raise
+            else:
                 temp_path.unlink(missing_ok=True)
         elif isinstance(cert, dict):
             cert_dict = cert
