@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Return 405 for unsupported methods on service and health check deletion
   endpoints before looking up the target.
 
+### Development tooling
+
+- Count and create development fixtures atomically on one write database.
+  Reject routing configurations that split services and health checks.
+
 ### Rust agent run-check
 
 - Validate the database schema and load the selected check from one read-only

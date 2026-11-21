@@ -60,7 +60,12 @@ This creates:
 - A "Dashboard Check" monitoring http://localhost:8000/ (passes when server is running)
 - A "Failing Check" monitoring http://localhost:8000/non-existent-url/ (will fail)
 
-To force adding data even if checks already exist:
+The command checks for existing services and health checks on the selected
+write database and creates all fixtures in a single transaction there. If
+Django routes the two models to different writers, the command stops before
+any fixture writes.
+
+To add fixtures even if services or checks already exist:
 
 ```bash
 uv run src/django/manage.py create_devdata --force

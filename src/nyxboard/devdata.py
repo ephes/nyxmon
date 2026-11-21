@@ -10,9 +10,9 @@ from nyxmon.domain import CheckStatus
 from nyxboard.models import Service, HealthCheck
 
 
-def create_dev_service(name: str) -> Service:
+def create_dev_service(name: str, *, using: str | None = None) -> Service:
     """Create a development service with the given name."""
-    service = Service.objects.create(name=name)
+    service = Service.objects.db_manager(using).create(name=name)
     return service
 
 
@@ -23,12 +23,19 @@ def create_dev_check(
     url: str = "http://localhost:8000/",
     interval: int = 60,
     disabled: bool = False,
+    *,
+    using: str | None = None,
 ) -> HealthCheck:
     """Create a development health check for the given service."""
     next_check_time = int(timezone.now().timestamp()) + interval
 
-    check = HealthCheck.objects.create(
-        service=service,
+    # With a pinned writer, assigning the ID avoids routing an unsaved check
+    # through Django's foreign key descriptor before the explicit insert.
+    service_fields = (
+        {"service": service} if using is None else {"service_id": service.pk}
+    )
+    check = HealthCheck.objects.db_manager(using).create(
+        **service_fields,
         name=name,
         check_type=check_type,
         url=url,
@@ -41,7 +48,7 @@ def create_dev_check(
     return check
 
 
-def create_sample_data() -> Dict[str, List]:
+def create_sample_data(*, using: str | None = None) -> Dict[str, List]:
     """Create sample development data including services and checks."""
     # Track created objects
     created: dict[str, list] = {
@@ -50,7 +57,7 @@ def create_sample_data() -> Dict[str, List]:
     }
 
     # Create Dev Service
-    dev_service = create_dev_service("Development Server")
+    dev_service = create_dev_service("Development Server", using=using)
     created["services"].append(dev_service)
 
     # Create working check - checks the dashboard
@@ -59,6 +66,7 @@ def create_sample_data() -> Dict[str, List]:
         name="Dashboard Check",
         url="http://localhost:8000/",
         interval=60,
+        using=using,
     )
     created["checks"].append(working_check)
 
@@ -68,6 +76,7 @@ def create_sample_data() -> Dict[str, List]:
         name="Failing Check",
         url="http://localhost:8000/non-existent-url/",
         interval=60,
+        using=using,
     )
     created["checks"].append(failing_check)
 
