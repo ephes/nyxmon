@@ -85,6 +85,11 @@ Each task group member executes `_run_one(check, send_channel)`:
 
 **Breaking Change:** The legacy `_run_http_check` fallback has been removed. All check types must have registered executors.
 
+For the retained Python HTTP executor, a successful retry-enabled check reports
+`duration_ms` for the successful attempt from request start through response
+stream close. It uses a monotonic clock, and retry sleeps are outside that
+measurement. Result timestamps still use wall time.
+
 ## 6. Returning to the Synchronous Callback
 
 `_async_run_batch` awaits the result callback for each sample as soon as it

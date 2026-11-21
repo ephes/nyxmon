@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stored payload version is unsupported.
 - Treat future-dated connectivity observations as stale when restoring an
   outage or evaluating notification holds.
+- Measure HTTP attempt duration with a monotonic clock.
 
 ### Dashboard
 

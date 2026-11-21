@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from typing import Any, AsyncIterator
 
 import httpx
@@ -346,3 +347,48 @@ async def test_body_is_never_read_and_the_stream_is_closed() -> None:
     assert result.status == ResultStatus.OK
     assert result.data == {"status_code": 200}
     assert body.closed
+
+
+@pytest.mark.anyio
+async def test_attempt_duration_survives_wall_clock_rollback(monkeypatch) -> None:
+    wall_seconds = 1000
+    monotonic_ns = 0
+    retry_delays = []
+    monkeypatch.setattr(
+        "nyxmon.adapters.runner.executors.http_executor.time",
+        SimpleNamespace(time=lambda: wall_seconds, monotonic_ns=lambda: monotonic_ns),
+    )
+
+    async def retry_sleep(delay: float) -> None:
+        nonlocal monotonic_ns
+        retry_delays.append(delay)
+        monotonic_ns += 1_000_000_000
+
+    monkeypatch.setattr(
+        "nyxmon.adapters.runner.executors.http_executor.anyio.sleep",
+        retry_sleep,
+    )
+
+    class ClockRollbackBody(_UnreadableBody):
+        async def aclose(self) -> None:
+            nonlocal wall_seconds, monotonic_ns
+            wall_seconds -= 30
+            monotonic_ns += 125_000_000
+            await super().aclose()
+
+    responses = iter(
+        [httpx.Response(502), httpx.Response(200, stream=ClockRollbackBody())]
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return next(responses)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        executor = HttpCheckExecutor(client=client)
+        result = await executor.execute(
+            _build_check(config={"retries": 1, "retry_delay": 1})
+        )
+
+    assert result.status == ResultStatus.OK
+    assert retry_delays == [1]
+    assert result.data == {"attempt": 2, "attempts": 2, "duration_ms": 125}

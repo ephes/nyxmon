@@ -71,7 +71,7 @@ class HttpCheckExecutor:
         attempts = config.retries + 1
 
         for attempt in range(1, attempts + 1):
-            start = time.time()
+            start = time.monotonic_ns()
             try:
                 response = await self._fetch_headers(client, check.url, config)
                 status_code = self._response_status_code(response)
@@ -128,7 +128,7 @@ class HttpCheckExecutor:
                         },
                     )
 
-                duration_ms = int((time.time() - start) * 1000)
+                duration_ms = (time.monotonic_ns() - start) // 1_000_000
                 data: dict[str, Any] = {}
                 if attempt > 1 or attempts > 1:
                     data.update(
