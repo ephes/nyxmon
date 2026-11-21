@@ -10,6 +10,12 @@ pub enum StoreError {
     /// An SQLite error (busy timeout, constraint, I/O, ...). The operation's
     /// transaction was rolled back.
     Sqlite(rusqlite::Error),
+    /// Result pruning failed after the batch committed `sessions_deleted`
+    /// expired session deletions in a separate transaction.
+    CleanupAfterSessionCommit {
+        sessions_deleted: usize,
+        error: rusqlite::Error,
+    },
     /// `NotificationStateConflict`: the notification state changed after the
     /// caller calculated its transition. The result, the completion and the
     /// state write were rolled back together.
@@ -27,7 +33,9 @@ impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StoreError::InvalidArgument(message) => f.write_str(message),
-            StoreError::Sqlite(err) => write!(f, "{err}"),
+            StoreError::Sqlite(err) | StoreError::CleanupAfterSessionCommit { error: err, .. } => {
+                write!(f, "{err}")
+            }
             StoreError::NotificationStateConflict { check_id } => {
                 write!(f, "{check_id}")
             }
@@ -41,7 +49,9 @@ impl fmt::Display for StoreError {
 impl std::error::Error for StoreError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            StoreError::Sqlite(err) => Some(err),
+            StoreError::Sqlite(err) | StoreError::CleanupAfterSessionCommit { error: err, .. } => {
+                Some(err)
+            }
             StoreError::Io(err) => Some(err),
             _ => None,
         }
@@ -61,7 +71,10 @@ impl StoreError {
         matches!(
             self,
             StoreError::Sqlite(rusqlite::Error::SqliteFailure(err, _))
-                if err.code == rusqlite::ErrorCode::DatabaseBusy
+                | StoreError::CleanupAfterSessionCommit {
+                    error: rusqlite::Error::SqliteFailure(err, _),
+                    ..
+                } if err.code == rusqlite::ErrorCode::DatabaseBusy
         )
     }
 }

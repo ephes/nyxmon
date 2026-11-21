@@ -229,6 +229,64 @@ async fn a_later_batch_error_logs_only_completed_work_and_propagates() {
 }
 
 #[tokio::test]
+async fn a_result_delete_error_reports_committed_sessions_and_can_retry() {
+    let db = TestDb::new();
+    db.insert(&crate::testutil::check(1));
+    db.execute(
+        "INSERT INTO django_session VALUES
+         ('expired-1', '', '2000-01-01 00:00:00'),
+         ('expired-2', '', '2000-01-02 00:00:00'),
+         ('expired-3', '', '2000-01-03 00:00:00'),
+         ('live', '', '2999-01-01 00:00:00');
+         INSERT INTO check_result (id, health_check_id, status, data, created_at) VALUES
+         (1, 1, 'ok', '{}', '2000-01-01 00:00:00'),
+         (2, 1, 'ok', '{}', '2000-01-01 00:00:00'),
+         (3, 1, 'ok', '{}', '2000-01-01 00:00:00');
+         CREATE TRIGGER reject_result_delete BEFORE DELETE ON check_result
+         WHEN OLD.id = 3
+         BEGIN
+             SELECT RAISE(ABORT, 'result deletion blocked');
+         END;",
+    );
+    let cleaner = Cleaner::new(db.store(), 3600, 86400, 2, 100).unwrap();
+    let (capture, _guard) = logging::capture();
+
+    let error = cleaner.run_cleanup_cycle().await.unwrap_err();
+    assert!(matches!(
+        error,
+        StoreError::Sqlite(rusqlite::Error::SqliteFailure(_, Some(message)))
+            if message == "result deletion blocked"
+    ));
+    let connection = db.raw();
+    assert_eq!(
+        connection
+            .query_row(
+                "SELECT group_concat(session_key) FROM django_session",
+                [],
+                |row| row.get::<_, String>(0)
+            )
+            .unwrap(),
+        "live"
+    );
+    assert_eq!(db.results().len(), 1);
+    assert_eq!(
+        capture.messages(),
+        [
+            "Error during result cleanup after 1 completed batch(es) (2 check results, \
+             3 expired sessions): result deletion blocked"
+        ]
+    );
+
+    db.execute("DROP TRIGGER reject_result_delete");
+    assert_eq!(cleaner.run_cleanup_cycle().await.unwrap(), 1);
+    assert!(db.results().is_empty());
+    assert_eq!(
+        capture.messages().last().unwrap(),
+        "Cleaned up 1 old check results and 0 expired sessions in 1 batch(es)"
+    );
+}
+
+#[tokio::test]
 async fn a_cycle_drains_an_sqlite_backlog() {
     let db = TestDb::new();
     db.execute(

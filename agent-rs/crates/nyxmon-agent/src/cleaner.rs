@@ -13,6 +13,8 @@ pub const DEFAULT_MAX_BATCHES_PER_CYCLE: i64 = 100;
 /// One cleaner batch of the store.
 pub trait ResultsPruner: Send + Sync + 'static {
     /// `delete_old_results_async`: separate result and session deletion counts.
+    /// A result failure with committed session deletions carries their count
+    /// in `StoreError::CleanupAfterSessionCommit`.
     fn delete_old_results(
         &self,
         retention_seconds: i64,
@@ -90,8 +92,8 @@ impl<S: ResultsPruner> Cleaner<S> {
     /// `max_batches_per_cycle` batches. Returns the number of results deleted.
     ///
     /// # Errors
-    /// Logs the completed batches and returns the original store error if a
-    /// batch fails. Rows deleted by earlier batches stay deleted.
+    /// Logs committed deletions, including sessions from a partially completed
+    /// batch, and returns the original store error if a batch fails.
     pub async fn run_cleanup_cycle(&self) -> Result<u64, StoreError> {
         let batch_size = usize::try_from(self.batch_size).expect("validated batch size");
         let mut total_results: u64 = 0;
@@ -106,6 +108,18 @@ impl<S: ResultsPruner> Cleaner<S> {
             {
                 Ok(batch) => batch,
                 Err(err) => {
+                    let err = match err {
+                        StoreError::CleanupAfterSessionCommit {
+                            sessions_deleted,
+                            error,
+                        } => {
+                            total_sessions = total_sessions.saturating_add(
+                                u64::try_from(sessions_deleted).unwrap_or(u64::MAX),
+                            );
+                            StoreError::Sqlite(error)
+                        }
+                        err => err,
+                    };
                     tracing::error!(
                         target: "nyxmon.adapters.cleaner",
                         "Error during result cleanup after {batches} completed batch(es) \

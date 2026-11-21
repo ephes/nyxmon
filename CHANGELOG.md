@@ -77,10 +77,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Rust agent retention
 
+- Check for the optional Django sessions table under the same SQLite writer
+  reservation as session deletion so concurrent migrations cannot invalidate
+  the probe.
 - Report deleted results and expired sessions separately in cleanup logs,
   including session-only cycles and batch-limit warnings.
-- Include completed batch and deletion counts in the cleanup error log when a
-  later batch fails.
+- Log completed batch and deletion totals on cleanup failure. If result
+  pruning fails, include session deletions committed in that batch.
 
 ### Rust agent 0.1.6
 
