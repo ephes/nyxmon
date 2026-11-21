@@ -70,6 +70,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Include only committed stale-lease results in collector incident counts and
   sampled check IDs, omitting results superseded by newer claims or edits.
 
+### Rust agent IMAP
+
+- Index FETCH date observations once per batch, preserving SEARCH order for
+  date ties and rejecting conflicting dates for selected UIDs.
+
 ### Rust agent retention
 
 - Report deleted results and expired sessions separately in cleanup logs,

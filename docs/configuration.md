@@ -754,7 +754,11 @@ unsolicited data and literals), in addition to the per-command limits. An
 oversized or malformed selection returns `incomplete_scan`, without a partial
 healthy result, STORE or EXPUNGE. Reduce the matching backlog before retrying;
 these errors do not take the no-recent-message retry path. Results contain at
-most 256 `matched_uids`; cleanup remains scoped to the selected UIDs.
+most 256 `matched_uids`; cleanup remains scoped to the selected UIDs. Within
+each batch the agent indexes FETCH dates by requested UID, ignores unrelated
+UIDs and date-free updates, and sorts matches by date with ties in SEARCH
+order. Conflicting date observations for a requested UID fail the scan before
+cleanup.
 
 Cleanup (STORE/EXPUNGE) additionally requires the SELECT UIDVALIDITY to stay
 unchanged through a NOOP after the FETCHes; a missing, invalid or changed

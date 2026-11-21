@@ -619,11 +619,13 @@ owner-managed ops-control pin and rollout.
 IMAP subjects are literal printable ASCII strings: quotes and backslashes are
 escaped; unsupported/control characters fail before SEARCH. Selected-message
 work is limited to 256 distinct positive UIDs, FETCH batches of 32, and 8 MiB
-of total incoming FETCH bytes per attempt. UID attribution ignores unsolicited
-messages. Exceeding selection/work limits returns `incomplete_scan`, without
-success or any partial deletion; clear the matching backlog to recover. The
-existing Python dialogue fixture now records these intentional Rust admission
-and batch-command differences.
+of total incoming FETCH bytes per attempt. Each batch indexes date observations
+for requested UIDs in one pass. Unrelated UIDs and updates without an
+INTERNALDATE item are ignored. Conflicting dates for a selected UID fail the
+scan. Matches are sorted by date, with ties in SEARCH order. Exceeding
+selection or work limits returns `incomplete_scan` without success or partial
+deletion. Clear the matching backlog to recover. The existing Python dialogue
+fixture records these intentional Rust admission and batch-command differences.
 
 After all FETCHes, IMAP checks re-evaluate the age of selected messages against
 the current clock immediately before success/deletion. Aged-out messages are
