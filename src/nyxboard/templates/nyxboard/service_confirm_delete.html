@@ -22,7 +22,7 @@
         <h3>Service: {{ service.name }}</h3>
         <p>ID: {{ service.id }}</p>
         <ul>
-            {% for check in service.healthcheck_set.all %}
+            {% for check in children %}
             <li><a href="{% url 'nyxboard:healthcheck_detail' check_id=check.id %}">{{ check.name }}</a> — {{ check.get_check_type_display }}: {{ check.url }}</li>
             {% empty %}<li>No health checks.</li>{% endfor %}
         </ul>

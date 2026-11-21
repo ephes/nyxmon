@@ -46,6 +46,7 @@ def delete_confirmed(model, pk, submitted_revision):
     The no-op write reserves SQLite's writer before any definition/child-set
     read. Row locks also serialize the definition and children on row-locking
     backends. No probe or network operation runs inside this short transaction.
+    On conflict, return the service's compared children for the confirmation page.
     """
     definitions = model.objects.select_for_update()
     using = definitions.db  # select_for_update resolves write routing.
@@ -56,12 +57,15 @@ def delete_confirmed(model, pk, submitted_revision):
         children = None
         if isinstance(instance, Service):
             children = list(
-                instance.healthcheck_set.using(using).select_for_update().order_by("pk")
+                instance.healthcheck_set.using(using)
+                .select_for_update()
+                .only(*DEFINITION_FIELDS)
+                .order_by("pk")
             )
         current = deletion_revision(instance, children=children)
         if not submitted_revision or not constant_time_compare(
             submitted_revision, current
         ):
-            return instance, False
+            return instance, False, children
         instance.delete(using=using)
-        return instance, True
+        return instance, True, None

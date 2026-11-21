@@ -6,8 +6,9 @@ from types import SimpleNamespace
 import pytest
 from django.db import connection, connections
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
-from nyxboard import deletion
+from nyxboard import deletion, views
 from nyxboard.forms import DefinitionConflict, HttpHealthCheckForm, ServiceForm
 from nyxboard.models import HealthCheck, Result, Service
 
@@ -68,6 +69,90 @@ def confirmed_definition(db, kind):
     return model, pk, deletion.deletion_revision(instance)
 
 
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_service_delete_renders_the_signed_children(
+    client, routed_definitions, monkeypatch, method
+):
+    db = routed_definitions
+    alias = db.replica if method == "get" else db.writer
+    conn = connections[alias]
+    other_conn = connections[db.writer if method == "get" else db.replica]
+    expected_name = db.check.name
+    if method == "post":
+        expected_name = "Writer child"
+        HealthCheck.objects.using(alias).filter(pk=db.check.pk).update(
+            name=expected_name
+        )
+    service = Service.objects.using(alias).get(pk=db.service.pk)
+    expected_revision = deletion.deletion_revision(
+        service, children=HealthCheck.objects.using(alias).filter(service=service)
+    )
+    original_render = views.render
+
+    def render(*args, **kwargs):
+        assert not conn.in_atomic_block
+        HealthCheck.objects.using(alias).filter(pk=db.check.pk).update(
+            name="Renamed child"
+        )
+        with (
+            CaptureQueriesContext(conn) as queries,
+            CaptureQueriesContext(other_conn) as other_queries,
+        ):
+            response = original_render(*args, **kwargs)
+        assert expected_name.encode() in response.content
+        assert b"Renamed child" not in response.content
+        assert not queries and not other_queries
+        return response
+
+    monkeypatch.setattr(views, "render", render)
+    url = reverse("nyxboard:service_delete", args=[service.pk])
+    response = getattr(client, method)(url)
+    assert response.status_code == (200 if method == "get" else 409)
+    assert response.context["definition_revision"] == expected_revision
+
+
+def test_service_delete_reads_parent_and_children_in_one_snapshot(
+    client, routed_definitions
+):
+    db = routed_definitions
+    conn = connections[db.replica]
+    path = conn.settings_dict["NAME"]
+    with conn.cursor() as cursor:
+        assert cursor.execute("PRAGMA journal_mode=WAL").fetchone() == ("wal",)
+    expected_revision = deletion.deletion_revision(
+        Service.objects.using(db.replica).get(pk=db.service.pk)
+    )
+    renamed = False
+
+    def rename_before_child_read(execute, sql, params, many, context):
+        nonlocal renamed
+        if not renamed and 'FROM "health_check"' in sql:
+            with sqlite3.connect(path, timeout=1) as writer:
+                writer.execute(
+                    "UPDATE service SET name='Renamed service' WHERE id=?",
+                    (db.service.pk,),
+                )
+                writer.execute(
+                    "UPDATE health_check SET name='Renamed child' WHERE id=?",
+                    (db.check.pk,),
+                )
+            renamed = True
+        return execute(sql, params, many, context)
+
+    url = reverse("nyxboard:service_delete", args=[db.service.pk])
+    with conn.execute_wrapper(rename_before_child_read):
+        response = client.get(url)
+    assert renamed
+    assert response.status_code == 200
+    assert db.service.name.encode() in response.content
+    assert db.check.name.encode() in response.content
+    assert response.context["definition_revision"] == expected_revision
+    fresh = client.get(url)
+    assert b"Renamed service" in fresh.content
+    assert b"Renamed child" in fresh.content
+    assert fresh.context["definition_revision"] != expected_revision
+
+
 @pytest.mark.parametrize("stale", [False, True])
 def test_service_edit_uses_instance_write_route(routed_definitions, settings, stale):
     db = routed_definitions
@@ -116,7 +201,7 @@ def test_routed_delete_holds_writer_until_cascade(
         CaptureQueriesContext(connection) as default_queries,
         CaptureQueriesContext(connections[db.replica]) as replica_queries,
     ):
-        instance, deleted = deletion.delete_confirmed(model, pk, token)
+        instance, deleted, _ = deletion.delete_confirmed(model, pk, token)
     assert deleted
     assert instance._state.db == db.writer
     assert attempts == [True]
@@ -136,7 +221,7 @@ def test_routed_delete_rechecks_writer_not_stale_replica(routed_definitions, kin
     HealthCheck.objects.using(db.writer).filter(pk=db.check.pk).update(
         data={"timeout": 9}
     )
-    _, deleted = deletion.delete_confirmed(model, pk, token)
+    _, deleted, _ = deletion.delete_confirmed(model, pk, token)
     assert not deleted
     assert HealthCheck.objects.using(db.writer).get(pk=db.check.pk).data == {
         "timeout": 9

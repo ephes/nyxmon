@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compare and save service renames on the write database selected for the service.
 - Keep submitted health check edits on screen with a reload message when the
   stored configuration cannot be decoded during save.
+- Sign and display the same snapshot of a service's health checks on deletion
+  confirmation pages.
 
 ### Rust agent run-check
 

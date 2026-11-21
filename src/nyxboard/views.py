@@ -373,20 +373,28 @@ def service_delete(request, service_id):
     """
     conflict = False
     if request.method == "POST":
-        service, deleted = delete_confirmed(
+        service, deleted, children = delete_confirmed(
             Service, service_id, request.POST.get("definition_revision")
         )
         if deleted:
             return redirect("nyxboard:service_list")
         conflict = True
     else:
-        service = get_object_or_404(Service, id=service_id)
+        alias = Service.objects.db
+        with transaction.atomic(using=alias):
+            service = get_object_or_404(Service.objects.using(alias), id=service_id)
+            children = list(
+                service.healthcheck_set.using(alias)
+                .only(*DEFINITION_FIELDS)
+                .order_by("pk")
+            )
     return render(
         request,
         "nyxboard/service_confirm_delete.html",
         {
             "service": service,
-            "definition_revision": deletion_revision(service),
+            "children": children,
+            "definition_revision": deletion_revision(service, children=children),
             "conflict": DELETE_CONFLICT if conflict else None,
         },
         status=409 if conflict else 200,
@@ -617,7 +625,7 @@ def healthcheck_delete(request, check_id):
     """
     conflict = False
     if request.method == "POST":
-        health_check, deleted = delete_confirmed(
+        health_check, deleted, _ = delete_confirmed(
             HealthCheck, check_id, request.POST.get("definition_revision")
         )
         if deleted:

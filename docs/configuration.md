@@ -1249,6 +1249,9 @@ reauthenticate when login is enabled; the browser must not reuse a stored card.
 Deletion confirmation pages carry an opaque signed definition fingerprint.
 Deleting a check requires its current definition; deleting a service also
 requires its current name and complete ordered child-check definitions and IDs.
+The service confirmation reads the service and its ordered children in one
+SQLite snapshot and signs the same children it displays. A conflict page uses
+the child definitions checked on the writer.
 Added, removed, moved or edited children make an old confirmation return 409.
 Reload the confirmation and review the linked checks before confirming again.
 Missing or altered confirmations also return 409. Agent status, claim, schedule
