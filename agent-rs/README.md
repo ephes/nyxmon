@@ -521,6 +521,9 @@ Never add DDL to the Python agent; a new required column raises
   peer is cancelled, late waiters return immediately, and repeated sets are
   harmless. Poll-driven and barrier-driven regressions exercise fan-out and
   registration/check races without sleeps or OS signals.
+- Each retention batch checks for the optional Django sessions table and
+  deletes expired sessions within the same immediate SQLite transaction.
+  Result pruning runs in a separate transaction after the session phase.
 - Retention accepts a batch size of 1..=1000 at both the cleaner and store
   boundary. `Store::delete_old_results` returns `CleanupBatch` with separate
   result/session counts. A full count in either table continues the bounded

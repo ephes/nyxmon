@@ -841,7 +841,8 @@ are part of the contract.
   one `BEGIN IMMEDIATE`), `close` (delete, returning the old row). Payloads
   that fail to decode or are not objects read as `{}`
   (`_row_to_collector_incident`).
-- **Cleaner batch** (`delete_old_results_async`): if `django_session` exists,
+- **Cleaner batch** (`delete_old_results_async`): check for `django_session`
+  inside a `BEGIN IMMEDIATE` transaction. If the table exists,
   delete up to `batch_size` expired sessions (`expire_date < datetime('now')`,
   oldest first) and commit; then select up to `batch_size` ids with
   `created_at < datetime('now', '-<retention> seconds') ORDER BY id`, delete

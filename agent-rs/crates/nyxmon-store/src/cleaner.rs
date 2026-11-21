@@ -37,9 +37,10 @@ pub(crate) fn delete_old_results(
         ));
     }
     let mut batch = CleanupBatch::default();
-    // The agent also supports databases without the sessions table; the
-    // probe runs every batch, like Python's.
-    let sessions = connection
+    // Reserve the writer before probing so a migration cannot change the
+    // optional table between the probe and DELETE.
+    let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let sessions = transaction
         .query_row(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'django_session'",
             [],
@@ -47,15 +48,14 @@ pub(crate) fn delete_old_results(
         )
         .optional()?;
     if sessions.is_some() {
-        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         batch.sessions_deleted = transaction.execute(
             "DELETE FROM django_session WHERE session_key IN \
              (SELECT session_key FROM django_session \
              WHERE expire_date < datetime('now') ORDER BY expire_date LIMIT ?)",
             [batch_size],
         )?;
-        transaction.commit()?;
     }
+    transaction.commit()?;
 
     // `created_at` is SQLite's UTC `datetime('now')`, so the cutoff is
     // computed by SQLite on the same clock.
@@ -94,5 +94,41 @@ impl Store {
     ) -> Result<CleanupBatch, StoreError> {
         self.call(move |connection| delete_old_results(connection, retention_seconds, batch_size))
             .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_probe_observes_schema_after_writer_admission() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("cleaner.sqlite3");
+        let migration = Connection::open(&path).unwrap();
+        migration
+            .execute_batch(
+                "PRAGMA journal_mode = WAL;
+                 CREATE TABLE django_session (session_key TEXT, expire_date TEXT);
+                 CREATE TABLE check_result (id INTEGER PRIMARY KEY, created_at TEXT);
+                 INSERT INTO check_result VALUES (1, '2000-01-01 00:00:00');",
+            )
+            .unwrap();
+        let mut cleaner = Connection::open(&path).unwrap();
+        migration
+            .execute_batch("BEGIN IMMEDIATE; DROP TABLE django_session;")
+            .unwrap();
+        // Before writer admission, WAL readers can still see the old schema.
+        // Publish the migration exactly when the cleaner first needs the write lock.
+        cleaner
+            .busy_handler(Some(move |attempt| {
+                attempt == 0 && migration.execute_batch("COMMIT").is_ok()
+            }))
+            .unwrap();
+
+        let batch = delete_old_results(&mut cleaner, 86_400, 10).unwrap();
+
+        assert_eq!(batch.sessions_deleted, 0);
+        assert_eq!(batch.results_deleted, 1);
     }
 }
