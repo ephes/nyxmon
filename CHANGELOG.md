@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   acknowledges it, before reporting a pause for the current process.
 - Release unfinished claims after a Rust batch task panics, preserving
   completed results and retrying unacknowledged releases.
+- Release at shutdown the claims of an abandoned Rust batch that the shutdown
+  intake stop ended while the collector iteration was still running, instead
+  of leaving them leased until stale-lease recovery.
 
 ### Rust agent result handling
 

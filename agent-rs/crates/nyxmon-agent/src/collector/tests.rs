@@ -217,6 +217,9 @@ async fn a_panicked_batch_releases_its_unfinished_claims() {
             })
         },
     );
+    // Register the collector's log callsites with a subscriber (see
+    // `logging::capture`), as the tests that assert on them expect.
+    let (_capture, _guard) = logging::capture();
     collector.collect_once(&Flag::new()).await;
 
     assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 600, 0));
@@ -261,6 +264,9 @@ async fn an_abandoned_batch_panic_keeps_claims_if_release_fails() {
             },
         )
         .with_batch_deadline(Duration::ZERO);
+    // Register the collector's log callsites with a subscriber (see
+    // `logging::capture`), as the tests that assert on them expect.
+    let (_capture, _guard) = logging::capture();
     collector.collect_once(&Flag::new()).await;
     assert!(collector.abandoned_running());
     finish.set();
@@ -277,6 +283,51 @@ async fn an_abandoned_batch_panic_keeps_claims_if_release_fails() {
     setup.db.execute("DROP TRIGGER fail_release");
     collector.collect_once(&Flag::new()).await;
     assert_eq!(setup.db.schedule(2), ("idle".to_owned(), T0 + 300, 0));
+    assert_eq!(setup.db.results().len(), 1);
+}
+
+#[tokio::test]
+async fn an_abandoned_batch_ended_by_the_intake_stop_releases_its_claims_at_shutdown() {
+    let setup = Setup::new(&[1, 2]);
+    setup
+        .db
+        .execute("UPDATE health_check SET check_interval = 600 WHERE id = 1");
+    let collector = Arc::new(
+        setup
+            .build(
+                setup.db.store(),
+                &[("NYXMON_SHUTDOWN_GRACE_SECONDS", "0")],
+                ScriptedNotifier::new(None),
+                |check| {
+                    Box::pin(async move {
+                        if check.check_id == 1 {
+                            Ok(result(&check, ResultStatus::Ok))
+                        } else {
+                            std::future::pending().await
+                        }
+                    })
+                },
+            )
+            .with_batch_deadline(Duration::ZERO),
+    );
+    let (_capture, _guard) = logging::capture();
+    collector.collect_once(&Flag::new()).await;
+    assert!(collector.abandoned_running());
+    until(|| setup.db.results().len() == 1).await;
+
+    // Shutdown stops the intake while the next iteration is still in its
+    // earlier steps; the batch ends normally with check 2 still claimed.
+    collector.request_stop();
+    collector.intake.requested.set();
+    until(|| !collector.abandoned_running()).await;
+    collector.collect_once(&Flag::new()).await;
+    assert_eq!(setup.db.schedule(2), ("processing".to_owned(), 0, T0));
+
+    tokio::time::timeout(Duration::from_secs(10), collector.clone().run())
+        .await
+        .expect("shutdown hung");
+    assert_eq!(setup.db.schedule(2), ("idle".to_owned(), T0 + 300, 0));
+    assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 600, 0));
     assert_eq!(setup.db.results().len(), 1);
 }
 

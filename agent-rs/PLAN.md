@@ -1542,7 +1542,8 @@ handler's clock. The abandoned batch is its own field (task, done flag, claims).
 Shutdown waits for it, aborts it (D-3) and releases its claims with the active
 ones. A panicking batch relinquishes its still-owned claims after its task has
 joined, including if it was abandoned. A failed release keeps those claims for
-retry before new work or at shutdown. A store error `ActorDied` in the reclaim,
+retry before new work or at shutdown, as do the unfinished claims of an
+abandoned batch that the shutdown intake stop ended. A store error `ActorDied` in the reclaim,
 the estimate, a stale result or panic recovery is fatal like a failed claim.
 The interval sleep is not interrupted by a stop request (as in Python), so a
 shutdown with an abandoned batch always runs the grace and flush windows.

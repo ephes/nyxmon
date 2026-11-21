@@ -307,8 +307,15 @@ impl Collector {
         }
         let abandoned = locked(&self.abandoned).take();
         if let Some(abandoned) = abandoned {
-            if abandoned.task.await.is_err_and(|err| err.is_panic()) {
+            let panicked = abandoned.task.await.is_err_and(|err| err.is_panic());
+            if panicked {
                 collector_log!(error, "check collector iteration failed\npanic");
+            }
+            // A batch that ended through the shutdown intake stop left its
+            // cancelled checks claimed, like a panicked one: keep them for
+            // the release. The release's generation fence skips the rows
+            // that completed.
+            if panicked || self.intake.requested.is_set() {
                 *self.active() = abandoned.checks;
             }
             if reconciled {
