@@ -781,15 +781,16 @@ class SqliteResultRepository(ResultRepository):
         async with aiosqlite.connect(self._db_path, uri=self._use_uri) as db:
             await self._ensure_schema(db)
             db.row_factory = aiosqlite.Row
-            [row] = await db.execute_fetchall(
+            async with db.execute(
                 "SELECT id, health_check_id, status, data FROM check_result WHERE id = ?",
                 (result_id,),
-            )
+            ) as cursor:
+                row = await cursor.fetchone()
             if row is None:
                 raise KeyError(f"Result with ID {result_id} not found")
             return Result(
                 result_id=row["id"],
-                check_id=row["check_id"],
+                check_id=row["health_check_id"],
                 status=row["status"],
                 data=json.loads(row["data"]),
             )

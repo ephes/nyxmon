@@ -282,7 +282,7 @@ class ResultRepository(Protocol):
         ...
 
     def get(self, result_id: int) -> Result:
-        """Get a result from the repository by ID."""
+        """Get a result by ID, raising KeyError if it is absent."""
         ...
 
     def list(self) -> List[Result]:

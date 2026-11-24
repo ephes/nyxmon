@@ -45,7 +45,8 @@ The core library contains the business logic for monitoring and is published as 
 
 7. **Repository Interfaces**
    - `CheckRepository`: Interface for storing and retrieving checks
-   - `ResultRepository`: Interface for storing and retrieving check results
+   - `ResultRepository`: Interface for storing and retrieving check results.
+     `get(result_id)` raises `KeyError` for unknown or pruned IDs on both adapters.
 
 ### Agent
 
