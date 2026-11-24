@@ -7,7 +7,7 @@
 //! is fixed, spans are not used, and tests capture the lines in memory.
 
 use std::fmt::{self, Write as _};
-use std::io::Write as _;
+use std::io::{self, Write as _};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::Duration;
@@ -34,15 +34,24 @@ struct StderrWriter {
 }
 
 impl StderrWriter {
-    fn start() -> Self {
+    fn start() -> io::Result<Self> {
+        Self::start_with(std::thread::Builder::spawn)
+    }
+
+    fn start_with(
+        spawn: impl FnOnce(
+            std::thread::Builder,
+            Box<dyn FnOnce() + Send>,
+        ) -> io::Result<std::thread::JoinHandle<()>>,
+    ) -> io::Result<Self> {
         let (sender, receiver) = mpsc::sync_channel(STDERR_QUEUE_RECORDS);
         let dropped = Arc::new(AtomicU64::new(0));
         let failed = Arc::clone(&dropped);
         // A plain thread, deliberately outside Tokio's blocking pool. Never
         // join it: a supervisor may stop draining stderr indefinitely.
-        std::thread::Builder::new()
-            .name("nyxmon-stderr".to_owned())
-            .spawn(move || {
+        spawn(
+            std::thread::Builder::new().name("nyxmon-stderr".to_owned()),
+            Box::new(move || {
                 let mut stderr = std::io::stderr();
                 while let Ok(command) = receiver.recv() {
                     match command {
@@ -58,9 +67,9 @@ impl StderrWriter {
                         }
                     }
                 }
-            })
-            .expect("cannot start stderr writer");
-        Self { sender, dropped }
+            }),
+        )?;
+        Ok(Self { sender, dropped })
     }
 
     fn submit(&self, mut record: String) {
@@ -83,10 +92,10 @@ impl StderrWriter {
     }
 }
 
-static STDERR_WRITER: OnceLock<StderrWriter> = OnceLock::new();
+static STDERR_WRITER: OnceLock<io::Result<StderrWriter>> = OnceLock::new();
 
-fn stderr_writer() -> &'static StderrWriter {
-    STDERR_WRITER.get_or_init(StderrWriter::start)
+fn stderr_writer() -> Result<&'static StderrWriter, &'static io::Error> {
+    STDERR_WRITER.get_or_init(StderrWriter::start).as_ref()
 }
 
 /// Number of records rejected by the queue or lost to a sink write error.
@@ -94,13 +103,14 @@ fn stderr_writer() -> &'static StderrWriter {
 pub fn dropped_log_records() -> u64 {
     STDERR_WRITER
         .get()
+        .and_then(|result| result.as_ref().ok())
         .map_or(0, |writer| writer.dropped.load(Ordering::Relaxed))
 }
 
 /// Best-effort ordered drain, waiting at most 250 ms and never joining a
 /// potentially blocked writer. A saturated queue skips the drain immediately.
 pub fn shutdown_logging() {
-    if let Some(writer) = STDERR_WRITER.get() {
+    if let Some(Ok(writer)) = STDERR_WRITER.get() {
         writer.finish();
     }
 }
@@ -115,16 +125,28 @@ impl Drop for LoggingShutdownGuard {
 }
 
 /// Install the binary's payload-free panic hook and stderr subscriber.
+/// Return false if logging cannot be started.
 pub fn install_logging(log_level: &str) -> bool {
-    let _ = stderr_writer();
+    install_logging_with(log_level, stderr_writer())
+}
+
+fn install_logging_with(
+    log_level: &str,
+    writer: Result<&'static StderrWriter, &io::Error>,
+) -> bool {
+    let Ok(writer) = writer else {
+        // A synchronous fallback could block indefinitely on an unread pipe.
+        return false;
+    };
     // Install once at command startup, never around individual tasks. Do not
     // invoke the default hook: it prints payloads and possibly a backtrace.
-    std::panic::set_hook(Box::new(|_| {
-        stderr_writer().submit("nyxmon-agent: panic (payload withheld)".to_owned());
+    std::panic::set_hook(Box::new(move |_| {
+        writer.submit("nyxmon-agent: panic (payload withheld)".to_owned());
     }));
     let level = level_filter(log_level).expect("restricted by clap");
-    if tracing::subscriber::set_global_default(PyLogSubscriber::stderr(level)).is_err() {
-        stderr_writer().submit("cannot install the log subscriber".to_owned());
+    if tracing::subscriber::set_global_default(PyLogSubscriber::with_stderr(level, writer)).is_err()
+    {
+        writer.submit("cannot install the log subscriber".to_owned());
         return false;
     }
     true
@@ -165,7 +187,7 @@ pub struct LogLine {
 
 #[derive(Clone)]
 enum Sink {
-    Stderr,
+    Stderr(&'static StderrWriter),
     Memory(Arc<Mutex<Vec<LogLine>>>),
 }
 
@@ -178,11 +200,15 @@ pub struct PyLogSubscriber {
 
 impl PyLogSubscriber {
     /// Lines on stderr up to `max_level`.
-    pub fn stderr(max_level: LevelFilter) -> Self {
-        let _ = stderr_writer();
+    /// Returns the thread-start error if the process-wide writer could not start.
+    pub fn stderr(max_level: LevelFilter) -> Result<Self, &'static io::Error> {
+        stderr_writer().map(|writer| Self::with_stderr(max_level, writer))
+    }
+
+    fn with_stderr(max_level: LevelFilter, writer: &'static StderrWriter) -> Self {
         PyLogSubscriber {
             max_level,
-            sink: Sink::Stderr,
+            sink: Sink::Stderr(writer),
         }
     }
 
@@ -337,8 +363,8 @@ impl tracing::Subscriber for PyLogSubscriber {
             message: visitor.message.0 + &visitor.fields.0,
         };
         match &self.sink {
-            Sink::Stderr => {
-                stderr_writer().submit(stderr_record(&line));
+            Sink::Stderr(writer) => {
+                writer.submit(stderr_record(&line));
             }
             Sink::Memory(lines) => lines.lock().unwrap_or_else(|e| e.into_inner()).push(line),
         }
@@ -361,10 +387,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn stderr_thread_start_failure_refuses_logging_installation() {
+        static WRITER: OnceLock<io::Result<StderrWriter>> = OnceLock::new();
+        let result = WRITER
+            .get_or_init(|| StderrWriter::start_with(|_, _| Err(io::ErrorKind::WouldBlock.into())));
+        assert!(!install_logging_with("INFO", result.as_ref()));
+    }
+
+    #[test]
     fn stderr_records_are_bounded_and_cannot_forge_lines() {
         if std::env::var_os("NYXMON_LOG_FRAMING_CHILD").is_some() {
             let _shutdown = LoggingShutdownGuard;
-            let subscriber = PyLogSubscriber::stderr(LevelFilter::INFO);
+            let subscriber = PyLogSubscriber::stderr(LevelFilter::INFO).unwrap();
             let _guard = tracing::subscriber::set_default(subscriber);
             let mut check = crate::testutil::check(1);
             check.name = "café\nFORGED\r\x1b[31m\u{2028}".to_owned();
@@ -538,7 +572,7 @@ mod tests {
 
     #[test]
     fn the_level_filter_applies() {
-        let subscriber = PyLogSubscriber::stderr(LevelFilter::WARN);
+        let subscriber = PyLogSubscriber::stderr(LevelFilter::WARN).unwrap();
         let _guard = tracing::subscriber::set_default(subscriber);
         assert!(!tracing::enabled!(target: "nyxmon.x", Level::INFO));
         assert!(tracing::enabled!(target: "nyxmon.x", Level::WARN));

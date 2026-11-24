@@ -507,7 +507,8 @@ cap.
 ### Nonblocking agent diagnostics (pending Rust rollout)
 
 Rust agent stderr now uses one dedicated writer with a nonblocking queue of 128
-records (at most 8193 bytes each). A full queue drops new records and increments
+records (at most 8193 bytes each). If the writer thread cannot start, the agent
+and `run-check` exit with status 1. A full queue drops new records and increments
 `nyxmon_agent::logging::dropped_log_records()`. Checks, deadlines and signal
 handling continue while the stderr consumer is blocked. Exit drains for at most
 250 ms and never joins the writer; overload or blocked shutdown can lose logs,

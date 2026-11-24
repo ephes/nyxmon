@@ -78,6 +78,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Start the collector's 60-second shutdown deadline at the stop request so its
   drain limit is independent of observer and results cleaner shutdown.
 
+### Rust agent logging
+
+- Refuse startup with exit status 1 if the stderr writer thread cannot start.
+
 ### Rust agent collector
 
 - Retry closing a previous process's execution-paused incident until SQLite

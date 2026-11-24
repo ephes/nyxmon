@@ -2807,9 +2807,12 @@ cap.
 ### Nonblocking stderr delivery (pending Rust rollout)
 
 One dedicated standard thread owns stderr writes outside Tokio and its blocking
-pool. Subscriber submission uses a nonblocking 128-record queue. Each queued
-record is at most 8193 UTF-8 bytes including newline (1,048,704 queued text bytes,
-plus one record held by the writer). A full/disconnected queue drops the newest
+pool. If the thread cannot start, the agent and `run-check` exit with status 1
+before doing any monitoring or running a check. This path skips a synchronous
+stderr write, which could block on an unread pipe. Subscriber submission uses a
+nonblocking 128-record queue. Each queued record is at most 8193 UTF-8 bytes
+including newline. The queue holds up to 1,048,704 text bytes, and the writer
+can hold one additional record. A full/disconnected queue drops the newest
 record. `nyxmon_agent::logging::dropped_log_records()` exposes queue rejections and
 sink write failures without logging recursively. Panic-hook text uses the same
 queue and may also be lost during overload. Retained records keep their order,
