@@ -73,6 +73,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Include only committed stale-lease results in collector incident counts and
   sampled check IDs, omitting results superseded by newer claims or edits.
 
+### Rust agent check connections
+
+- Warn once when native TLS trust initialization finds no usable CA certificates.
+  Verified TCP and mail handshakes continue to fail closed.
+- Dial each distinct SMTP and IMAP destination address once per connection,
+  preserving resolver order and IPv6 scopes.
+
 ### Rust agent IMAP
 
 - Index FETCH date observations once per batch, preserving SEARCH order for

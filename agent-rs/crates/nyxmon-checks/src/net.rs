@@ -2,6 +2,7 @@
 //! `socket.create_connection` (sequential, one timeout per address), a
 //! socket timeout per I/O operation, and `str(OSError)` texts.
 
+use std::collections::HashSet;
 use std::io;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::pin::Pin;
@@ -141,15 +142,25 @@ pub async fn resolve(host: &str, port: u16) -> Result<Vec<SocketAddr>, NetError>
     lookup.map_err(NetError::Os)
 }
 
-/// `socket.create_connection((host, port), timeout)`: every resolved
-/// address in turn, each bounded by `timeout`; the last error wins.
+/// Connect like `socket.create_connection((host, port), timeout)`, trying
+/// distinct socket addresses in resolver order. Each dial is bounded by
+/// `timeout`; the last attempted address supplies the error if all fail.
 pub async fn connect_tcp(host: &str, port: u16, timeout: Duration) -> Result<TcpStream, NetError> {
     let addrs = tokio::time::timeout(timeout, resolve(host, port))
         .await
         .map_err(|_| NetError::Timeout("timed out".to_owned()))??;
+    connect_addresses(addrs, timeout, TcpStream::connect).await
+}
+
+async fn connect_addresses<T, F: Future<Output = io::Result<T>>>(
+    addrs: impl IntoIterator<Item = SocketAddr>,
+    timeout: Duration,
+    mut connect: impl FnMut(SocketAddr) -> F,
+) -> Result<T, NetError> {
+    let mut seen = HashSet::new();
     let mut last = None;
-    for addr in addrs {
-        match with_timeout(timeout, TcpStream::connect(addr)).await {
+    for addr in addrs.into_iter().filter(|addr| seen.insert(*addr)) {
+        match with_timeout(timeout, connect(addr)).await {
             Ok(stream) => return Ok(stream),
             Err(err) => last = Some(err),
         }

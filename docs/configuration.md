@@ -661,6 +661,12 @@ checking, it cleans up its temporary PEM file after writing, flushing,
 closing, or decoding fails. If removal also fails, the original error
 remains the reported diagnostic.
 
+The Rust agent loads native CA certificates when the first verified TCP, SMTP,
+or IMAP TLS configuration needs them. If it finds no usable roots, it logs one
+warning per process under `nyxmon.adapters.runner.executors.tls`. Verified
+handshakes fail closed. Restore the CA certificate configuration visible to the
+agent and restart the agent to reload its trust store.
+
 #### STARTTLS protocols
 
 Mail servers speak first and expect a short dialogue before they accept

@@ -1,4 +1,4 @@
-//! Synthetic blocked lookups: no libc/network/platform-specific error text.
+//! Synthetic connection attempts and blocked lookups.
 use super::*;
 use std::sync::mpsc;
 
@@ -92,4 +92,47 @@ fn a_queued_lookup_also_retains_its_permit_after_cancellation() {
         let all = slots.acquire_many_owned(2).await.unwrap();
         drop(all);
     });
+}
+
+#[tokio::test]
+async fn mail_connect_tries_each_distinct_address_in_resolver_order() {
+    let first = "[fe80::1%1]:993".parse::<SocketAddr>().unwrap();
+    let second = "[fe80::1%2]:993".parse::<SocketAddr>().unwrap();
+    let reachable = "192.0.2.1:993".parse::<SocketAddr>().unwrap();
+    let mut attempts = Vec::new();
+
+    let connected = connect_addresses(
+        [first, first, second, first, second, reachable],
+        Duration::from_secs(1),
+        |addr| {
+            attempts.push(addr);
+            std::future::ready(if addr == reachable {
+                Ok(addr)
+            } else {
+                Err(io::ErrorKind::ConnectionRefused.into())
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(connected, reachable);
+    assert_eq!(attempts, [first, second, reachable]);
+}
+
+#[tokio::test]
+async fn mail_connect_reports_the_last_distinct_address_error() {
+    let first = "192.0.2.1:993".parse::<SocketAddr>().unwrap();
+    let second = "192.0.2.2:993".parse::<SocketAddr>().unwrap();
+
+    let outcome = connect_addresses([first, second, first], Duration::from_secs(1), |addr| {
+        std::future::ready(if addr == second {
+            Err::<(), _>(timed_out())
+        } else {
+            Err(io::ErrorKind::ConnectionRefused.into())
+        })
+    })
+    .await;
+
+    assert_eq!(outcome, Err(NetError::Timeout("timed out".to_owned())));
 }

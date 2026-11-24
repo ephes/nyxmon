@@ -90,6 +90,59 @@ fn roots_with(ca: &CertificateDer<'static>) -> Arc<RootCertStore> {
 }
 
 #[tokio::test]
+async fn concurrent_verified_configs_warn_once_when_native_roots_are_unusable() {
+    let cache = OnceLock::new();
+    let sink = RecordingSink::default();
+    let start = std::sync::Barrier::new(4);
+    let config = std::thread::scope(|threads| {
+        let mut configs: Vec<_> = (0..4)
+            .map(|_| {
+                threads.spawn(|| {
+                    start.wait();
+                    let roots = cached_native_roots(
+                        &cache,
+                        || {
+                            let mut result = rustls_native_certs::CertificateResult::default();
+                            result.certs.push(CertificateDer::from(vec![0]));
+                            result
+                        },
+                        &sink,
+                    );
+                    assert!(roots.is_empty());
+                    verifying_client_config(roots)
+                })
+            })
+            .collect();
+        let config = configs.pop().unwrap().join().unwrap();
+        for thread in configs {
+            thread.join().unwrap();
+        }
+        config
+    });
+
+    assert_eq!(
+        sink.take(),
+        vec![(
+            loggers::EXECUTOR_TLS.to_owned(),
+            "No usable TLS certificates were loaded from the native trust store; \
+             verified TCP and mail checks require trusted roots. Repair the agent's CA \
+             certificate configuration and restart the agent."
+                .to_owned(),
+        )]
+    );
+
+    let (client_io, server_io) = tokio::io::duplex(4096);
+    let connector = TlsConnector::from(config);
+    let acceptor = TlsAcceptor::from(pki().server);
+    let (client, _) = tokio::join!(
+        connector.connect(server_name("localhost").unwrap(), client_io),
+        acceptor.accept(server_io),
+    );
+    let err = client.expect_err("the untrusted peer must be rejected");
+    assert!(err.to_string().contains("UnknownIssuer"), "{err}");
+}
+
+#[tokio::test]
 async fn verifying_config_accepts_a_trusted_chain_by_name_and_ip() {
     let pki = pki();
     let config = verifying_client_config(roots_with(&pki.ca_der));

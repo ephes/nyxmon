@@ -10,7 +10,7 @@
 use std::fmt;
 use std::sync::{Arc, OnceLock};
 
-use nyxmon_core::log::{LogSink, loggers};
+use nyxmon_core::log::{LogSink, TracingSink, loggers};
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use rustls::crypto::{CryptoProvider, WebPkiSupportedAlgorithms};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
@@ -27,14 +27,30 @@ pub fn crypto_provider() -> Arc<CryptoProvider> {
 /// The system trust store (`rustls-native-certs`), loaded once.
 ///
 /// Certificates that fail to load or parse are skipped, like OpenSSL's
-/// default verify paths; an empty store makes every verified handshake fail.
+/// default verify paths. If no roots are usable, warn once per process and
+/// keep the empty store so verified handshakes fail closed.
 pub fn system_roots() -> Arc<RootCertStore> {
     static ROOTS: OnceLock<Arc<RootCertStore>> = OnceLock::new();
-    ROOTS
+    cached_native_roots(&ROOTS, rustls_native_certs::load_native_certs, &TracingSink)
+}
+
+fn cached_native_roots(
+    cache: &OnceLock<Arc<RootCertStore>>,
+    load: impl FnOnce() -> rustls_native_certs::CertificateResult,
+    log: &dyn LogSink,
+) -> Arc<RootCertStore> {
+    cache
         .get_or_init(|| {
             let mut roots = RootCertStore::empty();
-            let loaded = rustls_native_certs::load_native_certs();
-            roots.add_parsable_certificates(loaded.certs);
+            roots.add_parsable_certificates(load().certs);
+            if roots.is_empty() {
+                log.warning(
+                    loggers::EXECUTOR_TLS,
+                    "No usable TLS certificates were loaded from the native trust store; \
+                     verified TCP and mail checks require trusted roots. Repair the agent's CA \
+                     certificate configuration and restart the agent.",
+                );
+            }
             Arc::new(roots)
         })
         .clone()
@@ -69,7 +85,7 @@ pub fn unverified_client_config() -> Arc<ClientConfig> {
 }
 
 /// `ssl.create_default_context()` (`verify`) or an unverified context,
-/// without a warning (the TCP check's `_build_ssl_context`).
+/// without a warning about disabled verification.
 pub fn client_config(verify: bool) -> Arc<ClientConfig> {
     if verify {
         verifying_client_config(system_roots())
