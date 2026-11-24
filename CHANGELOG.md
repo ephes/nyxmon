@@ -90,6 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Drain queued stderr records at shutdown even when the queue is full, within
   the existing 250 ms wait limit.
+- Expose terminal stderr flush failures through `log_flush_failed()`, alongside
+  the dropped-record counter.
 - Refuse startup with exit status 1 if the stderr writer thread cannot start.
 
 ### Rust agent collector

@@ -8,7 +8,7 @@
 
 use std::fmt::{self, Write as _};
 use std::io;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::Duration;
 
@@ -31,6 +31,7 @@ struct LogQueue {
 struct StderrWriter {
     queue: Mutex<Option<LogQueue>>,
     dropped: Arc<AtomicU64>,
+    flush_failed: Arc<AtomicBool>,
 }
 
 impl StderrWriter {
@@ -57,7 +58,9 @@ impl StderrWriter {
         let (sender, receiver) = mpsc::sync_channel::<Box<str>>(STDERR_QUEUE_RECORDS);
         let (done, finished) = mpsc::channel();
         let dropped = Arc::new(AtomicU64::new(0));
-        let failed = Arc::clone(&dropped);
+        let write_failures = Arc::clone(&dropped);
+        let flush_failed = Arc::new(AtomicBool::new(false));
+        let flush_failure = Arc::clone(&flush_failed);
         // A plain thread, deliberately outside Tokio's blocking pool. Never
         // join it: a supervisor may stop draining stderr indefinitely.
         spawn(
@@ -65,16 +68,19 @@ impl StderrWriter {
             Box::new(move || {
                 while let Ok(record) = receiver.recv() {
                     if sink.write_all(record.as_bytes()).is_err() {
-                        failed.fetch_add(1, Ordering::Relaxed);
+                        write_failures.fetch_add(1, Ordering::Relaxed);
                     }
                 }
-                let _ = sink.flush();
+                if sink.flush().is_err() {
+                    flush_failure.store(true, Ordering::Relaxed);
+                }
                 let _ = done.send(());
             }),
         )?;
         Ok(Self {
             queue: Mutex::new(Some(LogQueue { sender, finished })),
             dropped,
+            flush_failed,
         })
     }
 
@@ -117,6 +123,15 @@ pub fn dropped_log_records() -> u64 {
         .get()
         .and_then(|result| result.as_ref().ok())
         .map_or(0, |writer| writer.dropped.load(Ordering::Relaxed))
+}
+
+/// Whether the terminal stderr flush has returned an error.
+/// Reading this flag performs no I/O and cannot recursively log.
+pub fn log_flush_failed() -> bool {
+    STDERR_WRITER
+        .get()
+        .and_then(|result| result.as_ref().ok())
+        .is_some_and(|writer| writer.flush_failed.load(Ordering::Relaxed))
 }
 
 /// Close admission and wait up to 250 ms for the ordered drain and flush.
@@ -455,6 +470,34 @@ mod tests {
         }
         writer.submit("after shutdown".to_owned());
         assert_eq!(writer.dropped.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn shutdown_reports_stderr_flush_failure() {
+        struct FlushFailure(mpsc::Sender<Vec<u8>>);
+
+        impl io::Write for FlushFailure {
+            fn write(&mut self, record: &[u8]) -> io::Result<usize> {
+                self.0.send(record.to_vec()).unwrap();
+                Ok(record.len())
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                Err(io::ErrorKind::BrokenPipe.into())
+            }
+        }
+
+        let (records, written) = mpsc::channel();
+        let writer =
+            StderrWriter::start_with_sink(std::thread::Builder::spawn, FlushFailure(records))
+                .unwrap();
+        assert!(!writer.flush_failed.load(Ordering::Relaxed));
+        writer.submit("accepted".to_owned());
+        writer.finish();
+
+        assert_eq!(written.try_recv().unwrap(), b"accepted\n");
+        assert_eq!(writer.dropped.load(Ordering::Relaxed), 0);
+        assert!(writer.flush_failed.load(Ordering::Relaxed));
     }
 
     #[test]

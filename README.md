@@ -512,5 +512,6 @@ and `run-check` exit with status 1. A full queue drops new records and increment
 `nyxmon_agent::logging::dropped_log_records()`. Checks, deadlines and signal
 handling continue while the stderr consumer is blocked. Exit closes the queue to
 new records and allows up to 250 ms to drain and flush it, even when full. The
-binary never joins the writer. Overload or blocked shutdown can lose logs,
+binary never joins the writer. `nyxmon_agent::logging::log_flush_failed()` reports
+a terminal stderr flush error. Overload or blocked shutdown can lose logs,
 including the payload-free panic diagnostic. See the [stderr delivery contract](agent-rs/README.md#nonblocking-stderr-delivery-pending-rust-rollout).

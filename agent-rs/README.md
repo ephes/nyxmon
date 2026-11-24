@@ -1030,5 +1030,8 @@ On normal exit or main-thread unwind the binary closes the queue to new records
 and waits up to 250 ms for the writer to drain it in order and flush stderr, even
 if the queue is full. The writer is never joined, so an unread pipe cannot prevent
 exit. Accepted records may be lost if the sink stays blocked at shutdown.
+If the terminal flush returns an error,
+`nyxmon_agent::logging::log_flush_failed()` becomes true. Reading this
+process-local flag requires no sink I/O.
 Restore the stderr consumer to resume delivery. This change requires a later
 owner-managed Rust agent rollout.
