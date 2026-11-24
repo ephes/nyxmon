@@ -66,3 +66,31 @@ async def test_in_memory_result_ids_keep_increasing_after_pruning():
     repo.add(fifth)
     assert fifth.result_id == 101
     assert repo.list_for_check(7, 4) == [fifth, fourth, third, second]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("backend", ["memory", "sqlite"])
+async def test_list_for_check_requires_nonnegative_integer_limit(backend, tmp_path):
+    if backend == "memory":
+        repo = InMemoryResultRepository()
+    else:
+        path = tmp_path / "results.sqlite"
+        repo = SqliteResultRepository(path)
+
+    for invalid_limit in (-1, True, 1.0, "1", None):
+        with pytest.raises(ValueError, match="limit must be a nonnegative integer"):
+            await anyio.to_thread.run_sync(repo.list_for_check, 7, invalid_limit)
+    assert await anyio.to_thread.run_sync(repo.list_for_check, 7, 0) == []
+    if backend == "sqlite":
+        assert not path.exists()
+
+    for result_id, check_id in [(1, 7), (2, 7), (3, 8)]:
+        result = Result(result_id=result_id, check_id=check_id, status="ok", data={})
+        if backend == "memory":
+            repo.add(result)
+        else:
+            await repo._add_async(result)
+
+    for limit, expected_ids in [(0, []), (1, [2]), (2, [2, 1]), (2**63, [2, 1])]:
+        results = await anyio.to_thread.run_sync(repo.list_for_check, 7, limit)
+        assert [result.result_id for result in results] == expected_ids

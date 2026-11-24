@@ -50,6 +50,9 @@ The core library contains the business logic for monitoring and is published as 
      In memory, automatically assigned IDs increase even after pruning and
      advance past explicitly supplied IDs. Forked units of work sharing results
      also share the ID cursor.
+     `list_for_check(check_id, limit)` takes a nonnegative integer, with zero
+     returning an empty list. Both adapters raise `ValueError` for invalid
+     limits, including booleans, and return results in descending ID order.
 
 ### Agent
 

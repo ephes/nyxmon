@@ -23,6 +23,7 @@ from .interface import (
     NotificationStateConflict,
     carry_delivery_markers,
     check_batch_size,
+    validate_result_list_limit,
     with_delivery_intent,
     without_delivery_markers,
 )
@@ -60,6 +61,9 @@ class InMemoryResultRepository(ResultRepository):
         return list(self.results.values())
 
     def list_for_check(self, check_id: int, limit: int) -> List[Result]:
+        validate_result_list_limit(limit)
+        if limit == 0:
+            return []
         results = [
             result for result in self.results.values() if result.check_id == check_id
         ]

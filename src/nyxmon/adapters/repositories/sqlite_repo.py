@@ -24,6 +24,7 @@ from .interface import (
     NotificationStateConflict,
     carry_delivery_markers,
     check_batch_size,
+    validate_result_list_limit,
     with_delivery_intent,
     without_delivery_markers,
     CheckRepository,
@@ -753,7 +754,12 @@ class SqliteResultRepository(ResultRepository):
         return self._await(self._list_async())
 
     def list_for_check(self, check_id: int, limit: int) -> List[Result]:
-        return self._await(self._list_for_check_async(check_id, limit))
+        validate_result_list_limit(limit)
+        if limit == 0:
+            return []
+        # SQLite binds integer parameters as signed 64-bit values.
+        sqlite_limit = min(limit, 2**63 - 1)
+        return self._await(self._list_for_check_async(check_id, sqlite_limit))
 
     # ---------- interne async-Implementierung ----------
     async def _add_async(self, result: Result) -> None:

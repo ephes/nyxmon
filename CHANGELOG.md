@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   automatic allocation cannot overwrite surviving results.
 - Select and delete each expired SQLite result batch in one statement to keep
   fresh results safe when concurrent cleanup and inserts reuse an ID.
+- Require a nonnegative integer limit when listing recent results on either
+  Python adapter. A zero limit returns an empty list.
 - Preserve the site connectivity incident and pending notifications when its
   stored payload version is unsupported.
 - Treat future-dated connectivity observations as stale when restoring an

@@ -272,6 +272,11 @@ class CollectorIncidentAlert:
     is_new: bool
 
 
+def validate_result_list_limit(limit: int) -> None:
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
+        raise ValueError("limit must be a nonnegative integer")
+
+
 class ResultRepository(Protocol):
     """A repository interface for storing and retrieving results."""
 
@@ -290,7 +295,11 @@ class ResultRepository(Protocol):
         ...
 
     def list_for_check(self, check_id: int, limit: int) -> List[Result]:
-        """Get recent results for a check, newest first."""
+        """Get up to limit results for a check, newest first by result ID.
+
+        Zero returns an empty list. A limit that is not a nonnegative
+        integer (excluding bool) raises ValueError.
+        """
         ...
 
 
