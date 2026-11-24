@@ -39,3 +39,30 @@ async def test_get_missing_and_pruned_result(backend, tmp_path):
     assert await repo.delete_old_results_async(retention_seconds=86400) == 1
     with pytest.raises(KeyError):
         await anyio.to_thread.run_sync(repo.get, 1)
+
+
+@pytest.mark.anyio
+async def test_in_memory_result_ids_keep_increasing_after_pruning():
+    repo = InMemoryResultRepository()
+    first, second, third, fourth = (
+        Result(check_id=7, status="ok", data={"sample": sample}) for sample in range(4)
+    )
+    for result in (first, second, third):
+        repo.add(result)
+    repo._timestamps[first.result_id] = 0
+    assert await repo.delete_old_results_async() == 1
+
+    repo.add(fourth)
+    assert repo.get(second.result_id) is second
+    assert repo.get(third.result_id) is third
+    assert repo.list_for_check(7, 3) == [fourth, third, second]
+
+    explicit = Result(result_id=100, check_id=7, status="ok", data={})
+    repo.add(explicit)
+    repo._timestamps[100] = 0
+    assert await repo.delete_old_results_async() == 1
+
+    fifth = Result(check_id=7, status="ok", data={})
+    repo.add(fifth)
+    assert fifth.result_id == 101
+    assert repo.list_for_check(7, 4) == [fifth, fourth, third, second]

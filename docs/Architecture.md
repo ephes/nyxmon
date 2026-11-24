@@ -47,6 +47,9 @@ The core library contains the business logic for monitoring and is published as 
    - `CheckRepository`: Interface for storing and retrieving checks
    - `ResultRepository`: Interface for storing and retrieving check results.
      `get(result_id)` raises `KeyError` for unknown or pruned IDs on both adapters.
+     In memory, automatically assigned IDs increase even after pruning and
+     advance past explicitly supplied IDs. Forked units of work sharing results
+     also share the ID cursor.
 
 ### Agent
 

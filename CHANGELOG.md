@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raise `KeyError` when a SQLite result ID is unknown or has been pruned.
   Read the stored health check ID when decoding an existing result.
+- Keep in-memory result IDs increasing after pruning and explicit inserts so
+  automatic allocation cannot overwrite surviving results.
 - Preserve the site connectivity incident and pending notifications when its
   stored payload version is unsupported.
 - Treat future-dated connectivity observations as stale when restoring an

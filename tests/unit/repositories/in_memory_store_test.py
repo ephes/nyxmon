@@ -127,3 +127,18 @@ def test_matching_expectation_persists_result_and_state() -> None:
 
     assert store.checks.get_notification_state(1) == NotificationState(1, 0, 0)
     assert len(store.results.list()) == 1
+
+
+def test_forked_units_of_work_share_implicit_result_ids() -> None:
+    store = InMemoryStore()
+    check = _check()
+    store.checks.add(check)
+    fork = store.fork_for_concurrent_uow()
+    first, second, third = _error(), _error(), _error()
+
+    assert store.persist_check_result(check, first, None, complete_check=False)
+    assert fork.persist_check_result(check, second, None, complete_check=False)
+    assert store.persist_check_result(check, third, None, complete_check=False)
+
+    assert [first.result_id, second.result_id, third.result_id] == [0, 1, 2]
+    assert fork.results.list_for_check(check.check_id, 3) == [third, second, first]

@@ -28,17 +28,24 @@ from .interface import (
 )
 
 
+@dataclass
+class _ResultIdCursor:
+    next_id: int = 0
+
+
 class InMemoryResultRepository(ResultRepository):
     """An in-memory implementation of the ResultRepository interface."""
 
     def __init__(self) -> None:
         self.results: dict[int, Result] = {}
+        self._id_cursor = _ResultIdCursor()
         self.seen: set[Result] = set()
         self._timestamps: dict[int, int] = {}  # result_id -> timestamp
 
     def add(self, result: Result) -> None:
         if result.result_id is None:
-            result.result_id = len(self.results)
+            result.result_id = self._id_cursor.next_id
+        self._id_cursor.next_id = max(self._id_cursor.next_id, result.result_id + 1)
         self.results[result.result_id] = result
         self.seen.add(result)
         # Store current timestamp
@@ -361,6 +368,7 @@ class InMemoryStore(RepositoryStore):
         results = InMemoryResultRepository()
         results.results = self.results.results
         results._timestamps = self.results._timestamps
+        results._id_cursor = self.results._id_cursor
         checks = InMemoryCheckRepository()
         checks.checks = self.checks.checks
         checks.notification_states = self.checks.notification_states

@@ -10,7 +10,6 @@ class DummyRunner:
             # Simulate running the check and calling the callback with a result
             print("check", check)
             result = Result(
-                result_id=f"result-{check.check_id}",
                 check_id=check.check_id,
                 status=ResultStatus.OK,
                 data={},
