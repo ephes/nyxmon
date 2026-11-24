@@ -686,6 +686,11 @@ not retried. Existing SMTP temporary-response retries (except partial delivery) 
 retries remain unchanged, with at most `retries + 1` attempts and the configured
 `retry_delay` between them. No retry sleeps are inside an attempt budget.
 
+SMTP and IMAP dial each distinct resolved socket address once per connection
+in first-seen order, with a per-address timeout and separate attempts for
+different IPv6 scopes. If all dials fail, the last distinct address supplies
+the error.
+
 Mail destination lookups, SMTP local-hostname discovery, `HttpSession`
 requests (HTTP checks and suppression fetches), and site DNS/scoped-IP probes share 16 process-wide
 slots for blocking system resolver jobs, including jobs queued in Tokio's
