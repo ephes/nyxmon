@@ -246,9 +246,9 @@ checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 
 [[package]]
 name = "cookie"
-version = "0.18.2"
+version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a373e3602691c3cdea496d2f0ee5935151e6168fe87739483c463db1b2f2f87"
+checksum = "d55f2d6c30eeec7d5c6f98bd4395d4abb1895629eab97ee6522d340623615f8a"
 dependencies = [
  "percent-encoding",
  "time",
@@ -442,9 +442,9 @@ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.2"
+version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
+checksum = "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e"
 dependencies = [
  "percent-encoding",
 ]
@@ -938,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-agent"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "chrono",
  "clap",
@@ -955,7 +955,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-checks"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "base64 0.22.1",
  "cookie_store",
@@ -990,7 +990,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-core"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "indexmap",
  "num-bigint",
@@ -1001,7 +1001,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-notify"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "bytes",
  "http-body-util",
@@ -1022,7 +1022,7 @@ dependencies = [
 
 [[package]]
 name = "nyxmon-store"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "nyxmon-core",
  "rusqlite",
@@ -1669,9 +1669,9 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "url"
-version = "2.5.8"
+version = "2.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+checksum = "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a"
 dependencies = [
  "form_urlencoded",
  "idna",

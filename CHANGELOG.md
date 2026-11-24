@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent 0.1.7
+
+- Release the Rust agent as `agent-rs-v0.1.7` (crate version 0.1.7), built and
+  published locally by `agent-rs/scripts/local_release.py`. Compared with
+  `agent-rs-v0.1.6` (`65ef1e3`) it ships the Rust entries below: *Rust agent
+  run-check*, *supervision*, *collector*, *result handling*, *check
+  connections*, *IMAP*, *retention* and *DNS*. Schema: unchanged, the agent's
+  minimum migration stays `nyxboard.0015_healthcheck_claim_generation`.
+  Upgrade notes: cleanup log lines report deleted results and expired
+  sessions separately; a host without usable native CA certificates logs one
+  warning when the first verified TCP, SMTP or IMAP check loads the native
+  roots (those handshakes still fail closed); a DNS TCP
+  fallback reply with the TC flag set is discarded and the next nameserver is
+  asked.
+- Update `url` 2.5.8 → 2.5.9 (RUSTSEC-2026-0592, unbounded recursion in
+  `Url::origin()` on nested `blob:` URLs; the agent calls it on the
+  suppression URL) and `cookie` 0.18.2 → 0.18.3 (RUSTSEC-2026-0594, private
+  cookie nonces after `fork()`; the agent uses no private cookies), so
+  `cargo deny` passes again.
+
 ### Retained Python agent
 
 - Preserve the site connectivity incident and pending notifications when its
