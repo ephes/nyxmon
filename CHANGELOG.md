@@ -69,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Rust agent supervision
 
+- Report an observer or cleaner that already exited when shutdown begins as a
+  monitoring failure, even when a stop signal is ready at the same time.
 - Honor a buffered SIGTERM or SIGINT before starting monitoring tasks, so
   shutdown at startup does not claim checks.
 - Cancel the observer and results cleaner together on shutdown and give them

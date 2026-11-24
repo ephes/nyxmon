@@ -24,13 +24,18 @@ fn report(task: &str, category: &str) {
     tracing::error!(target: "nyxmon.entrypoints.cli", "monitoring task {task} unexpectedly {category}");
 }
 
-async fn auxiliary_failed(name: &str, task: Option<JoinHandle<()>>, deadline: Instant) -> bool {
+async fn auxiliary_failed(
+    name: &str,
+    task: Option<JoinHandle<()>>,
+    already_finished: bool,
+    deadline: Instant,
+) -> bool {
     let Some(task) = task else {
         return false;
     };
     match timeout_at(deadline, task).await {
-        Ok(Ok(())) => false,
-        Ok(Err(err)) if err.is_cancelled() => false,
+        Ok(Ok(())) if !already_finished => false,
+        Ok(Err(err)) if !already_finished && err.is_cancelled() => false,
         Ok(result) => {
             report(name, category(&result));
             true
@@ -85,6 +90,10 @@ pub(crate) async fn supervise(
             failed = true;
         },
     }
+    // The stop signal wins when both it and a join are ready. Snapshot
+    // completion before requesting stop or aborting either auxiliary.
+    let observer_finished = observer.as_ref().is_some_and(JoinHandle::is_finished);
+    let cleaner_finished = cleaner.as_ref().is_some_and(JoinHandle::is_finished);
     let collector_deadline = Instant::now() + Duration::from_secs(60);
     request_stop();
     // Request cancellation of both tasks before waiting on either.
@@ -93,8 +102,8 @@ pub(crate) async fn supervise(
         task.abort();
     }
     let (observer_failed, cleaner_failed) = tokio::join!(
-        auxiliary_failed("observer", observer, auxiliary_deadline),
-        auxiliary_failed("cleaner", cleaner, auxiliary_deadline),
+        auxiliary_failed("observer", observer, observer_finished, auxiliary_deadline),
+        auxiliary_failed("cleaner", cleaner, cleaner_finished, auxiliary_deadline),
     );
     failed |= observer_failed || cleaner_failed;
     if !collector_done {
@@ -317,24 +326,45 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn observer_finishing_inside_the_stop_callback_is_successful() {
-        let stop = Arc::new(Flag::new());
-        let stopped = stop.clone();
-        let collector = tokio::spawn(async move {
-            stopped.wait().await;
-        });
-        let observer = tokio::spawn(async {});
-        while !observer.is_finished() {
-            tokio::task::yield_now().await;
-        }
-        assert!(
-            !supervise(
-                || (collector, Some(observer), None),
-                tokio::task::yield_now(),
-                || stop.set()
+    async fn preexisting_auxiliary_exit_fails_even_when_stop_is_ready() {
+        for (name, cancel) in [("observer", false), ("cleaner", true)] {
+            let stop = Arc::new(Flag::new());
+            let stopped = stop.clone();
+            let collector = tokio::spawn(async move {
+                stopped.wait().await;
+            });
+            let task = tokio::spawn(async move {
+                if cancel {
+                    pending::<()>().await;
+                }
+            });
+            if cancel {
+                task.abort();
+            }
+            while !task.is_finished() {
+                tokio::task::yield_now().await;
+            }
+            let (observer, cleaner) = if name == "observer" {
+                (Some(task), None)
+            } else {
+                (None, Some(task))
+            };
+            let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
+            let (capture, _guard) = crate::logging::capture();
+            let failed = supervise(
+                || {
+                    stop_tx.send(()).unwrap();
+                    (collector, observer, cleaner)
+                },
+                async { stop_rx.await.unwrap() },
+                || stop.set(),
             )
-            .await
-        );
+            .await;
+            let exit = if cancel { "cancelled" } else { "returned" };
+            assert!(failed, "{name} unexpectedly {exit} before shutdown");
+            assert!(capture.contains(&format!("monitoring task {name} unexpectedly {exit}")));
+            assert!(stop.is_set());
+        }
     }
 
     // Keep simulated non-cooperative work off the test runtime so its

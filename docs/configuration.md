@@ -1178,7 +1178,9 @@ monitoring is about to start, the agent logs the signal and exits through normal
 database shutdown without starting any of these tasks or claiming checks.
 Unexpected task return, panic or cancellation logs only the task/category and
 exits unsuccessfully after stopping owned work. During monitoring, SIGTERM/SIGINT
-trigger collector draining; observer/cleaner aborts during shutdown are intentional.
+trigger collector draining. An observer or cleaner already finished when the
+supervisor handles the signal still counts as an unexpected exit. Cancellation
+requested by the supervisor during shutdown is intentional.
 Collector draining has a 60-second outer deadline (30s maximum configured grace,
 15s result flush and cleanup allowance). The supervisor requests cancellation of
 both auxiliary tasks before awaiting either and gives them one shared second to stop.
