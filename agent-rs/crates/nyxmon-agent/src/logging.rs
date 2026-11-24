@@ -7,7 +7,7 @@
 //! is fixed, spans are not used, and tests capture the lines in memory.
 
 use std::fmt::{self, Write as _};
-use std::io::{self, Write as _};
+use std::io;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::Duration;
@@ -23,13 +23,13 @@ use tracing::{Event, Level, Metadata, span};
 const STDERR_QUEUE_RECORDS: usize = 128;
 const STDERR_SHUTDOWN_WAIT: Duration = Duration::from_millis(250);
 
-enum WriteCommand {
-    Record(Box<str>),
-    Finish(mpsc::Sender<()>),
+struct LogQueue {
+    sender: mpsc::SyncSender<Box<str>>,
+    finished: mpsc::Receiver<()>,
 }
 
 struct StderrWriter {
-    sender: mpsc::SyncSender<WriteCommand>,
+    queue: Mutex<Option<LogQueue>>,
     dropped: Arc<AtomicU64>,
 }
 
@@ -44,7 +44,18 @@ impl StderrWriter {
             Box<dyn FnOnce() + Send>,
         ) -> io::Result<std::thread::JoinHandle<()>>,
     ) -> io::Result<Self> {
-        let (sender, receiver) = mpsc::sync_channel(STDERR_QUEUE_RECORDS);
+        Self::start_with_sink(spawn, std::io::stderr())
+    }
+
+    fn start_with_sink(
+        spawn: impl FnOnce(
+            std::thread::Builder,
+            Box<dyn FnOnce() + Send>,
+        ) -> io::Result<std::thread::JoinHandle<()>>,
+        mut sink: impl io::Write + Send + 'static,
+    ) -> io::Result<Self> {
+        let (sender, receiver) = mpsc::sync_channel::<Box<str>>(STDERR_QUEUE_RECORDS);
+        let (done, finished) = mpsc::channel();
         let dropped = Arc::new(AtomicU64::new(0));
         let failed = Arc::clone(&dropped);
         // A plain thread, deliberately outside Tokio's blocking pool. Never
@@ -52,41 +63,42 @@ impl StderrWriter {
         spawn(
             std::thread::Builder::new().name("nyxmon-stderr".to_owned()),
             Box::new(move || {
-                let mut stderr = std::io::stderr();
-                while let Ok(command) = receiver.recv() {
-                    match command {
-                        WriteCommand::Record(record) => {
-                            if stderr.write_all(record.as_bytes()).is_err() {
-                                failed.fetch_add(1, Ordering::Relaxed);
-                            }
-                        }
-                        WriteCommand::Finish(done) => {
-                            let _ = stderr.flush();
-                            let _ = done.send(());
-                            break;
-                        }
+                while let Ok(record) = receiver.recv() {
+                    if sink.write_all(record.as_bytes()).is_err() {
+                        failed.fetch_add(1, Ordering::Relaxed);
                     }
                 }
+                let _ = sink.flush();
+                let _ = done.send(());
             }),
         )?;
-        Ok(Self { sender, dropped })
+        Ok(Self {
+            queue: Mutex::new(Some(LogQueue { sender, finished })),
+            dropped,
+        })
     }
 
     fn submit(&self, mut record: String) {
         record.push('\n');
-        if self
-            .sender
-            .try_send(WriteCommand::Record(record.into_boxed_str()))
-            .is_err()
-        {
-            // Drop newest on full/disconnected; never recursively log loss.
+        let record = record.into_boxed_str();
+        // Serialize admission with shutdown. The writer never takes this lock.
+        let accepted = self
+            .queue
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .is_some_and(|queue| queue.sender.try_send(record).is_ok());
+        if !accepted {
+            // Drop newest on full/closed/disconnected; never recursively log loss.
             self.dropped.fetch_add(1, Ordering::Relaxed);
         }
     }
 
     fn finish(&self) {
-        let (done, finished) = mpsc::channel();
-        if self.sender.try_send(WriteCommand::Finish(done)).is_ok() {
+        let queue = self.queue.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(LogQueue { sender, finished }) = queue {
+            // Disconnect admission so recv drains all records before returning an error.
+            drop(sender);
             let _ = finished.recv_timeout(STDERR_SHUTDOWN_WAIT);
         }
     }
@@ -107,8 +119,8 @@ pub fn dropped_log_records() -> u64 {
         .map_or(0, |writer| writer.dropped.load(Ordering::Relaxed))
 }
 
-/// Best-effort ordered drain, waiting at most 250 ms and never joining a
-/// potentially blocked writer. A saturated queue skips the drain immediately.
+/// Close admission and wait up to 250 ms for the ordered drain and flush.
+/// Only the first request waits, and the writer is never joined.
 pub fn shutdown_logging() {
     if let Some(Ok(writer)) = STDERR_WRITER.get() {
         writer.finish();
@@ -385,6 +397,65 @@ pub fn capture() -> (LogCapture, tracing::subscriber::DefaultGuard) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shutdown_drains_a_full_queue_when_the_sink_recovers() {
+        struct GatedSink {
+            started: mpsc::Sender<()>,
+            release: Option<mpsc::Receiver<()>>,
+            records: mpsc::Sender<Vec<u8>>,
+        }
+
+        impl io::Write for GatedSink {
+            fn write(&mut self, record: &[u8]) -> io::Result<usize> {
+                if let Some(release) = self.release.take() {
+                    self.started.send(()).unwrap();
+                    release.recv().unwrap();
+                }
+                self.records.send(record.to_vec()).unwrap();
+                Ok(record.len())
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let (started, writing) = mpsc::channel();
+        let (release, blocked) = mpsc::channel();
+        let (records, written) = mpsc::channel();
+        let writer = StderrWriter::start_with_sink(
+            std::thread::Builder::spawn,
+            GatedSink {
+                started,
+                release: Some(blocked),
+                records,
+            },
+        )
+        .unwrap();
+        writer.submit("0".to_owned());
+        writing.recv_timeout(Duration::from_secs(1)).unwrap();
+        for i in 1..=STDERR_QUEUE_RECORDS {
+            writer.submit(i.to_string());
+        }
+        assert_eq!(writer.dropped.load(Ordering::Relaxed), 0);
+
+        let (done, finished) = mpsc::channel();
+        let shutdown = std::thread::spawn(move || {
+            writer.finish();
+            done.send(()).unwrap();
+            writer
+        });
+        let before_release = finished.recv_timeout(Duration::from_millis(25));
+        release.send(()).unwrap();
+        let writer = shutdown.join().unwrap();
+        assert_eq!(before_release, Err(mpsc::RecvTimeoutError::Timeout));
+        for i in 0..=STDERR_QUEUE_RECORDS {
+            assert_eq!(written.try_recv().unwrap(), format!("{i}\n").as_bytes());
+        }
+        writer.submit("after shutdown".to_owned());
+        assert_eq!(writer.dropped.load(Ordering::Relaxed), 1);
+    }
 
     #[test]
     fn stderr_thread_start_failure_refuses_logging_installation() {

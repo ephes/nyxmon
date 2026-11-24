@@ -510,6 +510,7 @@ Rust agent stderr now uses one dedicated writer with a nonblocking queue of 128
 records (at most 8193 bytes each). If the writer thread cannot start, the agent
 and `run-check` exit with status 1. A full queue drops new records and increments
 `nyxmon_agent::logging::dropped_log_records()`. Checks, deadlines and signal
-handling continue while the stderr consumer is blocked. Exit drains for at most
-250 ms and never joins the writer; overload or blocked shutdown can lose logs,
+handling continue while the stderr consumer is blocked. Exit closes the queue to
+new records and allows up to 250 ms to drain and flush it, even when full. The
+binary never joins the writer. Overload or blocked shutdown can lose logs,
 including the payload-free panic diagnostic. See the [stderr delivery contract](agent-rs/README.md#nonblocking-stderr-delivery-pending-rust-rollout).

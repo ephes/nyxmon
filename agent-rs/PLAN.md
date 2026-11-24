@@ -2812,14 +2812,15 @@ before doing any monitoring or running a check. This path skips a synchronous
 stderr write, which could block on an unread pipe. Subscriber submission uses a
 nonblocking 128-record queue. Each queued record is at most 8193 UTF-8 bytes
 including newline. The queue holds up to 1,048,704 text bytes, and the writer
-can hold one additional record. A full/disconnected queue drops the newest
+can hold one additional record. A full, closed, or disconnected queue drops the newest
 record. `nyxmon_agent::logging::dropped_log_records()` exposes queue rejections and
 sink write failures without logging recursively. Panic-hook text uses the same
 queue and may also be lost during overload. Retained records keep their order,
 control escaping, and truncation markers; notifications are unchanged.
 
-On normal exit or main-thread unwind the binary requests an ordered drain. It
-waits at most 250 ms; a full queue skips this wait. The writer is never joined,
-so an unread pipe cannot prevent exit. Accepted records may be lost if the sink
-stays blocked at shutdown. Restore the stderr consumer to resume delivery; this
-change requires a later owner-managed Rust agent rollout.
+On normal exit or main-thread unwind the binary closes the queue to new records
+and waits up to 250 ms for the writer to drain it in order and flush stderr, even
+if the queue is full. The writer is never joined, so an unread pipe cannot prevent
+exit. Accepted records may be lost if the sink stays blocked at shutdown.
+Restore the stderr consumer to resume delivery. This change requires a later
+owner-managed Rust agent rollout.

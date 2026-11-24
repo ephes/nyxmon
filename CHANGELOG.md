@@ -88,6 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Rust agent logging
 
+- Drain queued stderr records at shutdown even when the queue is full, within
+  the existing 250 ms wait limit.
 - Refuse startup with exit status 1 if the stderr writer thread cannot start.
 
 ### Rust agent collector
