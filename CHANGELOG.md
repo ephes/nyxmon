@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Read the stored health check ID when decoding an existing result.
 - Keep in-memory result IDs increasing after pruning and explicit inserts so
   automatic allocation cannot overwrite surviving results.
+- Select and delete each expired SQLite result batch in one statement to keep
+  fresh results safe when concurrent cleanup and inserts reuse an ID.
 - Preserve the site connectivity incident and pending notifications when its
   stored payload version is unsupported.
 - Treat future-dated connectivity observations as stale when restoring an

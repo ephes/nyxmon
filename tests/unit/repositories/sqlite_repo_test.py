@@ -261,3 +261,39 @@ class TestResultRetentionCutoff:
         conn.close()
         assert deleted == 1
         assert remaining == [1]
+
+
+@pytest.mark.anyio
+async def test_retention_keeps_fresh_row_with_reused_id(empty_result_db, monkeypatch):
+    _insert_rows_aged(empty_result_db, [0, 48])
+    repo = SqliteResultRepository(empty_result_db)
+    execute = aiosqlite.Connection.execute
+
+    # Replace the expired row immediately before the cleaner issues its DELETE.
+    def interleave_before_delete(db, sql, parameters=None):
+        if not sql.lstrip().startswith("DELETE FROM check_result"):
+            return execute(db, sql, parameters)
+
+        async def replace_expired_result_then_delete():
+            async with aiosqlite.connect(empty_result_db) as writer:
+                await execute(writer, "DELETE FROM check_result WHERE id = 2")
+                async with execute(
+                    writer,
+                    "INSERT INTO check_result (health_check_id, status, data, created_at) "
+                    "VALUES (1, 'ok', '{\"fresh\": true}', datetime('now'))",
+                ) as cursor:
+                    assert cursor.lastrowid == 2
+                await writer.commit()
+            return await execute(db, sql, parameters)
+
+        return replace_expired_result_then_delete()
+
+    monkeypatch.setattr(aiosqlite.Connection, "execute", interleave_before_delete)
+    deleted = await repo.delete_old_results_async(retention_seconds=86400, batch_size=1)
+
+    results = await repo._list_for_check_async(1, 2)
+    assert [(result.result_id, result.data) for result in results] == [
+        (2, {"fresh": True}),
+        (1, {}),
+    ]
+    assert deleted == 0

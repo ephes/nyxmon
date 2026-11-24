@@ -40,6 +40,11 @@ Both backlogs share the 100-batch cycle budget; any remainder continues next cyc
 The retention cutoff is computed on SQLite's UTC clock, the same clock that
 stamps the results, so retention is exact whatever the host's time zone.
 
+The retained Python SQLite repository selects and deletes each expired result
+batch in one SQL statement. Concurrent cleanup and inserts can reuse a result
+ID safely because the deletion checks the row's age in the same statement.
+The cleaner counts result deletions only. Session cleanup runs separately.
+
 Deleting rows does not shrink the SQLite file; SQLite reuses the freed pages
 for new results. After the first cleanup of a large backlog you can reclaim
 the space once with the agent stopped (back up the file first):

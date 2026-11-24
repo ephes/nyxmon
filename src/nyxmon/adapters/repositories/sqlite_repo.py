@@ -865,32 +865,19 @@ class SqliteResultRepository(ResultRepository):
             # Rows are stamped with SQLite's datetime('now'), which is UTC, so
             # the cutoff is computed by SQLite on the same clock. A cutoff from
             # Python's naive local time would be off by the host's UTC offset.
-            # SQLite doesn't support LIMIT in DELETE directly, so select the
-            # batch of IDs first.
+            # Select and delete in one statement so a concurrent writer cannot
+            # reuse an expired ID between selecting it and deleting it.
             cursor = await db.execute(
-                "SELECT id FROM check_result "
-                "WHERE created_at < datetime('now', ?) ORDER BY id LIMIT ?",
+                """
+                DELETE FROM check_result
+                WHERE id IN (
+                    SELECT id FROM check_result
+                    WHERE created_at < datetime('now', ?)
+                    ORDER BY id LIMIT ?
+                )
+                """,
                 (f"-{int(retention_seconds)} seconds", batch_size),
             )
-            rows = await cursor.fetchall()
-
-            if not rows:
-                return 0
-
-            # Get the IDs to delete as a tuple
-            ids_to_delete = tuple(row[0] for row in rows)
-
-            # If only one ID to delete, we need special SQL syntax (can't use 'IN' with a single value tuple)
-            if len(ids_to_delete) == 1:
-                delete_sql = "DELETE FROM check_result WHERE id = ?"
-                params = (ids_to_delete[0],)
-            else:
-                placeholders = ",".join(["?"] * len(ids_to_delete))
-                delete_sql = f"DELETE FROM check_result WHERE id IN ({placeholders})"
-                params = ids_to_delete
-
-            # Delete the records
-            cursor = await db.execute(delete_sql, params)
             deleted_count = cursor.rowcount
             await db.commit()
 
