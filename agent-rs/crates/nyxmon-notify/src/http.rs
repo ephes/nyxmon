@@ -473,7 +473,7 @@ impl HttpClient {
     ) -> Result<Response, TransportError> {
         match tokio::time::timeout(
             self.timeout.saturating_mul(2),
-            self.post_inner(url, headers, body),
+            self.post_inner(url, headers, body, async |url| self.connect(url).await),
         )
         .await
         {
@@ -487,6 +487,7 @@ impl HttpClient {
         url: &str,
         headers: &[(&str, &str)],
         body: String,
+        connect: impl AsyncFnOnce(&url::Url) -> Result<Box<dyn Stream>, TransportError>,
     ) -> Result<Response, TransportError> {
         let url = url::Url::parse(url)
             .map_err(|e| TransportError::new("UnsupportedProtocol", e.to_string()))?;
@@ -499,7 +500,6 @@ impl HttpClient {
                 ),
             ));
         }
-        let stream = self.connect(&url).await?;
         let mut target = url.path().to_owned();
         if let Some(query) = url.query() {
             target.push('?');
@@ -518,7 +518,11 @@ impl HttpClient {
         let request = headers.iter().fold(request, |request, (name, value)| {
             request.header(*name, *value)
         });
-        exchange(stream, self.timeout, request, Bytes::from(body)).await
+        let request = request
+            .body(Bytes::from(body))
+            .map_err(|e| TransportError::new("LocalProtocolError", e.to_string()))?;
+        let stream = connect(&url).await?;
+        exchange(stream, self.timeout, request).await
     }
 }
 
@@ -527,13 +531,10 @@ impl HttpClient {
 async fn exchange<S: Stream + 'static>(
     stream: S,
     timeout: Duration,
-    request: hyper::http::request::Builder,
-    body: Bytes,
+    request: hyper::Request<Bytes>,
 ) -> Result<Response, TransportError> {
     let body_taken = Arc::new(AtomicBool::new(false));
-    let request = request
-        .body(TrackedBody::new(body, body_taken.clone()))
-        .map_err(|e| TransportError::new("LocalProtocolError", e.to_string()))?;
+    let request = request.map(|body| TrackedBody::new(body, body_taken.clone()));
     let io = TokioIo::new(TimeoutIo::new(stream, timeout, body_taken));
     let (mut sender, connection) = hyper::client::conn::http1::handshake(io)
         .await
@@ -613,6 +614,25 @@ mod tests {
         assert_eq!(form_urlencode(&[("k y", "")]), "k+y=");
     }
 
+    #[tokio::test]
+    async fn invalid_request_metadata_never_dials() {
+        let client = HttpClient::new(Duration::from_secs(1));
+        for (url, headers) in [
+            ("http://example.test/", [("x-test", "invalid\r\nvalue")]),
+            ("http://example.test/", [("invalid name", "value")]),
+        ] {
+            let attempts = std::cell::Cell::new(0);
+            let err = client
+                .post_inner(url, &headers, String::new(), async |_| {
+                    attempts.set(attempts.get() + 1);
+                    Err(TransportError::new("ConnectError", "synthetic dial"))
+                })
+                .await
+                .unwrap_err();
+            assert_eq!((attempts.get(), err.class), (0, "LocalProtocolError"));
+        }
+    }
+
     #[test]
     fn timeouts_are_clamped() {
         assert_eq!(timeout_from_secs(7.0), Duration::from_secs(7));
@@ -643,14 +663,10 @@ mod tests {
         });
         let request = hyper::Request::post("/")
             .header("host", "test")
-            .header("content-length", "64");
-        exchange(
-            client,
-            Duration::from_millis(100),
-            request,
-            Bytes::from(vec![b'x'; 64]),
-        )
-        .await
+            .header("content-length", "64")
+            .body(Bytes::from(vec![b'x'; 64]))
+            .unwrap();
+        exchange(client, Duration::from_millis(100), request).await
     }
 
     /// httpx times the upload per write and the response from the moment

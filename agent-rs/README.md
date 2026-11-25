@@ -603,6 +603,8 @@ redirect bodies are ignored intentionally. Destination validation, the
 20-redirect cap, cookie handling and cross-origin credential stripping remain.
 Ordinary HTTP checks still return from final headers alone.
 
+Notifier POSTs validate the request target and headers before DNS or a
+connection attempt. Invalid request metadata returns `LocalProtocolError`.
 Notifier POSTs retain their configured per-phase timeout `t` and additionally
 have one whole-call deadline of `2 * t`, covering DNS, connect, TLS, upload and
 response acquisition together. This allows one connect budget plus one transfer
