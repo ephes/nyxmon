@@ -15,7 +15,11 @@ see git history. The Python agent stays in `src/nyxmon` but is not deployed;
 removing it together with its `_ensure_schema` DDL is a separate follow-up.
 
 Releases are cut from the commit that sets the crate version (see
-"Releases" below): `agent-rs-v0.1.7` (2026-11-24, stop-signal handling at
+"Releases" below): `agent-rs-v0.1.8` (prepared 2026-11-25: notification
+request validation and IPv4 fallback order, cancelled checks joined before
+the drain acknowledgement, database generation check at startup, stderr
+writer and flush reporting, suppression selector and timeout handling)
+follows `agent-rs-v0.1.7` (2026-11-24, `7c40c6d`, stop-signal handling at
 startup and a shared shutdown deadline, claim release after a batch panic,
 DNS TCP fallback truncation, IMAP FETCH indexing, retention log counts)
 follows `agent-rs-v0.1.6` (2026-11-18, `65ef1e3`, the first one built

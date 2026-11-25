@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent 0.1.8
+
+- Prepare the Rust agent release `agent-rs-v0.1.8` (crate version 0.1.8), to
+  be built and published locally by `agent-rs/scripts/local_release.py`.
+  Compared with `agent-rs-v0.1.7` (`7c40c6d`) it ships the Rust entries of
+  *Rust ping retirement inspection* (macOS-only; the Linux release binary is
+  unaffected), *Rust notifications*, *Rust agent shutdown*, *Rust agent
+  database ownership*, *Rust HTTP URL parsing* and *Notification suppression*
+  below,
+  plus the first entry of *Rust agent supervision* (an observer or cleaner
+  that already exited when shutdown begins is a monitoring failure) and the
+  three *Rust agent logging* entries (full stderr queue drained at shutdown,
+  `log_flush_failed()`, startup refused when the stderr writer cannot start).
+  Schema: unchanged, the agent's minimum migration stays
+  `nyxboard.0015_healthcheck_claim_generation`. Upgrade notes: the agent now
+  refuses to start when the canonical database is no longer the file admitted
+  by the agent lock, and an agent whose stderr writer thread cannot start
+  exits with status 1.
+
 ### Rust ping retirement inspection
 
 - Replace the macOS-only `libproc` crate (and its build-time bindgen/libclang
