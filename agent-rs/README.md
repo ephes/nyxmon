@@ -560,7 +560,9 @@ Never add DDL to the Python agent; a new required column raises
   is taken before opening SQLite and held until exit. The database must already
   exist as a regular file with one hard link; run Django migrations to initialize
   a missing database. Relative paths, symlinked files and directory aliases resolve
-  to the same lock. SQLite is opened through that admitted canonical path. Lock
+  to the same lock. SQLite is opened through that admitted canonical path.
+  The actor checks the admitted device and inode before and after opening
+  SQLite and refuses startup if the database has been replaced. Lock
   files must also be regular with one hard link; symlinks, FIFOs and directories
   are refused without waiting. The private lock file is stable: never delete or
   replace it while agents can run. Keep the database and its parent directories

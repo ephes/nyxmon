@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent database ownership
+
+- Refuse startup when the canonical database no longer matches the file
+  admitted by the agent lock.
+
 ### Rust HTTP URL parsing
 
 - Stop scanning oversized URL inputs at the first scalar beyond the limit.

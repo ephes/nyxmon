@@ -72,6 +72,7 @@ impl Store {
 
     /// Open an actor that retains singleton ownership until its connection closes,
     /// even if its caller times out or drops all async runtime tasks.
+    /// The admitted database generation must still match around the SQLite open.
     pub fn open_locked(lock: crate::AgentLock) -> Result<Store, StoreError> {
         let path = lock.database_path().to_owned();
         Self::open_inner(&path, StoreOptions::default(), Some(lock))
@@ -82,7 +83,7 @@ impl Store {
         options: StoreOptions,
         lock: Option<crate::AgentLock>,
     ) -> Result<Store, StoreError> {
-        let connection = open_read_write(path, options)?;
+        let connection = open_read_write(path, options, lock.as_ref())?;
         let (jobs, inbox) = mpsc::channel::<Command>();
         let (done, finished) = tokio::sync::watch::channel(false);
         std::thread::Builder::new()
@@ -175,9 +176,20 @@ impl Store {
 /// `cli.py:start_agent`'s `db_path.exists()` check), Python's busy timeout,
 /// foreign keys on (Python enables them for the result persistence; every
 /// agent insert targets an existing check, PLAN.md section 3.2).
-fn open_read_write(path: &Path, options: StoreOptions) -> Result<Connection, StoreError> {
-    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+fn open_read_write(
+    path: &Path,
+    options: StoreOptions,
+    lock: Option<&crate::AgentLock>,
+) -> Result<Connection, StoreError> {
+    let mut flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    if let Some(lock) = lock {
+        lock.verify_database_generation().map_err(StoreError::Io)?;
+        flags |= OpenFlags::SQLITE_OPEN_NOFOLLOW;
+    }
     let connection = Connection::open_with_flags(path, flags)?;
+    if let Some(lock) = lock {
+        lock.verify_database_generation().map_err(StoreError::Io)?;
+    }
     connection.busy_timeout(options.busy_timeout)?;
     connection.execute_batch("PRAGMA foreign_keys = ON")?;
     Ok(connection)
@@ -194,6 +206,36 @@ pub(crate) fn open_read_only(path: &Path) -> Result<Connection, StoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn locked_open_refuses_a_replaced_database_without_mutating_either_generation() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        let original = dir.path().join("original.sqlite3");
+        let alias = dir.path().join("alias.sqlite3");
+        Connection::open(&path)
+            .unwrap()
+            .execute_batch("CREATE TABLE original (value); INSERT INTO original VALUES (1)")
+            .unwrap();
+        std::os::unix::fs::symlink(&path, &alias).unwrap();
+        let lock = crate::AgentLock::acquire(&alias).unwrap();
+        std::fs::rename(&path, &original).unwrap();
+        Connection::open(&path)
+            .unwrap()
+            .execute_batch("CREATE TABLE replacement (value); INSERT INTO replacement VALUES (2)")
+            .unwrap();
+
+        let original_bytes = std::fs::read(&original).unwrap();
+        let replacement_bytes = std::fs::read(&path).unwrap();
+        let error = Store::open_locked(lock).unwrap_err();
+        assert!(
+            error.to_string().contains("database generation changed"),
+            "{error}"
+        );
+        assert_eq!(std::fs::read(&original).unwrap(), original_bytes);
+        assert_eq!(std::fs::read(&path).unwrap(), replacement_bytes);
+        let _next = crate::AgentLock::acquire(&alias).unwrap();
+    }
 
     #[tokio::test]
     async fn close_waits_for_admitted_write_and_is_terminal() {

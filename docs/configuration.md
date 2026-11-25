@@ -1076,6 +1076,8 @@ The production Rust agent resolves the existing database to a canonical path,
 takes a non-blocking exclusive `flock` on `<canonical db path>.agent.lock`
 (created with mode 0600), and opens SQLite through that same canonical path.
 Symlinked files, directory aliases and relative spellings share the lock.
+If the canonical database changes between lock acquisition and opening SQLite,
+the agent refuses startup.
 Missing, non-regular or hard-linked databases are refused; initialize a missing
 database with Django migrations first. Lock files must be regular with one hard
 link; symlink, FIFO and directory lock paths are refused without waiting.

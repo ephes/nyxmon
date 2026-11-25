@@ -55,6 +55,7 @@ impl std::error::Error for LockError {}
 pub struct AgentLock {
     path: PathBuf,
     database_path: PathBuf,
+    database_identity: (u64, u64),
     _file: File,
 }
 
@@ -86,6 +87,7 @@ impl AgentLock {
                 source: std::io::Error::other("database must be a regular file with one hard link"),
             });
         }
+        let database_identity = (metadata.dev(), metadata.ino());
         let path = agent_lock_path(&database_path);
         let io_error = |source| LockError::Io {
             path: path.clone(),
@@ -136,6 +138,7 @@ impl AgentLock {
                 Ok(AgentLock {
                     path,
                     database_path,
+                    database_identity,
                     _file: file,
                 })
             }
@@ -148,6 +151,26 @@ impl AgentLock {
     /// caller's alias cannot be retargeted between locking and opening.
     pub fn database_path(&self) -> &Path {
         &self.database_path
+    }
+
+    pub(crate) fn verify_database_generation(&self) -> std::io::Result<()> {
+        let path = &self.database_path;
+        let metadata = path.symlink_metadata().map_err(|err| {
+            std::io::Error::new(
+                err.kind(),
+                format!("cannot verify locked database {}: {err}", path.display()),
+            )
+        })?;
+        if !metadata.is_file()
+            || metadata.nlink() != 1
+            || (metadata.dev(), metadata.ino()) != self.database_identity
+        {
+            return Err(std::io::Error::other(format!(
+                "locked database generation changed: {}",
+                path.display()
+            )));
+        }
+        Ok(())
     }
 
     /// The lock file path.
