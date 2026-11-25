@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Rust notifications
 
 - Validate POST request targets and headers before dialing.
+- Prefer the resolver’s first IPv4 address after the first IPv6 attempt.
 
 ### Rust agent database ownership
 

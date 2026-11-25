@@ -302,19 +302,20 @@ const HAPPY_EYEBALLS_DELAY: Duration = Duration::from_millis(250);
 /// first IPv4 address after an IPv6 one second, everything else in resolver
 /// order.
 fn anyio_order(resolved: Vec<SocketAddr>) -> Vec<SocketAddr> {
-    let (mut v6_found, mut v4_found) = (false, false);
+    let Some(v6) = resolved.iter().position(SocketAddr::is_ipv6) else {
+        return resolved;
+    };
+    let Some(v4) = resolved.iter().position(SocketAddr::is_ipv4) else {
+        return resolved;
+    };
     let mut targets = Vec::with_capacity(resolved.len());
-    for addr in resolved {
-        if addr.is_ipv6() && !v6_found {
-            v6_found = true;
-            targets.insert(0, addr);
-        } else if addr.is_ipv4() && !v4_found && v6_found {
-            v4_found = true;
-            targets.insert(1, addr);
-        } else {
-            targets.push(addr);
-        }
-    }
+    targets.extend([resolved[v6], resolved[v4]]);
+    targets.extend(
+        resolved
+            .into_iter()
+            .enumerate()
+            .filter_map(|(index, addr)| (index != v6 && index != v4).then_some(addr)),
+    );
     targets
 }
 
@@ -697,13 +698,30 @@ mod tests {
         let v6 = |n: u16| SocketAddr::from(([0xfd00, 0, 0, 0, 0, 0, 0, n], 443));
         assert_eq!(
             anyio_order(vec![v4(1), v4(2), v6(1), v4(3), v6(2)]),
-            vec![v6(1), v4(3), v4(1), v4(2), v6(2)]
+            vec![v6(1), v4(1), v4(2), v4(3), v6(2)]
         );
         assert_eq!(anyio_order(vec![v4(1), v4(2)]), vec![v4(1), v4(2)]);
         assert_eq!(
-            anyio_order(vec![v6(1), v6(2), v4(1)]),
-            vec![v6(1), v4(1), v6(2)]
+            anyio_order(vec![v6(1), v6(2), v4(1), v4(2)]),
+            vec![v6(1), v4(1), v6(2), v4(2)]
         );
+    }
+
+    #[tokio::test]
+    async fn ipv6_failure_falls_back_to_the_resolvers_first_ipv4() {
+        let first = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let second = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let ipv6 = tokio::net::TcpListener::bind("[::1]:0").await.unwrap();
+        let refused = ipv6.local_addr().unwrap();
+        drop(ipv6);
+
+        let preferred = first.local_addr().unwrap();
+        let targets = anyio_order(vec![preferred, refused, second.local_addr().unwrap()]);
+        let stream = tokio::time::timeout(Duration::from_secs(5), connect_any(targets))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(stream.peer_addr().unwrap(), preferred);
     }
 
     /// The first address never answers (or is unroutable); the next attempt

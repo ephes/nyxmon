@@ -605,6 +605,8 @@ Ordinary HTTP checks still return from final headers alone.
 
 Notifier POSTs validate the request target and headers before DNS or a
 connection attempt. Invalid request metadata returns `LocalProtocolError`.
+With mixed DNS results, the first IPv6 and first IPv4 addresses are tried
+in that order, followed by the remaining addresses in resolver order.
 Notifier POSTs retain their configured per-phase timeout `t` and additionally
 have one whole-call deadline of `2 * t`, covering DNS, connect, TLS, upload and
 response acquisition together. This allows one connect budget plus one transfer
