@@ -102,6 +102,10 @@ fn returncode(status: std::process::ExitStatus) -> i64 {
 /// `run_process`: run `command` with the inherited environment plus
 /// `LC_ALL=C` and `LANG=C`, stdin from `/dev/null`, capturing both output
 /// streams; killed when `timeout` seconds pass.
+///
+/// # Errors
+/// A timeout that cannot produce a positive, representable deadline returns
+/// `RunError::Exception(PyException::VALUE_ERROR)` before spawning a child.
 pub async fn run_process(command: Vec<String>, timeout: f64) -> Result<ProcessOutput, RunError> {
     run_process_with_signal(command, timeout, kill_owned_group).await
 }
@@ -119,7 +123,11 @@ async fn run_process_with_signal(
         // `ValueError: embedded null byte`.
         return Err(RunError::Exception(PyException::VALUE_ERROR));
     }
-    let limit = Duration::try_from_secs_f64(timeout).unwrap_or(Duration::MAX);
+    let deadline = Duration::try_from_secs_f64(timeout)
+        .ok()
+        .filter(|limit| !limit.is_zero())
+        .and_then(|limit| tokio::time::Instant::now().checked_add(limit))
+        .ok_or(RunError::Exception(PyException::VALUE_ERROR))?;
     let child = tokio::process::Command::new(program)
         .args(&command[1..])
         .env("LC_ALL", "C")
@@ -143,7 +151,7 @@ async fn run_process_with_signal(
         observe_exit(owned.group.expect("owned leader")).await?;
         Ok((stdout, stderr))
     };
-    let result = tokio::time::timeout(limit, run)
+    let result = tokio::time::timeout_at(deadline, run)
         .await
         .unwrap_or(Err(RunError::Timeout));
     // Terminate even descendants that closed their pipes; keep the stable group

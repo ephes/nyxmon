@@ -265,6 +265,29 @@ async fn the_process_runner_sets_the_c_locale_and_closes_stdin() {
 }
 
 #[tokio::test]
+async fn the_process_runner_rejects_invalid_deadlines_before_spawn() {
+    let scripts = Scripts::new();
+    let marker = scripts.path("started");
+    let marker = marker.to_str().unwrap();
+
+    for timeout in [
+        f64::NAN,
+        -1.0,
+        0.0,
+        f64::INFINITY,
+        f64::MAX,
+        f64::MIN_POSITIVE,
+    ] {
+        let result = run(&["/bin/sh", "-c", ": > \"$1\"", "sh", marker], timeout).await;
+        assert_eq!(
+            (result, Path::new(marker).exists()),
+            (Err(RunError::Exception(PyException::VALUE_ERROR)), false),
+            "timeout={timeout}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn the_process_runner_kills_after_the_timeout() {
     let start = tokio::time::Instant::now();
     assert_eq!(run(&["sleep", "5"], 0.1).await, Err(RunError::Timeout));

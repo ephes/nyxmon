@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust ping runner
+
+- Reject invalid deadlines in direct calls to the ping runner before starting a
+  subprocess.
+
 ### Warning digest
 
 - Keep warnings with invalid incident timestamps in the digest when logging

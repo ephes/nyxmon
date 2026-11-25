@@ -813,6 +813,10 @@ the local live-handoff check also runs it against the actual Django-migrated fil
 
 ### Ping subprocess limits
 
+Direct callers of `nyxmon_checks::ping::run_process` must supply a timeout in
+seconds that yields a positive duration and a representable deadline. Invalid
+timeouts return `ValueError` before the runner starts a child process.
+
 The Rust ping runner drains stdout and stderr concurrently. Each stream is
 limited to 64 KiB and their combined output to 96 KiB; overflow returns a single
 `output_limit` failure without retaining or logging rejected output or retrying.
