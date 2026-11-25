@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust site observer
+
+- Log recovery recheck completion only after persisting it. Retry a failed
+  completion write with the recheck still pending.
+
 ### Rust ping runner
 
 - Reject invalid deadlines in direct calls to the ping runner before starting a

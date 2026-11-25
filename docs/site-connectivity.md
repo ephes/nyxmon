@@ -287,7 +287,9 @@ The item stays pending while either a usable held dependent exists or any
 pre-release claim is still in flight. A check whose dependency is still blocked
 by another requirement — `dns` still down after `ipv4` released — is not
 rescheduled and keeps its normal interval. The set of usable held checks
-therefore shrinks monotonically, and the item completes.
+therefore shrinks monotonically, and the item completes. The observer logs
+completion only after persisting the cleared item. If that write fails, it
+keeps the item pending and retries on a later round, including after restart.
 
 Rechecks are claimed in ordinary batches (`NYXMON_CHECK_BATCH_SIZE`, five per
 collector iteration by default), so N held checks are rechecked within roughly

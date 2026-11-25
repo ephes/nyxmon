@@ -1152,23 +1152,22 @@ impl Observer {
             );
             return Ok(());
         }
-        let pending = in_flight > 0 || !usable.is_empty();
-        if pending == truthy(self.recheck.get("pending")) {
+        if in_flight > 0 || !usable.is_empty() {
             return Ok(());
         }
-        let mut recheck = PyDict::new();
-        recheck.insert("pending".to_owned(), PyJson::Bool(pending));
-        recheck.insert("release_at".to_owned(), PyJson::Int(release_at));
-        self.recheck = recheck;
-        ports.log(
-            LogLevel::Info,
-            &format!(
-                "site connectivity recheck for release {} completed",
-                iso(release_at)?
-            ),
-            None,
+        let message = format!(
+            "site connectivity recheck for release {} completed",
+            iso(release_at)?
         );
-        self.write_payload(ports, now).await;
+        let mut recheck = PyDict::new();
+        recheck.insert("pending".to_owned(), PyJson::Bool(false));
+        recheck.insert("release_at".to_owned(), PyJson::Int(release_at));
+        let previous = std::mem::replace(&mut self.recheck, recheck);
+        if self.write_payload(ports, now).await {
+            ports.log(LogLevel::Info, &message, None);
+        } else {
+            self.recheck = previous;
+        }
         Ok(())
     }
 

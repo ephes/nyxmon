@@ -502,10 +502,26 @@ fn replay(group: &str, scenario: &PyJson) -> usize {
         let expected = &results[index];
         let context = format!("{name} step {index} at {}", step.int_field("at"));
         let events = PyJson::List(world.events.lock().unwrap().clone());
-        let expected_events = expected.field("events");
-        if &events != expected_events {
+        let mut expected_events = expected.list_field("events").to_vec();
+        // The retired Python observer logged completion before writing. Rust
+        // acknowledges the completion after the store confirms the write.
+        if let Some(position) = expected_events.iter().position(|event| {
+            event.as_list().is_some_and(|fields| {
+                fields.first() == Some(&text("log"))
+                    && matches!(fields.get(3), Some(PyJson::Str(message))
+                        if message.starts_with("site connectivity recheck for release ")
+                            && message.ends_with(" completed"))
+            })
+        }) {
+            let write = expected_events[position + 1].as_list().unwrap();
+            assert_eq!(write.first(), Some(&text("store")));
+            assert!(write[1] == text("set") || write[1] == text("open"));
+            assert_eq!(write[2], text("ok"));
+            expected_events.swap(position, position + 1);
+        }
+        if events.as_list().unwrap() != expected_events {
             let got = events.as_list().unwrap();
-            let want = expected_events.as_list().unwrap();
+            let want = &expected_events;
             for (position, (g, w)) in got.iter().zip(want).enumerate() {
                 assert_eq!(g, w, "{context}: event {position}");
             }
@@ -693,4 +709,77 @@ fn version_two_generation_admission_is_atomic() {
         assert_eq!(observer.build_payload(), before);
         assert_eq!(world.state.lock().unwrap().write_calls, 0);
     }
+}
+
+#[test]
+fn recheck_completion_is_logged_only_after_durable_write() {
+    let world = World::default();
+    let pending = loads(r#"{"pending":true,"release_at":42,"legacy_field":"keep"}"#).unwrap();
+    {
+        let mut state = world.state.lock().unwrap();
+        state.row = Some(PyDict::from([("recheck".to_owned(), pending.clone())]));
+        state.now = 43;
+        state.fail_write_calls = vec![1]; // The round's second write clears the recheck.
+    }
+    let config = SiteEnvConfig {
+        mode: SiteMode::Enforce,
+        ..SiteEnvConfig::default()
+    };
+    let warnings = Arc::new(WarnOnce::new(Arc::new(EventSink(world.events.clone()))));
+    let mut observer = Observer::new(config.clone(), warnings.clone());
+    let receipt = list([
+        text("log"),
+        text("INFO"),
+        text(super::observer::LOGGER),
+        text("site connectivity recheck for release 1970-01-01T00:00:42Z completed"),
+    ]);
+
+    block_on(observer.run_once(&world)).unwrap();
+    assert!(!world.events.lock().unwrap().contains(&receipt));
+    assert_eq!(observer.build_payload().get("recheck"), Some(&pending));
+    assert_eq!(
+        world
+            .state
+            .lock()
+            .unwrap()
+            .row
+            .as_ref()
+            .unwrap()
+            .get("recheck"),
+        Some(&pending)
+    );
+
+    let mut restarted = Observer::new(config, warnings);
+    block_on(restarted.run_once(&world)).unwrap();
+    let cleared = loads(r#"{"pending":false,"release_at":42}"#).unwrap();
+    let row = world.state.lock().unwrap().row.clone().unwrap();
+    assert_eq!(row.get("recheck"), Some(&cleared));
+    {
+        let events = world.events.lock().unwrap();
+        let write = list([
+            text("store"),
+            text("set"),
+            text("ok"),
+            text(&payload_text(&row)),
+        ]);
+        let write_index = events.iter().position(|event| event == &write).unwrap();
+        let receipts: Vec<_> = events
+            .iter()
+            .enumerate()
+            .filter_map(|(index, event)| (event == &receipt).then_some(index))
+            .collect();
+        assert_eq!(receipts, [write_index + 1]);
+    }
+
+    block_on(restarted.run_once(&world)).unwrap();
+    assert_eq!(
+        world
+            .events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| **event == receipt)
+            .count(),
+        1
+    );
 }
