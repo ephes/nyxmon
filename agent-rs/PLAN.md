@@ -1181,19 +1181,19 @@ raised). Any error in this function is logged as
 
 ### 5.4 Maintenance suppression (`notification_suppression.py`) — fixture + fake server
 
-Current Rust reliability/privacy refinements deliberately tighten the historical
-Python fixtures: result handling catches suppression conversion errors and
-continues unsuppressed, logging only the check ID and error class. The evaluation
-clock is sampled once after the fetch. Durable evidence stores the HTTP(S) origin
+Both runtimes treat invalid array selectors as missing and normalize unusable
+timeouts before fetching. The Rust evaluation clock is sampled once after the
+fetch. Durable evidence stores the HTTP(S) origin
 only and bounds scalar strings to 128 UTF-8 bytes without controls and integers
 to 256 bits; collections, excess strings and unusable numbers become fixed type
 markers. Matching retains the original full payload/configuration. Existing
 history is not rewritten; see `docs/configuration.md` for the evidence contract.
-The parity test preserves the historical fixture and explicitly adjusts only its
-source URL expectation to the new origin-only policy.
+Python and Rust run the same details and request fixtures. Rust's parity test
+adjusts the source URL expectation to match its origin-only policy.
 
 - Config object `notification_suppression`; empty/missing `url` → none.
-  `timeout` via `_timeout_seconds` (non-numeric → 3, ≤ 0 → 3, cap 30).
+  `timeout` defaults to 3 seconds if conversion fails or the result is nonfinite
+  or nonpositive. Finite positive values are capped at 30 seconds.
 - Fetch: GET with `Accept-Encoding: identity`, redirects followed by hand up
   to 5 hops (6 requests) on 301/302/303/307/308 with a `Location`; the
   `Authorization` (basic auth from `auth.username/password`, both strings)
@@ -1239,7 +1239,8 @@ source URL expectation to the new origin-only policy.
   strings parse, inf/nan → none).
 - Path lookup `_lookup`: `"$"` → payload; otherwise
   `path.replace("$.", "")` (every occurrence) split on `.`, empty parts
-  dropped; dict key first, list index only for `isdigit()` parts.
+  dropped. Dict keys take precedence. List indexes accept up to 4300 ASCII digits
+  and must be within the list bounds.
 
 ### 5.5 HTTP family (`http_executor.py`, `json_metrics_executor.py`)
 

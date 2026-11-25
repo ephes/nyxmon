@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Treat invalid and out-of-range array selectors as missing paths in both
   runtimes, so a malformed rule cannot interrupt alert processing.
+- Use the default three-second maintenance fetch timeout for invalid,
+  nonfinite, nonpositive, or overflowing settings in both runtimes. Cap
+  finite positive timeouts at 30 seconds.
 
 ### Rust agent 0.1.7
 

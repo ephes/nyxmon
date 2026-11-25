@@ -95,13 +95,9 @@ def test_suppression_details_parity(monkeypatch, case: dict[str, Any]) -> None:
         "nyxmon.service_layer.notification_suppression._fetch_payload", fetch
     )
     check = _build_check(json.loads(case["data_json"]))
-    if case.get("error") == "OverflowError":
-        with pytest.raises(OverflowError):
-            notification_suppression_details(check, now_epoch=case["now"])
-    else:
-        details = notification_suppression_details(check, now_epoch=case["now"])
-        expected = case["details_json"]
-        assert details == (json.loads(expected) if expected is not None else None)
+    details = notification_suppression_details(check, now_epoch=case["now"])
+    expected = case["details_json"]
+    assert details == (json.loads(expected) if expected is not None else None)
     assert requests == [(r["url"], r["timeout"]) for r in case["requests"]]
 
 

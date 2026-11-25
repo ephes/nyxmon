@@ -203,16 +203,12 @@ def _finite_seconds(value: Any) -> float | None:
     return seconds
 
 
-def _float_or_default(value: Any, default: float) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
 def _timeout_seconds(value: Any) -> float:
-    timeout = _float_or_default(value, 3.0)
-    if timeout <= 0:
+    try:
+        timeout = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return 3.0
+    if not math.isfinite(timeout) or timeout <= 0:
         return 3.0
     return min(timeout, 30.0)
 
@@ -228,7 +224,7 @@ def notification_suppression_details(
     if not url:
         return None
 
-    timeout = _timeout_seconds(config.get("timeout", 3.0))
+    timeout = _timeout_seconds(config.get("timeout"))
     now = now_epoch if now_epoch is not None else int(time.time())
 
     # Fail open on any fetch problem, including a body over the size cap.

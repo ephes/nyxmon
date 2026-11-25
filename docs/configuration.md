@@ -216,6 +216,7 @@ Guard against it by pointing `freshness_path` at the payload's own age field:
 
 | Key | Effect |
 | --- | --- |
+| `timeout` | Fetch timeout in seconds. Invalid, nonfinite, nonpositive, or overflowing values use the default of 3 seconds. Finite positive values are capped at 30 seconds. |
 | `freshness_path` | JSON path to the payload's own age, in seconds. Omit to disable the guard (existing configs are unchanged). |
 | `freshness_max_seconds` | Suppress nothing once the reported age exceeds this. |
 

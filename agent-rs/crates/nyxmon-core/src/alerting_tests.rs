@@ -290,10 +290,11 @@ fn suppression_rules_match_python() {
             "{case:?}"
         );
         let expected = case.field("timeout_seconds");
-        match timeout_seconds(Some(&value)) {
-            Ok(seconds) => assert_eq!(py_float_repr(seconds), expected.str_field("value")),
-            Err(error) => assert_eq!(error.python_class(), expected.str_field("error")),
-        }
+        assert_eq!(
+            timeout_seconds(Some(&value)).map(py_float_repr),
+            Ok(expected.str_field("value").to_owned()),
+            "{case:?}"
+        );
     }
     assert_eq!(timeout_seconds(None).ok(), Some(3.0));
 

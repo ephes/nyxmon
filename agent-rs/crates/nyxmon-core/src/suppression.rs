@@ -139,35 +139,26 @@ pub fn finite_seconds(value: &PyJson) -> Option<f64> {
     }
 }
 
-/// `float(value)` for a JSON value, as `_float_or_default` calls it.
-fn py_float_of(value: &PyJson) -> Result<Option<f64>, PyNumError> {
-    Ok(match value {
+/// `float(value)` for a JSON value, with conversion failures treated as missing.
+fn py_float_of(value: &PyJson) -> Option<f64> {
+    match value {
         PyJson::Bool(flag) => Some(f64::from(u8::from(*flag))),
         PyJson::Int(number) => Some(*number as f64),
-        // `float(int)` raises `OverflowError`, which `_float_or_default`
-        // does not catch.
-        PyJson::BigInt(number) => Some(py_float_of_int(number)?),
+        PyJson::BigInt(number) => py_float_of_int(number).ok(),
         PyJson::Float(number) => Some(*number),
         PyJson::Str(text) => py_float(text).ok(),
         PyJson::Null | PyJson::List(_) | PyJson::Dict(_) => None,
-    })
+    }
 }
 
-/// `_timeout_seconds(config.get("timeout", 3.0))`: non-numeric or `<= 0`
-/// → 3, capped at 30 (`min` keeps a NaN, like Python).
-///
-/// # Errors
-/// `OverflowError` for an integer too large for a float: Python lets it
-/// escape `notification_suppression_details`.
+/// Resolve a finite positive timeout, defaulting to 3 seconds and capped at 30.
+/// The result type is retained for compatibility with existing callers.
 pub fn timeout_seconds(value: Option<&PyJson>) -> Result<f64, PyNumError> {
-    let timeout = match value {
-        None => 3.0,
-        Some(value) => py_float_of(value)?.unwrap_or(3.0),
-    };
-    if timeout <= 0.0 {
-        return Ok(3.0);
-    }
-    Ok(if 30.0 < timeout { 30.0 } else { timeout })
+    Ok(value
+        .and_then(py_float_of)
+        .filter(|timeout| timeout.is_finite() && *timeout > 0.0)
+        .unwrap_or(3.0)
+        .min(30.0))
 }
 
 /// What the I/O layer must fetch for a check with suppression configured.
@@ -189,9 +180,6 @@ fn suppression_config(data: &PyJson) -> Option<&PyDict> {
 /// The pre-fetch part of `notification_suppression_details`: `None` when
 /// suppression is not configured (a non-object `data` included, PLAN.md
 /// D-11).
-///
-/// # Errors
-/// See [`timeout_seconds`].
 pub fn suppression_request(data: &PyJson) -> Result<Option<SuppressionRequest>, PyNumError> {
     let Some(config) = suppression_config(data) else {
         return Ok(None);
@@ -306,9 +294,6 @@ pub fn evaluate(
 ///
 /// `fetch` performs the request and returns the decoded payload, or `None`
 /// on any failure (fail open).
-///
-/// # Errors
-/// See [`timeout_seconds`].
 pub fn notification_suppression_details(
     data: &PyJson,
     now: i64,

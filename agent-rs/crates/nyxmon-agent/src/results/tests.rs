@@ -1031,7 +1031,7 @@ async fn collector_internal_samples_are_not_fetched_for() {
 #[tokio::test]
 async fn unusable_suppression_config_preserves_results_and_sibling_delivery() {
     let configs = [
-        // float(10**400) overflows before fetching.
+        // The timeout falls back to the default before fetching.
         format!(
             r#"{{"url":"https://example.test/m", "timeout":1{}}}"#,
             "0".repeat(400)
@@ -1042,7 +1042,7 @@ async fn unusable_suppression_config_preserves_results_and_sibling_delivery() {
             "1".repeat(4301)
         ),
     ];
-    for (index, config) in configs.into_iter().enumerate() {
+    for config in configs {
         let setup = Setup::new();
         let handler = setup
             .handler(&[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")])
@@ -1063,17 +1063,7 @@ async fn unusable_suppression_config_preserves_results_and_sibling_delivery() {
         assert_eq!(setup.notifier.count(), 2);
         assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 300, 0));
         assert_eq!(setup.db.state(1).failure_count, 1);
-        let lines = capture.lines();
-        if index == 0 {
-            assert_eq!(lines.len(), 1);
-            assert_eq!(lines[0].level, "WARNING");
-            assert_eq!(
-                lines[0].message,
-                "suppression evaluation failed for check_id=1; continuing unsuppressed (OverflowError)"
-            );
-        } else {
-            assert!(lines.is_empty());
-        }
+        assert!(capture.lines().is_empty());
     }
 }
 
