@@ -21,7 +21,7 @@ import tempfile
 from itertools import islice
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import DatabaseError, connection, transaction
+from django.db import DatabaseError, connections, router, transaction
 from django.db.models import F
 
 from nyxboard.forms import DEFINITION_FIELDS, check_definition_revision
@@ -66,6 +66,15 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         candidates = HealthCheck.objects.exclude(check_type__in=SUPPORTED_CHECK_TYPES)
+        write_db = None
+        if options["delete"] or options["disable"]:
+            write_db = connections[router.db_for_write(HealthCheck)]
+            if not write_db.get_autocommit():
+                raise CommandError(
+                    "Legacy cleanup requires autocommit on the write database. "
+                    "Run --disable or --delete outside any transaction."
+                )
+            candidates = candidates.using(write_db.alias)
         horizon = candidates.order_by("-pk").values_list("pk", flat=True).first()
         if horizon is None:
             self._report_no_candidates()
@@ -120,7 +129,7 @@ class Command(BaseCommand):
                 if confirm.lower() != "y":
                     self.stdout.write("Delete operation cancelled.")
                     return
-            if not (options["delete"] or options["disable"]):
+            if write_db is None:
                 self.stdout.write(
                     f"\n{enabled} of these checks are currently ENABLED and will "
                     "cause ERROR results when the agent runs."
@@ -132,14 +141,14 @@ class Command(BaseCommand):
             receipt.seek(0)
             # Leave room for assignment/filter parameters on the backend.
             batch_size = min(
-                100, max(1, (connection.features.max_query_params or 102) - 2)
+                100, max(1, (write_db.features.max_query_params or 102) - 2)
             )
             completed = skipped = already = processed = 0
             try:
                 while lines := list(islice(receipt, batch_size)):
                     revisions = dict(json.loads(line) for line in lines)
                     changed, stale, disabled = self._mutate_batch(
-                        revisions, options["delete"]
+                        revisions, options["delete"], write_db.alias
                     )
                     completed += changed
                     skipped += stale
@@ -170,13 +179,14 @@ class Command(BaseCommand):
             )
         )
 
-    def _mutate_batch(self, revisions, delete):
+    def _mutate_batch(self, revisions, delete, using):
         changed = already = 0
-        with transaction.atomic():
+        checks = HealthCheck.objects.using(using)
+        with transaction.atomic(using=using, durable=True):
             # Reserve SQLite's writer before re-reading definitions. On other
             # backends the following row locks serialize concurrent edits.
-            HealthCheck.objects.filter(pk__in=revisions).update(disabled=F("disabled"))
-            current = HealthCheck.objects.filter(pk__in=revisions).select_for_update()
+            checks.filter(pk__in=revisions).update(disabled=F("disabled"))
+            current = checks.filter(pk__in=revisions).select_for_update()
             for check in current:
                 if (
                     check.check_type in SUPPORTED_CHECK_TYPES
@@ -184,10 +194,10 @@ class Command(BaseCommand):
                 ):
                     continue
                 if delete:
-                    check.delete()
+                    check.delete(using=using)
                     changed += 1
                 elif not check.disabled:
-                    HealthCheck.objects.filter(pk=check.pk).update(disabled=True)
+                    checks.filter(pk=check.pk).update(disabled=True)
                     changed += 1
                 else:
                     already += 1

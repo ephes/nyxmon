@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clean up TCP certificate scratch files after write, flush, close, or decode
   failures and preserve the original error if cleanup also fails.
 
+### Legacy check cleanup
+
+- Require autocommit on the write database for cleanup mutations so each
+  reported batch commits independently.
+
 ### Dashboard
 
 - Read each check card and its recent results on the same routed database

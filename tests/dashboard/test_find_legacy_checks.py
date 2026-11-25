@@ -2,16 +2,43 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.db import DatabaseError, connection, transaction
 
 from nyxboard.models import HealthCheck, Result, Service
 
-pytestmark = pytest.mark.django_db
+pytestmark = pytest.mark.django_db(transaction=True)
 
 
 def legacy(service, **kwargs):
     return HealthCheck.objects.create(
         service=service, name="synthetic legacy", check_type="custom", **kwargs
     )
+
+
+@pytest.mark.parametrize("action", ["delete", "disable"])
+def test_cleanup_refuses_outer_transaction_before_inventory(monkeypatch, action):
+    service = Service.objects.create(name="synthetic")
+    check = legacy(service)
+    output = StringIO()
+
+    def unexpected_query(*args):
+        pytest.fail("Cleanup started inventory inside an outer transaction")
+
+    def unexpected_prompt(_):
+        pytest.fail("Cleanup prompted inside an outer transaction")
+
+    monkeypatch.setattr("builtins.input", unexpected_prompt)
+    with transaction.atomic():
+        with connection.execute_wrapper(unexpected_query):
+            with pytest.raises(CommandError, match="requires autocommit"):
+                call_command("find_legacy_checks", **{action: True}, stdout=output)
+        assert output.getvalue() == ""
+        call_command("find_legacy_checks", stdout=output)
+        assert "Found 1 check(s)" in output.getvalue()
+
+    check.refresh_from_db()
+    assert not check.disabled
 
 
 def test_delete_does_not_prompt_when_last_candidate_becomes_supported(monkeypatch):
@@ -124,8 +151,6 @@ def test_cleanup_keeps_runtime_only_changes_and_counts_checks_not_results(monkey
 
 @pytest.mark.parametrize("action", ["delete", "disable"])
 def test_cleanup_uses_bounded_queries_and_reports_partial_progress(monkeypatch, action):
-    from django.core.management.base import CommandError
-    from django.db import DatabaseError, connection
     from nyxboard.management.commands.find_legacy_checks import Command
 
     service = Service.objects.create(name="synthetic fleet")
@@ -143,12 +168,12 @@ def test_cleanup_uses_bounded_queries_and_reports_partial_progress(monkeypatch, 
     calls = 0
     max_params = 0
 
-    def mutate(self, revisions, delete):
+    def mutate(self, revisions, delete, using):
         nonlocal calls
         calls += 1
         if calls == 3:
             raise DatabaseError("synthetic later batch failure")
-        return original(self, revisions, delete)
+        return original(self, revisions, delete, using)
 
     def bounded(execute, sql, params, many, context):
         nonlocal max_params
@@ -170,8 +195,6 @@ def test_cleanup_uses_bounded_queries_and_reports_partial_progress(monkeypatch, 
 
 
 def test_dry_inventory_uses_bounded_projection_and_horizon(monkeypatch):
-    from django.db import connection
-
     service = Service.objects.create(name="synthetic")
     HealthCheck.objects.bulk_create(
         [
@@ -195,8 +218,6 @@ def test_dry_inventory_uses_bounded_projection_and_horizon(monkeypatch):
 
 
 def test_failed_mutation_batch_rolls_back_only_that_batch(monkeypatch):
-    from django.core.management.base import CommandError
-    from django.db import DatabaseError, connection
 
     service = Service.objects.create(name="synthetic rollback")
     HealthCheck.objects.bulk_create(
