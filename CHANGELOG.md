@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust HTTP URL parsing
+
+- Stop scanning oversized URL inputs at the first scalar beyond the limit.
+
 ### Notification suppression
 
 - Treat invalid and out-of-range array selectors as missing paths in both

@@ -213,6 +213,10 @@ pub struct HttpxUrl {
     pub fragment: Option<String>,
 }
 
+fn url_too_long(mut chars: impl Iterator<Item = char>) -> bool {
+    chars.nth(MAX_URL_LENGTH).is_some()
+}
+
 fn scheme_len(url: &str) -> Option<usize> {
     let bytes = url.as_bytes();
     if !bytes.first().is_some_and(u8::is_ascii_alphabetic) {
@@ -231,7 +235,7 @@ impl HttpxUrl {
     /// # Errors
     /// Every input httpx rejects with `InvalidURL`.
     pub fn parse(url: &str) -> Result<HttpxUrl, InvalidUrl> {
-        if url.chars().count() > MAX_URL_LENGTH {
+        if url_too_long(url.chars()) {
             return Err(InvalidUrl("URL too long".to_owned()));
         }
         if let Some((idx, c)) = url

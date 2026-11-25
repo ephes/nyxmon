@@ -101,3 +101,18 @@ fn urljoin_matches_rfc3986_examples() {
         assert_eq!(urljoin(base, reference), expected, "{reference}");
     }
 }
+
+#[test]
+fn url_length_counts_unicode_scalars_and_stops_at_first_overflow() {
+    let exact = "é".repeat(MAX_URL_LENGTH);
+    assert!(HttpxUrl::parse(&exact).is_ok());
+
+    let oversized = "é".repeat(MAX_URL_LENGTH * 16);
+    assert_eq!(
+        HttpxUrl::parse(&oversized),
+        Err(InvalidUrl("URL too long".to_owned()))
+    );
+    let mut visited = 0;
+    assert!(url_too_long(oversized.chars().inspect(|_| visited += 1)));
+    assert_eq!(visited, MAX_URL_LENGTH + 1);
+}

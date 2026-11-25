@@ -351,7 +351,8 @@ Current fixtures:
   `Authorization`, `Accept-Encoding`, `Cookie`), replayed against a fake
   server; large bodies are described by their padding length.
 - `httpx_url.json`: httpx URL parsing (`raw_path`, host, port, credentials)
-  and redirect resolution (`Client._redirect_url`, `urljoin`).
+  and redirect resolution (`Client._redirect_url`, `urljoin`). The parser rejects
+  URLs at the first Unicode scalar beyond the 65,536-scalar input limit.
 - `metrics_eval.json`: json-metrics path resolution, evaluation, failure
   summaries and the `actual` truncation.
 - `config_smtp.json`: `SmtpCheckConfig.from_dict` + `validate` and the
