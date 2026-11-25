@@ -436,6 +436,16 @@ section 3.6); no other new variable is introduced by the port.
   logs only `HTTP status N` or a fixed failure message and never a provider
   body. The Rust agent keeps the token-redacted body of up to 500 characters
   (section 1.7). Both never log the bot token.
+- **D-26 Recheck completion after the write.** Python's `_process_recheck`
+  cleared the pending recheck in memory, logged `site connectivity recheck
+  for release <iso> completed` and then wrote the payload, so a failed write
+  still logged completion and a restart could repeat the recheck. Rust clears
+  the recheck, writes the payload and logs completion only after the store
+  confirms the write; a failed write restores the pending recheck, which is
+  retried on a later round (also after a restart). The replay harness swaps
+  the completion log line behind the confirming store write of the
+  Python-generated oracle. Pinned by
+  `site/replay_tests.rs::recheck_completion_is_logged_only_after_durable_write`.
 
 ### 1.6 Result `data` shapes per check type (P1)
 
