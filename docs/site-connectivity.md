@@ -434,6 +434,11 @@ that sets the phase back to `idle` and opens the recheck. Because records are
 keyed by `incident_generation`, re-running the close after a crash cannot append one
 twice. A shorter outage with no delivered ongoing alert leaves only a log line.
 
+For each send the observer selects up to five of the oldest records by start
+time and incident ID, with ties kept in queue order. It stops at the first
+record whose retry is not due or that would exceed the message's character
+budget.
+
 Only the exact records selected for a message are marked attempted or removed
 on acknowledgement. Other records retain their retry ownership, including when
 legacy wall-clock labels collide. An uncertain send (accepted before process

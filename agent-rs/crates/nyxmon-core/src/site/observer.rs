@@ -11,7 +11,7 @@
 //! The I/O driver (probe runner, store and notifier wiring, the loop) lives
 //! in `nyxmon-agent` (slice S11).
 
-use std::collections::HashSet;
+use std::collections::{BinaryHeap, HashSet};
 use std::future::Future;
 use std::sync::Arc;
 
@@ -1035,26 +1035,36 @@ impl Observer {
         Ok(())
     }
 
-    /// `_summary_batch`: indices of the oldest due records that fit one
-    /// message, and the message body.
-    fn summary_batch(&self, now: i64) -> Result<(Vec<usize>, String), Raised> {
-        let mut keys = Vec::with_capacity(self.summaries.len());
+    fn oldest_summary_indices(&self) -> Result<impl Iterator<Item = usize>, Raised> {
+        let mut keys = BinaryHeap::with_capacity(SITE_SUMMARY_MAX_RECORDS);
         for (index, record) in self.summaries.iter().enumerate() {
             let started_at = as_int(record.get("started_at"))?;
             let incident_id = as_int(record.get("incident_id"))?;
-            keys.push(((started_at, incident_id), index));
+            // Use the original index to preserve the stable order for ties.
+            let key = (started_at, incident_id, index);
+            if keys.len() < SITE_SUMMARY_MAX_RECORDS {
+                keys.push(key);
+            } else if let Some(mut newest) = keys.peek_mut()
+                && key < *newest
+            {
+                *newest = key;
+            }
         }
-        // Stable, like Python's `sorted`.
-        keys.sort_by_key(|(key, _)| *key);
+        Ok(keys
+            .into_sorted_vec()
+            .into_iter()
+            .map(|(_, _, index)| index))
+    }
+
+    /// `_summary_batch`: indices of the oldest due records that fit one
+    /// message, and the message body.
+    fn summary_batch(&self, now: i64) -> Result<(Vec<usize>, String), Raised> {
         let mut batch = Vec::new();
         let mut lines = Vec::new();
         let mut used = 0usize;
-        for (_, index) in keys {
+        for index in self.oldest_summary_indices()? {
             let record = &self.summaries[index];
             if !record_is_due(record, now)? {
-                break;
-            }
-            if batch.len() >= SITE_SUMMARY_MAX_RECORDS {
                 break;
             }
             let line = summary_line(record, SITE_SUMMARY_MAX_CHARS)?;
@@ -1280,5 +1290,75 @@ impl Observer {
             Some(error),
         );
         self.row_present = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn summary_batch_selects_only_the_oldest_capped_prefix() {
+        let mut observer = Observer::new(
+            SiteEnvConfig::default(),
+            Arc::new(WarnOnce::new(
+                Arc::new(crate::log::RecordingSink::default()),
+            )),
+        );
+        let backlog: Vec<_> = (0..200)
+            .rev()
+            .map(|index| (1 + index % 17, 1 + index / 17 % 8))
+            .collect();
+        observer.summaries = backlog
+            .iter()
+            .map(|&(started_at, incident_id)| {
+                PyDict::from([
+                    ("started_at".to_owned(), PyJson::Int(started_at)),
+                    ("incident_id".to_owned(), PyJson::Int(incident_id)),
+                ])
+            })
+            .collect();
+
+        // The former stable sort is the ordering oracle, including ties across
+        // the cap. Expected indices still refer to the original queue.
+        let mut full_order: Vec<_> = (0..backlog.len()).collect();
+        full_order.sort_by_key(|&index| backlog[index]);
+        let oldest = &full_order[..SITE_SUMMARY_MAX_RECORDS];
+        assert_eq!(
+            observer
+                .oldest_summary_indices()
+                .unwrap()
+                .collect::<Vec<_>>(),
+            oldest
+        );
+
+        let now = 2000;
+        let assert_batch = |observer: &Observer, expected: &[usize]| {
+            let message = expected
+                .iter()
+                .map(|&index| {
+                    summary_line(&observer.summaries[index], SITE_SUMMARY_MAX_CHARS).unwrap()
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert_eq!(
+                observer.summary_batch(now).unwrap(),
+                (expected.to_vec(), message)
+            );
+        };
+        assert_batch(&observer, oldest);
+
+        observer.summaries[oldest[0]].insert("attempt_at".to_owned(), PyJson::Int(now));
+        assert_batch(&observer, &[]);
+        observer.summaries[oldest[0]].shift_remove("attempt_at");
+        observer.summaries[oldest[1]].insert("attempt_at".to_owned(), PyJson::Int(now));
+        assert_batch(&observer, &oldest[..1]);
+        observer.summaries[oldest[1]].shift_remove("attempt_at");
+
+        for &index in &oldest[..3] {
+            let paths = PyDict::from([("é".repeat(1200), PyJson::Dict(PyDict::new()))]);
+            observer.summaries[index].insert("paths".to_owned(), PyJson::Dict(paths));
+        }
+        assert_batch(&observer, &oldest[..2]);
     }
 }

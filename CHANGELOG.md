@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Log recovery recheck completion only after persisting it. Retry a failed
   completion write with the recheck still pending.
+- Keep only the oldest candidates for one recovery-summary message in memory
+  during selection, using the same order, retry rules and character limit.
 
 ### Rust ping runner
 
