@@ -7,17 +7,19 @@
 //! failure (Python fails open on every exception of `_fetch_payload`).
 
 use num_bigint::BigInt;
-use num_traits::ToPrimitive;
 
 use crate::pyjson::{
-    CmpOp, PyDict, PyJson, PyNumError, json_kind, py_cmp, py_float, py_float_of_int, py_int,
-    py_int_of, py_str, py_strip, py_truthy,
+    CmpOp, PyDict, PyJson, PyNumError, json_kind, py_cmp, py_float, py_float_of_int, py_int_of,
+    py_str, py_strip, py_truthy,
 };
 
 /// `MAX_SUPPRESSION_BODY_BYTES`.
 pub const MAX_SUPPRESSION_BODY_BYTES: usize = 256 * 1024;
 /// `MAX_SUPPRESSION_REDIRECTS`.
 pub const MAX_SUPPRESSION_REDIRECTS: usize = 5;
+
+// Keep the selector length limit shared with the Python runtime.
+const MAX_INDEX_DIGITS: usize = 4300;
 
 static NONE: PyJson = PyJson::Null;
 
@@ -53,11 +55,7 @@ fn source_identifier(raw: &str) -> PyJson {
 ///
 /// `"$"` is the payload; otherwise every `"$."` is removed and the rest is
 /// split on `.` (empty parts dropped). A dict key wins; a list index needs
-/// an all-digit part (ASCII only, PLAN.md D-6).
-///
-/// # Errors
-/// The `ValueError` of `int(part)` for an index part over CPython's
-/// 4300-digit limit, which Python lets escape.
+/// an ASCII digit part of at most 4300 digits. An unusable index is missing.
 pub fn lookup<'a>(payload: &'a PyJson, path: &str) -> Result<Option<&'a PyJson>, PyNumError> {
     if path == "$" {
         return Ok(Some(payload));
@@ -67,10 +65,15 @@ pub fn lookup<'a>(payload: &'a PyJson, path: &str) -> Result<Option<&'a PyJson>,
     for part in cleaned.split('.').filter(|part| !part.is_empty()) {
         current = match current {
             PyJson::Dict(map) if map.contains_key(part) => &map[part],
-            PyJson::List(items) if part.bytes().all(|byte| byte.is_ascii_digit()) => {
-                // An index beyond `usize` is out of range like any other.
-                let index = py_int(part)?.to_usize().unwrap_or(usize::MAX);
-                match items.get(index) {
+            PyJson::List(items)
+                if part.len() <= MAX_INDEX_DIGITS
+                    && part.bytes().all(|byte| byte.is_ascii_digit()) =>
+            {
+                match part
+                    .parse::<usize>()
+                    .ok()
+                    .and_then(|index| items.get(index))
+                {
                     Some(item) => item,
                     None => return Ok(None),
                 }
@@ -82,9 +85,6 @@ pub fn lookup<'a>(payload: &'a PyJson, path: &str) -> Result<Option<&'a PyJson>,
 }
 
 /// `_resolve_path`: [`lookup`] with a missing path read as `null`.
-///
-/// # Errors
-/// See [`lookup`].
 pub fn resolve_path<'a>(payload: &'a PyJson, path: &str) -> Result<&'a PyJson, PyNumError> {
     Ok(lookup(payload, path)?.unwrap_or(&NONE))
 }
@@ -100,9 +100,6 @@ fn str_or(value: Option<&PyJson>, default: &str) -> String {
 /// `_rule_matches`: true only when the rule positively matches a present
 /// value of the same JSON kind; every doubt (unknown operator, missing
 /// path, kind mismatch, unsupported comparison) is "no match".
-///
-/// # Errors
-/// See [`lookup`] (Python resolves the path outside its `try`).
 pub fn rule_matches(payload: &PyJson, rule: &PyDict) -> Result<bool, PyNumError> {
     let Some(op) = CmpOp::from_symbol(&str_or(rule.get("op"), "")) else {
         return Ok(false);
@@ -218,9 +215,6 @@ pub fn suppression_request(data: &PyJson) -> Result<Option<SuppressionRequest>, 
 
 /// The post-fetch part of `notification_suppression_details`: the
 /// freshness guard, `active_statuses`, `active_if` and `active_for_seconds`.
-///
-/// # Errors
-/// See [`lookup`].
 pub fn evaluate(
     config: &PyDict,
     url: &str,
@@ -314,7 +308,7 @@ pub fn evaluate(
 /// on any failure (fail open).
 ///
 /// # Errors
-/// See [`timeout_seconds`] and [`lookup`].
+/// See [`timeout_seconds`].
 pub fn notification_suppression_details(
     data: &PyJson,
     now: i64,

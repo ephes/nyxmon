@@ -232,10 +232,11 @@ and neither does a type mismatch such as `true <= 24`. A suppression payload
 larger than 256 KiB, a compressed response, more than five redirects, or a
 payload that fails to load or parse suppresses nothing.
 
-The Rust agent also fails open on suppression configuration or path conversion
-errors: it stores the original check result and continues the usual notification
-policy, with a fixed diagnostic containing only the check ID and error class.
-A malformed rule cannot discard a completed check or interrupt sibling results.
+Suppression paths use zero-based array indexes written with ASCII digits.
+Leading zeros are accepted, and selectors longer than 4,300 digits, out-of-range
+indexes, and other invalid array selectors count as missing paths. A missing
+freshness path leaves the alert active. A missing status or rule path allows
+the remaining suppression conditions to be evaluated.
 `active_for_seconds` uses one wall-clock reading after the maintenance fetch
 finishes; a grace window that expires during the request no longer suppresses
 the failure. The exact expiry second remains included in the window.

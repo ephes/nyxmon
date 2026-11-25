@@ -1029,20 +1029,20 @@ async fn collector_internal_samples_are_not_fetched_for() {
 }
 
 #[tokio::test]
-async fn suppression_conversion_errors_preserve_results_and_sibling_delivery() {
+async fn unusable_suppression_config_preserves_results_and_sibling_delivery() {
     let configs = [
         // float(10**400) overflows before fetching.
         format!(
             r#"{{"url":"https://example.test/m", "timeout":1{}}}"#,
             "0".repeat(400)
         ),
-        // int(path) exceeds the Python-compatible 4300-digit index limit.
+        // An overlong array index is missing.
         format!(
             r#"{{"url":"https://example.test/m", "active_if":[{{"path":"$.items.{}", "op":"==", "value":1}}]}}"#,
             "1".repeat(4301)
         ),
     ];
-    for config in configs {
+    for (index, config) in configs.into_iter().enumerate() {
         let setup = Setup::new();
         let handler = setup
             .handler(&[("NYXMON_NOTIFY_CONSECUTIVE_FAILURES", "1")])
@@ -1064,13 +1064,16 @@ async fn suppression_conversion_errors_preserve_results_and_sibling_delivery() {
         assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 300, 0));
         assert_eq!(setup.db.state(1).failure_count, 1);
         let lines = capture.lines();
-        assert_eq!(lines.len(), 1);
-        assert_eq!(lines[0].level, "WARNING");
-        assert!(lines[0].message.starts_with(
-            "suppression evaluation failed for check_id=1; continuing unsuppressed ("
-        ));
-        assert!(lines[0].message.len() < 140);
-        assert!(!lines[0].message.contains("https://"));
+        if index == 0 {
+            assert_eq!(lines.len(), 1);
+            assert_eq!(lines[0].level, "WARNING");
+            assert_eq!(
+                lines[0].message,
+                "suppression evaluation failed for check_id=1; continuing unsuppressed (OverflowError)"
+            );
+        } else {
+            assert!(lines.is_empty());
+        }
     }
 }
 

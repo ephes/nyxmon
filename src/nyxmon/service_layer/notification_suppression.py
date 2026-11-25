@@ -26,6 +26,9 @@ OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
 # body must not be buffered; anything larger suppresses nothing.
 MAX_SUPPRESSION_BODY_BYTES = 256 * 1024
 
+# Keep the existing selector length limit independent of int() settings.
+_MAX_INDEX_DIGITS = 4300
+
 
 class _Missing:
     """Sentinel for a JSON path that does not exist (distinct from ``null``)."""
@@ -51,9 +54,16 @@ def _lookup(payload: Any, path: str) -> Any:
     for part in parts:
         if isinstance(current, dict) and part in current:
             current = current[part]
-        elif isinstance(current, list) and part.isdigit():
-            index = int(part)
-            if not 0 <= index < len(current):
+        elif isinstance(current, list):
+            if len(part) > _MAX_INDEX_DIGITS or not (
+                part.isascii() and part.isdecimal()
+            ):
+                return MISSING
+            digits = part.lstrip("0") or "0"
+            if len(digits) > len(str(len(current))):
+                return MISSING
+            index = int(digits)
+            if index >= len(current):
                 return MISSING
             current = current[index]
         else:

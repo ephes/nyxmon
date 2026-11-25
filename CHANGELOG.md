@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Notification suppression
+
+- Treat invalid and out-of-range array selectors as missing paths in both
+  runtimes, so a malformed rule cannot interrupt alert processing.
+
 ### Rust agent 0.1.7
 
 - Release the Rust agent as `agent-rs-v0.1.7` (crate version 0.1.7), built and

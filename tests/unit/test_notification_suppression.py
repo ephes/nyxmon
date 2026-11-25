@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gzip
 import json
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -71,6 +72,37 @@ def _build_check(data: dict[str, Any]) -> Check:
         url="https://example.test/metrics",
         data=data,
     )
+
+
+_PARITY_FIXTURE = (
+    Path(__file__).resolve().parents[2] / "agent-rs/fixtures/suppression_rules.json"
+)
+
+
+@pytest.mark.parametrize(
+    "case", json.loads(_PARITY_FIXTURE.read_text(encoding="utf-8"))["details"]
+)
+def test_suppression_details_parity(monkeypatch, case: dict[str, Any]) -> None:
+    requests = []
+
+    def fetch(url: str, *, timeout: float, auth: httpx.BasicAuth | None) -> Any:
+        requests.append((url, repr(timeout)))
+        if not case["fetch_ok"]:
+            raise httpx.ConnectError("fixture fetch failed")
+        return json.loads(case["payload_json"])
+
+    monkeypatch.setattr(
+        "nyxmon.service_layer.notification_suppression._fetch_payload", fetch
+    )
+    check = _build_check(json.loads(case["data_json"]))
+    if case.get("error") == "OverflowError":
+        with pytest.raises(OverflowError):
+            notification_suppression_details(check, now_epoch=case["now"])
+    else:
+        details = notification_suppression_details(check, now_epoch=case["now"])
+        expected = case["details_json"]
+        assert details == (json.loads(expected) if expected is not None else None)
+    assert requests == [(r["url"], r["timeout"]) for r in case["requests"]]
 
 
 def _suppression_config() -> dict[str, Any]:

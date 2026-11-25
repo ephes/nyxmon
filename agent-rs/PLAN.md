@@ -220,7 +220,8 @@ section 3.6); no other new variable is introduced by the port.
   strings in check data (e.g. a ping `"timeout": "\u0662"`); Rust accepts
   ASCII digits only (a ping check then reports `configuration_error`
   "timeout must be a number", pinned by
-  `config/ping/tests.rs::unicode_digits_are_not_numbers`).
+  `config/ping/tests.rs::unicode_digits_are_not_numbers`). Suppression array
+  selectors use ASCII digits in both runtimes.
 - **D-7 (withdrawn in plan round 2,** see D-1: big integers are exact up to
   CPython's 4300-digit conversion limit, which `pyjson` enforces the same way.)
 - **D-8 Lone UTF-16 surrogates** in JSON strings (`"\ud800"`): CPython keeps
