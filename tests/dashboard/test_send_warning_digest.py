@@ -11,6 +11,7 @@ from django.core.management.base import CommandError
 from nyxboard.management.commands.send_warning_digest import (
     MAX_MESSAGE_CHARS,
     OpenWarning,
+    logger,
     open_warnings,
     render,
 )
@@ -223,6 +224,25 @@ def test_invalid_since_is_isolated_without_mutating_cadence(
     if epoch > 253_402_300_799:
         assert f"Invalid first_failure_at for check {check.pk}" in caplog.text
         assert str(epoch) not in caplog.text
+
+
+def test_invalid_since_is_delivered_when_logging_fails(make_check):
+    invalid = make_check("a invalid", warning(), first_failure_at=253_402_300_800)
+    make_check("b valid", warning(), first_failure_at=1793491200)
+
+    with (
+        patch.object(
+            logger, "warning", side_effect=OSError("log sink unavailable")
+        ) as log,
+        patch(SEND, new_callable=AsyncMock, return_value=True) as send,
+    ):
+        assert "Sent a digest of 2" in run()
+
+    log.assert_called_once_with("Invalid first_failure_at for check %s", invalid.pk)
+    send.assert_awaited_once()
+    message = send.await_args.args[0].replace("\\", "")
+    assert "a invalid (since unknown)" in message
+    assert "b valid (since 2026-11-01)" in message
 
 
 @pytest.mark.parametrize("error", [OSError, OverflowError, ValueError])

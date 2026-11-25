@@ -10,6 +10,7 @@ Usage:
 
 import asyncio
 import logging
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -66,7 +67,8 @@ def open_warnings() -> list[OpenWarning]:
             continue
         epoch = usable_epoch(first_failure_at)
         if epoch is None and first_failure_at not in (None, 0):
-            logger.warning("Invalid first_failure_at for check %s", check_id)
+            with suppress(Exception):
+                logger.warning("Invalid first_failure_at for check %s", check_id)
         since = (
             datetime.fromtimestamp(epoch, UTC).strftime("%Y-%m-%d")
             if epoch is not None

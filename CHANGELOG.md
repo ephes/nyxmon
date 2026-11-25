@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Warning digest
+
+- Keep warnings with invalid incident timestamps in the digest when logging
+  fails, showing their dates as `unknown`.
+
 ### Rust ping retirement inspection
 
 - Replace the macOS-only `libproc` crate (and its build-time bindgen/libclang

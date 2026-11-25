@@ -1216,6 +1216,8 @@ The warning digest reads latest warning results and incident start dates in one
 SQLite statement, ordered by result timestamp then ID. Query count is independent
 of the number of checks; recovered checks and historical result payloads are not
 loaded into the digest. Concurrent recovery/reopen cannot mix incident dates.
+An invalid incident timestamp is shown as `unknown` even if logging the
+timestamp warning fails.
 
 Warning digests include a complete prefix of warnings and the exact omitted count
 within 3,800 characters, including Markdown escapes and the overflow summary.
