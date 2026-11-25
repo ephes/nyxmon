@@ -319,11 +319,21 @@ section 3.6); no other new variable is introduced by the port.
     nameserver (`unexpected_error` once all are dropped); dnspython drops
     it on `FormError` but retries other parse exceptions (e.g. an A rdata
     of the wrong length) until the lifetime ends (`timeout`).
-- **D-17 Non-UTF-8 `PATH` entries.** The ping binary lookup
+- **D-17 Ping `PATH` lookup and deadlines.** The ping binary lookup
   (`shutil.which`) skips `PATH` directories whose name is not UTF-8, which
   Python would search through `surrogateescape`; the `/sbin`, `/bin`,
   `/usr/bin`, `/usr/sbin` fallbacks still apply. Pinned by
-  `ping/tests.rs::which_skips_entries_that_are_not_utf8`.
+  `ping/tests.rs::which_skips_entries_that_are_not_utf8`. Since 2026-11-25
+  a `PATH` candidate must also be an executable regular file (symlinks are
+  followed), so an executable FIFO or other special file is skipped where
+  `shutil.which` accepts any executable non-directory
+  (`::which_skips_an_executable_fifo_and_accepts_a_symlink_to_an_executable`).
+  Direct `run_process` calls with a timeout that yields no positive,
+  representable deadline (zero or sub-nanosecond, negative, NaN, infinite or
+  too large) return `ValueError`
+  before spawning, where `anyio.fail_after` would time out at once or wait
+  without a limit; validated check configuration never passes such a
+  timeout (`::the_process_runner_rejects_invalid_deadlines_before_spawn`).
 
 - **D-18 IMAP exotic inputs.** Since 2026-11-14 the Rust agent also differs
   from Python by design: `search_subject` is one quoted literal with escaped
