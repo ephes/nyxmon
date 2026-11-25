@@ -139,8 +139,60 @@ async fn one_byte_chunked_frames_use_one_bounded_response_allocation() {
         .await
         .unwrap();
     assert_eq!(response.body, vec![b'x'; 4096]);
-    // The cap-sized allocation exists before collecting frames: no per-frame
-    // reservations, including for unknown-length one-byte chunked responses.
+    // The first data frame reserves the cap, so one-byte chunks do not
+    // force repeated allocations.
     assert_eq!(response.body.capacity(), 65536);
     closed(peer).await;
+}
+
+#[tokio::test]
+async fn empty_receipts_need_no_response_buffer() {
+    for (head, tail) in [
+        (
+            b"HTTP/1.1 204 No Content\r\n\r\n".as_slice(),
+            b"".as_slice(),
+        ),
+        (
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n".as_slice(),
+            b"0\r\nX-Test: trailer\r\n\r\n".as_slice(),
+        ),
+    ] {
+        let (url, peer) = scripted(head, vec![(Duration::ZERO, tail.to_vec())]).await;
+        let response = HttpClient::new(Duration::from_secs(2))
+            .post(&url, &[], "fixture".into())
+            .await
+            .unwrap();
+        assert!(response.body.is_empty());
+        assert_eq!(response.body.capacity(), 0);
+        closed(peer).await;
+    }
+}
+
+#[tokio::test]
+async fn mixed_chunks_share_the_response_cap() {
+    let client = HttpClient::new(Duration::from_secs(2));
+    for excess in [false, true] {
+        let mut wire = b"1\r\nx\r\nffff\r\n".to_vec();
+        wire.extend(vec![b'y'; MAX_RESPONSE_BYTES - 1]);
+        wire.extend(b"\r\n");
+        if excess {
+            wire.extend(b"1\r\nz\r\n");
+        }
+        wire.extend(b"0\r\nX-Test: trailer\r\n\r\n");
+        let (url, peer) = scripted(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n",
+            vec![(Duration::ZERO, wire)],
+        )
+        .await;
+        let response = client.post(&url, &[], "fixture".into()).await;
+        if excess {
+            assert_eq!(response.unwrap_err(), response_limit_error());
+        } else {
+            let body = response.unwrap().body;
+            assert_eq!(body.len(), MAX_RESPONSE_BYTES);
+            assert_eq!(body[0], b'x');
+            assert!(body[1..].iter().all(|byte| *byte == b'y'));
+        }
+        closed(peer).await;
+    }
 }

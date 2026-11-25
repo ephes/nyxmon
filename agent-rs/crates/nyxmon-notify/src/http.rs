@@ -549,16 +549,22 @@ async fn exchange<S: Stream + 'static>(
         .map_err(|e| classify(&e, true))?;
     let status = response.status().as_u16();
     let mut incoming = response.into_body();
-    if incoming.size_hint().lower() > MAX_RESPONSE_BYTES as u64 {
+    let hint = incoming.size_hint();
+    if hint.lower() > MAX_RESPONSE_BYTES as u64 {
         return Err(response_limit_error());
     }
-    // One small, bounded allocation avoids reallocating for tiny frames.
-    let mut body = Vec::with_capacity(MAX_RESPONSE_BYTES);
+    let capacity = hint.exact().unwrap_or(MAX_RESPONSE_BYTES as u64) as usize;
+    let mut body = Vec::new();
     while let Some(frame) = incoming.frame().await {
         let frame = frame.map_err(|e| classify(&e, true))?;
         if let Ok(data) = frame.into_data() {
             if data.len() > MAX_RESPONSE_BYTES - body.len() {
                 return Err(response_limit_error());
+            }
+            // Wait for nonempty data before reserving. Unknown lengths still
+            // use one bounded allocation, even for many tiny frames.
+            if body.is_empty() && !data.is_empty() {
+                body.reserve_exact(capacity);
             }
             body.extend_from_slice(&data);
         }

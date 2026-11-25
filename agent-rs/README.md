@@ -613,8 +613,9 @@ response acquisition together. This allows one connect budget plus one transfer
 budget while bounding progress that would otherwise reset every socket timer.
 Ordinary connect/read/write timeout classes are retained; total exhaustion
 returns the safe `TimeoutException: timed out` classification. Response bodies
-are limited to 64 KiB before collection, including chunked bodies; over-limit
-responses return a generic `ReadError` without body content. Owned connection
+are limited to 64 KiB, including chunked bodies. The response buffer is allocated
+on the first nonempty data frame. Over-limit responses return a generic
+`ReadError` without body content. Owned connection
 drivers are aborted on success, rejection, timeout and cancellation. No extra
 retry path is introduced. This tightening requires a future Rust-agent rollout;
 no deployment is performed here.
