@@ -51,23 +51,6 @@ fn userinfo_safe() -> Vec<u8> {
     ])
 }
 
-/// `percent_encoded(string, safe)`.
-fn percent_encoded(text: &str, safe: &[u8]) -> String {
-    let keep = |c: char| c.is_ascii() && (UNRESERVED.contains(c) || safe.contains(&(c as u8)));
-    let mut out = String::with_capacity(text.len());
-    for c in text.chars() {
-        if keep(c) {
-            out.push(c);
-        } else {
-            let mut buf = [0u8; 4];
-            for byte in c.encode_utf8(&mut buf).bytes() {
-                out.push_str(&format!("%{byte:02X}"));
-            }
-        }
-    }
-    out
-}
-
 fn is_percent_escape(bytes: &[u8]) -> bool {
     bytes.len() >= 3
         && bytes[0] == b'%'
@@ -77,21 +60,34 @@ fn is_percent_escape(bytes: &[u8]) -> bool {
 
 /// `quote(string, safe)`: percent-encode, keeping existing `%xx` escapes.
 fn quote(text: &str, safe: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+
     let bytes = text.as_bytes();
     let mut out = String::with_capacity(text.len());
     let mut start = 0;
     let mut i = 0;
     while i < bytes.len() {
+        let byte = bytes[i];
         if is_percent_escape(&bytes[i..]) {
-            out.push_str(&percent_encoded(&text[start..i], safe));
-            out.push_str(&text[i..i + 3]);
             i += 3;
-            start = i;
-        } else {
-            i += 1;
+            continue;
         }
+        if byte.is_ascii() && (UNRESERVED.as_bytes().contains(&byte) || safe.contains(&byte)) {
+            i += 1;
+            continue;
+        }
+        // Copied runs contain only ASCII. Consecutive non-ASCII bytes are
+        // encoded individually, without slicing within a UTF-8 scalar.
+        if start < i {
+            out.push_str(&text[start..i]);
+        }
+        out.push('%');
+        out.push(char::from(HEX[usize::from(byte >> 4)]));
+        out.push(char::from(HEX[usize::from(byte & 0x0f)]));
+        i += 1;
+        start = i;
     }
-    out.push_str(&percent_encoded(&text[start..], safe));
+    out.push_str(&text[start..]);
     out
 }
 

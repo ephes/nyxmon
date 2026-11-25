@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Rust HTTP URL parsing
 
 - Stop scanning oversized URL inputs at the first scalar beyond the limit.
+- Quote URL components without allocating temporary strings for escapes or
+  runs between escapes.
 
 ### Notification suppression
 

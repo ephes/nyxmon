@@ -353,6 +353,8 @@ Current fixtures:
 - `httpx_url.json`: httpx URL parsing (`raw_path`, host, port, credentials)
   and redirect resolution (`Client._redirect_url`, `urljoin`). The parser rejects
   URLs at the first Unicode scalar beyond the 65,536-scalar input limit.
+  Each URL component is quoted into one buffer, preserving existing percent
+  escapes exactly as written and applying that component’s safe character set.
 - `metrics_eval.json`: json-metrics path resolution, evaluation, failure
   summaries and the `actual` truncation.
 - `config_smtp.json`: `SmtpCheckConfig.from_dict` + `validate` and the

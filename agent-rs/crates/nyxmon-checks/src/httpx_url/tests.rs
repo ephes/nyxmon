@@ -116,3 +116,10 @@ fn url_length_counts_unicode_scalars_and_stops_at_first_overflow() {
     assert!(url_too_long(oversized.chars().inspect(|_| visited += 1)));
     assert_eq!(visited, MAX_URL_LENGTH + 1);
 }
+
+#[test]
+fn quoting_mixed_path_preserves_existing_escape_spelling() {
+    let input = "/é%2f{🙂}%AB%z".repeat(4096);
+    let expected = "/%C3%A9%2f%7B%F0%9F%99%82%7D%AB%z".repeat(4096);
+    assert_eq!(HttpxUrl::parse(&input).unwrap().path, expected);
+}
