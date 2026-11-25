@@ -1740,9 +1740,10 @@ stops on a short result count); see D-21 in `docs/agent-rs.md`.
   IDNA 2008 encoded first; the address text is `inet_ntop`'s, a non-zero
   IPv6 scope id appended as `%<id>`), first address in resolver order,
   bounded by `timeout` → `dns_timeout`/`dns_error`.
-- Binary lookup: `shutil.which` on `PATH` (`CS_PATH` when unset, nothing
-  for an empty `PATH`), then `/sbin/ping`, `/bin/ping`, `/usr/bin/ping`,
-  `/usr/sbin/ping` (and `ping6` fallbacks), per check; command per
+- Binary lookup: search `PATH` (`CS_PATH` when unset, nothing for an empty
+  `PATH`), then `/sbin/ping`, `/bin/ping`, `/usr/bin/ping`, `/usr/sbin/ping`
+  (and `ping6` fallbacks), per check. Both searches require an executable
+  regular file and follow symlinks. The command per
   platform exactly as `build_ping_command` (Linux:
   `ping -n -c 1 -W <max(1, ceil(timeout))> <addr>`); environment inherited
   plus `LC_ALL=C`, `LANG=C`; stdin null; output decoded with

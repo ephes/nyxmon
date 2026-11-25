@@ -385,12 +385,13 @@ fn join(directory: &[u8], name: &str) -> Vec<u8> {
     path
 }
 
-fn is_executable(path: &Path) -> bool {
-    rustix::fs::access(
-        path,
-        rustix::fs::Access::EXISTS | rustix::fs::Access::EXEC_OK,
-    )
-    .is_ok()
+fn is_executable_file(path: &Path) -> bool {
+    path.is_file()
+        && rustix::fs::access(
+            path,
+            rustix::fs::Access::EXISTS | rustix::fs::Access::EXEC_OK,
+        )
+        .is_ok()
 }
 
 /// `os.confstr("CS_PATH")`, which `shutil.which` uses without `PATH`.
@@ -400,8 +401,8 @@ const CS_PATH: &str = if cfg!(target_os = "macos") {
     "/bin:/usr/bin"
 };
 
-/// `shutil.which(name)` for a bare command name with the given `PATH`
-/// value: the first `PATH` entry holding an executable non-directory.
+/// Find the first executable regular file for a bare command name on `PATH`.
+/// Symlinks to executable regular files are accepted.
 /// Entries that are not UTF-8 are skipped (PLAN.md D-17).
 pub fn which(name: &str, path: Option<&OsStr>) -> Option<String> {
     let path = path.map_or(CS_PATH.as_bytes(), OsStrExt::as_bytes);
@@ -417,9 +418,7 @@ pub fn which(name: &str, path: Option<&OsStr>) -> Option<String> {
         let Ok(candidate) = String::from_utf8(join(directory, name)) else {
             continue;
         };
-        let candidate_path = Path::new(&candidate);
-        let is_file = candidate_path.metadata().is_ok_and(|meta| !meta.is_dir());
-        if is_file && is_executable(candidate_path) {
+        if is_executable_file(Path::new(&candidate)) {
             return Some(candidate);
         }
     }
@@ -431,10 +430,7 @@ pub fn find_binary_in(name: &str, fallbacks: &[&str], path: Option<&OsStr>) -> O
     which(name, path).or_else(|| {
         fallbacks
             .iter()
-            .find(|candidate| {
-                let candidate = Path::new(candidate);
-                candidate.metadata().is_ok_and(|meta| meta.is_file()) && is_executable(candidate)
-            })
+            .find(|candidate| is_executable_file(Path::new(candidate)))
             .map(|candidate| (*candidate).to_owned())
     })
 }

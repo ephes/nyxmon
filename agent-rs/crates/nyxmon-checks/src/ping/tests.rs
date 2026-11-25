@@ -468,7 +468,7 @@ fn addresses_are_rendered_like_inet_ntop() {
 }
 
 #[test]
-fn which_follows_shutil_which() {
+fn which_handles_unusable_entries_and_unset_path() {
     let scripts = Scripts::new();
     let base = scripts.dir.path();
     for dir in ["a", "b", "c"] {
@@ -508,6 +508,32 @@ fn which_follows_shutil_which() {
     assert_eq!(
         find_binary_in("ping", &fallbacks[..2], Some(OsStr::new(""))),
         None
+    );
+}
+
+#[test]
+fn which_skips_an_executable_fifo_and_accepts_a_symlink_to_an_executable() {
+    let first = Scripts::new();
+    let second = Scripts::new();
+    let fifo = first.path("ping");
+    assert!(
+        std::process::Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap()
+            .success()
+    );
+    std::fs::set_permissions(&fifo, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let program = second.write("fake-ping", "exit 0", 0o755);
+    let symlink = second.path("ping");
+    std::os::unix::fs::symlink(&program, &symlink).unwrap();
+    let path = std::env::join_paths([first.dir.path(), second.dir.path()]).unwrap();
+
+    assert_eq!(which("ping", Some(&path)).as_deref(), symlink.to_str());
+    assert_eq!(
+        find_binary_in("ping", &[&program], Some(&path)).as_deref(),
+        symlink.to_str()
     );
 }
 

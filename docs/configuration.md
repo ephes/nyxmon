@@ -879,6 +879,10 @@ returned is pinged. Each attempt runs the system `ping` binary for a single
 echo request and waits at most `timeout` seconds for the reply. The check is
 `ok` when at least one attempt gets a reply, so partial loss still passes.
 
+The Rust agent searches `PATH` before the system fallback locations for `ping`
+and `ping6`. Both searches accept executable regular files and symlinks that
+resolve to them.
+
 Result data contains `target` (the pinged address), `hostname` (when a name was
 resolved), `packets_sent`, `packets_received`, `packet_loss_percent`,
 `rtt_min_ms`/`rtt_max_ms`/`rtt_avg_ms`/`rtt_list_ms` on success, and an

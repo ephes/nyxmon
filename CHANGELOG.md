@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reject invalid deadlines in direct calls to the ping runner before starting a
   subprocess.
+- Skip executable special files such as named pipes when looking up `ping`
+  and `ping6` on `PATH`.
 
 ### Warning digest
 
