@@ -827,11 +827,11 @@ wait refuses success as nonretryable `process_retirement_error`, even after a
 previous successful attempt. `ESRCH` signalling means the process/group is already
 absent. On macOS, XNU also returns `EPERM` for a group containing only the zombie
 leader. Only the production signal helper may accept that case: the public
-`libproc` group listing must contain no additional member, and `waitid(WNOWAIT)`
-must still confirm the owned leader's exit. Failed inspection or any additional
-member preserves the signal error. This uses a macOS-only `libproc` dependency
-(local builds need libclang and the macOS SDK, available with Xcode's tools);
-see [XNU killpg1](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c).
+`proc_listpids(PROC_PGRP_ONLY)` group listing (called directly through `libc`)
+must contain no additional member, and `waitid(WNOWAIT)` must still confirm the
+owned leader's exit. Failed inspection or any additional member preserves the
+signal error. This single FFI call is the workspace's only `unsafe` code
+(`unsafe_code` is `deny`, allowed on that function); see [XNU killpg1](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c).
 An existing timeout, output-limit or capture failure remains primary;
 cleanup uncertainty is logged with at most three operation/error details (160
 characters per OS error), without captured output. Drop remains nonblocking best

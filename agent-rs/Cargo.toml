@@ -57,7 +57,8 @@ clap = { version = "4", default-features = false, features = ["std", "derive", "
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# deny (not forbid): one audited libc call in nyxmon-checks ping.rs opts out.
+unsafe_code = "deny"
 
 [workspace.lints.clippy]
 dbg_macro = "warn"

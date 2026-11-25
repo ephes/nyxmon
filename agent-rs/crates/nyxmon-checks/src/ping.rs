@@ -177,17 +177,29 @@ fn kill_owned_group(group: rustix::process::Pid) -> rustix::io::Result<()> {
 }
 
 #[cfg(target_os = "macos")]
+#[allow(unsafe_code)] // the single FFI call below; no safe wrapper is in the tree
 fn only_exited_leader_remains(group: rustix::process::Pid) -> bool {
-    use libproc::processes::{ProcFilter, pids_by_type};
     use rustix::process::{WaitId, WaitIdOptions, waitid};
+    // <sys/proc_info.h>; libc declares proc_listpids but not its filter values.
+    const PROC_PGRP_ONLY: u32 = 2;
     // XNU skips zombies for killpg and returns EPERM for a zombie-only group.
     // Never infer absence from EPERM alone. The held leader prevents PGID reuse;
     // any additional member or failed enumeration keeps retirement uncertain.
-    let leader = group.as_raw_nonzero().get() as u32;
-    let Ok(pids) = pids_by_type(ProcFilter::ByProgramGroup { pgrpid: leader }) else {
-        return false;
+    let leader = group.as_raw_nonzero().get();
+    // Two slots suffice: XNU fills at most the buffer, and a second member
+    // already means the group is not the lone leader.
+    let mut pids: [libc::c_int; 2] = [0; 2];
+    let size = std::mem::size_of_val(&pids) as libc::c_int;
+    // SAFETY: `pids` is a live, writable buffer of exactly `size` bytes.
+    let bytes = unsafe {
+        libc::proc_listpids(
+            PROC_PGRP_ONLY,
+            leader as u32,
+            pids.as_mut_ptr().cast(),
+            size,
+        )
     };
-    if pids.as_slice() != [leader] {
+    if bytes != std::mem::size_of::<libc::c_int>() as libc::c_int || pids[0] != leader {
         return false;
     }
     waitid(

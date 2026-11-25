@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust ping retirement inspection
+
+- Replace the macOS-only `libproc` crate (and its build-time bindgen/libclang
+  chain) with one direct `libc::proc_listpids(PROC_PGRP_ONLY)` call for the
+  zombie-leader check; behaviour is unchanged. The workspace `unsafe_code` lint
+  is now `deny` so that single call can opt out.
+
 ### Rust notifications
 
 - Validate POST request targets and headers before dialing.
