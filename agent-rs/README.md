@@ -993,13 +993,15 @@ Persistence rejects a request whose Check and CheckResult IDs differ with
 state therefore share one check identity.
 
 Shutdown closes the DB actor after stopping supervised tasks. Close rejects new
-submissions and acknowledges only after accepted jobs finish and SQLite closes;
-repeated close calls await the same outcome. The agent allows 15 seconds for this
-drain, reporting failure on timeout or actor death. The actor itself retains the
-agent lock until its connection closes, including after caller cancellation or
-drain timeout in an embedding. Uncancellable accepted work may thus keep the lock
-longer than the caller's deadline; a second agent must wait/refuse. Normal process
-exit terminates remaining threads. No deployment or version bump is included.
+submissions and drains accepted jobs before explicitly closing SQLite. If SQLite
+reports a close error, the actor drops the returned connection before releasing
+the agent lock and reports the error to every close caller. The agent allows 15
+seconds for the drain and exits unsuccessfully on timeout, actor death or SQLite
+close failure. The actor retains the lock through connection teardown, including
+after caller cancellation or drain timeout in an embedding. Uncancellable
+accepted work may keep the lock past the caller's deadline, so a second agent
+must wait or refuse startup. Normal process exit terminates remaining threads.
+No deployment or version bump is included.
 
 ### HTTP execution resource envelope
 

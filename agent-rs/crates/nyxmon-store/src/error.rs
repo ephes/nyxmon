@@ -1,6 +1,7 @@
 //! Store errors.
 
 use std::fmt;
+use std::sync::Arc;
 
 /// Why a store operation failed.
 #[derive(Debug)]
@@ -25,6 +26,8 @@ pub enum StoreError {
     /// The DB actor thread is gone (a panicking operation or a failed
     /// spawn). Fatal: the agent logs and exits 1 (PLAN.md section 3.2).
     ActorDied,
+    /// SQLite returned an error while closing the actor connection.
+    ConnectionClose(Arc<rusqlite::Error>),
     /// Opening the database or spawning the actor thread failed.
     Io(std::io::Error),
 }
@@ -41,6 +44,7 @@ impl fmt::Display for StoreError {
             }
             StoreError::Json(message) => write!(f, "{message}"),
             StoreError::ActorDied => f.write_str("the database thread is gone"),
+            StoreError::ConnectionClose(err) => write!(f, "SQLite connection close failed: {err}"),
             StoreError::Io(err) => write!(f, "{err}"),
         }
     }
@@ -53,6 +57,7 @@ impl std::error::Error for StoreError {
                 Some(err)
             }
             StoreError::Io(err) => Some(err),
+            StoreError::ConnectionClose(err) => Some(err.as_ref()),
             _ => None,
         }
     }

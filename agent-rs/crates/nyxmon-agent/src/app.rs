@@ -104,7 +104,7 @@ pub fn start_agent(args: &Args) -> ExitCode {
         let code = run_monitoring_services(args, store.clone()).await;
         match tokio::time::timeout(std::time::Duration::from_secs(15), store.close()).await {
             Ok(Ok(())) => code,
-            Ok(Err(_)) => fatal("database actor drain failed"),
+            Ok(Err(err)) => fatal(format!("database actor drain failed: {err}")),
             Err(_) => {
                 fatal("database actor drain timed out; ownership retained until connection closes")
             }

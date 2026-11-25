@@ -1369,12 +1369,14 @@ publication compare generation tokens, so repeating/rollback wall seconds do not
 restore an old claim's authority. Mismatched check/result IDs are refused before
 any transaction changes.
 
-After supervised task shutdown, an ordered store close drains accepted operations
-and closes SQLite before releasing the singleton lock. New operations are refused.
-The drain has a 15-second caller deadline: timeout/actor death logs failure and
-returns unsuccessful status. An actor still executing uncancellable work retains
-the lock until its connection closes, even if an embedding returns or tears down
-its async runtime. Include these 15 seconds in the service stop allowance.
+After supervised task shutdown, an ordered store close refuses new operations,
+drains accepted operations and attempts to close SQLite. If SQLite reports a
+close error, the actor drops the returned connection before releasing the
+singleton lock. A close error, actor death or expiry of the 15-second caller
+deadline logs a failure and returns an unsuccessful exit status. An actor still
+executing uncancellable work retains the lock through connection teardown, even
+if an embedding returns or tears down its async runtime. Include these 15 seconds
+in the service stop allowance.
 Stderr records escape controls, retain printable Unicode and are capped at 8192
 bytes plus newline with `[truncated]` on oversized records.
 

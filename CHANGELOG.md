@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refuse startup when the canonical database no longer matches the file
   admitted by the agent lock.
+- Report SQLite connection close failures after draining accepted work and
+  releasing the agent lock.
 
 ### Rust HTTP URL parsing
 

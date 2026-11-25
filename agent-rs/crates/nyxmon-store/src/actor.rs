@@ -19,6 +19,7 @@ enum Command {
 }
 
 type Job = Box<dyn FnOnce(&mut Connection) + Send>;
+type CloseResult = Result<(), Arc<rusqlite::Error>>;
 
 /// Connection settings.
 #[derive(Clone, Copy, Debug)]
@@ -47,7 +48,7 @@ impl Default for StoreOptions {
 pub struct Store {
     jobs: mpsc::Sender<Command>,
     closing: Arc<Mutex<bool>>,
-    finished: tokio::sync::watch::Receiver<bool>,
+    finished: tokio::sync::watch::Receiver<Option<CloseResult>>,
     admission: Arc<Semaphore>,
 }
 
@@ -84,8 +85,16 @@ impl Store {
         lock: Option<crate::AgentLock>,
     ) -> Result<Store, StoreError> {
         let connection = open_read_write(path, options, lock.as_ref())?;
+        Self::start_actor(connection, lock, retire_connection)
+    }
+
+    fn start_actor(
+        connection: Connection,
+        lock: Option<crate::AgentLock>,
+        retire: impl FnOnce(Connection) -> rusqlite::Result<()> + Send + 'static,
+    ) -> Result<Store, StoreError> {
         let (jobs, inbox) = mpsc::channel::<Command>();
-        let (done, finished) = tokio::sync::watch::channel(false);
+        let (done, finished) = tokio::sync::watch::channel(None);
         std::thread::Builder::new()
             .name("nyxmon-db".to_owned())
             .spawn(move || {
@@ -102,9 +111,9 @@ impl Store {
                         Command::Close => break,
                     }
                 }
-                drop(connection);
+                let result = retire(connection).map_err(Arc::new);
                 drop(agent_lock);
-                let _ = done.send(true);
+                let _ = done.send(Some(result));
             })
             .map_err(StoreError::Io)?;
         Ok(Store {
@@ -116,6 +125,7 @@ impl Store {
     }
 
     /// Close the actor after draining accepted work.
+    /// Every caller receives the same SQLite close outcome after lock release.
     pub async fn close(&self) -> Result<(), StoreError> {
         {
             // The same short mutex serializes submission and the terminal marker.
@@ -130,8 +140,8 @@ impl Store {
         }
         let mut finished = self.finished.clone();
         loop {
-            if *finished.borrow_and_update() {
-                return Ok(());
+            if let Some(result) = finished.borrow_and_update().as_ref() {
+                return result.clone().map_err(StoreError::ConnectionClose);
             }
             finished
                 .changed()
@@ -170,6 +180,14 @@ impl Store {
         }
         response.await.map_err(|_| StoreError::ActorDied)?
     }
+}
+
+fn retire_connection(connection: Connection) -> rusqlite::Result<()> {
+    connection.close().map_err(|(connection, error)| {
+        // Give rusqlite's destructor its chance to close before releasing ownership.
+        drop(connection);
+        error
+    })
 }
 
 /// The agent's connection: read-write, no create (the file must exist, like
@@ -316,6 +334,77 @@ mod tests {
         bounded(write).await.unwrap().unwrap();
         bounded(store.close()).await.unwrap();
         let _next = crate::AgentLock::acquire(&path).unwrap();
+    }
+
+    #[tokio::test]
+    async fn close_reports_retirement_failure_after_draining_and_releasing_ownership() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        let raw = Connection::open(&path).unwrap();
+        raw.execute_batch("CREATE TABLE writes (value INTEGER)")
+            .unwrap();
+        let lock = crate::AgentLock::acquire(&path).unwrap();
+        let (retiring, retirement_started) = tokio::sync::oneshot::channel();
+        let (finish_retirement, retirement_gate) = mpsc::channel();
+        let connection =
+            open_read_write(lock.database_path(), StoreOptions::default(), Some(&lock)).unwrap();
+        let store = Store::start_actor(connection, Some(lock), move |connection| {
+            let value =
+                connection.query_row("SELECT value FROM writes", [], |row| row.get::<_, i64>(0))?;
+            connection.execute_batch("BEGIN IMMEDIATE")?;
+            retiring.send(value).unwrap();
+            retirement_gate.recv().unwrap();
+            drop(connection);
+            Err(rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+                Some("synthetic close failure".to_owned()),
+            ))
+        })
+        .unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release_write, write_gate) = mpsc::channel();
+        let write = enqueue(&store, move |connection| {
+            entered.send(()).unwrap();
+            write_gate.recv().unwrap();
+            connection.execute("INSERT INTO writes VALUES (7)", [])?;
+            Ok(())
+        })
+        .await;
+        bounded(started).await.unwrap();
+
+        let peer = store.clone();
+        let close = store.close();
+        tokio::pin!(close);
+        assert!(
+            std::future::poll_fn(|cx| std::task::Poll::Ready(close.as_mut().poll(cx)))
+                .await
+                .is_pending()
+        );
+        release_write.send(()).unwrap();
+        assert_eq!(bounded(retirement_started).await.unwrap(), 7);
+        assert!(
+            std::future::poll_fn(|cx| std::task::Poll::Ready(close.as_mut().poll(cx)))
+                .await
+                .is_pending()
+        );
+        assert!(matches!(
+            crate::AgentLock::acquire(&path),
+            Err(crate::LockError::Held { .. })
+        ));
+        finish_retirement.send(()).unwrap();
+
+        bounded(write).await.unwrap().unwrap();
+        for result in [bounded(close).await, bounded(peer.close()).await] {
+            let Err(StoreError::ConnectionClose(error)) = result else {
+                panic!("expected SQLite close error, got {result:?}");
+            };
+            assert!(
+                error.to_string().contains("synthetic close failure"),
+                "{error}"
+            );
+        }
+        let _next = crate::AgentLock::acquire(&path).unwrap();
+        raw.execute_batch("BEGIN IMMEDIATE; ROLLBACK").unwrap();
     }
 
     #[tokio::test]
