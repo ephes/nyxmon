@@ -1236,6 +1236,9 @@ serve the active command; they do not extend the retired Python monitoring agent
 or require a Rust agent rollout.
 
 After Telegram acknowledges delivery, the stdout confirmation is best effort.
+It is flushed right away, so a broken pipe or journal stream fails while the
+command can still ignore it; the stream is then pointed at `/dev/null`, so the
+interpreter's shutdown flush cannot turn the run into a failure either.
 Errors writing the dry-run digest still fail the command.
 
 `send_warning_digest --dry-run` projects each field through the existing

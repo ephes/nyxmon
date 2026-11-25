@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep warnings with invalid incident timestamps in the digest when logging
   fails, showing their dates as `unknown`.
 - Preserve confirmed Telegram delivery when writing the stdout confirmation
-  fails. Dry-run output errors still fail the command.
+  fails, including a buffered pipe or journal stream that only fails on flush
+  or at interpreter shutdown. Dry-run output errors still fail the command.
 
 ### Rust ping retirement inspection
 

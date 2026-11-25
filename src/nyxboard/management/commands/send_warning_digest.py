@@ -10,6 +10,7 @@ Usage:
 
 import asyncio
 import logging
+import os
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -103,6 +104,25 @@ def render(warnings: list[OpenWarning], escape=lambda text: text) -> str:
     return text
 
 
+def confirm_delivery(stdout, message: str) -> None:
+    """Best-effort notice after Telegram has accepted the digest.
+
+    Flushes so a buffered pipe or journal stream fails here, not at interpreter
+    shutdown. On failure the stream's descriptor is pointed at /dev/null, so
+    the shutdown flush of the unsent notice cannot fail the command either.
+    """
+    try:
+        stdout.write(message)
+        stdout.flush()
+    except (OSError, ValueError):
+        with suppress(OSError, ValueError):
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            try:
+                os.dup2(devnull, stdout.fileno())
+            finally:
+                os.close(devnull)
+
+
 class Command(BaseCommand):
     help = "Send all open warnings as one silent Telegram message."
 
@@ -130,5 +150,6 @@ class Command(BaseCommand):
         if delivered is False:
             raise CommandError("Telegram did not accept the digest")
         # Telegram has accepted the digest. A failed notice must not trigger a retry.
-        with suppress(OSError, ValueError):
-            self.stdout.write(f"Sent a digest of {len(warnings)} open warnings.")
+        confirm_delivery(
+            self.stdout, f"Sent a digest of {len(warnings)} open warnings."
+        )

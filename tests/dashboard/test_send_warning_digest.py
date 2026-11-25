@@ -1,5 +1,8 @@
 """Tests for the weekly warning digest command."""
 
+import os
+import subprocess
+import sys
 from io import StringIO
 from unittest.mock import AsyncMock, patch
 
@@ -112,6 +115,47 @@ def test_confirmed_digest_survives_stdout_failure(make_check):
 
     send.assert_awaited_once()
     write.assert_called_once_with("Sent a digest of 1 open warnings.\n")
+
+
+def test_confirmed_digest_survives_buffered_broken_pipe(make_check):
+    make_check("standing", warning())
+    read_fd, write_fd = os.pipe()
+    os.close(read_fd)
+    # Block-buffered like stdout under a timer: write() succeeds, flush() fails.
+    out = os.fdopen(write_fd, "w", buffering=8192)
+    try:
+        with patch(SEND, new_callable=AsyncMock, return_value=True) as send:
+            assert call_command("send_warning_digest", stdout=out) is None
+        send.assert_awaited_once()
+        # The interpreter's shutdown flush of the pending notice must not fail.
+        out.flush()
+    finally:
+        out.close()
+
+
+def test_confirmed_digest_exits_zero_with_closed_stdout_pipe(tmp_path):
+    script = tmp_path / "confirm.py"
+    script.write_text(
+        "import sys\n"
+        "import django\n"
+        "django.setup()\n"
+        "from django.core.management.base import OutputWrapper\n"
+        "from nyxboard.management.commands.send_warning_digest import "
+        "confirm_delivery\n"
+        "confirm_delivery(OutputWrapper(sys.stdout), 'Sent a digest.')\n"
+    )
+    child = subprocess.Popen(
+        [sys.executable, str(script)],
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert child.stdout is not None
+    child.stdout.close()
+    _, stderr = child.communicate(timeout=30)
+
+    assert child.returncode == 0, stderr.decode()
+    assert b"BrokenPipeError" not in stderr
 
 
 def test_dry_run_propagates_stdout_failure(make_check):
