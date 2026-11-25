@@ -298,10 +298,13 @@ impl<S: AsyncWrite + Unpin> AsyncWrite for TimeoutIo<S> {
 /// Happy-eyeballs delay of `anyio.connect_tcp`.
 const HAPPY_EYEBALLS_DELAY: Duration = Duration::from_millis(250);
 
-/// `anyio.connect_tcp`'s target order: the first IPv6 address first, the
-/// first IPv4 address after an IPv6 one second, everything else in resolver
-/// order.
-fn anyio_order(resolved: Vec<SocketAddr>) -> Vec<SocketAddr> {
+/// Target order for mixed DNS results: the resolver's first IPv6 address
+/// first, its first IPv4 address second (wherever it appears in the list),
+/// everything else in resolver order. Unlike `anyio.connect_tcp` (and
+/// `nyxmon_checks::happy_eyeballs::order_addresses`), which take the first
+/// IPv4 address *after* an IPv6 one, this keeps the resolver's IPv4
+/// preference; the difference is deliberate.
+fn fallback_order(resolved: Vec<SocketAddr>) -> Vec<SocketAddr> {
     let Some(v6) = resolved.iter().position(SocketAddr::is_ipv6) else {
         return resolved;
     };
@@ -432,7 +435,7 @@ impl HttpClient {
                         .map_err(|e| TransportError::new("ConnectError", os_error_text(&e)))?
                         .collect();
                     (
-                        anyio_order(resolved),
+                        fallback_order(resolved),
                         ServerName::try_from(domain.to_owned()).ok(),
                     )
                 }
@@ -699,16 +702,16 @@ mod tests {
     }
 
     #[test]
-    fn anyio_target_order() {
+    fn fallback_target_order_keeps_resolver_ipv4_preference() {
         let v4 = |n: u8| SocketAddr::from(([10, 0, 0, n], 443));
         let v6 = |n: u16| SocketAddr::from(([0xfd00, 0, 0, 0, 0, 0, 0, n], 443));
         assert_eq!(
-            anyio_order(vec![v4(1), v4(2), v6(1), v4(3), v6(2)]),
+            fallback_order(vec![v4(1), v4(2), v6(1), v4(3), v6(2)]),
             vec![v6(1), v4(1), v4(2), v4(3), v6(2)]
         );
-        assert_eq!(anyio_order(vec![v4(1), v4(2)]), vec![v4(1), v4(2)]);
+        assert_eq!(fallback_order(vec![v4(1), v4(2)]), vec![v4(1), v4(2)]);
         assert_eq!(
-            anyio_order(vec![v6(1), v6(2), v4(1), v4(2)]),
+            fallback_order(vec![v6(1), v6(2), v4(1), v4(2)]),
             vec![v6(1), v4(1), v6(2), v4(2)]
         );
     }
@@ -717,12 +720,15 @@ mod tests {
     async fn ipv6_failure_falls_back_to_the_resolvers_first_ipv4() {
         let first = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let second = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let ipv6 = tokio::net::TcpListener::bind("[::1]:0").await.unwrap();
+        // Skip on hosts without an IPv6 loopback (e.g. some containers).
+        let Ok(ipv6) = tokio::net::TcpListener::bind("[::1]:0").await else {
+            return;
+        };
         let refused = ipv6.local_addr().unwrap();
         drop(ipv6);
 
         let preferred = first.local_addr().unwrap();
-        let targets = anyio_order(vec![preferred, refused, second.local_addr().unwrap()]);
+        let targets = fallback_order(vec![preferred, refused, second.local_addr().unwrap()]);
         let stream = tokio::time::timeout(Duration::from_secs(5), connect_any(targets))
             .await
             .unwrap()
