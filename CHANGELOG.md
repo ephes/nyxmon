@@ -66,6 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Require autocommit on the write database for cleanup mutations so each
   reported batch commits independently.
+- Reserve the writer with a no-op update only on SQLite. PostgreSQL locks
+  selected rows in ID order and writes only actual mutations.
 
 ### Dashboard
 

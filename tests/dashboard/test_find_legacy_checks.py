@@ -218,7 +218,6 @@ def test_dry_inventory_uses_bounded_projection_and_horizon(monkeypatch):
 
 
 def test_failed_mutation_batch_rolls_back_only_that_batch(monkeypatch):
-
     service = Service.objects.create(name="synthetic rollback")
     HealthCheck.objects.bulk_create(
         [
@@ -244,3 +243,57 @@ def test_failed_mutation_batch_rolls_back_only_that_batch(monkeypatch):
             call_command("find_legacy_checks", disable=True, stdout=StringIO())
     assert HealthCheck.objects.filter(disabled=True).count() == 200
     assert HealthCheck.objects.filter(disabled=False).count() == 105
+
+
+def test_postgresql_cleanup_updates_only_the_check_it_disables():
+    if connection.vendor != "postgresql":
+        pytest.skip("Requires PostgreSQL row locks and a PostgreSQL audit trigger")
+
+    service = Service.objects.create(name="synthetic")
+    stale = legacy(service)
+    already_disabled = legacy(service, disabled=True)
+    enabled = legacy(service)
+
+    class EditingOutput(StringIO):
+        def write(self, text):
+            if "Found 3 check(s)" in text:
+                HealthCheck.objects.filter(pk=stale.pk).update(url="edited")
+                with connection.cursor() as cursor:
+                    cursor.execute("DELETE FROM legacy_update_audit")
+            return super().write(text)
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "CREATE TEMP TABLE legacy_update_audit (check_id bigint) ON COMMIT PRESERVE ROWS"
+        )
+        cursor.execute("""
+            CREATE FUNCTION pg_temp.audit_legacy_update() RETURNS trigger
+            LANGUAGE plpgsql AS $$
+            BEGIN
+                INSERT INTO legacy_update_audit (check_id) VALUES (NEW.id);
+                RETURN NEW;
+            END;
+            $$
+        """)
+        cursor.execute("""
+            CREATE TRIGGER audit_legacy_update AFTER UPDATE ON health_check
+            FOR EACH ROW EXECUTE FUNCTION pg_temp.audit_legacy_update()
+        """)
+    try:
+        output = EditingOutput()
+        call_command("find_legacy_checks", disable=True, stdout=output)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT check_id FROM legacy_update_audit")
+            assert cursor.fetchall() == [(enabled.pk,)]
+        stale.refresh_from_db()
+        already_disabled.refresh_from_db()
+        enabled.refresh_from_db()
+        assert not stale.disabled
+        assert already_disabled.disabled
+        assert enabled.disabled
+        assert "completed=1, skipped=1, already_disabled=1" in output.getvalue()
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TRIGGER audit_legacy_update ON health_check")
+            cursor.execute("DROP FUNCTION pg_temp.audit_legacy_update()")
+            cursor.execute("DROP TABLE legacy_update_audit")

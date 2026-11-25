@@ -1441,9 +1441,11 @@ Mutation uses batches of at most 100 IDs (smaller for backend parameter limits),
 with an independent transaction and definition recheck per batch. Invoke
 `--disable` and `--delete` with autocommit enabled on the write database. They
 refuse to start inventory or prompt inside a transaction. Listing is available
-inside a transaction. Progress reports
-completed mutations, changed/deleted skips, already-disabled rows and remaining
-unprocessed rows. A failed batch rolls back; earlier batches stay committed and
-the command exits nonzero with exact completed/remaining counts. Rerun the
-inventory to review current definitions before retrying. Cleanup is deliberately
-not fleet-wide atomic. Dry runs also use bounded inventory queries.
+inside a transaction. SQLite reserves its writer before re-reading definitions.
+PostgreSQL locks the selected rows in ID order and skips the reservation write.
+Progress reports completed mutations, changed/deleted skips, already-disabled
+rows and remaining unprocessed rows. A failed batch rolls back; earlier batches
+stay committed and the command exits nonzero with exact completed/remaining
+counts. Rerun the inventory to review current definitions before retrying.
+Cleanup is deliberately not fleet-wide atomic. Dry runs also use bounded
+inventory queries.

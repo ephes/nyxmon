@@ -183,10 +183,11 @@ class Command(BaseCommand):
         changed = already = 0
         checks = HealthCheck.objects.using(using)
         with transaction.atomic(using=using, durable=True):
-            # Reserve SQLite's writer before re-reading definitions. On other
-            # backends the following row locks serialize concurrent edits.
-            checks.filter(pk__in=revisions).update(disabled=F("disabled"))
-            current = checks.filter(pk__in=revisions).select_for_update()
+            batch = checks.filter(pk__in=revisions)
+            if connections[using].vendor == "sqlite":
+                # Reserve SQLite's writer before re-reading definitions.
+                batch.update(disabled=F("disabled"))
+            current = batch.order_by("pk").select_for_update()
             for check in current:
                 if (
                     check.check_type in SUPPORTED_CHECK_TYPES
