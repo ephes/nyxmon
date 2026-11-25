@@ -98,8 +98,9 @@ Telegram notifications read:
   use this path.
 - `NYXMON_SHUTDOWN_GRACE_SECONDS`: Time to allow in-flight checks and result
   handling to finish after SIGTERM/SIGINT (default `5`, range `0`–`30` seconds;
-  fractional values allowed). Results that finished within it are then recorded
-  within up to 15 more seconds. Invalid/non-finite values warn and use `5`.
+  fractional values allowed). The next 15 seconds cover recording results that
+  finished within the grace period and joining cancelled check tasks.
+  Invalid/non-finite values warn and use `5`.
   See the graceful shutdown runbook below.
 - `NYXMON_PROCESSING_LEASE_SECONDS`: Maximum time a claimed check may remain in
   `processing` before it is reclaimed, recorded as a `stale_processing_lease`
@@ -1122,25 +1123,26 @@ not honoured by the Rust agent; the production unit sets none.
 
 `start-agent` handles SIGTERM (including systemd restarts) and SIGINT by stopping
 new check claims, waiting up to `NYXMON_SHUTDOWN_GRACE_SECONDS` for the current
-batch, then releasing any remaining leases owned by that process. An already
-abandoned batch is included. Completed checks persist their results and normal
-notification state during the grace period. When the grace period ends, the
+batch, then releasing remaining leases for batches whose checks have retired.
+An already abandoned batch is included. Completed checks persist their results
+and normal notification state during the grace period. When the grace period ends, the
 checks still running are cancelled and every result that finished before that
 point is recorded first, in order and with its normal notification, even if it
-was still queued behind a slow alert of another check. Recording them gets up
-to 15 more seconds; a result still unrecorded then is dropped with the warning
-`results that finished during the shutdown grace period were not all recorded`
-and its check is released like an unfinished one (an alert still being sent at
-that point is cut off). Unfinished checks return to `idle`
-and are scheduled one normal check interval after release (at least one second),
+was still queued behind a slow alert of another check. Recording results and
+joining cancelled check tasks share a 15-second flush window. At expiry the
+collector logs `check cleanup or pre-cutoff result handling exceeded the 15s
+shutdown flush window` and stops outstanding result handling, including alerts.
+If check task cleanup is incomplete, the collector leaves that batch's remaining
+leases for expiry recovery. Otherwise, released checks return to `idle` and are
+scheduled one normal check interval after release (at least one second),
 without a failure result, failure streak increment, or notification. Disabled
 checks stay disabled. Other collectors' claims are never released. A result that
 could not be persisted is logged as `result handling failed for check_id=…`.
 If its batch had already finished, the check keeps its lease and is reclaimed
-and alerted after expiry like any other unrecorded execution; if shutdown
-interrupts that batch, the check's lease is released with the rest of the
-batch, so the log line is the only trace. When a Rust batch task panics,
-the collector releases its unfinished leases after the task exits using the
+and alerted after expiry like any other unrecorded execution. If shutdown
+interrupts result handling after the checks have retired, the lease is released
+with the rest of the batch, so the log line is the only trace. When a Rust batch
+task panics, the collector releases its unfinished leases after the task exits using the
 same ownership check as on shutdown. Completed results keep their original
 schedule. If SQLite rejects the release, the collector retries before claiming
 another batch or during shutdown. An abandoned batch that the shutdown intake

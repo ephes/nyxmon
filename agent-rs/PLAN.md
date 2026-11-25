@@ -1571,16 +1571,15 @@ this contract without signal or platform dependencies.
 - When the grace ends with the batch still running, stop its intake
   (`IntakeStop.requested`): cancel the checks still running, persist (with
   normal notification) every result that finished before that point in order,
-  then report `drained` without waiting for uninterruptible executors. Wait at
-  most `SHUTDOWN_FLUSH_SECONDS` (15) for `drained`, else warn `results that
-  finished during the shutdown grace period were not all recorded within 15s;
-  releasing the remaining leases`; then abort (D-3). A batch that ended through
-  the intake stop keeps its claims in the active set for the release.
+  and join all check tasks before reporting `drained`. Wait at most
+  `SHUTDOWN_FLUSH_SECONDS` (15) for `drained`, then log a warning and abort
+  the runner if the window expired (D-3). Keep claims in batches with unfinished
+  check tasks for lease expiry recovery.
 - Stale recovery and the claim in progress complete before cancellation takes
   effect (Python shields them); everything else (sleeps, the paused-incident
   path, the observer, the cleaner) is cancelled at its next await.
-- Then release owned claims of the active and the abandoned batch
-  (section 3.4); failure → `failed to release check leases on shutdown`; exit 0.
+- Then release owned claims of retired batches (section 3.4).
+  Log `failed to release check leases on shutdown` if release fails.
 - Stop the observer and cleaner tasks; no fixed process-level timeout (the
   unit's `TimeoutStopSec` is the backstop).
 
@@ -1603,13 +1602,14 @@ check_type=<t>` and becomes `executor_exception`; a check whose `data`
 column cannot be decoded (`nyxmon_store::data_is_undecodable`) becomes
 `{"error_type": "configuration_error", "error_msg": "check data is not
 valid JSON"}` (D-8) before its executor runs. An intake stop is watched while
-a result is being handled, as in Python: it admits no waiting checks and aborts the running checks at
-once, the results that had already finished are still handed over, then
-`drained` is set. Because an abort cannot interrupt a poll that is already
-running, every check task checks a per-batch cutoff flag (set together with
-the abort) as it finishes and discards a result that completed after it;
-executor panics are caught inside the task so they pass the same gate. One `BatchCtx` (one HTTP session) is created per batch;
-Python creates its client only for batches with HTTP-family checks, which is
+a result is being handled, as in Python. It stops admitting checks and aborts
+the running checks immediately. The runner joins the check tasks and hands over
+the results that had already finished before setting `drained`. An abort cannot
+interrupt an ongoing poll, so each check consults a per-batch cutoff flag as it
+finishes and discards results that completed after the cutoff. The task catches
+executor panics and applies the same cutoff. One `BatchCtx` (one HTTP session)
+is created per batch. Python creates its client only for batches with
+HTTP-family checks, which is
 not observable because the session opens no connection until used.
 
 ### 5.10 Cleaner (`cleaner.py` reference; Rust retention contract)

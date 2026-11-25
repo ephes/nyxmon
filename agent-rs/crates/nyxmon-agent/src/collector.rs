@@ -12,8 +12,8 @@
 //!
 //! Shutdown: stop admitting work on a signal, give a running (or
 //! abandoned) batch the grace period, then stop its intake, record what
-//! finished in time, abort the rest (D-3) and release the claims this
-//! process still owns.
+//! finished in time, abort the rest (D-3) and release the claims of
+//! retired batches still owned by this process.
 
 mod incidents;
 
@@ -37,8 +37,8 @@ use crate::results::{HandlerError, ResultHandler};
 use crate::runner::{IntakeStop, MAX_ACTIVE_CHECKS, run_batch};
 use crate::sync::Flag;
 
-/// `SHUTDOWN_FLUSH_SECONDS`: after the grace period, how long the results
-/// that finished in time get to be recorded before the leases are released.
+/// `SHUTDOWN_FLUSH_SECONDS`: after the grace period, the budget for
+/// recording pre-cutoff results and joining checks that were cancelled.
 pub const SHUTDOWN_FLUSH_SECONDS: u64 = 15;
 /// `RESULT_HANDLING_BUDGET_SECONDS`: added to the lease per claimed check
 /// for the batch deadline.
@@ -216,11 +216,9 @@ impl Collector {
         if self.stop.is_set() {
             let abandoned = locked(&self.abandoned).take();
             let mut claims = std::mem::take(&mut *self.active());
-            if let Some(abandoned) = abandoned {
-                // D-3: no result of the abandoned batch is written after
-                // the release.
-                abandoned.task.abort();
-                let _ = abandoned.task.await;
+            if let Some(abandoned) = abandoned
+                && self.cancel_batch(abandoned.task).await
+            {
                 claims.extend(abandoned.checks);
             }
             let now = self.handler.now();
@@ -231,9 +229,23 @@ impl Collector {
         }
     }
 
+    /// Stop result handling before lease release (D-3). A cancelled runner
+    /// can leave check tasks inside a poll or still dropping their futures.
+    async fn cancel_batch(&self, batch: JoinHandle<()>) -> bool {
+        batch.abort();
+        if batch.await.is_ok() || self.intake.checks_retired() {
+            return true;
+        }
+        collector_log!(
+            warn,
+            "check cleanup incomplete at shutdown; retaining batch leases for expiry"
+        );
+        false
+    }
+
     /// The `shutdown_deadline` task: once stop is requested, give a running
-    /// or abandoned batch the grace period, then stop its intake and wait
-    /// (bounded) for the results that finished in time.
+    /// or abandoned batch the grace period, then stop intake and wait for
+    /// pre-cutoff results and check task retirement.
     async fn shutdown_deadline(&self) {
         self.stop.wait().await;
         if self.active().is_empty() && !self.abandoned_running() {
@@ -249,8 +261,8 @@ impl Collector {
         {
             collector_log!(
                 warn,
-                "results that finished during the shutdown grace period were not all recorded \
-                 within {SHUTDOWN_FLUSH_SECONDS}s; releasing the remaining leases"
+                "check cleanup or pre-cutoff result handling exceeded the \
+                 {SHUTDOWN_FLUSH_SECONDS}s shutdown flush window"
             );
         }
     }
@@ -394,9 +406,10 @@ impl Collector {
                 );
             }
             () = cancel.wait() => {
-                // D-3: no result is written after the release.
-                batch.abort();
-                let _ = batch.await;
+                if !self.cancel_batch(batch).await {
+                    // Keep these leases in SQLite for expiry recovery.
+                    self.active().clear();
+                }
             }
         }
     }

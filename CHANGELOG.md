@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prefer the resolver’s first IPv4 address after the first IPv6 attempt.
 - Collect empty HTTP receipts without reserving a response body buffer.
 
+### Rust agent shutdown
+
+- Join cancelled check tasks before acknowledging drain. Keep the remaining
+  leases of batches that exceed the shutdown flush window during check cleanup.
+
 ### Rust agent database ownership
 
 - Refuse startup when the canonical database no longer matches the file

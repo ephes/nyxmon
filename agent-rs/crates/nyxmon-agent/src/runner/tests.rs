@@ -351,6 +351,59 @@ async fn an_intake_stop_hands_over_finished_results_and_cancels_the_rest() {
     assert!(stop.drained.is_set());
 }
 
+#[tokio::test]
+async fn intake_drain_waits_for_cancelled_check_cleanup() {
+    let stop = IntakeStop::default();
+    let started = Arc::new(Flag::new());
+    let cleaned = Arc::new(Flag::new());
+    let executors = executors({
+        let started = started.clone();
+        let cleaned = cleaned.clone();
+        move |check| {
+            let started = started.clone();
+            let cleaned = cleaned.clone();
+            Box::pin(async move {
+                if check.check_id == 1 {
+                    started.wait().await;
+                    Ok(ok(check.check_id))
+                } else {
+                    let _guard = SetOnDrop(cleaned);
+                    started.set();
+                    std::future::pending().await
+                }
+            })
+        }
+    });
+    let (received, mut record) = recorder();
+    tokio::time::timeout(
+        Duration::from_secs(5),
+        run_batch(
+            &executors,
+            vec![check(1), check(2)],
+            Some(&stop),
+            |check, result| {
+                stop.requested.set();
+                record(check, result)
+            },
+        ),
+    )
+    .await
+    .unwrap();
+    // The runner and assertion share one poll. A queued cancellation has
+    // not had a chance to run unless the runner actually waited for it.
+    assert!(stop.drained.is_set());
+    assert!(cleaned.is_set());
+    assert_eq!(
+        received
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(id, _)| *id)
+            .collect::<Vec<_>>(),
+        [1]
+    );
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn an_intake_stop_reports_drained_while_a_check_cannot_be_cancelled() {
     let stop = Arc::new(IntakeStop::default());

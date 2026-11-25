@@ -239,9 +239,10 @@ chunks or rolls them all back; only idle, enabled, later-due checks change.
 On SIGTERM/SIGINT, the monitor stops taking work and drains its current batch
 for up to `NYXMON_SHUTDOWN_GRACE_SECONDS` (default five seconds). Then it cancels
 the checks still running, records the results that finished in time (within up
-to 15 more seconds, including their alerts), releases unfinished owned leases
-without a failure or alert and exits successfully. Checks that finish during the
-grace period record results normally. See the operations
+to 15 more seconds, including alerts and check cleanup), and releases unfinished
+claims from batches whose checks have retired. If cleanup outlasts that window,
+the batch keeps its remaining leases for expiry recovery. Checks that finish
+during the grace period record results normally. See the operations
 runbook in `docs/configuration.md` for stop-timeout assumptions and crash recovery.
 
 The collector treats `processing` as a lease rather than a permanent state. A

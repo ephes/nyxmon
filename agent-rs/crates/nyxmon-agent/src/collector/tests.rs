@@ -424,13 +424,49 @@ async fn results_not_recorded_within_the_flush_window_are_given_up() {
     alert_started.wait().await;
     stop_and_join(&collector, run).await;
     assert!(capture.contains(
-        "results that finished during the shutdown grace period were not all recorded within \
-         15s; releasing the remaining leases"
+        "check cleanup or pre-cutoff result handling exceeded the 15s shutdown flush window"
     ));
     // Check 1 was recorded before its alert; check 2 is released.
     assert_eq!(setup.db.results().len(), 1);
     assert_eq!(setup.db.schedule(1), ("idle".to_owned(), T0 + 300, 0));
     assert_eq!(setup.db.schedule(2), ("idle".to_owned(), T0 + 300, 0));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn shutdown_keeps_the_lease_when_check_cleanup_exceeds_the_flush_window() {
+    let setup = Setup::new(&[1]);
+    let started = Arc::new(Flag::new());
+    let (unblock, blocked) = std::sync::mpsc::channel();
+    let blocked = std::sync::Mutex::new(Some(blocked));
+    let collector = Arc::new(
+        setup
+            .build(
+                setup.db.store(),
+                &[("NYXMON_SHUTDOWN_GRACE_SECONDS", "0")],
+                ScriptedNotifier::new(None),
+                {
+                    let started = started.clone();
+                    move |check| {
+                        let blocked = blocked.lock().unwrap().take().unwrap();
+                        let started = started.clone();
+                        Box::pin(async move {
+                            started.set();
+                            // Stay inside a single poll until the collector exits.
+                            let _ = blocked.recv_timeout(Duration::from_secs(10));
+                            Ok(result(&check, ResultStatus::Ok))
+                        })
+                    }
+                },
+            )
+            .with_flush_timeout(Duration::from_millis(100)),
+    );
+    let run = tokio::spawn(collector.clone().run());
+    started.wait().await;
+    stop_and_join(&collector, run).await;
+    let schedule = setup.db.schedule(1);
+    unblock.send(()).unwrap();
+    assert_eq!(schedule, ("processing".to_owned(), 0, T0));
+    assert!(setup.db.results().is_empty());
 }
 
 #[tokio::test]

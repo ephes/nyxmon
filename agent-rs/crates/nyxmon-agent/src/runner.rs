@@ -3,14 +3,14 @@
 //! Up to five checks execute at once; finished results are handed to
 //! the result handler one at a time, in completion order, while the other
 //! checks keep running. A shutdown intake stop cancels the checks still
-//! running, hands over the results that finished before it, and reports
-//! `drained` (`IntakeStop`, PLAN.md 5.8).
+//! running, joins them and hands over the results that finished before it,
+//! then reports `drained` (`IntakeStop`, PLAN.md 5.8).
 
 use std::collections::HashMap;
 use std::panic::AssertUnwindSafe;
 use std::pin::{Pin, pin};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock};
 use std::task::{Context, Poll};
 
 use nyxmon_checks::ctx::BatchCtx;
@@ -18,7 +18,7 @@ use nyxmon_checks::registry::{Executors, unknown_check_type_message};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
 use nyxmon_core::pyjson::{PyDict, PyJson};
 use nyxmon_store::data_is_undecodable;
-use tokio::task::{JoinError, JoinSet};
+use tokio::task::{AbortHandle, JoinError, JoinSet};
 
 use crate::sync::{Flag, wait_for};
 
@@ -31,9 +31,20 @@ pub const MAX_ACTIVE_CHECKS: usize = 5;
 pub struct IntakeStop {
     /// Set by shutdown when the grace period ends.
     pub requested: Flag,
-    /// Set by the runner once every result that finished before the
-    /// request was handed over.
+    /// Set once every started check was joined and every pre-cutoff
+    /// result was handed over.
     pub drained: Flag,
+    /// Lets the collector verify retirement if the runner is cancelled
+    /// before acknowledging the drain.
+    stopped_tasks: OnceLock<Vec<AbortHandle>>,
+}
+
+impl IntakeStop {
+    pub(crate) fn checks_retired(&self) -> bool {
+        self.stopped_tasks
+            .get()
+            .is_some_and(|tasks| tasks.iter().all(AbortHandle::is_finished))
+    }
 }
 
 fn error_result(check: &Check, error_type: &str, error_msg: String) -> CheckResult {
@@ -155,18 +166,24 @@ pub async fn run_batch<F, Fut>(
     let batch = Arc::new(BatchCtx::new());
     let cutoff = Arc::new(AtomicBool::new(false));
     let mut running = JoinSet::new();
-    let mut claimed: HashMap<tokio::task::Id, Check> = HashMap::new();
+    let mut claimed = HashMap::new();
     let mut waiting = checks.into_iter();
     // The intake stop: results finishing from now on are discarded.
-    let stop_intake = |running: &mut JoinSet<Option<CheckResult>>| {
-        cutoff.store(true, Ordering::SeqCst);
-        running.abort_all();
-    };
+    let stop_intake =
+        |running: &mut JoinSet<Option<CheckResult>>,
+         claimed: &HashMap<tokio::task::Id, (Check, AbortHandle)>| {
+            cutoff.store(true, Ordering::SeqCst);
+            if let Some(stop) = intake_stop {
+                stop.stopped_tasks
+                    .get_or_init(|| claimed.values().map(|(_, task)| task.clone()).collect());
+            }
+            running.abort_all();
+        };
     let requested = intake_stop.map(|stop| &stop.requested);
     let mut stopped = false;
     loop {
         if !stopped && requested.is_some_and(Flag::is_set) {
-            stop_intake(&mut running);
+            stop_intake(&mut running, &claimed);
             stopped = true;
         }
         if !stopped {
@@ -178,12 +195,12 @@ pub async fn run_batch<F, Fut>(
                     batch.clone(),
                     cutoff.clone(),
                 ));
-                claimed.insert(handle.id(), check);
+                claimed.insert(handle.id(), (check, handle));
             }
         }
         let joined = if stopped {
-            // Only results that already finished are handed over.
-            match running.try_join_next_with_id() {
+            // Joining waits for cleanup. Only pre-cutoff results are handed over.
+            match running.join_next_with_id().await {
                 Some(joined) => joined,
                 None => break,
             }
@@ -191,7 +208,7 @@ pub async fn run_batch<F, Fut>(
             tokio::select! {
                 biased;
                 () = wait_for(requested) => {
-                    stop_intake(&mut running);
+                    stop_intake(&mut running, &claimed);
                     stopped = true;
                     continue;
                 }
@@ -216,7 +233,7 @@ pub async fn run_batch<F, Fut>(
             biased;
             () = &mut handled => {}
             () = wait_for(requested) => {
-                stop_intake(&mut running);
+                stop_intake(&mut running, &claimed);
                 stopped = true;
                 handled.await;
             }
@@ -232,19 +249,20 @@ pub async fn run_batch<F, Fut>(
 /// The claimed check and result of a finished task; `None` for a task the
 /// intake stop cancelled or that finished after its cutoff.
 fn finished(
-    claimed: &mut HashMap<tokio::task::Id, Check>,
+    claimed: &mut HashMap<tokio::task::Id, (Check, AbortHandle)>,
     joined: Result<(tokio::task::Id, Option<CheckResult>), JoinError>,
     stopped: bool,
 ) -> Option<(Check, CheckResult)> {
+    let id = match &joined {
+        Ok((id, _)) => *id,
+        Err(err) => err.id(),
+    };
+    let (check, _) = claimed.remove(&id)?;
     match joined {
-        Ok((id, result)) => {
-            let check = claimed.remove(&id)?;
-            result.map(|result| (check, result))
-        }
+        Ok((_, result)) => result.map(|result| (check, result)),
         // Executor panics are caught inside the task; this is a panic of the
         // task itself, which cannot be placed relative to the cutoff.
         Err(err) if err.is_panic() && !stopped => {
-            let check = claimed.remove(&err.id())?;
             log_executor_exception(&check, "panic");
             let result = executor_exception_result(&check, "panic");
             Some((check, result))

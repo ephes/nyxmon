@@ -740,6 +740,9 @@ supervisor handles the signal still counts as an unexpected exit. Cancellation
 requested by the supervisor during shutdown is intentional.
 Collector draining has a 60-second outer deadline starting at the stop request
 (30s maximum configured grace, 15s result flush and cleanup allowance).
+The runner acknowledges drain after joining cancelled check tasks and handing
+over pre-cutoff results. When the flush window expires with check tasks still
+running, their batch keeps its remaining claims for lease expiry recovery.
 The supervisor cancels both auxiliary tasks before awaiting either and gives them
 one shared second to stop within that collector deadline.
 A deadline breach or panic during drain also fails the process for restart.
