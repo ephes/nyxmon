@@ -100,6 +100,34 @@ def test_dry_run_prints_and_sends_nothing(make_check):
     send.assert_not_awaited()
 
 
+def test_confirmed_digest_survives_stdout_failure(make_check):
+    make_check("standing", warning())
+    out = StringIO()
+
+    with (
+        patch.object(out, "write", side_effect=BrokenPipeError) as write,
+        patch(SEND, new_callable=AsyncMock, return_value=True) as send,
+    ):
+        assert call_command("send_warning_digest", stdout=out) is None
+
+    send.assert_awaited_once()
+    write.assert_called_once_with("Sent a digest of 1 open warnings.\n")
+
+
+def test_dry_run_propagates_stdout_failure(make_check):
+    make_check("standing", warning())
+    out = StringIO()
+
+    with (
+        patch.object(out, "write", side_effect=BrokenPipeError),
+        patch(SEND, new_callable=AsyncMock) as send,
+        pytest.raises(BrokenPipeError),
+    ):
+        call_command("send_warning_digest", stdout=out, dry_run=True)
+
+    send.assert_not_awaited()
+
+
 @pytest.mark.parametrize(
     "control",
     [

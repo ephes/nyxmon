@@ -1235,6 +1235,9 @@ still counts as failure, so a manual retry can duplicate it. These helper change
 serve the active command; they do not extend the retired Python monitoring agent
 or require a Rust agent rollout.
 
+After Telegram acknowledges delivery, the stdout confirmation is best effort.
+Errors writing the dry-run digest still fail the command.
+
 `send_warning_digest --dry-run` projects each field through the existing
 untrusted-text sanitizer before adding the digest's line separators. Terminal
 controls (including ESC, C1, carriage return and field newlines) and Unicode

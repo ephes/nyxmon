@@ -129,4 +129,6 @@ class Command(BaseCommand):
             raise CommandError("Telegram credentials are missing; digest not sent")
         if delivered is False:
             raise CommandError("Telegram did not accept the digest")
-        self.stdout.write(f"Sent a digest of {len(warnings)} open warnings.")
+        # Telegram has accepted the digest. A failed notice must not trigger a retry.
+        with suppress(OSError, ValueError):
+            self.stdout.write(f"Sent a digest of {len(warnings)} open warnings.")
