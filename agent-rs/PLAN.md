@@ -513,7 +513,9 @@ Runner-level (`adapters/runner/async_runner.py:_run_one`):
   non-empty), `failures` (list), `duration_ms`; status `error` if any failure
   is critical, else `warning`.
 - each failure: `path, op, expected, actual, severity`; for a missing path
-  `path, op, expected, actual=null, reason="path_missing", severity`; when the
+  `path, op, expected, actual=null, reason="path_missing", severity`; Rust
+  only (D-27): for a bool/number comparison
+  `path, op, expected, actual, reason="type_mismatch", severity`; when the
   Python `json.dumps(actual, default=str, ensure_ascii=False)` is longer than
   200 code points, `actual` becomes the first 200 code points + `"…"` (in
   place) and `actual_truncated=true` is appended.

@@ -823,6 +823,12 @@ the whole payload. Failures return `error_type="threshold_failed"` with all fail
 
 A rule whose `path` does not exist in the response always fails, whatever its
 operator; the failure records `"actual": null` and `"reason": "path_missing"`.
+A rule that compares a boolean metric with a numeric threshold, or a numeric
+metric with a boolean threshold, also fails for every operator; the failure
+records the real `actual` value and `"reason": "type_mismatch"`. Use `true` or
+`false` in rules for boolean fields; integer and floating-point values remain
+comparable with each other. This deliberately tightens the retired Python
+executor, which compared `true` as `1`.
 A field that is present with the JSON value `null` is compared normally. An
 `actual` value whose JSON form is longer than 200 characters is stored cut
 down to 200 characters plus an ellipsis with `"actual_truncated": true`.
@@ -837,8 +843,11 @@ failure status still include every check.
 is read. A larger body, or a `Content-Length` above the cap, fails with
 `error_type="body_too_large"` without being parsed. The cap counts decoded
 bytes, checked chunk by chunk as httpx decompresses the stream, so a compressed
-response is stopped once its inflated size passes the cap. Error responses
-(status 400 and above) are not read. The dashboard form has no field
+response is stopped once its inflated size passes the cap. Only a final 2xx
+response other than 206 Partial Content is read: every other final status
+(including an unfollowed 3xx such as 304) fails with `error_type="http_error"`
+and `"HTTP <status>"` without reading the body, and only 5xx statuses are
+retried (the retired Python executor rejected only statuses 400 and above). The dashboard form has no field
 for the cap; a value set in the stored JSON is kept when the check is edited.
 
 `timeout` must be a finite number greater than zero, at most 300 seconds;
