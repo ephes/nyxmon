@@ -71,7 +71,7 @@ class JsonMetricsExecutor:
         last_error: Result | None = None
 
         for attempt in range(attempts):
-            start = time.time()
+            start = time.monotonic_ns()
             try:
                 status_code, raw_body = await self._fetch(client, config)
                 if status_code >= 400:
@@ -105,7 +105,7 @@ class JsonMetricsExecutor:
             except Exception as err:  # noqa: BLE001
                 return self._error(check.check_id, "unexpected_error", str(err))
 
-            duration_ms = int((time.time() - start) * 1000)
+            duration_ms = (time.monotonic_ns() - start) // 1_000_000
             failures = self._evaluate(body, config)
             if failures:
                 # Determine highest severity: if any critical failure, use ERROR; else WARNING
@@ -237,8 +237,11 @@ class JsonMetricsExecutor:
         for part in parts:
             if isinstance(current, dict) and part in current:
                 current = current[part]
-            elif isinstance(current, list) and part.isdigit():
-                idx = int(part)
+            elif isinstance(current, list) and part.isdecimal():
+                try:
+                    idx = int(part)
+                except ValueError:
+                    return _MISSING
                 if not 0 <= idx < len(current):
                     return _MISSING
                 current = current[idx]

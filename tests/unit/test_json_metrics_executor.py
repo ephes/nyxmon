@@ -3,11 +3,13 @@
 import gzip
 import json
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 
 import anyio
 import httpx
 import pytest
 
+from nyxmon.adapters.runner.executors import json_metrics_executor
 from nyxmon.adapters.runner.executors.json_metrics_executor import (
     JsonMetricsExecutor,
     JsonMetricsError,
@@ -282,6 +284,16 @@ def _rule_check(path, op, value, severity="critical", **extra):
         ("$.status", "==", None),
         ("$.nested.status", "!=", "error"),
         ("$.items[5]", "!=", 0),
+        ("$.items.²", "!=", 0),
+        (f"$.items[{'9' * 5000}]", "!=", 0),
+    ],
+    ids=[
+        "not-equal",
+        "equal-null",
+        "nested",
+        "out-of-range",
+        "superscript",
+        "long-index",
     ],
 )
 def test_missing_path_fails_for_every_operator(path, op, value) -> None:
@@ -303,6 +315,8 @@ def test_missing_path_fails_for_every_operator(path, op, value) -> None:
         ({"status": "ok"}, "$.status", "!=", "error"),
         ({"status": None}, "$.status", "==", None),
         ({"items": [0, 7]}, "$.items[1]", "==", 7),
+        ({"items": [0, 7]}, "$.items[١]", "==", 7),
+        ({"items": {"²": 7}}, "$.items.²", "==", 7),
     ],
 )
 def test_present_path_still_passes(payload, path, op, value) -> None:
@@ -442,3 +456,34 @@ def test_cap_applies_to_decompressed_bytes() -> None:
     result = anyio.run(run)
 
     assert result.data["error_type"] == "body_too_large"
+
+
+@pytest.mark.parametrize(
+    ("expected", "status"),
+    [(7, ResultStatus.OK), (8, ResultStatus.ERROR)],
+)
+def test_attempt_duration_uses_monotonic_time(monkeypatch, expected, status):
+    wall_time = 1_000
+    monotonic_ns = 1_000_000_000
+    monkeypatch.setattr(
+        json_metrics_executor,
+        "time",
+        SimpleNamespace(time=lambda: wall_time, monotonic_ns=lambda: monotonic_ns),
+    )
+
+    class ClockAdjustingResponse(StubResponse):
+        async def aiter_bytes(self):
+            nonlocal wall_time, monotonic_ns
+            wall_time -= 60
+            monotonic_ns += 125_000_000
+            async for chunk in super().aiter_bytes():
+                yield chunk
+
+    client = StubClient(ClockAdjustingResponse(200, {"count": 7}))
+    result = anyio.run(
+        JsonMetricsExecutor(client=client).execute,
+        _rule_check("$.count", "==", expected),
+    )
+
+    assert result.status == status
+    assert result.data["duration_ms"] == 125

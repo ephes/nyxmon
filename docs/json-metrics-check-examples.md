@@ -32,6 +32,11 @@ Key details:
 - Retries: configurable `retries` + `retry_delay` for transient HTTP/timeout failures (defaults: 1 retry, 2s delay; at most 100 retries, `timeout` and `retry_delay` finite and at most 300s; retries stop when the check's runtime budget is spent)
 - Operators: `<`, `<=`, `>`, `>=`, `==`, `!=`
 - Missing paths: a rule whose path is absent fails for every operator (`"reason": "path_missing"`), so `$.status != "error"` does not pass when `status` disappears
+- In the Python executor, list indices use decimal digits, including Unicode
+  decimal digits. Invalid and out-of-range indices yield `path_missing`.
+- The Python executor measures `duration_ms` for the final successfully decoded
+  attempt using a monotonic clock. Retry delays and wall-clock changes do not
+  affect it.
 - Body cap: `max_body_bytes` (default 1 MiB); larger bodies fail with `error_type=body_too_large`
 - Severities: `warning` or `critical`
 

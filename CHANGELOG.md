@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deliver the intake-stop marker after queued results even when the result
   producer finishes while the queue is full.
 
+### Python JSON metrics checks
+
+- Measure attempt duration with a monotonic clock so clock adjustments cannot
+  distort the result.
+- Report invalid array indices as missing metrics, including oversized indices
+  and non-decimal digit forms.
+
 ### Rust site observer
 
 - Log recovery recheck completion only after persisting it. Retry a failed
