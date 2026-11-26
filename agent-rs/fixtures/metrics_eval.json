@@ -2218,6 +2218,7 @@
      "expected": 0,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2225,6 +2226,23 @@
      "expected": 0,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 0,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 0,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2232,6 +2250,15 @@
      "expected": 0,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 0,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -2239,7 +2266,7 @@
     "v": true
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -2286,6 +2313,15 @@
      "expected": 1,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2293,6 +2329,23 @@
      "expected": 1,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1,
+     "op": "==",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2300,6 +2353,7 @@
      "expected": 1,
      "op": "!=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -2307,7 +2361,7 @@
     "v": true
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -2352,8 +2406,25 @@
     {
      "actual": true,
      "expected": 2,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 2,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 2,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2361,6 +2432,7 @@
      "expected": 2,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2368,6 +2440,15 @@
      "expected": 2,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 2,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -2375,7 +2456,7 @@
     "v": true
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -2422,6 +2503,15 @@
      "expected": 1.0,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1.0,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2429,6 +2519,23 @@
      "expected": 1.0,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1.0,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1.0,
+     "op": "==",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2436,6 +2543,7 @@
      "expected": 1.0,
      "op": "!=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -2443,7 +2551,7 @@
     "v": true
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -2488,8 +2596,25 @@
     {
      "actual": true,
      "expected": 1.5,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1.5,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1.5,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2497,6 +2622,7 @@
      "expected": 1.5,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2504,6 +2630,15 @@
      "expected": 1.5,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1.5,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -2511,7 +2646,7 @@
     "v": true
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -2558,6 +2693,7 @@
      "expected": NaN,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2565,6 +2701,7 @@
      "expected": NaN,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2572,6 +2709,7 @@
      "expected": NaN,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2579,6 +2717,7 @@
      "expected": NaN,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -2586,6 +2725,15 @@
      "expected": NaN,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": NaN,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -2593,7 +2741,7 @@
     "v": true
    },
    "status": "warning",
-   "summary": "5 warning: $.v, $.v, $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -3371,8 +3519,25 @@
     {
      "actual": true,
      "expected": 1000000000000000000000000000000,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1000000000000000000000000000000,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1000000000000000000000000000000,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3380,6 +3545,7 @@
      "expected": 1000000000000000000000000000000,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3387,6 +3553,15 @@
      "expected": 1000000000000000000000000000000,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": true,
+     "expected": 1000000000000000000000000000000,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -3394,7 +3569,7 @@
     "v": true
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -3659,6 +3834,15 @@
      "expected": 0,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 0,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3666,6 +3850,23 @@
      "expected": 0,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 0,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 0,
+     "op": "==",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3673,6 +3874,7 @@
      "expected": 0,
      "op": "!=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -3680,7 +3882,7 @@
     "v": false
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -3725,8 +3927,25 @@
     {
      "actual": false,
      "expected": 1,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3734,6 +3953,7 @@
      "expected": 1,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3741,6 +3961,15 @@
      "expected": 1,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -3748,7 +3977,7 @@
     "v": false
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -3793,8 +4022,25 @@
     {
      "actual": false,
      "expected": 2,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 2,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 2,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3802,6 +4048,7 @@
      "expected": 2,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3809,6 +4056,15 @@
      "expected": 2,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 2,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -3816,7 +4072,7 @@
     "v": false
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -3861,8 +4117,25 @@
     {
      "actual": false,
      "expected": 1.0,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1.0,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1.0,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3870,6 +4143,7 @@
      "expected": 1.0,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3877,6 +4151,15 @@
      "expected": 1.0,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1.0,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -3884,7 +4167,7 @@
     "v": false
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -3929,8 +4212,25 @@
     {
      "actual": false,
      "expected": 1.5,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1.5,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1.5,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3938,6 +4238,7 @@
      "expected": 1.5,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -3945,6 +4246,15 @@
      "expected": 1.5,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1.5,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -3952,7 +4262,7 @@
     "v": false
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -3999,6 +4309,7 @@
      "expected": NaN,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4006,6 +4317,7 @@
      "expected": NaN,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4013,6 +4325,7 @@
      "expected": NaN,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4020,6 +4333,7 @@
      "expected": NaN,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4027,6 +4341,15 @@
      "expected": NaN,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": NaN,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -4034,7 +4357,7 @@
     "v": false
    },
    "status": "warning",
-   "summary": "5 warning: $.v, $.v, $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -4812,8 +5135,25 @@
     {
      "actual": false,
      "expected": 1000000000000000000000000000000,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1000000000000000000000000000000,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1000000000000000000000000000000,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4821,6 +5161,7 @@
      "expected": 1000000000000000000000000000000,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4828,6 +5169,15 @@
      "expected": 1000000000000000000000000000000,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": false,
+     "expected": 1000000000000000000000000000000,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -4835,7 +5185,7 @@
     "v": false
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -4962,8 +5312,25 @@
     {
      "actual": 0,
      "expected": true,
+     "op": "<",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 0,
+     "expected": true,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 0,
+     "expected": true,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4971,6 +5338,7 @@
      "expected": true,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -4978,6 +5346,15 @@
      "expected": true,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 0,
+     "expected": true,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -4985,7 +5362,7 @@
     "v": 0
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -5032,6 +5409,15 @@
      "expected": false,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 0,
+     "expected": false,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -5039,6 +5425,23 @@
      "expected": false,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 0,
+     "expected": false,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 0,
+     "expected": false,
+     "op": "==",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -5046,6 +5449,7 @@
      "expected": false,
      "op": "!=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -5053,7 +5457,7 @@
     "v": 0
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -6405,6 +6809,15 @@
      "expected": true,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1,
+     "expected": true,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -6412,6 +6825,23 @@
      "expected": true,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1,
+     "expected": true,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1,
+     "expected": true,
+     "op": "==",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -6419,6 +6849,7 @@
      "expected": true,
      "op": "!=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -6426,7 +6857,7 @@
     "v": 1
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -6473,6 +6904,7 @@
      "expected": false,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -6480,6 +6912,23 @@
      "expected": false,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1,
+     "expected": false,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1,
+     "expected": false,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -6487,6 +6936,15 @@
      "expected": false,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1,
+     "expected": false,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -6494,7 +6952,7 @@
     "v": 1
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -7846,6 +8304,7 @@
      "expected": true,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -7853,6 +8312,23 @@
      "expected": true,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 2,
+     "expected": true,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 2,
+     "expected": true,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -7860,6 +8336,15 @@
      "expected": true,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 2,
+     "expected": true,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -7867,7 +8352,7 @@
     "v": 2
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -7914,6 +8399,7 @@
      "expected": false,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -7921,6 +8407,23 @@
      "expected": false,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 2,
+     "expected": false,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 2,
+     "expected": false,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -7928,6 +8431,15 @@
      "expected": false,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 2,
+     "expected": false,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -7935,7 +8447,7 @@
     "v": 2
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -9287,6 +9799,15 @@
      "expected": true,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.0,
+     "expected": true,
+     "op": "<=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -9294,6 +9815,23 @@
      "expected": true,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.0,
+     "expected": true,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.0,
+     "expected": true,
+     "op": "==",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -9301,6 +9839,7 @@
      "expected": true,
      "op": "!=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -9308,7 +9847,7 @@
     "v": 1.0
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -9355,6 +9894,7 @@
      "expected": false,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -9362,6 +9902,23 @@
      "expected": false,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.0,
+     "expected": false,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.0,
+     "expected": false,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -9369,6 +9926,15 @@
      "expected": false,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.0,
+     "expected": false,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -9376,7 +9942,7 @@
     "v": 1.0
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -10728,6 +11294,7 @@
      "expected": true,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -10735,6 +11302,23 @@
      "expected": true,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.5,
+     "expected": true,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.5,
+     "expected": true,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -10742,6 +11326,15 @@
      "expected": true,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.5,
+     "expected": true,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -10749,7 +11342,7 @@
     "v": 1.5
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -10796,6 +11389,7 @@
      "expected": false,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -10803,6 +11397,23 @@
      "expected": false,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.5,
+     "expected": false,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.5,
+     "expected": false,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -10810,6 +11421,15 @@
      "expected": false,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1.5,
+     "expected": false,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -10817,7 +11437,7 @@
     "v": 1.5
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -12169,6 +12789,7 @@
      "expected": true,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12176,6 +12797,7 @@
      "expected": true,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12183,6 +12805,7 @@
      "expected": true,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12190,6 +12813,7 @@
      "expected": true,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12197,6 +12821,15 @@
      "expected": true,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": NaN,
+     "expected": true,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -12204,7 +12837,7 @@
     "v": NaN
    },
    "status": "warning",
-   "summary": "5 warning: $.v, $.v, $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -12251,6 +12884,7 @@
      "expected": false,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12258,6 +12892,7 @@
      "expected": false,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12265,6 +12900,7 @@
      "expected": false,
      "op": ">",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12272,6 +12908,7 @@
      "expected": false,
      "op": ">=",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -12279,6 +12916,15 @@
      "expected": false,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": NaN,
+     "expected": false,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -12286,7 +12932,7 @@
     "v": NaN
    },
    "status": "warning",
-   "summary": "5 warning: $.v, $.v, $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -26590,6 +27236,7 @@
      "expected": true,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -26597,6 +27244,23 @@
      "expected": true,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1000000000000000000000000000000,
+     "expected": true,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1000000000000000000000000000000,
+     "expected": true,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -26604,6 +27268,15 @@
      "expected": true,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1000000000000000000000000000000,
+     "expected": true,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -26611,7 +27284,7 @@
     "v": 1000000000000000000000000000000
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [
@@ -26658,6 +27331,7 @@
      "expected": false,
      "op": "<",
      "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -26665,6 +27339,23 @@
      "expected": false,
      "op": "<=",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1000000000000000000000000000000,
+     "expected": false,
+     "op": ">",
+     "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1000000000000000000000000000000,
+     "expected": false,
+     "op": ">=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     },
     {
@@ -26672,6 +27363,15 @@
      "expected": false,
      "op": "==",
      "path": "$.v",
+     "reason": "type_mismatch",
+     "severity": "warning"
+    },
+    {
+     "actual": 1000000000000000000000000000000,
+     "expected": false,
+     "op": "!=",
+     "path": "$.v",
+     "reason": "type_mismatch",
      "severity": "warning"
     }
    ],
@@ -26679,7 +27379,7 @@
     "v": 1000000000000000000000000000000
    },
    "status": "warning",
-   "summary": "3 warning: $.v, $.v, $.v"
+   "summary": "6 warning: $.v, $.v, $.v, $.v, $.v, $.v"
   },
   {
    "checks": [

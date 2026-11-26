@@ -6,7 +6,7 @@
 use crate::config::PyException;
 use crate::config::json_metrics::{MetricCheck, Severity};
 use crate::model::ResultStatus;
-use crate::pyjson::{PyDict, PyJson, actual_prefix, char_len, py_cmp};
+use crate::pyjson::{PyDict, PyJson, actual_prefix, char_len, json_kind, py_cmp};
 
 /// `MAX_ACTUAL_CHARS`.
 pub const MAX_ACTUAL_CHARS: usize = 200;
@@ -112,9 +112,19 @@ pub fn evaluate(payload: &PyJson, checks: &[MetricCheck]) -> Result<Vec<PyJson>,
             return Err(PyException::TYPE_ERROR);
         };
         let actual = resolve_path(payload, path)?;
-        if actual.is_some_and(|actual| py_cmp(check.op, actual, &check.value).unwrap_or(false)) {
-            continue;
-        }
+        let reason = match actual {
+            None => Some("path_missing"),
+            Some(actual)
+                if matches!(
+                    (json_kind(actual), json_kind(&check.value)),
+                    ("bool", "number") | ("number", "bool")
+                ) =>
+            {
+                Some("type_mismatch")
+            }
+            Some(actual) if py_cmp(check.op, actual, &check.value).unwrap_or(false) => continue,
+            Some(_) => None,
+        };
         let mut failure = PyDict::new();
         let limit = MAX_ACTUAL_CHARS.min(diagnostic_budget);
         let path_prefix: String = path.chars().take(limit).collect();
@@ -136,8 +146,8 @@ pub fn evaluate(payload: &PyJson, checks: &[MetricCheck]) -> Result<Vec<PyJson>,
             bounded_actual_with_budget(actual, &mut diagnostic_budget)
         });
         failure.insert("actual".to_owned(), bounded);
-        if actual.is_none() {
-            failure.insert("reason".to_owned(), PyJson::from("path_missing"));
+        if let Some(reason) = reason {
+            failure.insert("reason".to_owned(), PyJson::from(reason));
         }
         failure.insert("severity".to_owned(), PyJson::from(check.severity.as_str()));
         if truncated {

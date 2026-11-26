@@ -35,6 +35,10 @@ Key details:
 - Path resolver: simple `$.field.subfield` or list indices (`$.items.0.value`); no wildcards or escaped dots
 - Retries: configurable `retries` + `retry_delay` for transient HTTP/timeout failures (defaults: 1 retry, 2s delay; at most 100 retries, `timeout` and `retry_delay` finite and at most 300s; retries stop when the check's runtime budget is spent)
 - Operators: `<`, `<=`, `>`, `>=`, `==`, `!=`
+- In the Rust agent, comparing a boolean metric to a numeric threshold or a
+  numeric metric to a boolean threshold fails for every operator with
+  `"reason": "type_mismatch"`. Use `true` or `false` in rules for boolean fields.
+  Integer and floating-point values can still be compared with each other.
 - Missing paths: a rule whose path is absent fails for every operator (`"reason": "path_missing"`), so `$.status != "error"` does not pass when `status` disappears
 - In the Python executor, list indices use decimal digits, including Unicode
   decimal digits. Invalid and out-of-range indices yield `path_missing`.

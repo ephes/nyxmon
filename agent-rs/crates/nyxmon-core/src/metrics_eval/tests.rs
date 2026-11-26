@@ -81,7 +81,7 @@ fn bounded_actual_matches_python() {
 }
 
 #[test]
-fn evaluate_matches_python() {
+fn evaluate_matches_fixture() {
     let fixture = fixture();
     let cases = fixture.list_field("evaluate");
     assert!(cases.len() > 300);
@@ -130,6 +130,44 @@ fn evaluate_matches_python() {
                     assert_eq!(Some(failure_status(&failures).as_str()), status);
                 }
             }
+        }
+    }
+}
+
+#[test]
+fn boolean_and_numeric_thresholds_fail_with_a_type_mismatch() {
+    use crate::pyjson::CmpOp::{Eq, Le, Ne};
+
+    for (actual, expected, op, reason) in [
+        ("true", "1", Eq, Some("type_mismatch")),
+        ("true", "1", Le, Some("type_mismatch")),
+        ("true", "2", Ne, Some("type_mismatch")),
+        ("1.0", "true", Eq, Some("type_mismatch")),
+        ("false", "9223372036854775808", Le, Some("type_mismatch")),
+        ("true", "true", Eq, None),
+        ("true", "true", Le, None),
+        ("1.0", "1", Eq, None),
+        ("1.0", "1", Le, None),
+    ] {
+        let actual = crate::pyjson::loads(actual).unwrap();
+        let rule = MetricCheck {
+            path: PyJson::from("$"),
+            op,
+            value: crate::pyjson::loads(expected).unwrap(),
+            severity: Severity::Warning,
+        };
+        let failures = evaluate(&actual, std::slice::from_ref(&rule)).unwrap();
+        if let Some(reason) = reason {
+            assert_eq!(failures.len(), 1, "{actual:?} {rule:?}");
+            assert_eq!(
+                failures[0].get("reason").and_then(PyJson::as_str),
+                Some(reason)
+            );
+            assert_eq!(failures[0].get("actual"), Some(&actual));
+            assert_eq!(failures[0].get("expected"), Some(&rule.value));
+            assert_eq!(failure_status(&failures), ResultStatus::Warning);
+        } else {
+            assert!(failures.is_empty(), "{actual:?} {rule:?}: {failures:?}");
         }
     }
 }
