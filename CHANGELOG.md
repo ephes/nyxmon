@@ -15,7 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chrono in five time zones from 1900 to 2100 and against Python logging in
   a new unit test). `agent-rs/deny.toml` no longer ignores the advisory.
   The release build gains `jiff` and `jiff-core` and loses `chrono` and
-  `iana-time-zone`.
+  `iana-time-zone`. The time zone still comes from `TZ` or `/etc/localtime`; after
+  a host time zone change the log times follow within five minutes (jiff's
+  cache; chrono followed at the next line, Python logging only after a
+  restart).
 
 ### Local Rust agent releases
 
