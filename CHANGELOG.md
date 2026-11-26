@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Rust agent time dependency
+
+- The Rust agent formats its stderr log timestamps (local time,
+  `YYYY-MM-DD HH:MM:SS,mmm`) with `jiff` instead of the unmaintained `chrono`
+  (RUSTSEC-2026-0543). The output is byte for byte the same (checked against
+  chrono in five time zones from 1900 to 2100 and against Python logging in
+  a new unit test). `agent-rs/deny.toml` no longer ignores the advisory.
+  The release build gains `jiff` and `jiff-core` and loses `chrono` and
+  `iana-time-zone`.
+
 ### Local Rust agent releases
 
 - Require a readable regular `notes.md` and stage a private copy before tag

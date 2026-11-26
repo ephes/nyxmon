@@ -302,11 +302,16 @@ impl fmt::Write for BoundedText {
     }
 }
 
+// Python logging's default asctime: local time, milliseconds truncated.
+fn asctime(now: &jiff::ZonedDateTime) -> String {
+    now.strftime("%Y-%m-%d %H:%M:%S,%3f").to_string()
+}
+
 // All dynamic record components pass this final stderr boundary. Reserve the
 // marker before appending, never split UTF-8 or an escaped control sequence.
 fn stderr_record(line: &LogLine) -> String {
-    let asctime = chrono::Local::now().format("%Y-%m-%d %H:%M:%S,%3f");
-    let mut record = format!("{asctime} - ");
+    let mut record = asctime(&jiff::ZonedDateTime::now());
+    record.push_str(" - ");
     for text in [&line.logger, " - ", line.level, " - ", &line.message] {
         for ch in text.chars() {
             let escaped = match ch {
@@ -412,6 +417,44 @@ pub fn capture() -> (LogCapture, tracing::subscriber::DefaultGuard) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Expected strings come from Python logging (`time.strftime` plus
+    // truncated milliseconds) and from the replaced chrono formatter.
+    #[test]
+    fn asctime_matches_python_logging() {
+        let berlin = jiff::tz::TimeZone::posix("CET-1CEST,M3.5.0,M10.5.0/3").unwrap();
+        let kathmandu =
+            jiff::tz::TimeZone::fixed(jiff::tz::offset(5) + jiff::SignedDuration::from_mins(45));
+        let cases = [
+            (0, 0, jiff::tz::TimeZone::UTC, "1970-01-01 00:00:00,000"),
+            (
+                1_759_309_507,
+                269_999_999,
+                berlin.clone(),
+                "2025-10-01 11:05:07,269",
+            ),
+            (
+                1_792_889_999,
+                999_000_000,
+                berlin.clone(),
+                "2026-10-25 02:59:59,999",
+            ),
+            (1_792_890_000, 0, berlin.clone(), "2026-10-25 02:00:00,000"),
+            (-1, 999_999_999, berlin, "1970-01-01 00:59:59,999"),
+            (
+                1_795_684_234,
+                626_000_001,
+                kathmandu,
+                "2026-11-26 14:55:34,626",
+            ),
+        ];
+        for (secs, nanos, tz, expected) in cases {
+            let now = jiff::Timestamp::new(secs, nanos)
+                .unwrap()
+                .to_zoned_datetime(tz);
+            assert_eq!(asctime(&now), expected, "{secs}.{nanos:09}");
+        }
+    }
 
     #[test]
     fn shutdown_drains_a_full_queue_when_the_sink_recovers() {

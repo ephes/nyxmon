@@ -1059,7 +1059,7 @@ parallel with few merge conflicts.
 | CLI | `clap` (derive) | |
 | logging | `tracing` + `tracing-subscriber` (fmt, custom formatter) | section 1.7 format |
 | JSON | own `pyjson` parser/serialiser on `indexmap` + `num-bigint` (4.2); `serde`/`serde_json` only for request bodies we build | CPython `json` parity incl. NaN and big ints |
-| time | `chrono` (UTC formatting, ISO, `datetime.isoformat` parity) | |
+| time | `jiff` (local-time log timestamps; replaced `chrono`, RUSTSEC-2026-0543) | Python logging `asctime` parity |
 | regex | `regex` (ping/IMAP/STARTTLS patterns; the one lookbehind in `ping_executor.py:_SOURCE_RE` is implemented as a manual preceding-char check) | |
 | unicode categories | `unicode-general-category` | `sanitize_untrusted_text` (Cc, Cf, Zl, Zp) |
 | locking | `rustix` `flock` (or `fs4`) | section 3.6 |
