@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep only the oldest candidates for one recovery-summary message in memory
   during selection, using the same order, retry rules and character limit.
 
+### Ping checks
+
+- Count replies observed before a terminal ping tool failure in both executors,
+  while preserving the failure status.
+
 ### Rust ping runner
 
 - Reject invalid deadlines in direct calls to the ping runner before starting a

@@ -187,6 +187,38 @@ async fn scripted_runs_match_python() {
     }
 }
 
+#[tokio::test]
+async fn terminal_failure_retains_prior_reply() {
+    for (failure, error_type) in [
+        ("permission", "permission_error"),
+        ("not_found", "ping_unavailable"),
+    ] {
+        let outcomes = loads(&format!(
+            r#"[{{"returncode":0,"stdout":"64 bytes from 192.0.2.1: icmp_seq=1 ttl=64 time=1.5 ms","stderr":""}},{{"raise":"{failure}"}}]"#
+        ))
+        .unwrap();
+        let (runner, calls) = stub_runner(outcomes.as_list().unwrap());
+        let result = PingExecutor::default()
+            .with_runner(runner)
+            .with_sleeper(Sleeper::recording().0)
+            .with_platform("linux")
+            .with_binaries(Some("/bin/ping"), None)
+            .execute(&check("192.0.2.1", r#"{"count":3}"#))
+            .await
+            .unwrap();
+
+        assert_eq!(result.status, ResultStatus::Error);
+        assert_eq!(result.data["error_type"], PyJson::from(error_type));
+        assert_eq!(calls.lock().unwrap().len(), 2);
+        assert_eq!(result.data["packets_sent"], PyJson::Int(2));
+        assert_eq!(result.data["packets_received"], PyJson::Int(1));
+        assert_eq!(result.data["packet_loss_percent"], PyJson::Float(50.0));
+        let attempts = result.data["attempts"].as_list().unwrap();
+        assert_eq!(attempts.len(), 2);
+        assert_eq!(number(field(&attempts[0], "rtt_ms")), 1.5);
+    }
+}
+
 // ------------------------------------------------------------ real processes
 
 /// A temporary directory with executable scripts.

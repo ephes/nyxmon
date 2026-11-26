@@ -343,7 +343,7 @@ class PingCheckExecutor:
                 # Retrying cannot help; report the actionable cause right away.
                 data = {
                     **base,
-                    **self._packet_stats(len(attempts), 0),
+                    **self._packet_stats(len(attempts), len(rtts)),
                     "attempts": attempts,
                 }
                 return self._error(check_id, failure[0], failure[1], data)

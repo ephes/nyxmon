@@ -269,6 +269,25 @@ class TestFailures:
         assert len(runner.calls) == 1
         assert result.data["packets_received"] == 0
 
+    @pytest.mark.parametrize(
+        ("failure", "error_type"),
+        [
+            (PermissionError(13, "Permission denied"), "permission_error"),
+            (FileNotFoundError(2, "No such file"), "ping_unavailable"),
+        ],
+    )
+    async def test_terminal_failure_retains_prior_reply(self, failure, error_type):
+        runner = StubRunner(_reply(1.5), failure)
+
+        result = await _executor(runner).execute(_check(count=3))
+
+        assert result.status == ResultStatus.ERROR
+        assert result.data["error_type"] == error_type
+        assert len(runner.calls) == result.data["packets_sent"] == 2
+        assert result.data["packets_received"] == 1
+        assert result.data["packet_loss_percent"] == 50.0
+        assert result.data["attempts"][0]["rtt_ms"] == 1.5
+
     async def test_permission_error_starting_binary(self) -> None:
         runner = StubRunner(PermissionError(13, "Permission denied"))
 

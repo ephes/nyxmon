@@ -631,7 +631,7 @@ impl PingExecutor {
             ) {
                 // Retrying cannot help.
                 let mut data = base;
-                data.extend(packet_stats(attempts.len() as i64, 0));
+                data.extend(packet_stats(attempts.len() as i64, rtts.len() as i64));
                 data.insert("attempts".to_owned(), PyJson::List(attempts));
                 return Ok(error_result(check, failure.0, failure.1, data));
             }

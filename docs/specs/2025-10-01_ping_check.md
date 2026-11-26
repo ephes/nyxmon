@@ -47,6 +47,8 @@ Implement ICMP ping checks to verify host reachability in NyxMon. This will allo
 **FR1: ICMP Echo Request/Reply**
 - The ping executor MUST send ICMP Echo Request packets to the target host
 - The ping executor MUST wait for ICMP Echo Reply packets
+- A terminal tool failure ends the check with an error. Packet counts and loss
+  still reflect the attempts made and any replies observed before the failure.
 - The check MUST succeed if at least one reply is received within the timeout
 
 **FR2: Timeout Handling**
