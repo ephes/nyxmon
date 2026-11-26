@@ -929,6 +929,12 @@ compatible decoder. General `loads`/`loads_bytes` keep Python's duplicate-member
 and NaN/Infinity behavior for configuration, storage and compatibility fixtures.
 The NaN endpoint case in `fixtures/config_json_metrics.json` now deliberately
 expects `json_error` instead of the historical Python threshold warning.
+Only a final 2xx response other than 206 Partial Content is read; every other
+final status is `http_error` (`HTTP <s>`) before the body is read, and only 5xx
+is retried, so the 304 executor case in that fixture expects `http_error`
+instead of Python's `json_error`. A rule comparing a boolean with a number
+fails with `reason="type_mismatch"` for every operator, and
+`fixtures/metrics_eval.json` carries these hand-edited cases (D-27).
 
 Metric paths strip one leading `$.` only; later `$` segments are literal object
 members. `a.$.b` differs from `a.b`. `$` alone is the root, and dotted/bracket array

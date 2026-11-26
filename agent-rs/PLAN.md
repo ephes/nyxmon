@@ -449,6 +449,21 @@ section 3.6); no other new variable is introduced by the port.
   the completion log line behind the confirming store write of the
   Python-generated oracle. Pinned by
   `site/replay_tests.rs::recheck_completion_is_logged_only_after_durable_write`.
+- **D-27 JSON-metrics responses and boolean thresholds.** Python's
+  json-metrics executor rejected only statuses `>= 400` and evaluated the body
+  of any other final response, including 206 Partial Content and an
+  unfollowed 3xx such as 304 (whose empty body became `json_error`). Rust
+  requires a final 2xx other than 206 and reports `http_error` `"HTTP <s>"`
+  for everything else without reading the body; only 5xx stays retryable.
+  Python compared booleans as integers (`True == 1`, `True < 10`); Rust fails
+  a rule that compares a boolean with a number (either side) for every
+  operator with `reason="type_mismatch"`; int/float comparisons are
+  unchanged. `fixtures/config_json_metrics.json` (the 304 executor case) and
+  `fixtures/metrics_eval.json` (the bool/number cases) are edited by hand for
+  this. Pinned by
+  `json_metrics/tests.rs::only_complete_successful_responses_can_pass_thresholds`
+  and
+  `metrics_eval/tests.rs::boolean_and_numeric_thresholds_fail_with_a_type_mismatch`.
 
 ### 1.6 Result `data` shapes per check type (P1)
 
@@ -486,8 +501,9 @@ Runner-level (`adapters/runner/async_runner.py:_run_one`):
 
 - config error / http_error / body_too_large / timeout / request_error /
   json_error / unexpected_error: exactly `error_type`, `error_msg`
-  (no attempt keys). `http_error` message `"HTTP <s>"` for `>= 400`, retried
-  only for 5xx while `attempt < retries`. `body_too_large` messages:
+  (no attempt keys). `http_error` message `"HTTP <s>"` for `>= 400` (Rust:
+  for every final status outside 2xx and for 206, D-27), retried only for
+  5xx while `attempt < retries`. `body_too_large` messages:
   `"response body of <declared> bytes exceeds the <limit> byte limit"` (declared
   `Content-Length` all ASCII digits and over the limit) and
   `"response body exceeds the <limit> byte limit"` (decoded stream over the
@@ -2137,7 +2153,7 @@ level, stable inputs, injected clocks/nonces/env via monkeypatching):
 | `decision.json` | `_should_notify_check_result` with a stub UoW/snapshot | state × result × snapshot × env × now → decision + annotated data; warning text Rust-owned since D-23: edited by hand, not regenerated from Python |
 | `site_snapshot.json` | `SiteConnectivitySnapshot` methods | snapshot × dependency × claim × now |
 | `site_replay/*.json` | `SiteConnectivityObserver` driven by a scripted probe runner, clock, in-memory store and recording notifier | per round: probe outcomes, store failures injected → payload after the round, snapshot, notifications, log events |
-| `metrics_eval.json` (S5) | `JsonMetricsExecutor._evaluate`, `_resolve_path`, `_build_failure_summary`, `_bounded_actual` | payload × checks → failures/status/summary |
+| `metrics_eval.json` (S5) | `JsonMetricsExecutor._evaluate`, `_resolve_path`, `_build_failure_summary`, `_bounded_actual` | payload × checks → failures/status/summary; bool/number cases Rust-owned since D-27: edited by hand |
 | `lease.json` | `estimated_check_runtime_seconds` | check data → seconds + warnings |
 | `incident_payloads.json` | `_merge_stale_batch_payload`, `_stale_batch_message`, `_paused_batch_message`, delivery-marker helpers | |
 | `telegram.json` | `escape_markdown_v2`, `markdown_v2_to_plain_text`, `_truncate`, the message builder of `async_notify_check_failed` (OpsGate stubbed) | Rust-owned since D-22: edited by hand, not regenerated from Python |

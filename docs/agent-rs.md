@@ -129,6 +129,7 @@ PLAN.md 1.3 defines three parity classes:
 | D-23 | Invalid notification-policy warnings project only key/check ID, fixed reason and static type name, never rejected values or nested contents. Rust-owned policy fixtures pin the changed diagnostic text. |
 | D-24 | Shared warning deduplication retains at most 1024 keys in FIFO order across policy/site/runtime scopes; repeats do not refresh order and evicted keys may warn again; more than 1024 cyclically recurring keys warn on every evaluation. Environment warnings keep separate bookkeeping. |
 | D-26 | The site observer logs recheck completion only after the cleared recheck is persisted; a failed write keeps the recheck pending and retries it later (Python logged first and cleared it in memory regardless). |
+| D-27 | json-metrics requires a final 2xx other than 206 Partial Content; every other final status (including an unfollowed 3xx such as 304) is `http_error` `HTTP <s>` without reading the body, and only 5xx is retried (Python: `http_error` only for `>= 400`). Comparing a boolean with a number fails for every operator with `reason="type_mismatch"` (Python compared `True` as `1`); int/float comparisons are unchanged. |
 
 D-1 and D-7 were withdrawn: non-standard JSON numbers and big integers are
 handled exactly like CPython.
