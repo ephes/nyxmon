@@ -69,11 +69,9 @@ class AsyncCheckRunner(CheckRunner):
         receive: Callable[[Result], Awaitable[None]],
         intake_stop: IntakeStop | None = None,
     ) -> None:
-        send_channel: anyio.abc.ObjectSendStream[Result | object]
-        receive_channel: anyio.abc.ObjectReceiveStream[Result | object]
-        send_channel, receive_channel = anyio.create_memory_object_stream(
-            max_buffer_size=100
-        )
+        stop_sender, receive_channel = anyio.create_memory_object_stream[
+            Result | object
+        ](max_buffer_size=100)
 
         # Convert checks to list for pre-scan
         checks_list = list(checks)
@@ -86,13 +84,14 @@ class AsyncCheckRunner(CheckRunner):
             check_types & {CheckType.HTTP, CheckType.JSON_HTTP, CheckType.JSON_METRICS}
         )
 
-        async with send_channel, receive_channel:
+        with stop_sender, receive_channel, stop_sender.clone() as result_sender:
             # Only create HTTP client if needed
             http_client: Optional[httpx.AsyncClient] = None
             if needs_http_client:
                 http_client = httpx.AsyncClient(follow_redirects=True, timeout=10)
 
             registry = ExecutorRegistry()
+            batch_failure: BaseException | None = None
             try:
                 self._register_executors(registry, http_client)
 
@@ -100,26 +99,25 @@ class AsyncCheckRunner(CheckRunner):
                 watch_scope = anyio.CancelScope()
 
                 async def produce_results() -> None:
-                    with checks_scope:
+                    with result_sender, checks_scope:
                         async with anyio.create_task_group() as checks_group:
                             for check in checks_list:
                                 checks_group.start_soon(
-                                    self._run_one, check, send_channel, registry
+                                    self._run_one, check, result_sender, registry
                                 )
-                    await send_channel.aclose()
+                    # A naturally finished producer ends the stream by retiring
+                    # the idle watcher. A stop already in progress owns its marker.
+                    if not checks_scope.cancel_called:
+                        watch_scope.cancel()
 
                 async def stop_intake_when_requested(stop: IntakeStop) -> None:
-                    with watch_scope:
+                    with stop_sender, watch_scope:
                         while not stop.requested.is_set():
                             await anyio.sleep(INTAKE_STOP_POLL_SECONDS)
                         checks_scope.cancel()
-                        # Results that finished before the request are ahead
-                        # of the marker in the queue; later ones are dropped
-                        # and their claims released by the collector.
-                        try:
-                            await send_channel.send(_INTAKE_STOPPED)
-                        except anyio.ClosedResourceError:
-                            pass  # every check finished, nothing to stop
+                        # The watcher keeps its sender open until the marker
+                        # is queued behind the results already waiting.
+                        await stop_sender.send(_INTAKE_STOPPED)
 
                 # Consume results as they arrive, so one slow check cannot
                 # keep completed samples unpersisted until shutdown cancels it.
@@ -127,25 +125,53 @@ class AsyncCheckRunner(CheckRunner):
                     tg.start_soon(produce_results)
                     if intake_stop is not None:
                         tg.start_soon(stop_intake_when_requested, intake_stop)
+                    else:
+                        stop_sender.close()
                     async for result in receive_channel:
                         if result is _INTAKE_STOPPED:
                             break
                         await receive(cast(Result, result))
-                    watch_scope.cancel()
                     if intake_stop is not None and intake_stop.requested.is_set():
                         # Checks cancelled at the intake stop may still be
                         # unwinding (an executor thread cannot be interrupted),
                         # so report the hand-over before waiting for them.
                         intake_stop.drained.set()
+            except BaseException as error:
+                batch_failure = error
+                raise
             finally:
-                # Cancellation must not skip async resource cleanup. Bound it
-                # too, since a custom executor may itself hang while closing.
-                with anyio.move_on_after(1, shield=True):
+                await self._retire_batch_resources(registry, http_client, batch_failure)
+
+    @staticmethod
+    async def _retire_batch_resources(
+        registry: ExecutorRegistry,
+        http_client: httpx.AsyncClient | None,
+        batch_failure: BaseException | None,
+    ) -> None:
+        cleanup_errors: list[tuple[str, Exception]] = []
+        # Cancellation must not skip cleanup, and custom executors may hang.
+        with anyio.move_on_after(1, shield=True):
+            try:
+                await registry.aclose_all()
+            except Exception as error:
+                cleanup_errors.append(("Executor", error))
+            finally:
+                if http_client is not None:
                     try:
-                        await registry.aclose_all()
-                    finally:
-                        if http_client is not None:
-                            await http_client.aclose()
+                        await http_client.aclose()
+                    except Exception as error:
+                        cleanup_errors.append(("HTTP client", error))
+
+        first_failure = batch_failure
+        for resource, cleanup_error in cleanup_errors:
+            if first_failure is None:
+                first_failure = cleanup_error
+            else:
+                first_failure.add_note(
+                    f"{resource} cleanup failed ({type(cleanup_error).__name__}): {cleanup_error}"
+                )
+        if batch_failure is None and first_failure is not None:
+            raise first_failure
 
     def _scan_check_types(self, checks: list[Check]) -> Set[str]:
         """Scan checks to determine which check types are present.

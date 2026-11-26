@@ -2,7 +2,7 @@
 
 This note documents how `src/nyxmon/adapters/runner/async_runner.py` bridges NyxMon's synchronous message bus with the asynchronous check executors. It complements the high-level architecture description and is intended as an implementation-level guide.
 
-**Last Updated:** 2026-10-14 - Stream and persist each result independently; keep task groups inside async functions and bound cancellation cleanup.
+**Last Updated:** 2026-11-26
 
 ## 1. Entry Point: `CheckRunner.run_all`
 
@@ -23,11 +23,11 @@ The portal ensures all asynchronous work happens on a dedicated AnyIO loop while
 ```
 _async_run_batch
 │
-├─ create memory object stream → (send_channel, receive_channel)
+├─ create memory object stream and separate senders for results and intake stop
 ├─ pre-scan checks to determine required resources
-│   └─ conditionally create httpx.AsyncClient (only if HTTP/JSON-HTTP checks present)
+│   └─ conditionally create httpx.AsyncClient (only for HTTP, JSON-HTTP or JSON metrics checks)
 ├─ register per-check-type executors
-├─ start a producer task that runs each check concurrently and closes send_channel
+├─ run checks concurrently in a producer task that owns the result sender
 ├─ read from receive_channel concurrently and await each result callback immediately
 └─ clean up executors and HTTP client (in finally block)
 ```
@@ -44,7 +44,6 @@ Key details:
   and does not abort sibling executions.
 - The memory channels decouple producers (`_run_one`) from the consumer (`_async_run_batch`).
 - Executors are registered per batch and can optionally receive shared resources (e.g. the HTTP client).
-- **Cleanup Guarantee (NEW):** The `finally` block ensures executors and the HTTP client are properly closed, even if errors occur during execution.
 
 ## 4. Executor Registry
 
@@ -114,16 +113,21 @@ logged without aborting siblings.
 - The batch detaches its cached executors before attempting each distinct
   instance's close once. It reports the first close failure after attempting
   the other closes within the cleanup budget.
-- **HTTP Client Cleanup (NEW):** The HTTP client (if created) is explicitly closed in the `finally` block.
+- The runner attempts both executor and shared HTTP client cleanup within one
+  shielded one-second budget. A batch failure remains the raised exception
+  with cleanup errors attached as notes. If the batch succeeds, the first
+  cleanup failure is raised and any later cleanup error is attached to it.
 - Task-group cancellation: if one `_run_one` raises, AnyIO cancels the others. Each executor must convert domain errors into `ResultStatus.ERROR` so failures are reported rather than propagated. Unexpected exceptions are wrapped in `BaseExceptionGroup` by AnyIO.
-- Channel closing: after all tasks complete, the producer closes the send channel to terminate the consumer loop cleanly.
+- The producer and intake watcher own independent send endpoints. On normal
+  completion the producer cancels the idle watcher, and end of stream follows
+  after both endpoints close and the queued results drain.
 - Intake stop: `run_all` takes an optional `IntakeStop` (from `ExecuteChecks`).
   When the collector sets `requested` at the end of the shutdown grace period,
-  the batch cancels its running checks and queues a marker behind the results
-  that already finished. The consumer handles those results, stops at the marker
+  the watcher cancels the running checks and retains its sender until it
+  queues the marker behind completed results, even when the buffer is full
+  and the producer closes its sender. The consumer handles those results, stops at the marker
   and sets `drained`, without waiting for checks whose executor thread cannot be
   interrupted.
-- Cleanup is shielded against cancellation and bounded to one second.
 - The shared portal remains available to the collector until shutdown; `run_all`
   returns after its batch task group and resource cleanup finish.
 

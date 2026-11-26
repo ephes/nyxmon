@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Isolate executor registries and shared HTTP clients across overlapping batches.
 - Attempt to close every distinct cached executor even when an earlier close
   fails, and report the first failure.
+- Keep batch execution or delivery failures visible when resource cleanup also
+  fails, with both cleanup attempts sharing the existing time budget.
+- Deliver the intake-stop marker after queued results even when the result
+  producer finishes while the queue is full.
 
 ### Rust site observer
 

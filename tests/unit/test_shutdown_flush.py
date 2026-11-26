@@ -6,11 +6,14 @@ from unittest.mock import MagicMock
 
 import anyio
 import pytest
+from anyio import wait_all_tasks_blocked
 from anyio.from_thread import BlockingPortalProvider
+from anyio.streams.memory import MemoryObjectSendStream
 
 from nyxmon.adapters.collector import AsyncCheckCollector
 from nyxmon.adapters.repositories import InMemoryStore
 from nyxmon.adapters.runner import AsyncCheckRunner
+from nyxmon.adapters.runner.async_runner import _INTAKE_STOPPED
 from nyxmon.bootstrap import bootstrap
 from nyxmon.domain import Check, CheckStatus, Result, ResultStatus
 from nyxmon.domain.commands import IntakeStop
@@ -159,3 +162,73 @@ def test_result_queued_behind_slow_alert_is_recorded_at_shutdown(monkeypatch):
     checks = {check.check_id: check for check in store.checks.list()}
     assert all(check.status == CheckStatus.IDLE for check in checks.values())
     assert all(check.processing_started_at == 0 for check in checks.values())
+
+
+@pytest.mark.anyio
+async def test_stop_marker_survives_producer_close_with_full_buffer(monkeypatch):
+    runner = AsyncCheckRunner(MagicMock())
+    stop = IntakeStop()
+    receiving_first = anyio.Event()
+    buffer_full = anyio.Event()
+    producer_closed = anyio.Event()
+    marker_attempted = anyio.Event()
+    marker_sent = anyio.Event()
+    late_sender_finished = anyio.Event()
+    received = []
+    produce_channel = None
+    original_send = MemoryObjectSendStream.send
+    original_close = MemoryObjectSendStream.close
+
+    async def send(channel, item):
+        if item is _INTAKE_STOPPED:
+            stats = channel.statistics()
+            assert stats.current_buffer_used == stats.max_buffer_size == 100
+            # Reproduce a scheduler switch before the marker can enter the queue.
+            await producer_closed.wait()
+            marker_attempted.set()
+            await original_send(channel, item)
+            marker_sent.set()
+        else:
+            await original_send(channel, item)
+
+    def close(channel):
+        original_close(channel)
+        if channel is produce_channel:
+            producer_closed.set()
+
+    async def execute(check, send_channel, registry):
+        nonlocal produce_channel
+        if check.check_id == 1:
+            produce_channel = send_channel
+            await send_channel.send(ok(1))
+        elif check.check_id == 2:
+            await receiving_first.wait()
+            for check_id in range(2, 102):
+                await send_channel.send(ok(check_id))
+            buffer_full.set()
+        else:
+            await buffer_full.wait()
+            try:
+                await send_channel.send(ok(102))
+            finally:
+                late_sender_finished.set()
+
+    async def receive(result):
+        received.append(result.check_id)
+        if result.check_id == 1:
+            receiving_first.set()
+            await buffer_full.wait()
+            await wait_all_tasks_blocked()
+            stop.requested.set()
+            await marker_attempted.wait()
+            await wait_all_tasks_blocked()
+
+    monkeypatch.setattr(MemoryObjectSendStream, "send", send)
+    monkeypatch.setattr(MemoryObjectSendStream, "close", close)
+    monkeypatch.setattr(runner, "_run_one", execute)
+    with anyio.fail_after(5):
+        await runner._async_run_batch([check(1), check(2), check(3)], receive, stop)
+    assert marker_sent.is_set()
+    assert late_sender_finished.is_set()
+    assert received == list(range(1, 102))
+    assert stop.drained.is_set()

@@ -135,3 +135,42 @@ async def test_cancellation_finishes_async_cleanup(monkeypatch):
         tasks.cancel_scope.cancel()
     assert cleanup_done.is_set()
     http_client.aclose.assert_awaited_once()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("callback_fails", [True, False])
+async def test_batch_keeps_first_failure_when_both_resource_closes_fail(
+    monkeypatch, callback_fails
+):
+    runner = AsyncCheckRunner(MagicMock())
+    callback_error = ValueError("persistence failed")
+    executor_error = RuntimeError("executor close failed")
+    http_error = OSError("client close failed")
+    cleanup = AsyncMock(side_effect=executor_error)
+    client_close = AsyncMock(side_effect=http_error)
+    http_client = MagicMock(aclose=client_close)
+    monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: http_client)
+    monkeypatch.setattr(ExecutorRegistry, "aclose_all", cleanup)
+
+    async def execute(check, send_channel, registry):
+        await send_channel.send(
+            Result(check_id=check.check_id, status=ResultStatus.OK, data={})
+        )
+
+    async def receive(result):
+        if callback_fails:
+            raise callback_error
+
+    monkeypatch.setattr(runner, "_run_one", execute)
+    expected_type = ExceptionGroup if callback_fails else RuntimeError
+    with pytest.raises(expected_type) as error:
+        await runner._async_run_batch([check(1)], receive)
+
+    cleanup.assert_awaited_once()
+    client_close.assert_awaited_once()
+    if callback_fails:
+        assert error.value.exceptions == (callback_error,)
+        assert any("executor close failed" in note for note in error.value.__notes__)
+    else:
+        assert error.value is executor_error
+    assert any("client close failed" in note for note in error.value.__notes__)
