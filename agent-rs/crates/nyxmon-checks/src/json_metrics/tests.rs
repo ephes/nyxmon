@@ -74,16 +74,17 @@ async fn only_complete_successful_responses_can_pass_thresholds() {
     let server = FakeServer::start(vec![
         crate::testutil::respond(300, &[], body),
         crate::testutil::respond(206, &[("Content-Range", "bytes 0-7/32")], body),
+        crate::testutil::respond(200, &[("Content-Range", "bytes 0-7/32")], body),
         crate::testutil::respond(200, &[], body),
     ])
     .await;
     let data = format!(
-        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}}}"#,
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "retries": 1}}"#,
         server.port()
     );
     let check = check(&data);
     let ctx = ctx();
-    for message in ["HTTP 300", "HTTP 206"] {
+    for message in ["HTTP 300", "HTTP 206", "response contains Content-Range"] {
         let result = execute(&check, &ctx).await.unwrap();
         assert_eq!(result.status, ResultStatus::Error, "{result:?}");
         assert_eq!(result.data["error_type"].as_str(), Some("http_error"));
@@ -91,7 +92,7 @@ async fn only_complete_successful_responses_can_pass_thresholds() {
     }
     let result = execute(&check, &ctx).await.unwrap();
     assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
-    assert_eq!(server.requests().len(), 3);
+    assert_eq!(server.requests().len(), 4);
 }
 
 #[tokio::test]

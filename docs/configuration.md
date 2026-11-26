@@ -847,8 +847,12 @@ response is stopped once its inflated size passes the cap. Only a final 2xx
 response other than 206 Partial Content is read: every other final status
 (including an unfollowed 3xx such as 304) fails with `error_type="http_error"`
 and `"HTTP <status>"` without reading the body, and only 5xx statuses are
-retried (the retired Python executor rejected only statuses 400 and above). The dashboard form has no field
-for the cap; a value set in the stored JSON is kept when the check is edited.
+retried. If an otherwise accepted status carries a `Content-Range` header,
+the Rust agent also returns a nonretryable `http_error` with
+`response contains Content-Range` before reading the body. The retired Python
+executor rejects statuses 400 and above and ignores the range header. The
+dashboard form has no field for the cap. A value set in the stored JSON is kept
+when the check is edited.
 
 `timeout` must be a finite number greater than zero, at most 300 seconds;
 `retry_delay` finite between 0 and 300 seconds; `retries` between 0 and 100.

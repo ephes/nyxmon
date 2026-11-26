@@ -16,7 +16,7 @@
 
 use std::time::{Duration, Instant};
 
-use hyper::header::HeaderValue;
+use hyper::header::{CONTENT_RANGE, HeaderValue};
 use nyxmon_core::config::json_metrics::JsonMetricsConfig;
 use nyxmon_core::config::{ConfigError, PyException};
 use nyxmon_core::lease::{MAX_DERIVED_PROCESSING_LEASE_SECONDS, estimated_check_runtime_seconds};
@@ -72,6 +72,7 @@ fn authorization(auth: Option<&PyJson>) -> Result<Option<HeaderValue>, String> {
 enum Fetched {
     Body(Vec<u8>),
     RejectedStatus(u16),
+    PartialResponse,
     TooLarge(String),
     Failed(HttpError),
 }
@@ -93,6 +94,9 @@ async fn fetch(
         let status = response.status;
         if !(200..300).contains(&status) || status == 206 {
             return Ok(Fetched::RejectedStatus(status));
+        }
+        if response.headers.contains_key(CONTENT_RANGE) {
+            return Ok(Fetched::PartialResponse);
         }
         let limit = BodyLimit {
             limit: &config.max_body_bytes,
@@ -162,6 +166,13 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
                     continue;
                 }
                 return Ok(failure);
+            }
+            Fetched::PartialResponse => {
+                return Ok(error(
+                    check,
+                    "http_error",
+                    "response contains Content-Range",
+                ));
             }
             Fetched::TooLarge(message) => return Ok(error(check, "body_too_large", message)),
             Fetched::Failed(err) => {
