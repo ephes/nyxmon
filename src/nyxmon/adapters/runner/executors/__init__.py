@@ -114,14 +114,19 @@ class ExecutorRegistry:
         return list(self._factories.keys())
 
     async def aclose_all(self) -> None:
-        """Close all instantiated executors.
-
-        Calls aclose() on all executor instances that support it.
-        """
-        for executor in self._instances.values():
-            if hasattr(executor, "aclose"):
-                await executor.aclose()
+        """Detach cached executors and close each distinct instance once."""
+        instances = {id(executor): executor for executor in self._instances.values()}
         self._instances.clear()
+        first_error: Exception | None = None
+        for executor in instances.values():
+            try:
+                if hasattr(executor, "aclose"):
+                    await executor.aclose()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+        if first_error is not None:
+            raise first_error
 
 
 __all__ = [

@@ -34,7 +34,7 @@ _async_run_batch
 
 Key details:
 
-- **Resource Scoping (NEW):** The HTTP client is only created when the batch contains HTTP or JSON-HTTP checks. DNS-only batches avoid the overhead entirely.
+- **Resource Scoping:** The HTTP client is created for HTTP, JSON-HTTP or JSON metrics checks. DNS-only batches avoid the overhead entirely.
 - The task group stays inside one async function; no async generator yields
   across its cancel scope. The private `_async_run_all` iterator helper collects
   the full batch before yielding for callers that need an iterator.
@@ -48,7 +48,10 @@ Key details:
 
 ## 4. Executor Registry
 
-`AsyncCheckRunner` owns an `ExecutorRegistry` (`src/nyxmon/adapters/runner/executors/__init__.py`). The registry now supports:
+`AsyncCheckRunner` keeps an `ExecutorRegistry` for startup validation. Each batch
+constructs its own registry with its own executors, sharing the HTTP client
+within that batch. Overlapping batches dispatch and close their executors
+independently. The registry supports:
 
 - **Executor Factory Pattern:** Executors can be registered as factories that create instances with per-batch context.
 - **Strict Type Checking:** Missing check types raise `UnknownCheckTypeError` instead of silently falling back.
@@ -76,7 +79,7 @@ Additional executors can be added without modifying `_run_one`; they only need t
 
 ## 5. `_run_one`: Execute a Single Check
 
-Each task group member executes `_run_one(check, send_channel)`:
+Each task group member executes `_run_one(check, send_channel, registry)`:
 
 1. Look up the executor for `check.check_type` in the registry.
 2. **Raises `UnknownCheckTypeError` if no executor is registered** (no fallback).
@@ -108,7 +111,9 @@ logged without aborting siblings.
 
 ## 7. Resource Cleanup and Ordering Guarantees
 
-- **Executor Cleanup (NEW):** The `finally` block in `_async_run_batch` calls `executor_registry.aclose_all()` to close all instantiated executors, ensuring resources are released even if execution fails.
+- The batch detaches its cached executors before attempting each distinct
+  instance's close once. It reports the first close failure after attempting
+  the other closes within the cleanup budget.
 - **HTTP Client Cleanup (NEW):** The HTTP client (if created) is explicitly closed in the `finally` block.
 - Task-group cancellation: if one `_run_one` raises, AnyIO cancels the others. Each executor must convert domain errors into `ResultStatus.ERROR` so failures are reported rather than propagated. Unexpected exceptions are wrapped in `BaseExceptionGroup` by AnyIO.
 - Channel closing: after all tasks complete, the producer closes the send channel to terminate the consumer loop cleanly.
@@ -124,7 +129,6 @@ logged without aborting siblings.
 
 ## 8. Opportunities for Future Refinement
 
-- **Executor registration:** Consider moving registration into `__init__` if executors don't need per-batch resources
 - **Back-pressure tuning:** `max_buffer_size=100` is arbitrary; monitoring extremely large batches may need a different value or a semaphore
 - **Batch-level metrics:** Track HTTP client reuse, executor instantiation, and cleanup timing
 

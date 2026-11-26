@@ -2,7 +2,7 @@
 
 import threading
 import time
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import anyio
 import pytest
@@ -37,14 +37,13 @@ async def test_intake_stop_hands_over_finished_results_and_cancels_the_rest(
     monkeypatch,
 ):
     runner = AsyncCheckRunner(MagicMock())
-    monkeypatch.setattr(runner.executor_registry, "aclose_all", AsyncMock())
     stop = IntakeStop()
     first_receiving = anyio.Event()
     second_sent = anyio.Event()
     unfinished_cancelled = anyio.Event()
     received = []
 
-    async def execute(check, send_channel):
+    async def execute(check, send_channel, registry):
         if check.check_id == 1:
             await send_channel.send(ok(1))
         elif check.check_id == 2:
@@ -79,11 +78,10 @@ async def test_intake_stop_reports_drained_while_a_check_cannot_be_cancelled(
     monkeypatch,
 ):
     runner = AsyncCheckRunner(MagicMock())
-    monkeypatch.setattr(runner.executor_registry, "aclose_all", AsyncMock())
     stop = IntakeStop()
     release = threading.Event()
 
-    async def execute(check, send_channel):
+    async def execute(check, send_channel, registry):
         # An executor thread that ignores cancellation.
         await anyio.to_thread.run_sync(release.wait)
         await send_channel.send(ok(check.check_id))
@@ -132,7 +130,7 @@ def test_result_queued_behind_slow_alert_is_recorded_at_shutdown(monkeypatch):
     collector.set_portal_provider(provider)
     stopping = threading.Event()
 
-    async def execute(check, send_channel):
+    async def execute(check, send_channel, registry):
         if check.check_id == 1:
             await send_channel.send(
                 Result(check_id=1, status=ResultStatus.ERROR, data={})

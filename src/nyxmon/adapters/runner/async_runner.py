@@ -31,43 +31,8 @@ class AsyncCheckRunner(CheckRunner):
     def __init__(self, portal_provider: BlockingPortalProvider) -> None:
         self.portal_provider = portal_provider
         self.executor_registry = ExecutorRegistry()
-        # Pre-register executors for startup validation
-        self._preregister_executors()
-
-    def _preregister_executors(self) -> None:
-        """Pre-register executors without HTTP client for startup validation.
-
-        This allows checking registered types before any checks are executed.
-        Executors will be re-registered with proper resources during batch execution.
-        """
-        # Register HTTP executor without client (will create its own if needed)
-        http_executor = HttpCheckExecutor(None)
-        self.executor_registry.register(CheckType.HTTP, http_executor)
-        self.executor_registry.register(CheckType.JSON_HTTP, http_executor)
-
-        # Register DNS executor
-        dns_executor = DnsCheckExecutor()
-        self.executor_registry.register(CheckType.DNS, dns_executor)
-
-        # Register TCP executor
-        tcp_executor = TcpCheckExecutor()
-        self.executor_registry.register(CheckType.TCP, tcp_executor)
-
-        # Register JSON metrics executor (shares HTTP client when available)
-        json_executor = JsonMetricsExecutor(None)
-        self.executor_registry.register(CheckType.JSON_METRICS, json_executor)
-
-        # Register IMAP executor
-        imap_executor = ImapCheckExecutor()
-        self.executor_registry.register(CheckType.IMAP, imap_executor)
-
-        # Register SMTP executor
-        smtp_executor = SmtpCheckExecutor()
-        self.executor_registry.register(CheckType.SMTP, smtp_executor)
-
-        # Register ping executor (system ping binary, no raw sockets)
-        ping_executor = PingCheckExecutor()
-        self.executor_registry.register(CheckType.PING, ping_executor)
+        # Keep a separate registry for startup validation.
+        self._register_executors(self.executor_registry, None)
 
     def run_all(
         self,
@@ -127,9 +92,9 @@ class AsyncCheckRunner(CheckRunner):
             if needs_http_client:
                 http_client = httpx.AsyncClient(follow_redirects=True, timeout=10)
 
+            registry = ExecutorRegistry()
             try:
-                # Register executors with batch context
-                self._register_executors(http_client)
+                self._register_executors(registry, http_client)
 
                 checks_scope = anyio.CancelScope()
                 watch_scope = anyio.CancelScope()
@@ -139,7 +104,7 @@ class AsyncCheckRunner(CheckRunner):
                         async with anyio.create_task_group() as checks_group:
                             for check in checks_list:
                                 checks_group.start_soon(
-                                    self._run_one, check, send_channel
+                                    self._run_one, check, send_channel, registry
                                 )
                     await send_channel.aclose()
 
@@ -177,7 +142,7 @@ class AsyncCheckRunner(CheckRunner):
                 # too, since a custom executor may itself hang while closing.
                 with anyio.move_on_after(1, shield=True):
                     try:
-                        await self.executor_registry.aclose_all()
+                        await registry.aclose_all()
                     finally:
                         if http_client is not None:
                             await http_client.aclose()
@@ -193,57 +158,62 @@ class AsyncCheckRunner(CheckRunner):
         """
         return {check.check_type for check in checks}
 
-    def _register_executors(self, http_client: Optional[httpx.AsyncClient]) -> None:
+    def _register_executors(
+        self, registry: ExecutorRegistry, http_client: Optional[httpx.AsyncClient]
+    ) -> None:
         """Register all available executors.
 
         Args:
-            http_client: Optional HTTP client to share with HTTP executor
+            registry: Registry to populate
+            http_client: Optional HTTP client to share with HTTP-based executors
         """
         # Register HTTP executor (with or without shared client)
         http_executor = HttpCheckExecutor(http_client)
-        self.executor_registry.register(CheckType.HTTP, http_executor)
-        self.executor_registry.register(
+        registry.register(CheckType.HTTP, http_executor)
+        registry.register(
             CheckType.JSON_HTTP, http_executor
         )  # JSON_HTTP uses same executor
 
         # Register DNS executor
         dns_executor = DnsCheckExecutor()
-        self.executor_registry.register(CheckType.DNS, dns_executor)
+        registry.register(CheckType.DNS, dns_executor)
 
         # Register TCP executor
         tcp_executor = TcpCheckExecutor()
-        self.executor_registry.register(CheckType.TCP, tcp_executor)
+        registry.register(CheckType.TCP, tcp_executor)
 
         # Register JSON metrics executor (reuse http client)
         json_executor = JsonMetricsExecutor(http_client)
-        self.executor_registry.register(CheckType.JSON_METRICS, json_executor)
+        registry.register(CheckType.JSON_METRICS, json_executor)
 
         # Register IMAP executor
         imap_executor = ImapCheckExecutor()
-        self.executor_registry.register(CheckType.IMAP, imap_executor)
+        registry.register(CheckType.IMAP, imap_executor)
 
         # Register SMTP executor
         smtp_executor = SmtpCheckExecutor()
-        self.executor_registry.register(CheckType.SMTP, smtp_executor)
+        registry.register(CheckType.SMTP, smtp_executor)
 
         # Register ping executor (system ping binary, no raw sockets)
         ping_executor = PingCheckExecutor()
-        self.executor_registry.register(CheckType.PING, ping_executor)
+        registry.register(CheckType.PING, ping_executor)
 
     async def _run_one(
         self,
         check: Check,
-        send_channel: anyio.abc.ObjectSendStream,
+        send_channel: anyio.abc.ObjectSendStream[Result | object],
+        registry: ExecutorRegistry,
     ) -> None:
         """Run a single check.
 
         Args:
             check: Check to execute
             send_channel: Channel to send result to
+            registry: Executing batch's registry
         """
         try:
             # Get executor for check type (raises UnknownCheckTypeError if not found)
-            executor = self.executor_registry.get_executor(check.check_type)
+            executor = registry.get_executor(check.check_type)
             result = await executor.execute(check)
         except UnknownCheckTypeError as e:
             # Handle legacy/unknown check types gracefully instead of crashing

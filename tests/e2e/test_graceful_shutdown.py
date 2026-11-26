@@ -29,7 +29,7 @@ from nyxmon.domain import Result, ResultStatus
 from nyxmon.entrypoints.cli import start_agent
 
 root = Path(sys.argv[1])
-async def execute(self, check, send_channel):
+async def execute(self, check, send_channel, registry):
     root.joinpath('in-flight').touch()
     if os.environ.get('NYXMON_TEST_HUNG_THREAD') == '1':
         await anyio.to_thread.run_sync(threading.Event().wait)

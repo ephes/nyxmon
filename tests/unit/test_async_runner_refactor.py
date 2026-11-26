@@ -1,9 +1,12 @@
 """Tests for AsyncCheckRunner refactoring: resource scoping and error handling."""
 
+import anyio
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
 from nyxmon.adapters.runner.async_runner import AsyncCheckRunner
+from nyxmon.adapters.runner.executors import ExecutorRegistry
+from nyxmon.adapters.runner.executors.http_executor import HttpCheckExecutor
 from nyxmon.domain import Check, CheckType, Result, ResultStatus
 
 
@@ -318,7 +321,7 @@ class TestAsyncRunnerExecutorCleanup:
         ) as mock_execute:
             with patch(
                 "nyxmon.adapters.runner.executors.http_executor.HttpCheckExecutor.aclose"
-            ):
+            ) as close:
                 mock_execute.return_value = Result(
                     check_id=1, status=ResultStatus.OK, data={}
                 )
@@ -328,7 +331,7 @@ class TestAsyncRunnerExecutorCleanup:
                     results.append(result)
 
                 # Verify executors were cleaned up
-                # Note: aclose_all calls aclose on all instantiated executors
+                close.assert_awaited_once()
                 assert len(results) == 1
 
     @pytest.mark.anyio
@@ -367,3 +370,83 @@ class TestAsyncRunnerExecutorCleanup:
                 assert len(results) == 1
                 assert results[0].status == ResultStatus.ERROR
                 assert results[0].data["error_type"] == "executor_exception"
+
+
+@pytest.mark.anyio
+async def test_overlapping_batches_retire_only_their_own_executors(monkeypatch):
+    runner = AsyncCheckRunner(MagicMock())
+    startup_http = runner.executor_registry.get_executor(CheckType.HTTP)
+    clients = [AsyncMock(), AsyncMock()]
+    client_iter = iter(clients)
+    monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: next(client_iter))
+    first_entered, second_entered, first_retired = (anyio.Event() for _ in range(3))
+    dispatched = []
+    retired = []
+
+    async def execute(executor, check):
+        dispatched.append((check.check_id, await executor._get_client()))
+        if check.check_id == 1:
+            first_entered.set()
+            await second_entered.wait()
+        else:
+            second_entered.set()
+            await first_retired.wait()
+        return Result(check_id=check.check_id, status=ResultStatus.OK, data={})
+
+    async def close(executor):
+        retired.append(await executor._get_client())
+
+    def make_check(check_id):
+        return Check(
+            check_id=check_id,
+            service_id=1,
+            name=str(check_id),
+            check_type=CheckType.HTTP,
+            url="https://example.test",
+            data={},
+        )
+
+    async def receive(result):
+        pass
+
+    async def first_batch():
+        await runner._async_run_batch([make_check(1)], receive)
+        first_retired.set()
+
+    monkeypatch.setattr(HttpCheckExecutor, "execute", execute)
+    monkeypatch.setattr(HttpCheckExecutor, "aclose", close)
+    with anyio.fail_after(5):
+        async with anyio.create_task_group() as tasks:
+            tasks.start_soon(first_batch)
+            await first_entered.wait()
+            tasks.start_soon(runner._async_run_batch, [make_check(2)], receive)
+            await first_retired.wait()
+    assert dispatched == [(1, clients[0]), (2, clients[1])]
+    assert retired == clients
+    assert runner.executor_registry.get_executor(CheckType.HTTP) is startup_http
+    for client in clients:
+        client.aclose.assert_awaited_once()
+
+
+@pytest.mark.anyio
+async def test_registry_retires_each_executor_once_even_if_close_fails():
+    registry = ExecutorRegistry()
+    first_failure = RuntimeError("first close failed")
+    shared = MagicMock(aclose=AsyncMock(side_effect=first_failure))
+    other = MagicMock(aclose=AsyncMock(side_effect=OSError("second close failed")))
+    registry.register(CheckType.HTTP, shared)
+    registry.register(CheckType.JSON_HTTP, shared)
+    registry.register(CheckType.DNS, other)
+
+    with pytest.raises(RuntimeError) as error:
+        await registry.aclose_all()
+    assert error.value is first_failure
+    await registry.aclose_all()
+
+    shared.aclose.assert_awaited_once()
+    other.aclose.assert_awaited_once()
+    assert registry.list_registered_types() == [
+        CheckType.HTTP,
+        CheckType.JSON_HTTP,
+        CheckType.DNS,
+    ]

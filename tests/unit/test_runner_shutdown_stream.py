@@ -7,6 +7,7 @@ import anyio
 import pytest
 
 from nyxmon.adapters.runner import AsyncCheckRunner
+from nyxmon.adapters.runner.executors import ExecutorRegistry
 from nyxmon.adapters.repositories import InMemoryStore
 from nyxmon.bootstrap import bootstrap
 from nyxmon.domain import Check, CheckStatus, Result, ResultStatus
@@ -46,7 +47,7 @@ async def test_result_handler_failure_does_not_abort_waiting_sibling(
             raise RuntimeError("injected persistence failure")
         return original(command, *args)
 
-    async def execute(check, send_channel):
+    async def execute(check, send_channel, registry):
         if check.check_id == 2:
             with anyio.fail_after(2):
                 while not first_attempted.is_set():
@@ -75,11 +76,11 @@ async def test_callback_exception_cancels_siblings_and_closes_resources(monkeypa
         "nyxmon.adapters.runner.async_runner.httpx.AsyncClient",
         lambda **kw: http_client,
     )
-    monkeypatch.setattr(runner.executor_registry, "aclose_all", cleanup)
+    monkeypatch.setattr(ExecutorRegistry, "aclose_all", cleanup)
     sibling_started = anyio.Event()
     sibling_stopped = anyio.Event()
 
-    async def execute(check, send_channel):
+    async def execute(check, send_channel, registry):
         if check.check_id == 1:
             await sibling_started.wait()
             await send_channel.send(Result(check_id=1, status=ResultStatus.OK, data={}))
@@ -113,11 +114,11 @@ async def test_cancellation_finishes_async_cleanup(monkeypatch):
         lambda **kw: http_client,
     )
 
-    async def cleanup():
+    async def cleanup(registry):
         await anyio.sleep(0)
         cleanup_done.set()
 
-    async def execute(check, send_channel):
+    async def execute(check, send_channel, registry):
         await send_channel.send(
             Result(check_id=check.check_id, status=ResultStatus.OK, data={})
         )
@@ -126,7 +127,7 @@ async def test_cancellation_finishes_async_cleanup(monkeypatch):
         receiving.set()
         await anyio.sleep_forever()
 
-    monkeypatch.setattr(runner.executor_registry, "aclose_all", cleanup)
+    monkeypatch.setattr(ExecutorRegistry, "aclose_all", cleanup)
     monkeypatch.setattr(runner, "_run_one", execute)
     async with anyio.create_task_group() as tasks:
         tasks.start_soon(runner._async_run_batch, [check(1)], receive)

@@ -18,6 +18,7 @@ from anyio.from_thread import BlockingPortalProvider
 from nyxmon.adapters.collector import estimated_check_runtime_seconds
 from nyxmon.adapters.repositories import InMemoryStore
 from nyxmon.adapters.runner import AsyncCheckRunner
+from nyxmon.adapters.runner.executors import ExecutorRegistry
 from nyxmon.adapters.runner.executors import ping_executor as ping_module
 from nyxmon.adapters.runner.executors.ping_executor import (
     PROCESS_GRACE_SECONDS,
@@ -599,9 +600,10 @@ class TestRegistration:
         assert isinstance(
             runner.executor_registry.get_executor(CheckType.PING), PingCheckExecutor
         )
-        runner._register_executors(None)
+        batch_registry = ExecutorRegistry()
+        runner._register_executors(batch_registry, None)
         assert isinstance(
-            runner.executor_registry.get_executor(CheckType.PING), PingCheckExecutor
+            batch_registry.get_executor(CheckType.PING), PingCheckExecutor
         )
 
     async def test_startup_validation_accepts_ping_checks(self, caplog) -> None:

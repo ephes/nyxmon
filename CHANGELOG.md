@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Python check runner
+
+- Isolate executor registries and shared HTTP clients across overlapping batches.
+- Attempt to close every distinct cached executor even when an earlier close
+  fails, and report the first failure.
+
 ### Rust site observer
 
 - Log recovery recheck completion only after persisting it. Retry a failed
