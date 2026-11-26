@@ -9,7 +9,7 @@ use crate::http_client::HttpSession;
 use crate::testutil::{Action, Executor, FakeServer, head, run_fixture_case};
 
 #[tokio::test(flavor = "multi_thread")]
-async fn executor_cases_match_python() {
+async fn executor_cases_match_fixture() {
     let fixture = loads(include_str!(
         "../../../../fixtures/config_json_metrics.json"
     ))
@@ -67,6 +67,32 @@ fn ctx() -> BatchCtx {
 }
 
 const RULES: &str = r#"[{"path": "$.a", "op": "<", "value": 10, "severity": "critical"}]"#;
+
+#[tokio::test]
+async fn only_complete_successful_responses_can_pass_thresholds() {
+    let body = br#"{"a": 1}"#;
+    let server = FakeServer::start(vec![
+        crate::testutil::respond(300, &[], body),
+        crate::testutil::respond(206, &[("Content-Range", "bytes 0-7/32")], body),
+        crate::testutil::respond(200, &[], body),
+    ])
+    .await;
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}}}"#,
+        server.port()
+    );
+    let check = check(&data);
+    let ctx = ctx();
+    for message in ["HTTP 300", "HTTP 206"] {
+        let result = execute(&check, &ctx).await.unwrap();
+        assert_eq!(result.status, ResultStatus::Error, "{result:?}");
+        assert_eq!(result.data["error_type"].as_str(), Some("http_error"));
+        assert_eq!(result.data["error_msg"].as_str(), Some(message));
+    }
+    let result = execute(&check, &ctx).await.unwrap();
+    assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
+    assert_eq!(server.requests().len(), 3);
+}
 
 #[tokio::test]
 async fn a_body_without_declared_length_is_capped_while_streaming() {

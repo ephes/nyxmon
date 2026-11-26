@@ -6438,8 +6438,8 @@
    "delays": [],
    "outcome": {
     "data": {
-     "error_msg": "Expecting value: line 1 column 1 (char 0)",
-     "error_type": "json_error"
+     "error_msg": "HTTP 304",
+     "error_type": "http_error"
     },
     "keys": [
      "error_type",

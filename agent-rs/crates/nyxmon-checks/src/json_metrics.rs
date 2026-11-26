@@ -2,7 +2,7 @@
 //!
 //! The evaluation is pure ([`nyxmon_core::metrics_eval`]); this module does
 //! the fetch on the check's own session copy (its own cookie jar):
-//! redirects followed, basic auth, the body of an error response not read,
+//! redirects followed, basic auth, only complete successful responses read,
 //! the body cap applied to the decoded bytes, and strict metrics admission
 //! (unique object members and finite numbers) on the raw bytes. Each attempt, redirects and body read included, is bounded by the
 //! configured timeout as a whole ([`attempt_deadline`]).
@@ -70,7 +70,8 @@ fn authorization(auth: Option<&PyJson>) -> Result<Option<HeaderValue>, String> {
 }
 
 enum Fetched {
-    Body(u16, Vec<u8>),
+    Body(Vec<u8>),
+    RejectedStatus(u16),
     TooLarge(String),
     Failed(HttpError),
 }
@@ -90,14 +91,14 @@ async fn fetch(
     let attempt = async {
         let response = http.get(&request).await?;
         let status = response.status;
-        if status >= 400 {
-            return Ok(Fetched::Body(status, Vec::new()));
+        if !(200..300).contains(&status) || status == 206 {
+            return Ok(Fetched::RejectedStatus(status));
         }
         let limit = BodyLimit {
             limit: &config.max_body_bytes,
         };
         match read_body(response, Some(limit)).await {
-            Ok(body) => Ok(Fetched::Body(status, body)),
+            Ok(body) => Ok(Fetched::Body(body)),
             Err(BodyError::TooLarge(message)) => Ok(Fetched::TooLarge(message)),
             Err(BodyError::Http(err)) => Err(err),
         }
@@ -151,8 +152,17 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
                 ),
             ));
         };
-        let (status, raw_body) = match fetch(&http, &config, url, auth).await {
-            Fetched::Body(status, body) => (status, body),
+        let raw_body = match fetch(&http, &config, url, auth).await {
+            Fetched::Body(body) => body,
+            Fetched::RejectedStatus(status) => {
+                let failure = error(check, "http_error", format!("HTTP {status}"));
+                if (500..600).contains(&status) && may_retry(attempt) {
+                    last_error = Some(failure);
+                    ctx.sleeper.sleep(config.retry_delay).await;
+                    continue;
+                }
+                return Ok(failure);
+            }
             Fetched::TooLarge(message) => return Ok(error(check, "body_too_large", message)),
             Fetched::Failed(err) => {
                 let error_type = match err.kind {
@@ -171,15 +181,6 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
                 return Ok(failure);
             }
         };
-        if status >= 400 {
-            let failure = error(check, "http_error", format!("HTTP {status}"));
-            if (500..600).contains(&status) && may_retry(attempt) {
-                last_error = Some(failure);
-                ctx.sleeper.sleep(config.retry_delay).await;
-                continue;
-            }
-            return Ok(failure);
-        }
         let body = match loads_metrics_bytes(&raw_body) {
             Ok(body) => body,
             Err(err) if err.is_value_error() => {

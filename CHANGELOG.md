@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Report invalid array indices as missing metrics, including oversized indices
   and non-decimal digit forms.
 
+### Rust JSON metrics checks
+
+- Reject terminal non-2xx statuses and 206 Partial Content before reading a
+  metrics response body. Preserve retries for HTTP 5xx responses.
+
 ### Rust site observer
 
 - Log recovery recheck completion only after persisting it. Retry a failed

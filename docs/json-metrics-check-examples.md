@@ -28,6 +28,10 @@ check = Check(
 Key details:
 - Check type: `json-metrics`
 - Auth: optional HTTP basic auth (`auth: {username, password}`)
+- The Rust agent follows redirects and requires a final HTTP 2xx response with
+  a complete JSON document. It rejects 206 Partial Content and terminal
+  non-2xx statuses before reading the body, reporting `http_error` with the
+  status code. HTTP 5xx responses remain eligible for retries.
 - Path resolver: simple `$.field.subfield` or list indices (`$.items.0.value`); no wildcards or escaped dots
 - Retries: configurable `retries` + `retry_delay` for transient HTTP/timeout failures (defaults: 1 retry, 2s delay; at most 100 retries, `timeout` and `retry_delay` finite and at most 300s; retries stop when the check's runtime budget is spent)
 - Operators: `<`, `<=`, `>`, `>=`, `==`, `!=`
