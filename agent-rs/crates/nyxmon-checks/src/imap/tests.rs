@@ -121,12 +121,18 @@ async fn dialogues_preserve_results_with_bounded_uid_batches() {
             "{name}: {actual}"
         );
         let order = keys(&result.data);
-        let python_order: &[&str] = if result.status == ResultStatus::Ok {
-            &["matched_uids", "latest_internaldate"]
-        } else {
-            &["error_type", "error_msg", "attempts", "severity"]
+        let expected_order: &[&str] = match result.status {
+            ResultStatus::Ok => &["matched_uids", "latest_internaldate"],
+            ResultStatus::Warning if name == "expunge_no" => &[
+                "matched_uids",
+                "latest_internaldate",
+                "error_type",
+                "error_msg",
+                "cleanup_stage",
+            ],
+            _ => &["error_type", "error_msg", "attempts", "severity"],
         };
-        assert_eq!(order, python_order[..order.len()], "{name}");
+        assert_eq!(order, expected_order[..order.len()], "{name}");
 
         let sleeps: Vec<Duration> = case
             .get("sleeps")
@@ -579,8 +585,8 @@ async fn imap_attempt_deadline_stops_a_dripping_greeting() {
     assert!(server.transcripts().await[0].is_empty());
 }
 
-fn dripping_logout() -> Vec<Step> {
-    let mut script = vec![Step::Recv, send("* BYE ")];
+fn dripping_response(prefix: &str) -> Vec<Step> {
+    let mut script = vec![Step::Recv, send(prefix)];
     for _ in 0..200 {
         script.extend([Step::Pause(Duration::from_millis(30)), send("x")]);
     }
@@ -609,7 +615,7 @@ async fn imap_attempt_deadline_preserves_completed_cleanup_when_logout_drips() {
         Step::Recv,
         tagged("OK expunged"),
     ]);
-    script.extend(dripping_logout());
+    script.extend(dripping_response("* BYE "));
     let server = ScriptServer::start(vec![script], false).await;
     let result = tokio::time::timeout(
         Duration::from_secs(5),
@@ -641,7 +647,7 @@ async fn imap_attempt_deadline_preserves_no_recent_retries_when_logout_drips() {
     let mut script = vec![send(GREETING)];
     script.extend(login_select());
     script.extend([Step::Recv, send("* SEARCH\r\n"), tagged("OK done")]);
-    script.extend(dripping_logout());
+    script.extend(dripping_response("* BYE "));
     let server = ScriptServer::start(vec![script.clone(), script], false).await;
     let env = TestEnv::new();
     let result = tokio::time::timeout(
@@ -1137,6 +1143,66 @@ async fn invalid_capability_reply_prevents_store() {
         assert_eq!(&wire[4..], ["NOOP", "CAPABILITY", "LOGOUT"], "{reply:?}");
         assert_eq!(result.status, ResultStatus::Error);
         assert_eq!(result.data["error_type"], PyJson::from(error_type));
+    }
+}
+
+#[tokio::test]
+async fn failed_expunge_preserves_the_committed_observation_without_retry() {
+    for mode in ["refused", "disconnected", "attempt_deadline"] {
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script.extend([
+            Step::Recv,
+            tagged("OK synchronized"),
+            Step::Recv,
+            send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
+            tagged("OK capabilities"),
+            Step::Recv,
+            tagged("OK stored"),
+        ]);
+        match mode {
+            "refused" => script.extend([
+                Step::Recv,
+                tagged("NO expunge refused"),
+                Step::Recv,
+                tagged("OK logout"),
+            ]),
+            "disconnected" => script.extend([Step::Recv, Step::Close]),
+            _ => script.extend(dripping_response("* OK ")),
+        }
+        let server = ScriptServer::start(vec![script], false).await;
+        let env = TestEnv::new();
+        let result = execute(
+            &check(server.port, r#", "timeout": 0.1, "retries": 2"#),
+            &env,
+        )
+        .await
+        .unwrap();
+        let wire = untag(server.transcripts().await.remove(0));
+        assert_eq!(
+            &wire[4..8],
+            [
+                "NOOP",
+                "CAPABILITY",
+                "UID STORE 5 +FLAGS (\\Deleted)",
+                "UID EXPUNGE 5"
+            ]
+        );
+        assert!(wire[8..].iter().all(|line| line == "LOGOUT"));
+        assert_eq!(result.status, ResultStatus::Warning, "{mode}");
+        assert_eq!(
+            result.data["error_type"],
+            PyJson::from("imap_cleanup_failed")
+        );
+        assert_eq!(result.data["cleanup_stage"], PyJson::from("flags_set"));
+        assert_eq!(
+            result.data["matched_uids"],
+            PyJson::List(vec![PyJson::from("5")])
+        );
+        assert_eq!(
+            result.data["latest_internaldate"],
+            PyJson::from("2025-10-09T08:53:00+00:00")
+        );
+        assert!(env.sleeps().is_empty());
     }
 }
 

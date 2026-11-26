@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Validate cleanup capabilities and recheck UIDVALIDITY and message freshness
   before setting the deletion flag.
+- Preserve the IMAP match result and report a cleanup warning when targeted expunge
+  cannot be confirmed after the deletion flag is set.
 
 ### Rust ping runner
 

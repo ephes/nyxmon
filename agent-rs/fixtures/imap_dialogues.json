@@ -1620,9 +1620,13 @@
    },
    "name": "expunge_no",
    "result": {
-    "attempts": 1,
-    "error_msg": "uid failed: NO [b'expunge failed']",
-    "error_type": "execution_error"
+    "cleanup_stage": "flags_set",
+    "error_msg": "IMAP deletion flag set, but UID EXPUNGE could not be confirmed",
+    "error_type": "imap_cleanup_failed",
+    "latest_internaldate": "2025-10-09T08:50:00+00:00",
+    "matched_uids": [
+     "5"
+    ]
    },
    "scripts": [
     [
@@ -1720,7 +1724,7 @@
     ]
    ],
    "sleeps": [],
-   "status": "error",
+   "status": "warning",
    "transcripts": [
     [
      "LOGIN monitor \"secret\"",

@@ -692,10 +692,14 @@ budget of `5 * timeout` seconds and each IMAP attempt `8 * timeout` seconds,
 using the validated check setting. This includes DNS/admission, TCP/TLS setup,
 all commands, and best-effort QUIT/LOGOUT. Cleanup uses the remaining budget;
 completed SMTP/IMAP session outcomes survive a QUIT/LOGOUT stall, including
-accepted SMTP DATA, successful IMAP cleanup, and IMAP no-recent-message retries.
-An exhausted SMTP attempt reports `timeout` (`connection timed out`); IMAP
-reports `unexpected_error` (`mail attempt timed out`). Deadline failures are
-not retried. Existing SMTP temporary-response retries (except partial delivery) and IMAP no-recent-message
+accepted SMTP DATA, completed IMAP observations, and IMAP no-recent-message retries.
+An unconfirmed UID EXPUNGE after acknowledged STORE preserves the match result
+and returns an `imap_cleanup_failed` warning with `cleanup_stage="flags_set"`.
+The expunge and logout share the original attempt deadline.
+An exhausted SMTP attempt reports `timeout` (`connection timed out`). If the
+IMAP deadline expires before a result is ready or STORE is confirmed, the
+check reports `unexpected_error` (`mail attempt timed out`). Deadline failures
+are not retried. Existing SMTP temporary-response retries (except partial delivery) and IMAP no-recent-message
 retries remain unchanged, with at most `retries + 1` attempts and the configured
 `retry_delay` between them. No retry sleeps are inside an attempt budget.
 

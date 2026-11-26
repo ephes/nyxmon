@@ -344,7 +344,9 @@ section 3.6); no other new variable is introduced by the port.
   after all FETCHes, and an INTERNALDATE more than 60 s in the future is
   `invalid_message_date`. Cleanup now also requires pinned SELECT UIDVALIDITY
   with no intervening invalidation (`invalid_mailbox_generation`) and a valid
-  CAPABILITY response before UID STORE; conflicting
+  CAPABILITY response before UID STORE. After confirmed STORE, a refused or
+  unconfirmed UID EXPUNGE returns `imap_cleanup_failed` as a warning with the
+  observation and the `flags_set` cleanup stage. Conflicting
   duplicate FETCH dates fail with `incomplete_scan`. Identical parsed instants
   are accepted once; matching records without INTERNALDATE (unsolicited FLAGS
   data) are ignored rather than read as a missing date. The dialogue fixture records these differences.
@@ -1841,10 +1843,13 @@ the connection, including before oversized literal bodies are read; see README.
   cleanup requires SELECT's positive 32-bit UIDVALIDITY, a NOOP synchronization after FETCH, and rechecks before
   STORE/EXPUNGE and after replies, with intervening changes/invalidations latched
   (`invalid_mailbox_generation`, nonretryable). This trusts server generation
-  reporting; it cannot undo STORE if its response first reports a change.
+  reporting. After STORE is confirmed for the selected generation, an
+  unconfirmed UID EXPUNGE emits a nonretryable `imap_cleanup_failed` warning
+  with `matched_uids`, `latest_internaldate` and `cleanup_stage="flags_set"`.
+  The expunge uses the remaining attempt deadline.
   `LOGOUT` best effort, also after a failed search/delete (not after a failed
   LOGIN/SELECT, which happen in `__aenter__`).
-- Non-OK command → `execution_error` "<method> failed: <TYP> <py repr of
+- Other non-OK commands → `execution_error` "<method> failed: <TYP> <py repr of
   data>"; TLS errors → `tls_error` (rustls texts, D-9); no match →
   `no_recent_message` (retried); retries only for no-recent, with
   `retry_delay`.

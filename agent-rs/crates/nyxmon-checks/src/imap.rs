@@ -1031,15 +1031,10 @@ async fn cleanup_uses_uidplus(imap: &mut Imap) -> Result<bool, ImapExc> {
     Ok(uidplus)
 }
 
-/// `ImapLibSession.delete_messages`.
-async fn delete_messages(imap: &mut Imap, ids: &[String], uidplus: bool) -> Result<(), ImapExc> {
-    let set = ascii(&ids.join(","))?;
-    let args = vec![set.clone(), b"+FLAGS".to_vec(), b"(\\Deleted)".to_vec()];
-    checked("uid", imap.uid("STORE", args).await?)?;
-    if uidplus {
-        checked("uid", imap.uid("EXPUNGE", vec![set]).await?)?;
-    }
-    Ok(())
+struct Observation {
+    uids: Vec<String>,
+    latest: i64,
+    pending_expunge: Option<Vec<u8>>,
 }
 
 /// `ImapCheckExecutor._run_once`.
@@ -1074,13 +1069,31 @@ async fn run_once(
     })
     .await
     .map_err(|_| ImapExc::Other("mail attempt timed out".to_owned()))??;
-    let outcome = tokio::time::timeout_at(deadline, session(&mut imap, config, env))
-        .await
-        .unwrap_or_else(|_| Err(ImapExc::Other("mail attempt timed out".to_owned()).into()));
+    let outcome =
+        tokio::time::timeout_at(deadline, observe_and_mark_deleted(&mut imap, config, env))
+            .await
+            .unwrap_or_else(|_| Err(ImapExc::Other("mail attempt timed out".to_owned()).into()));
+    // Once STORE has been acknowledged for this mailbox generation, retain the
+    // observation even if expunge exhausts the remaining attempt deadline.
+    let cleanup_failed = if let Ok(Observation {
+        pending_expunge: Some(set),
+        ..
+    }) = &outcome
+    {
+        !matches!(
+            tokio::time::timeout_at(deadline, async {
+                checked("uid", imap.uid("EXPUNGE", vec![set.clone()]).await?)
+            })
+            .await,
+            Ok(Ok(_))
+        )
+    } else {
+        false
+    };
     // Best-effort cleanup shares the deadline and cannot replace a completed
     // outcome (including NoRecent, which has its own retry policy).
     let _ = tokio::time::timeout_at(deadline, imap.logout()).await;
-    let (uids, latest) = outcome?;
+    let Observation { uids, latest, .. } = outcome?;
     let mut data = PyDict::new();
     data.insert(
         "matched_uids".to_owned(),
@@ -1090,14 +1103,24 @@ async fn run_once(
         "latest_internaldate".to_owned(),
         PyJson::Str(iso_utc(latest)),
     );
-    Ok(CheckResult::new(check.check_id, ResultStatus::Ok, data))
+    let status = if cleanup_failed {
+        data.extend(error_data(
+            "imap_cleanup_failed",
+            "IMAP deletion flag set, but UID EXPUNGE could not be confirmed".to_owned(),
+        ));
+        data.insert("cleanup_stage".to_owned(), PyJson::from("flags_set"));
+        ResultStatus::Warning
+    } else {
+        ResultStatus::Ok
+    };
+    Ok(CheckResult::new(check.check_id, status, data))
 }
 
-async fn session(
+async fn observe_and_mark_deleted(
     imap: &mut Imap,
     config: &ImapConfig,
     env: &impl MailEnv,
-) -> Result<(Vec<String>, i64), AttemptError> {
+) -> Result<Observation, AttemptError> {
     let mut messages =
         search_recent(imap, &config.search_subject, config.max_age_minutes, env).await?;
     // FETCH can take long enough to age previously admitted messages out.
@@ -1120,10 +1143,19 @@ async fn session(
     messages.sort_by_key(|(_, at)| *at);
     let latest = messages.last().map_or(0, |(_, at)| *at);
     let uids: Vec<String> = messages.into_iter().map(|(uid, _)| uid).collect();
-    if config.delete_after_check {
-        delete_messages(imap, &uids, uidplus).await?;
-    }
-    Ok((uids, latest))
+    let pending_expunge = if config.delete_after_check {
+        let set = ascii(&uids.join(","))?;
+        let args = vec![set.clone(), b"+FLAGS".to_vec(), b"(\\Deleted)".to_vec()];
+        checked("uid", imap.uid("STORE", args).await?)?;
+        uidplus.then_some(set)
+    } else {
+        None
+    };
+    Ok(Observation {
+        uids,
+        latest,
+        pending_expunge,
+    })
 }
 
 fn settle_messages(
