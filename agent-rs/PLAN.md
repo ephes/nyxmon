@@ -455,6 +455,10 @@ section 3.6); no other new variable is introduced by the port.
   unfollowed 3xx such as 304 (whose empty body became `json_error`). Rust
   requires a final 2xx other than 206 and reports `http_error` `"HTTP <s>"`
   for everything else without reading the body; only 5xx stays retryable.
+  A final response with an otherwise accepted status that carries a
+  `Content-Range` header is a nonretryable `http_error`
+  `"response contains Content-Range"`, also without reading the body
+  (Python ignored the header).
   Python compared booleans as integers (`True == 1`, `True < 10`); Rust fails
   a rule that compares a boolean with a number (either side) for every
   operator with `reason="type_mismatch"`; int/float comparisons are
@@ -462,6 +466,7 @@ section 3.6); no other new variable is introduced by the port.
   `fixtures/metrics_eval.json` (the bool/number cases) are edited by hand for
   this. Pinned by
   `json_metrics/tests.rs::only_complete_successful_responses_can_pass_thresholds`
+  (the 206 and the 200 with `Content-Range` cases)
   and
   `metrics_eval/tests.rs::boolean_and_numeric_thresholds_fail_with_a_type_mismatch`.
 
@@ -503,7 +508,9 @@ Runner-level (`adapters/runner/async_runner.py:_run_one`):
   json_error / unexpected_error: exactly `error_type`, `error_msg`
   (no attempt keys). `http_error` message `"HTTP <s>"` for `>= 400` (Rust:
   for every final status outside 2xx and for 206, D-27), retried only for
-  5xx while `attempt < retries`. `body_too_large` messages:
+  5xx while `attempt < retries`; Rust only (D-27): `http_error` message
+  `"response contains Content-Range"` for an accepted status carrying that
+  header, never retried. `body_too_large` messages:
   `"response body of <declared> bytes exceeds the <limit> byte limit"` (declared
   `Content-Length` all ASCII digits and over the limit) and
   `"response body exceeds the <limit> byte limit"` (decoded stream over the
@@ -1370,7 +1377,12 @@ adjusts the source URL expectation to match its origin-only policy.
   time plus `retry_delay` plus one whole attempt (`timeout`) fit into the
   check's runtime estimate (5.8, explicit `max_runtime_seconds` included,
   capped at `MAX_DERIVED_PROCESSING_LEASE_SECONDS`); otherwise the last
-  failure is the result, so retries never outlast the processing lease. Path resolution with `[n]` → `.n` normalisation
+  failure is the result, so retries never outlast the processing lease.
+  Every attempt, the first included, is bounded by the lesser of `timeout`
+  and the remaining budget, so an explicit `max_runtime_seconds` shorter
+  than `timeout` ends a stalled first attempt with `timeout` inside the
+  budget; a budget used up by the retry delay returns the last failure
+  without another request. Path resolution with `[n]` → `.n` normalisation
   (`_resolve_path`), evaluation with `py_cmp`, failure records and summary as
   1.6 — fixture.
 

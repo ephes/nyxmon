@@ -867,7 +867,7 @@ The Rust agent bounds every whole HTTP attempt, including the first, by the
 lesser of `timeout` and the remaining execution budget. The limit includes
 redirects and the body read. An attempt that runs out of time returns
 `error_type="timeout"`. Cookies set by the endpoint stay with this check
-execution.
+execution and are never sent by other checks.
 
 ### Ping Checks
 
