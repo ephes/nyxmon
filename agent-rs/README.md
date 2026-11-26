@@ -273,10 +273,12 @@ override for github.com is refused; `main` is the branch `refs/heads/main`,
 resolved exactly). `publish` requires a complete,
 well-typed `build.json` with a boolean dry-run flag and a build mode that
 matches the current release configuration before checking the archive checksum.
-With those checks passed and `gh` 2.74.0 or newer (for asset digests), it
-creates the annotated tag `agent-rs-v<version>` on the build commit, which
-must be on `main`. An existing tag must be annotated and point at that commit.
-It then creates the GitHub release with exactly the archive and its
+Before creating a tag, `publish` copies `notes.md` from a readable regular file
+into a private temporary directory. With those checks passed and `gh` 2.74.0 or
+newer (for asset digests), it creates the annotated tag `agent-rs-v<version>` on
+the build commit, which must be on `main`. An existing tag must be annotated and
+point at that commit. It then uses the staged notes to create the GitHub release
+with exactly the archive and its
 `.sha256` (`gh release create --verify-tag`; a semver pre-release such as
 `0.4.0-rc.1` becomes a GitHub pre-release), then downloads both again and
 compares them byte for byte. It succeeds only when afterwards the same

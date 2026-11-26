@@ -1430,12 +1430,22 @@ def publish(
         raise ReleaseError(
             f"{out} holds files that are not part of the release: {', '.join(extra)}"
         )
-    log(ensure_tag(github, tag, commit, f"{config.binary} {version}"))
     title = f"{config.binary} {version}"
-    for step in ensure_release(
-        github, tag, title, out / NOTES, files, prerelease="-" in version
-    ):
-        log(step)
+    notes = out / NOTES
+    with tempfile.TemporaryDirectory(prefix="release-notes-") as directory:
+        staged_notes = Path(directory) / NOTES
+        try:
+            if not notes.is_file():
+                raise ReleaseError(f"release notes {notes} must be a regular file")
+            with notes.open("rb") as source, staged_notes.open("wb") as destination:
+                shutil.copyfileobj(source, destination)
+        except OSError as error:
+            raise ReleaseError(f"cannot stage release notes {notes}: {error}") from None
+        log(ensure_tag(github, tag, commit, title))
+        for step in ensure_release(
+            github, tag, title, staged_notes, files, prerelease="-" in version
+        ):
+            log(step)
 
 
 # --- command line --------------------------------------------------------------------

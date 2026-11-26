@@ -945,6 +945,57 @@ def test_publish_refuses_a_build_from_another_mode(
     assert not github.tagged and not github.created and not github.uploaded
 
 
+@pytest.mark.parametrize("problem", ["missing", "directory", "unreadable"])
+def test_publish_stages_notes_before_tag_creation(
+    release: ModuleType, built: Path, monkeypatch: pytest.MonkeyPatch, problem: str
+) -> None:
+    source = built / release.NOTES
+    original = source.read_bytes()
+    opened = Path.open
+    used_notes: list[Path] = []
+
+    def open_without_notes(path: Path, *args: Any, **kwargs: Any) -> Any:
+        if path == source:
+            raise PermissionError("simulated unreadable notes")
+        return opened(path, *args, **kwargs)
+
+    class ChangeNotesOnTag(FakeGitHub):
+        def create_tag(self, tag: str, commit: str, message: str) -> None:
+            super().create_tag(tag, commit, message)
+            source.write_text("changed after tag creation", encoding="utf-8")
+
+        def create(
+            self, tag: str, title: str, notes: Path, files: list[Path], prerelease: bool
+        ) -> None:
+            assert notes != source
+            assert notes.read_bytes() == original
+            used_notes.append(notes)
+            super().create(tag, title, notes, files, prerelease)
+
+    github = ChangeNotesOnTag()
+    with monkeypatch.context() as patch:
+        if problem in {"missing", "directory"}:
+            source.unlink()
+        if problem == "directory":
+            source.mkdir()
+        if problem == "unreadable":
+            patch.setattr(Path, "open", open_without_notes)
+        with pytest.raises(release.ReleaseError, match="notes"):
+            publish(release, built, github=github)
+    assert github.tagged == []
+    assert github.created == []
+    assert github.uploaded == []
+
+    if problem == "directory":
+        source.rmdir()
+    source.write_bytes(original)
+    publish(release, built, github=github)
+    assert github.tagged == [("rs-v1.2.3", COMMIT)]
+    assert github.created == [("rs-v1.2.3", False)]
+    assert len(used_notes) == 1
+    assert not used_notes[0].exists()
+
+
 def test_publish_never_moves_a_tag(release: ModuleType, built: Path) -> None:
     github = FakeGitHub()
     github.tags["rs-v1.2.3"] = OTHER
