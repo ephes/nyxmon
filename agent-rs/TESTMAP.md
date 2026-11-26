@@ -243,7 +243,7 @@ S5 is delivered in two reviewed sub-steps: S5a (this section) and S5b
 | `test_notification_suppression.py` handler parts (`test_suppressed_result_is_persisted_without_notification`, `::test_suppressed_result_breaks_failure_notification_streak`, `::test_suppression_inactive_when_endpoint_errors`, `::test_a_hold_still_wins_over_a_due_delivery_retry`) | `results/tests.rs::a_suppressed_result_is_persisted_without_notification`, `::a_suppressed_result_breaks_the_failure_streak`, `::suppression_fails_open_without_a_payload_or_a_match`, `::collector_internal_samples_are_not_fetched_for`, `::a_raising_suppression_config_fails_the_result_handling`, `::a_hold_still_wins_over_a_due_delivery_retry` | done |
 | `NotifyRaised` from the notifier (PLAN.md 4.2) | `results/tests.rs::a_raising_notifier_fails_the_result_handling_without_ack` | done |
 | `cleaner_test.py` (`TestCleanupCycle`, constructor limits, `_async_start` loop) | `cleaner/tests.rs` (fake pruner + SQLite backlog); session deletion: `nyxmon-store/tests/cleaner.rs` (S2) | done (thread/portal plumbing tests are n/a) |
-| `cli.py:setup_logging` format and level names | `logging.rs` tests (the stderr format is wired with the CLI in S9b) | done |
+| `cli.py:setup_logging` format and level names | `logging.rs` tests (the stderr format is wired with the CLI in S9b; `asctime_matches_python_logging` pins the timestamp bytes) | done |
 
 ## S9b — collector loop, CLI, startup, shutdown
 

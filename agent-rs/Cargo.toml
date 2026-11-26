@@ -54,7 +54,9 @@ hmac = "0.12"
 md-5 = "0.10"
 rustix = { version = "1", default-features = false, features = ["std"] }
 clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }
-chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+# Local time for log timestamps: tz-system reads TZ and /etc/localtime (thread-safe),
+# tzdb-zoneinfo reads /usr/share/zoneinfo; no bundled time zone database.
+jiff = { version = "1", default-features = false, features = ["std", "tz-system", "tzdb-zoneinfo"] }
 
 [workspace.lints.rust]
 # deny (not forbid): one audited libc call in nyxmon-checks ping.rs opts out.

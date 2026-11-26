@@ -20,8 +20,8 @@ nyxmon-core.workspace = true
 nyxmon-store.workspace = true
 nyxmon-checks.workspace = true
 nyxmon-notify.workspace = true
-chrono.workspace = true
 clap.workspace = true
+jiff.workspace = true
 num-bigint.workspace = true
 tokio = { workspace = true, features = ["macros", "net", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 tracing.workspace = true
