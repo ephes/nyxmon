@@ -842,12 +842,12 @@ failure status still include every check.
 `max_body_bytes` (default `1048576`, 1 MiB) caps how much of the response body
 is read. A larger body, or a `Content-Length` above the cap, fails with
 `error_type="body_too_large"` without being parsed. The cap counts decoded
-bytes, checked chunk by chunk as httpx decompresses the stream, so a compressed
-response is stopped once its inflated size passes the cap. Only a final 2xx
-response other than 206 Partial Content is read: every other final status
-(including an unfollowed 3xx such as 304) fails with `error_type="http_error"`
-and `"HTTP <status>"` without reading the body, and only 5xx statuses are
-retried. If an otherwise accepted status carries a `Content-Range` header,
+bytes as the stream is decompressed, so a compressed response is stopped once
+its inflated size passes the cap. The agent accepts final 2xx statuses except
+206 Partial Content. All other final statuses, including an unfollowed 3xx
+such as 304, return `error_type="http_error"` with `"HTTP <status>"` before
+the body is read. Only 5xx statuses are retried. If an otherwise accepted
+status carries a `Content-Range` header,
 the Rust agent also returns a nonretryable `http_error` with
 `response contains Content-Range` before reading the body. The retired Python
 executor rejects statuses 400 and above and ignores the range header. The
@@ -860,12 +860,14 @@ Other values, such as `Infinity`, `NaN` or huge numbers, fail with
 `error_type="configuration_error"` before any request. Retries also stop once
 another delay plus a whole attempt would exceed the check's runtime budget
 (its `max_runtime_seconds`, or the estimate from timeout and retries, at most
-one hour); the result is then the last failure.
+one hour). If the budget is exhausted during the retry delay, the last failure
+is returned without another request.
 
-`timeout` bounds each whole attempt, redirects and body read included, not
-only every single read: a body that arrives too slowly fails the attempt with
+The Rust agent bounds every whole HTTP attempt, including the first, by the
+lesser of `timeout` and the remaining execution budget. The limit includes
+redirects and the body read. An attempt that runs out of time returns
 `error_type="timeout"`. Cookies set by the endpoint stay with this check
-execution and are never sent by other checks.
+execution.
 
 ### Ping Checks
 

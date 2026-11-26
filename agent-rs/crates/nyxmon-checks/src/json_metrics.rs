@@ -4,15 +4,16 @@
 //! the fetch on the check's own session copy (its own cookie jar):
 //! redirects followed, basic auth, only complete successful responses read,
 //! the body cap applied to the decoded bytes, and strict metrics admission
-//! (unique object members and finite numbers) on the raw bytes. Each attempt, redirects and body read included, is bounded by the
-//! configured timeout as a whole ([`attempt_deadline`]).
+//! (unique object members and finite numbers) on the raw bytes.
 //!
-//! Retries stay inside the check's execution budget: the runtime estimate
-//! the collector sizes the processing lease with
+//! Each whole attempt, including redirects and body reads, uses the lesser
+//! of the configured timeout and the remaining execution budget
+//! ([`attempt_deadline`]). The budget is the runtime estimate the collector
+//! sizes the processing lease with
 //! ([`estimated_check_runtime_seconds`], capped at
-//! [`MAX_DERIVED_PROCESSING_LEASE_SECONDS`]). A retry starts only while its
-//! delay plus a whole attempt still fit into that budget; otherwise the
-//! last failure is the result.
+//! [`MAX_DERIVED_PROCESSING_LEASE_SECONDS`]). A retry is scheduled only if
+//! its delay plus a whole attempt fit. If the delay uses up the remaining
+//! budget, the last failure is the result.
 
 use std::time::{Duration, Instant};
 
@@ -27,7 +28,7 @@ use nyxmon_core::pyjson::{PyDict, PyJson, loads_metrics_bytes, py_type_name as t
 use crate::ctx::BatchCtx;
 use crate::http_client::{
     BodyError, BodyLimit, GetRequest, HttpError, HttpErrorKind, HttpSession, attempt_deadline,
-    basic_authorization, read_body, timeout_duration,
+    basic_authorization, read_body,
 };
 
 fn error(check: &Check, error_type: &str, msg: impl Into<String>) -> CheckResult {
@@ -82,10 +83,11 @@ async fn fetch(
     config: &JsonMetricsConfig,
     url: &str,
     auth: Option<HeaderValue>,
+    timeout: Duration,
 ) -> Fetched {
     let request = GetRequest {
         url,
-        timeout: timeout_duration(config.timeout),
+        timeout: Some(timeout),
         follow_redirects: true,
         authorization: auth,
     };
@@ -129,13 +131,10 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
     let attempts = config.retries + 1;
     let started = Instant::now();
     let budget = execution_budget(check);
-    // `attempt < retries`, and the delay plus one more whole attempt still
-    // fit into the execution budget.
-    let may_retry = |attempt: u32| {
-        attempt < config.retries
-            && started.elapsed().as_secs_f64() + config.retry_delay + config.timeout
-                <= budget.as_secs_f64()
-    };
+    let remaining_budget = || budget.saturating_sub(started.elapsed());
+    let timeout = Duration::from_secs_f64(config.timeout);
+    let retry_cost = Duration::from_secs_f64(config.retry_delay) + timeout;
+    let may_retry = |attempt: u32| attempt < config.retries && retry_cost <= remaining_budget();
     let mut last_error = None;
     let http = ctx.http.for_check();
 
@@ -156,7 +155,11 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
                 ),
             ));
         };
-        let raw_body = match fetch(&http, &config, url, auth).await {
+        let remaining = remaining_budget();
+        if remaining.is_zero() {
+            return Ok(last_error.unwrap_or_else(|| error(check, "timeout", "")));
+        }
+        let raw_body = match fetch(&http, &config, url, auth, timeout.min(remaining)).await {
             Fetched::Body(body) => body,
             Fetched::RejectedStatus(status) => {
                 let failure = error(check, "http_error", format!("HTTP {status}"));

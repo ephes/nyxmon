@@ -70,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reject terminal non-2xx statuses and 206 Partial Content before reading a
   metrics response body. Reject otherwise successful responses carrying
   `Content-Range` as well. Preserve retries for HTTP 5xx responses.
+- Cap every metrics HTTP attempt by the remaining execution budget, including
+  the first attempt. Recheck the budget after each retry delay.
 - Report a threshold type mismatch when a boolean and a number are compared.
   Integer and floating-point thresholds remain compatible.
 

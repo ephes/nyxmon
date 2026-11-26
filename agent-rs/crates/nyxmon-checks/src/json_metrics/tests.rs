@@ -221,6 +221,29 @@ async fn clock_values_outside_the_finite_domain_are_configuration_errors() {
 }
 
 #[tokio::test]
+async fn the_first_attempt_respects_the_execution_budget() {
+    let server = FakeServer::start(vec![vec![
+        Action::Write(head(200, &[("Content-Length", "8")])),
+        Action::Hold,
+    ]])
+    .await;
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "timeout": 5,
+             "retries": 2, "max_runtime_seconds": 1}}"#,
+        server.port()
+    );
+    let check = check(&data);
+    let ctx = ctx();
+    let result = tokio::time::timeout(Duration::from_secs(2), execute(&check, &ctx))
+        .await
+        .expect("the metrics check should return before the watchdog")
+        .unwrap();
+    assert_eq!(result.status, ResultStatus::Error, "{result:?}");
+    assert_eq!(result.data["error_type"].as_str(), Some("timeout"));
+    assert_eq!(server.requests().len(), 1);
+}
+
+#[tokio::test]
 async fn retries_stop_when_the_execution_budget_is_spent() {
     // A 1 s budget: after the first fast 503 the delay plus a whole attempt
     // (0.3 + 0.5 s) still fit, after the second (at about 0.3 s) they no
