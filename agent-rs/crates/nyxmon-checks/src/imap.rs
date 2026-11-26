@@ -1006,33 +1006,36 @@ fn has_internaldate_key(record: &[u8]) -> bool {
         .any(|w| w.eq_ignore_ascii_case(b"INTERNALDATE"))
 }
 
+/// Plan cleanup using a fresh CAPABILITY response on the selected mailbox.
+async fn cleanup_uses_uidplus(imap: &mut Imap) -> Result<bool, ImapExc> {
+    imap.untagged.shift_remove("CAPABILITY");
+    let capabilities = checked("capability", imap.capability().await?)?;
+    imap.require_mailbox_generation()?;
+    let malformed = || ImapExc::Lib("missing or malformed IMAP CAPABILITY data".to_owned());
+    let mut uidplus = false;
+    for item in &capabilities {
+        let Some(Datum::Bytes(bytes)) = item else {
+            return Err(malformed());
+        };
+        for token in bytes.split(|b| *b == b' ') {
+            if token.is_empty()
+                || !token
+                    .iter()
+                    .all(|b| b.is_ascii_graphic() && !b"(){%*\"\\]".contains(b))
+            {
+                return Err(malformed());
+            }
+            uidplus |= token.eq_ignore_ascii_case(b"UIDPLUS");
+        }
+    }
+    Ok(uidplus)
+}
+
 /// `ImapLibSession.delete_messages`.
-async fn delete_messages(imap: &mut Imap, ids: &[String]) -> Result<(), ImapExc> {
+async fn delete_messages(imap: &mut Imap, ids: &[String], uidplus: bool) -> Result<(), ImapExc> {
     let set = ascii(&ids.join(","))?;
     let args = vec![set.clone(), b"+FLAGS".to_vec(), b"(\\Deleted)".to_vec()];
     checked("uid", imap.uid("STORE", args).await?)?;
-    let capabilities = checked("capability", imap.capability().await?)?;
-    imap.require_mailbox_generation()?;
-    let mut uidplus = false;
-    for line in capabilities.iter().flatten() {
-        match line {
-            Datum::Bytes(bytes) if !bytes.is_empty() => {
-                uidplus |= bytes
-                    .to_ascii_uppercase()
-                    .split(|b| b" \t\n\r\x0b\x0c".contains(b))
-                    .any(|word| word == b"UIDPLUS");
-            }
-            Datum::Bytes(_) => {}
-            Datum::Literal(..) => {
-                return Err(ImapExc::Other(
-                    "'tuple' object has no attribute 'upper'".to_owned(),
-                ));
-            }
-        }
-        if uidplus {
-            break;
-        }
-    }
     if uidplus {
         checked("uid", imap.uid("EXPUNGE", vec![set]).await?)?;
     }
@@ -1101,19 +1104,24 @@ async fn session(
     // Settle against one current clock reading immediately before selection
     // and destructive cleanup; never allow implausible future evidence to pass.
     settle_messages(&mut messages, config, env.now())?;
-    if config.delete_after_check {
+    let uidplus = if config.delete_after_check {
         imap.require_mailbox_generation()?;
         // Drain pending status after FETCH, then settle age again: a slow
         // NOOP must not keep expired evidence healthy or authorize deletion.
         checked("noop", imap.simple_command("NOOP", &[]).await?)?;
         imap.require_mailbox_generation()?;
         settle_messages(&mut messages, config, env.now())?;
-    }
+        let uidplus = cleanup_uses_uidplus(imap).await?;
+        settle_messages(&mut messages, config, env.now())?;
+        uidplus
+    } else {
+        false
+    };
     messages.sort_by_key(|(_, at)| *at);
     let latest = messages.last().map_or(0, |(_, at)| *at);
     let uids: Vec<String> = messages.into_iter().map(|(uid, _)| uid).collect();
     if config.delete_after_check {
-        delete_messages(imap, &uids).await?;
+        delete_messages(imap, &uids, uidplus).await?;
     }
     Ok((uids, latest))
 }

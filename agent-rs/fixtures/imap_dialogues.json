@@ -89,22 +89,22 @@
      ],
      [
       "send",
-      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
      ],
      [
       "tagged",
-      "OK STORE completed"
+      "OK CAPABILITY completed"
      ],
      [
       "recv"
      ],
      [
       "send",
-      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
      [
       "tagged",
-      "OK CAPABILITY completed"
+      "OK STORE completed"
      ],
      [
       "recv"
@@ -135,8 +135,8 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 20,30,40 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 30,20 +FLAGS (\\Deleted)",
      "CAPABILITY",
+     "UID STORE 30,20 +FLAGS (\\Deleted)",
      "UID EXPUNGE 30,20",
      "LOGOUT"
     ]
@@ -237,22 +237,22 @@
      ],
      [
       "send",
-      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+      "* CAPABILITY IMAP4rev1 IDLE\r\n"
      ],
      [
       "tagged",
-      "OK STORE completed"
+      "OK CAPABILITY completed"
      ],
      [
       "recv"
      ],
      [
       "send",
-      "* CAPABILITY IMAP4rev1 IDLE\r\n"
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
      [
       "tagged",
-      "OK CAPABILITY completed"
+      "OK STORE completed"
      ],
      [
       "recv"
@@ -278,8 +278,8 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
+     "UID STORE 5 +FLAGS (\\Deleted)",
      "LOGOUT"
     ]
    ]
@@ -547,22 +547,22 @@
      ],
      [
       "send",
-      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+      "* CAPABILITY IMAP4rev1\r\n"
      ],
      [
       "tagged",
-      "OK STORE completed"
+      "OK CAPABILITY completed"
      ],
      [
       "recv"
      ],
      [
       "send",
-      "* CAPABILITY IMAP4rev1\r\n"
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
      [
       "tagged",
-      "OK CAPABILITY completed"
+      "OK STORE completed"
      ],
      [
       "recv"
@@ -586,8 +586,8 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 7 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 7 +FLAGS (\\Deleted)",
      "CAPABILITY",
+     "UID STORE 7 +FLAGS (\\Deleted)",
      "LOGOUT"
     ]
    ]
@@ -936,22 +936,22 @@
      ],
      [
       "send",
-      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
      ],
      [
       "tagged",
-      "OK STORE completed"
+      "OK CAPABILITY completed"
      ],
      [
       "recv"
      ],
      [
       "send",
-      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
      [
       "tagged",
-      "OK CAPABILITY completed"
+      "OK STORE completed"
      ],
      [
       "recv"
@@ -990,8 +990,8 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
+     "UID STORE 5 +FLAGS (\\Deleted)",
      "UID EXPUNGE 5",
      "LOGOUT"
     ]
@@ -1565,6 +1565,17 @@
       "recv"
      ],
      [
+      "send",
+      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+     ],
+     [
+      "tagged",
+      "OK CAPABILITY completed"
+     ],
+     [
+      "recv"
+     ],
+     [
       "tagged",
       "NO [CANNOT] store failed"
      ],
@@ -1590,6 +1601,7 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
      "NOOP",
+     "CAPABILITY",
      "UID STORE 5 +FLAGS (\\Deleted)",
      "LOGOUT"
     ]
@@ -1670,22 +1682,22 @@
      ],
      [
       "send",
-      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
+      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
      ],
      [
       "tagged",
-      "OK STORE completed"
+      "OK CAPABILITY completed"
      ],
      [
       "recv"
      ],
      [
       "send",
-      "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
+      "* 1 FETCH (FLAGS (\\Deleted))\r\n"
      ],
      [
       "tagged",
-      "OK CAPABILITY completed"
+      "OK STORE completed"
      ],
      [
       "recv"
@@ -1716,8 +1728,8 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
+     "UID STORE 5 +FLAGS (\\Deleted)",
      "UID EXPUNGE 5",
      "LOGOUT"
     ]
@@ -2759,12 +2771,11 @@
     "tls_mode": "none",
     "username": "monitor"
    },
-   "name": "capability_after_store_without_response",
+   "name": "missing_cleanup_capability_response",
    "result": {
-    "latest_internaldate": "2025-10-09T08:50:00+00:00",
-    "matched_uids": [
-     "5"
-    ]
+    "attempts": 1,
+    "error_msg": "missing or malformed IMAP CAPABILITY data",
+    "error_type": "unexpected_error"
    },
    "scripts": [
     [
@@ -2824,13 +2835,6 @@
      ],
      [
       "tagged",
-      "OK stored"
-     ],
-     [
-      "recv"
-     ],
-     [
-      "tagged",
       "OK no caps"
      ],
      [
@@ -2847,7 +2851,7 @@
     ]
    ],
    "sleeps": [],
-   "status": "ok",
+   "status": "error",
    "transcripts": [
     [
      "LOGIN monitor \"secret\"",
@@ -2855,7 +2859,6 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 5 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 5 +FLAGS (\\Deleted)",
      "CAPABILITY",
      "LOGOUT"
     ]
@@ -2943,6 +2946,17 @@
      ],
      [
       "send",
+      "* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAMESPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY PREVIEW STATUS=SIZE SAVEDATE LITERAL+ NOTIFY SPECIAL-USE\r\n"
+     ],
+     [
+      "tagged",
+      "OK Capability completed (0.001 + 0.000 secs)."
+     ],
+     [
+      "recv"
+     ],
+     [
+      "send",
       "* 1 FETCH (UID 11 FLAGS (\\Deleted))\r\n"
      ],
      [
@@ -2952,17 +2966,6 @@
      [
       "tagged",
       "OK Store completed (0.001 + 0.000 secs)."
-     ],
-     [
-      "recv"
-     ],
-     [
-      "send",
-      "* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAMESPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY PREVIEW STATUS=SIZE SAVEDATE LITERAL+ NOTIFY SPECIAL-USE\r\n"
-     ],
-     [
-      "tagged",
-      "OK Capability completed (0.001 + 0.000 secs)."
      ],
      [
       "recv"
@@ -2997,8 +3000,8 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 11,12 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 11,12 +FLAGS (\\Deleted)",
      "CAPABILITY",
+     "UID STORE 11,12 +FLAGS (\\Deleted)",
      "UID EXPUNGE 11,12",
      "LOGOUT"
     ]
@@ -3096,7 +3099,7 @@
      ],
      [
       "send",
-      "* 5 FETCH (UID 4711 FLAGS (\\Deleted))\r\n"
+      "* CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1 UIDPLUS COMPRESS=DEFLATE ENABLE MOVE CONDSTORE ESEARCH UTF8=ACCEPT LIST-EXTENDED LIST-STATUS LITERAL- SPECIAL-USE APPENDLIMIT=35651584\r\n"
      ],
      [
       "tagged",
@@ -3107,7 +3110,7 @@
      ],
      [
       "send",
-      "* CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1 UIDPLUS COMPRESS=DEFLATE ENABLE MOVE CONDSTORE ESEARCH UTF8=ACCEPT LIST-EXTENDED LIST-STATUS LITERAL- SPECIAL-USE APPENDLIMIT=35651584\r\n"
+      "* 5 FETCH (UID 4711 FLAGS (\\Deleted))\r\n"
      ],
      [
       "tagged",
@@ -3147,8 +3150,8 @@
      "UID SEARCH NOT DELETED HEADER SUBJECT \"[nyxmon]\"",
      "UID FETCH 4711 (INTERNALDATE)",
      "NOOP",
-     "UID STORE 4711 +FLAGS (\\Deleted)",
      "CAPABILITY",
+     "UID STORE 4711 +FLAGS (\\Deleted)",
      "UID EXPUNGE 4711",
      "LOGOUT"
     ]

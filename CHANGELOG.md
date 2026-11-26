@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Count replies observed before a terminal ping tool failure in both executors,
   while preserving the failure status.
 
+### Rust IMAP checks
+
+- Validate cleanup capabilities and recheck UIDVALIDITY and message freshness
+  before setting the deletion flag.
+
 ### Rust ping runner
 
 - Reject invalid deadlines in direct calls to the ping runner before starting a

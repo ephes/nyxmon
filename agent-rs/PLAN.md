@@ -343,7 +343,8 @@ section 3.6); no other new variable is introduced by the port.
   an 8 MiB reply budget (`incomplete_scan` beyond that); ages are rechecked
   after all FETCHes, and an INTERNALDATE more than 60 s in the future is
   `invalid_message_date`. Cleanup now also requires pinned SELECT UIDVALIDITY
-  with no intervening invalidation (`invalid_mailbox_generation`); conflicting
+  with no intervening invalidation (`invalid_mailbox_generation`) and a valid
+  CAPABILITY response before UID STORE; conflicting
   duplicate FETCH dates fail with `incomplete_scan`. Identical parsed instants
   are accepted once; matching records without INTERNALDATE (unsolicited FLAGS
   data) are ignored rather than read as a missing date. The dialogue fixture records these differences.

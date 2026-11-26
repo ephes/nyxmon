@@ -602,10 +602,10 @@ async fn imap_attempt_deadline_preserves_completed_cleanup_when_logout_drips() {
         Step::Recv,
         tagged("OK synchronized"),
         Step::Recv,
-        tagged("OK stored"),
-        Step::Recv,
         send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
         tagged("OK done"),
+        Step::Recv,
+        tagged("OK stored"),
         Step::Recv,
         tagged("OK expunged"),
     ]);
@@ -628,8 +628,8 @@ async fn imap_attempt_deadline_preserves_completed_cleanup_when_logout_drips() {
         &transcript[4..],
         [
             "NOOP",
-            "UID STORE 5 +FLAGS (\\Deleted)",
             "CAPABILITY",
+            "UID STORE 5 +FLAGS (\\Deleted)",
             "UID EXPUNGE 5",
             "LOGOUT"
         ]
@@ -677,10 +677,10 @@ fn r90_finish(script: &mut Vec<Step>, delete: bool) {
             Step::Recv,
             tagged("OK synchronized"),
             Step::Recv,
-            tagged("OK stored"),
-            Step::Recv,
             send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
             tagged("OK capabilities"),
+            Step::Recv,
+            tagged("OK stored"),
             Step::Recv,
             tagged("OK expunged"),
         ]);
@@ -712,7 +712,7 @@ async fn r90_subject_is_one_literal_search_argument() {
         wire[2],
         r#"UID SEARCH NOT DELETED HEADER SUBJECT "report \" OR ALL HEADER SUBJECT \" \\ end""#
     );
-    assert_eq!(wire[5], "UID STORE 5 +FLAGS (\\Deleted)");
+    assert_eq!(wire[6], "UID STORE 5 +FLAGS (\\Deleted)");
     assert_eq!(wire[7], "UID EXPUNGE 5");
 }
 
@@ -789,7 +789,7 @@ async fn r90_fetches_are_batched_and_attributed_by_uid() {
     }
     assert_eq!(wire.len(), 16);
     assert_eq!(
-        wire[12],
+        wire[13],
         format!("UID STORE {} +FLAGS (\\Deleted)", ids.join(","))
     );
 }
@@ -929,7 +929,7 @@ async fn r90_only_finally_fresh_uids_are_selected_and_deleted() {
         result.data["matched_uids"],
         PyJson::List(vec![PyJson::from("33")])
     );
-    assert_eq!(wire[6], "UID STORE 33 +FLAGS (\\Deleted)");
+    assert_eq!(wire[7], "UID STORE 33 +FLAGS (\\Deleted)");
     assert_eq!(wire[8], "UID EXPUNGE 33");
 }
 
@@ -957,7 +957,7 @@ async fn r90_future_dates_fail_closed_with_an_inclusive_skew_allowance() {
         let wire = untag(server.transcripts().await.remove(0));
         if accepted {
             assert_eq!(result.status, ResultStatus::Ok, "{date}: {:?}", result.data);
-            assert_eq!(wire[5], "UID STORE 5 +FLAGS (\\Deleted)");
+            assert_eq!(wire[6], "UID STORE 5 +FLAGS (\\Deleted)");
         } else {
             assert_eq!(
                 result.status,
@@ -1108,6 +1108,39 @@ async fn r102_missing_or_invalid_selected_generation_cannot_authorize_delete() {
 }
 
 #[tokio::test]
+async fn invalid_capability_reply_prevents_store() {
+    for (reply, completion, error_type) in [
+        ("", "NO capability refused", "execution_error"),
+        ("", "OK no capability data", "unexpected_error"),
+        (
+            "* CAPABILITY IMAP4rev1 UIDPLUS\r\n* CAPABILITY {1}\r\nX\r\n",
+            "OK malformed capabilities",
+            "unexpected_error",
+        ),
+        (
+            "* CAPABILITY IMAP4rev1 (UIDPLUS)\r\n",
+            "OK malformed capabilities",
+            "unexpected_error",
+        ),
+    ] {
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script.extend([Step::Recv, tagged("OK synchronized"), Step::Recv]);
+        if !reply.is_empty() {
+            script.push(send(reply));
+        }
+        script.extend([tagged(completion), Step::Recv, tagged("OK logout")]);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        let wire = untag(server.transcripts().await.remove(0));
+        assert_eq!(&wire[4..], ["NOOP", "CAPABILITY", "LOGOUT"], "{reply:?}");
+        assert_eq!(result.status, ResultStatus::Error);
+        assert_eq!(result.data["error_type"], PyJson::from(error_type));
+    }
+}
+
+#[tokio::test]
 async fn r102_generation_is_rechecked_before_expunge() {
     for (change_at, uidplus) in [("STORE", true), ("CAPABILITY", true), ("CAPABILITY", false)] {
         let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
@@ -1115,21 +1148,21 @@ async fn r102_generation_is_rechecked_before_expunge() {
             Step::Recv,
             tagged("OK synchronized"),
             Step::Recv,
-            tagged(if change_at == "STORE" {
-                "OK [UIDVALIDITY 8] stored"
-            } else {
-                "OK stored"
-            }),
-            Step::Recv,
             send(if uidplus {
                 "* CAPABILITY IMAP4rev1 UIDPLUS\r\n"
             } else {
                 "* CAPABILITY IMAP4rev1\r\n"
             }),
-            tagged("OK [UIDVALIDITY 8] capabilities"),
-            Step::Recv,
-            tagged("OK logout"),
+            tagged(if change_at == "CAPABILITY" {
+                "OK [UIDVALIDITY 8] capabilities"
+            } else {
+                "OK capabilities"
+            }),
         ]);
+        if change_at == "STORE" {
+            script.extend([Step::Recv, tagged("OK [UIDVALIDITY 8] stored")]);
+        }
+        script.extend([Step::Recv, tagged("OK logout")]);
         let server = ScriptServer::start(vec![script], false).await;
         let result = execute(&check(server.port, ""), &TestEnv::new())
             .await
@@ -1139,7 +1172,10 @@ async fn r102_generation_is_rechecked_before_expunge() {
             PyJson::from("invalid_mailbox_generation")
         );
         let lines = untag(server.transcripts().await.remove(0));
-        assert!(lines.iter().any(|line| line.starts_with("UID STORE")));
+        assert_eq!(
+            lines.iter().any(|line| line.starts_with("UID STORE")),
+            change_at == "STORE"
+        );
         assert!(
             !lines.iter().any(|line| line.starts_with("UID EXPUNGE")),
             "{lines:?}"
@@ -1429,33 +1465,35 @@ async fn r102_queued_generation_change_after_fetch_blocks_store() {
 }
 
 #[tokio::test]
-async fn r102_noop_wait_cannot_keep_aged_evidence_healthy_or_delete_it() {
-    let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
-    script.extend([
-        Step::Recv,
-        tagged("OK synchronized"),
-        Step::Recv,
-        tagged("OK logout"),
-    ]);
-    let server = ScriptServer::start(vec![script], false).await;
-    let env = ScanClock {
-        inner: TestEnv::new(),
-        advance_after: 2,
-        reads: Default::default(),
-    };
-    let result = execute(
-        &check(server.port, r#", "max_age_minutes": 1, "timeout": 0.1"#),
-        &env,
-    )
-    .await
-    .unwrap();
-    assert_eq!(result.data["error_type"], PyJson::from("no_recent_message"));
-    let lines = untag(server.transcripts().await.remove(0));
-    assert!(lines.contains(&"NOOP".to_owned()));
-    assert!(
-        !lines
-            .iter()
-            .any(|line| line.starts_with("UID STORE") || line.starts_with("UID EXPUNGE")),
-        "{lines:?}"
-    );
+async fn cleanup_preflight_cannot_keep_aged_evidence_healthy_or_delete_it() {
+    for (advance_after, commands) in [
+        (2, &["NOOP", "LOGOUT"][..]),
+        (3, &["NOOP", "CAPABILITY", "LOGOUT"][..]),
+    ] {
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script.extend([Step::Recv, tagged("OK synchronized")]);
+        if advance_after == 3 {
+            script.extend([
+                Step::Recv,
+                send("* CAPABILITY IMAP4rev1 UIDPLUS\r\n"),
+                tagged("OK capabilities"),
+            ]);
+        }
+        script.extend([Step::Recv, tagged("OK logout")]);
+        let server = ScriptServer::start(vec![script], false).await;
+        let env = ScanClock {
+            inner: TestEnv::new(),
+            advance_after,
+            reads: Default::default(),
+        };
+        let result = execute(
+            &check(server.port, r#", "max_age_minutes": 1, "timeout": 0.1"#),
+            &env,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.data["error_type"], PyJson::from("no_recent_message"));
+        let lines = untag(server.transcripts().await.remove(0));
+        assert_eq!(&lines[4..], commands);
+    }
 }
