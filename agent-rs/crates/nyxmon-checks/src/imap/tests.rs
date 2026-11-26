@@ -1128,6 +1128,11 @@ async fn invalid_capability_reply_prevents_store() {
             "OK malformed capabilities",
             "unexpected_error",
         ),
+        (
+            "* CAPABILITY \r\n",
+            "OK empty capabilities",
+            "unexpected_error",
+        ),
     ] {
         let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
         script.extend([Step::Recv, tagged("OK synchronized"), Step::Recv]);
@@ -1143,6 +1148,42 @@ async fn invalid_capability_reply_prevents_store() {
         assert_eq!(&wire[4..], ["NOOP", "CAPABILITY", "LOGOUT"], "{reply:?}");
         assert_eq!(result.status, ResultStatus::Error);
         assert_eq!(result.data["error_type"], PyJson::from(error_type));
+    }
+}
+
+#[tokio::test]
+async fn capability_whitespace_does_not_block_cleanup() {
+    for (reply, expunge) in [
+        ("* CAPABILITY IMAP4rev1 UIDPLUS \r\n", true),
+        ("* CAPABILITY IMAP4rev1  UIDPLUS\r\n", true),
+        ("* CAPABILITY IMAP4rev1 \r\n", false),
+    ] {
+        let mut script = r102_generation_scan("* OK [UIDVALIDITY 7] selected\r\n", "OK fetched");
+        script.extend([
+            Step::Recv,
+            tagged("OK synchronized"),
+            Step::Recv,
+            send(reply),
+            tagged("OK capabilities"),
+            Step::Recv,
+            tagged("OK stored"),
+        ]);
+        if expunge {
+            script.extend([Step::Recv, tagged("OK expunged")]);
+        }
+        script.extend([Step::Recv, tagged("OK logout")]);
+        let server = ScriptServer::start(vec![script], false).await;
+        let result = execute(&check(server.port, ""), &TestEnv::new())
+            .await
+            .unwrap();
+        let wire = untag(server.transcripts().await.remove(0));
+        let mut expected = vec!["NOOP", "CAPABILITY", "UID STORE 5 +FLAGS (\\Deleted)"];
+        if expunge {
+            expected.push("UID EXPUNGE 5");
+        }
+        expected.push("LOGOUT");
+        assert_eq!(&wire[4..], expected.as_slice(), "{reply:?}");
+        assert_eq!(result.status, ResultStatus::Ok, "{reply:?}");
     }
 }
 

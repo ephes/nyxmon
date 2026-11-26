@@ -1013,20 +1013,29 @@ async fn cleanup_uses_uidplus(imap: &mut Imap) -> Result<bool, ImapExc> {
     imap.require_mailbox_generation()?;
     let malformed = || ImapExc::Lib("missing or malformed IMAP CAPABILITY data".to_owned());
     let mut uidplus = false;
+    let mut tokens = 0usize;
     for item in &capabilities {
         let Some(Datum::Bytes(bytes)) = item else {
             return Err(malformed());
         };
-        for token in bytes.split(|b| *b == b' ') {
-            if token.is_empty()
-                || !token
-                    .iter()
-                    .all(|b| b.is_ascii_graphic() && !b"(){%*\"\\]".contains(b))
+        // Extra ASCII whitespace (a trailing or doubled space) does not make
+        // the UIDPLUS decision ambiguous, like the login-time capability parse.
+        for token in bytes
+            .split(u8::is_ascii_whitespace)
+            .filter(|token| !token.is_empty())
+        {
+            if !token
+                .iter()
+                .all(|b| b.is_ascii_graphic() && !b"(){%*\"\\]".contains(b))
             {
                 return Err(malformed());
             }
+            tokens += 1;
             uidplus |= token.eq_ignore_ascii_case(b"UIDPLUS");
         }
+    }
+    if tokens == 0 {
+        return Err(malformed());
     }
     Ok(uidplus)
 }
