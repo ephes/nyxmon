@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Require a readable regular `notes.md` and stage a private copy before tag
   creation. Use that copy when creating the release.
+- Compare downloaded release assets byte for byte in 1 MiB chunks to bound
+  memory use for large archives.
 
 ### Rust agent 0.1.8
 

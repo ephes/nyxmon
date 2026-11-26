@@ -278,11 +278,11 @@ into a private temporary directory. With those checks passed and `gh` 2.74.0 or
 newer (for asset digests), it creates the annotated tag `agent-rs-v<version>` on
 the build commit, which must be on `main`. An existing tag must be annotated and
 point at that commit. It then uses the staged notes to create the GitHub release
-with exactly the archive and its
-`.sha256` (`gh release create --verify-tag`; a semver pre-release such as
-`0.4.0-rc.1` becomes a GitHub pre-release), then downloads both again and
-compares them byte for byte. It succeeds only when afterwards the same
-release (same release and asset ids) is published, with the expected
+with exactly the archive and its `.sha256` (`gh release create --verify-tag`;
+a semver pre-release such as `0.4.0-rc.1` becomes a GitHub pre-release). It
+downloads both again and compares them byte for byte in 1 MiB chunks.
+It succeeds only if the verified release is still published with the same
+release and asset IDs, the expected
 prerelease flag, exactly those two assets and GitHub's sha256 of each equal
 to the built one. A draft (left by an interrupted `gh release create`) is
 refused: check it, delete the draft by hand (the tag stays) and run

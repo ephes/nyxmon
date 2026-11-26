@@ -1023,6 +1023,51 @@ def test_publish_completes_and_checks_a_partial_release(
         publish(release, built, github=github)
 
 
+@pytest.mark.parametrize("downloaded_tail", [b"ok", b"", b"ox"])
+def test_ensure_release_compares_assets_with_bounded_reads(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    downloaded_tail: bytes,
+) -> None:
+    chunk_size = 1 << 20
+    prefix = b"a" * chunk_size
+    archive = tmp_path / "asset.tar.gz"
+    archive.write_bytes(prefix + b"ok")
+    opened = Path.open
+
+    @contextmanager
+    def bounded_reader(path: Path) -> Iterator[Any]:
+        with opened(path, "rb") as stream:
+
+            def read(size: int = -1) -> bytes:
+                assert 0 < size <= chunk_size, "asset reads must be bounded"
+                return stream.read(size)
+
+            yield SimpleNamespace(read=read)
+
+    def open_asset(path: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        if mode == "rb" and path.name == archive.name:
+            return bounded_reader(path)
+        return opened(path, mode, *args, **kwargs)
+
+    class Download(FakeGitHub):
+        def download(self, tag: str, directory: Path) -> None:
+            (directory / archive.name).write_bytes(prefix + downloaded_tail)
+
+    github = Download()
+    github.releases["t"] = {archive.name: prefix + b"ok"}
+    files = {archive.name: archive}
+    monkeypatch.setattr(Path, "open", open_asset)
+
+    if downloaded_tail == b"ok":
+        steps = release.ensure_release(github, "t", "t", archive, files)
+        assert "verified 1 assets of t byte for byte" in steps
+    else:
+        with pytest.raises(release.ReleaseError, match="downloaded .* differs"):
+            release.ensure_release(github, "t", "t", archive, files)
+
+
 def test_ensure_release_refuses_a_different_digest(
     release: ModuleType, tmp_path: Path
 ) -> None:
