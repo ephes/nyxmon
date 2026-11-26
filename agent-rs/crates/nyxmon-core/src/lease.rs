@@ -4,8 +4,19 @@
 //!
 //! The collector extends the processing lease to the largest estimate of
 //! its enabled checks. The estimator uses its own defaults (`timeout=10`,
-//! `retries=0`, `retry_delay=0`) regardless of the executors' defaults.
+//! `retries=0`, `retry_delay=0`) regardless of the executors' defaults,
+//! except for json-metrics (intentional difference): its executor retries
+//! once after 2 s by default and caps its retries by this estimate, so the
+//! estimate uses the retries, delay and timeout of its validated config
+//! (defaults and coercions included, e.g. `retries: false` is zero). For an
+//! invalid config the per-field rules below apply, with the same defaults
+//! ([`DEFAULT_RETRIES`], [`DEFAULT_RETRY_DELAY_SECONDS`]) for missing or
+//! non-numeric fields. Python estimated zero retries and so budgeted no
+//! time for the default retry.
 
+use crate::config::json_metrics::{
+    DEFAULT_RETRIES, DEFAULT_RETRY_DELAY_SECONDS, JsonMetricsConfig,
+};
 use crate::log::{WarnOnce, loggers};
 use crate::pyjson::{PyJson, py_float, py_float_of_int};
 
@@ -77,8 +88,20 @@ pub fn estimated_check_runtime_seconds(
         return ((count + 1.0) * (timeout + 2.0) + (count - 1.0) * interval + 30.0).ceil() as i64;
     }
 
-    let retries = non_negative_number("retries", 0).floor();
-    let retry_delay = non_negative_number("retry_delay", 0);
+    if check_type == "json-metrics"
+        && let Ok(config) = JsonMetricsConfig::from_data(data)
+    {
+        let retries = f64::from(config.retries);
+        return ((retries + 1.0) * config.timeout + retries * config.retry_delay + 30.0).ceil()
+            as i64;
+    }
+    let (default_retries, default_retry_delay) = if check_type == "json-metrics" {
+        (DEFAULT_RETRIES, DEFAULT_RETRY_DELAY_SECONDS)
+    } else {
+        (0, 0)
+    };
+    let retries = non_negative_number("retries", default_retries).floor();
+    let retry_delay = non_negative_number("retry_delay", default_retry_delay);
     let timeout = non_negative_number("timeout", 10);
     let per_attempt = match check_type {
         "imap" => timeout * 8.0,

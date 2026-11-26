@@ -2,6 +2,8 @@
 //! `fixtures/config_json_metrics.json` (`cases`: `from_dict` + `validate`).
 
 use super::http::HttpConfig;
+use num_bigint::BigInt;
+
 use super::json_metrics::JsonMetricsConfig;
 use super::*;
 use crate::fixture::{Field, load};
@@ -129,8 +131,9 @@ fn check_cases_with(
 
 /// The intentional finite clock domain of the json-metrics config: a
 /// configuration Python accepted with an infinite, NaN or too large
-/// `timeout`, too many `retries` or an infinite, NaN or too large
-/// `retry_delay` is a configuration error (checked in that order).
+/// `timeout`, too many `retries`, an infinite, NaN or too large
+/// `retry_delay` or a `max_body_bytes` above the 16 MiB ceiling is a
+/// configuration error (checked in that order).
 fn metrics_domain(_data: &PyJson, python: &PyJson) -> PyJson {
     let Some(ok) = python.get("ok") else {
         return python.clone();
@@ -148,10 +151,33 @@ fn metrics_domain(_data: &PyJson, python: &PyJson) -> PyJson {
         "retries must be at most 100"
     } else if !in_domain(float("retry_delay")) {
         "retry_delay must be finite and at most 300 seconds"
+    } else if !matches!(ok.get("max_body_bytes"), Some(PyJson::Int(n)) if *n <= 16 * 1024 * 1024) {
+        "max_body_bytes must be at most 16777216 bytes"
     } else {
         return python.clone();
     };
     dict(vec![("error", PyJson::from(message))])
+}
+
+#[test]
+fn max_body_bytes_is_capped_at_the_supported_ceiling() {
+    let outcome = |limit: &str| {
+        let data = crate::pyjson::loads(&format!(
+            r#"{{"url": "u", "max_body_bytes": {limit}, "checks": [{{"path": "$.a", "op": "<", "value": 1, "severity": "warning"}}]}}"#
+        ))
+        .unwrap();
+        JsonMetricsConfig::from_data(&data).map(|config| config.max_body_bytes)
+    };
+    assert_eq!(outcome("16777216"), Ok(BigInt::from(16_777_216)));
+    for limit in ["16777217", "9223372036854775808", &"9".repeat(400)] {
+        assert_eq!(
+            outcome(limit),
+            Err(ConfigError::invalid(
+                "max_body_bytes must be at most 16777216 bytes"
+            )),
+            "{limit}"
+        );
+    }
 }
 
 #[test]

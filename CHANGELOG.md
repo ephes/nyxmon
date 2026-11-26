@@ -74,6 +74,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the first attempt. Recheck the budget after each retry delay.
 - Report a threshold type mismatch when a boolean and a number are compared.
   Integer and floating-point thresholds remain compatible.
+- Count the default retry (one retry after 2 seconds) in the runtime estimate
+  of checks without `retries`/`retry_delay`, so the execution budget no
+  longer drops it. The derived processing lease grows to match. An explicit
+  `max_runtime_seconds` or `retries: 0` still limits the retries.
+- Reject `max_body_bytes` above 16 MiB (16777216) as `configuration_error`
+  before any request. Larger values previously let the agent read and parse
+  an unbounded response.
 
 ### Rust site observer
 

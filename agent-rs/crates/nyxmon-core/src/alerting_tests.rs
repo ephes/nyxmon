@@ -486,6 +486,51 @@ fn lease_estimate_matches_python() {
 }
 
 #[test]
+fn json_metrics_estimate_counts_the_default_retry() {
+    // Intentional difference: Python estimated zero retries for every type,
+    // while the json-metrics config retries once after 2 s by default.
+    let estimate = |check_type: &str, data: &str| {
+        estimated_check_runtime_seconds(9, check_type, &loads(data).expect("json"), None)
+    };
+    assert_eq!(estimate("json-metrics", r#"{"timeout": 60}"#), 152);
+    assert_eq!(estimate("json-metrics", "{}"), 52);
+    assert_eq!(
+        estimate("json-metrics", r#"{"timeout": 60, "retries": 0}"#),
+        90
+    );
+    assert_eq!(
+        estimate("json-metrics", r#"{"timeout": 60, "retry_delay": 0}"#),
+        150
+    );
+    assert_eq!(
+        estimate(
+            "json-metrics",
+            r#"{"timeout": 60, "max_runtime_seconds": 90}"#
+        ),
+        90
+    );
+    // The executor's coercions: `false` is zero retries, `true` one second.
+    assert_eq!(
+        estimate(
+            "json-metrics",
+            r#"{"url": "u", "checks": [{"path": "$.a", "op": "<", "value": 1,
+                "severity": "warning"}], "timeout": 300, "retries": false}"#
+        ),
+        330
+    );
+    assert_eq!(
+        estimate(
+            "json-metrics",
+            r#"{"url": "u", "checks": [{"path": "$.a", "op": "<", "value": 1,
+                "severity": "warning"}], "timeout": 60, "retry_delay": true}"#
+        ),
+        151
+    );
+    // Other types keep the estimator's own defaults.
+    assert_eq!(estimate("http", r#"{"timeout": 60}"#), 90);
+}
+
+#[test]
 fn delivery_markers_match_python() {
     let fixture = load(include_str!("../../../fixtures/incident_payloads.json"));
     let markers = fixture.field("delivery_markers");

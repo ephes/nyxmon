@@ -397,3 +397,76 @@ async fn excessive_metric_work_is_refused_before_transport() {
         Some("configuration_error")
     );
 }
+
+#[test]
+fn the_default_retry_fits_into_the_derived_budget() {
+    // A 60 s timeout and no retry fields: the config retries once after
+    // 2 s, so the budget must hold a first attempt that used 59 s plus the
+    // delay and a whole second attempt.
+    let used = Duration::from_secs(59);
+    let defaults = check(&format!(
+        r#"{{"url": "http://m.test/m", "checks": {RULES}, "timeout": 60}}"#
+    ));
+    let config = JsonMetricsConfig::from_data(&defaults.data).unwrap();
+    assert_eq!((config.retries, config.retry_delay), (1, 2.0));
+    let budget = execution_budget(&defaults);
+    assert_eq!(budget, Duration::from_secs(152));
+    assert!(retry_fits(&config, budget - used));
+
+    // An explicit shorter runtime ceiling still suppresses the retry.
+    let capped = check(&format!(
+        r#"{{"url": "http://m.test/m", "checks": {RULES}, "timeout": 60,
+             "max_runtime_seconds": 90}}"#
+    ));
+    assert!(!retry_fits(&config, execution_budget(&capped) - used));
+
+    // An explicit zero-retry override budgets a single attempt.
+    let single = check(&format!(
+        r#"{{"url": "http://m.test/m", "checks": {RULES}, "timeout": 60, "retries": 0}}"#
+    ));
+    assert_eq!(execution_budget(&single), Duration::from_secs(90));
+}
+
+#[tokio::test]
+async fn an_over_ceiling_body_cap_is_refused_before_any_request() {
+    let server = FakeServer::start(vec![crate::testutil::respond(200, &[], br#"{"a": 1}"#)]).await;
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "max_body_bytes": 16777217}}"#,
+        server.port()
+    );
+    let result = execute(&check(&data), &ctx()).await.unwrap();
+    assert_eq!(
+        result.data["error_type"].as_str(),
+        Some("configuration_error"),
+        "{result:?}"
+    );
+    assert!(server.requests().is_empty());
+}
+
+#[tokio::test]
+async fn a_compressed_body_stays_bounded_at_the_ceiling() {
+    use flate2::{Compression, write::GzEncoder};
+    use std::io::Write;
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder
+        .write_all(&vec![b' '; 16 * 1024 * 1024 + 1])
+        .unwrap();
+    let body = encoder.finish().unwrap();
+    let server = FakeServer::start(vec![crate::testutil::respond(
+        200,
+        &[("Content-Encoding", "gzip")],
+        &body,
+    )])
+    .await;
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": {RULES}, "max_body_bytes": 16777216,
+             "retries": 0}}"#,
+        server.port()
+    );
+    let result = execute(&check(&data), &ctx()).await.unwrap();
+    assert_eq!(
+        result.data["error_msg"].as_str(),
+        Some("response body exceeds the 16777216 byte limit"),
+        "{result:?}"
+    );
+}

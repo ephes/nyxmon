@@ -45,7 +45,9 @@ Key details:
 - The Python executor measures `duration_ms` for the final successfully decoded
   attempt using a monotonic clock. Retry delays and wall-clock changes do not
   affect it.
-- Body cap: `max_body_bytes` (default 1 MiB); larger bodies fail with `error_type=body_too_large`
+- Body cap: `max_body_bytes` (default 1 MiB); larger bodies fail with `error_type=body_too_large`.
+  The Rust agent accepts a cap of at most 16 MiB (`16777216`); a larger
+  setting fails with `error_type=configuration_error` before any request.
 - Severities: `warning` or `critical`
 
 Failures return `error_type=threshold_failed` with all failed rules in `failures`.

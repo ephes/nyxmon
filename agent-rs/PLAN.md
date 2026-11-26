@@ -1371,13 +1371,20 @@ adjusts the source URL expectation to match its origin-only policy.
   `configuration_error` ("timeout must be finite and at most 300 seconds",
   "retries must be at most 100", "retry_delay must be finite and at most 300
   seconds"); Python accepted `inf`/`NaN`/huge integers and any retry count,
-  so a check could wait or retry without end. The fixture tests map the
+  so a check could wait or retry without end. Then `max_body_bytes` must be
+  at most 16 MiB (16777216, `MAX_BODY_BYTES_CEILING`), else
+  `configuration_error` "max_body_bytes must be at most 16777216 bytes"
+  before any request; Python accepted any positive integer, and a value
+  beyond `usize` became an unbounded inflater allowance. The fixture tests map the
   affected Python outcomes to these errors explicitly. **Retry execution
   budget (intentional difference):** a retry starts only while the elapsed
   time plus `retry_delay` plus one whole attempt (`timeout`) fit into the
   check's runtime estimate (5.8, explicit `max_runtime_seconds` included,
   capped at `MAX_DERIVED_PROCESSING_LEASE_SECONDS`); otherwise the last
   failure is the result, so retries never outlast the processing lease.
+  The derived estimate counts the config's default retry and delay (5.8),
+  so a check without retry fields keeps its default retry; an explicit
+  `max_runtime_seconds` or `retries: 0` still limits it.
   Every attempt, the first included, is bounded by the lesser of `timeout`
   and the remaining budget, so an explicit `max_runtime_seconds` shorter
   than `timeout` ends a stalled first attempt with `timeout` inside the
@@ -1543,7 +1550,14 @@ stop), until stop:
    `required = min(max(estimated_check_runtime_seconds(c) for enabled c), 3600)`
    with the exact estimator (`max_runtime_seconds`; ping formula; imap ×8,
    smtp ×5, tcp connect+handshake+timeout; defaults `timeout=10`,
-   `retries=0`, `retry_delay=0` regardless of the executor defaults; numeric
+   `retries=0`, `retry_delay=0` regardless of the executor defaults, except
+   json-metrics (intentional difference): the timeout, retries and delay of
+   its validated config (defaults `retries=1`, `retry_delay=2`, coercions
+   such as `retries: false` = 0); for an invalid config the per-field
+   estimator rules above apply with those defaults (a parseable `timeout`,
+   `retries` or `retry_delay` still counts, e.g. `{"timeout": 60}` without
+   `url`/`checks` estimates 152 s), because its executor caps retries by this estimate and Python's
+   zero-retry default left no time for the default retry; numeric
    strings accepted; non-numeric warns once per `(check_id, field)`) —
    fixture; warnings on cap/extension once per value pair; on estimation
    error log and keep the cached value. `effective = max(configured, cached)`.

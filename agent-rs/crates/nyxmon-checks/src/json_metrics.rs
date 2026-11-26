@@ -11,7 +11,9 @@
 //! ([`attempt_deadline`]). The budget is the runtime estimate the collector
 //! sizes the processing lease with
 //! ([`estimated_check_runtime_seconds`], capped at
-//! [`MAX_DERIVED_PROCESSING_LEASE_SECONDS`]). A retry is scheduled only if
+//! [`MAX_DERIVED_PROCESSING_LEASE_SECONDS`]); the estimate counts the
+//! default retry and delay when the config leaves them out. A retry is
+//! scheduled only if
 //! its delay plus a whole attempt fit. If the delay uses up the remaining
 //! budget, the last failure is the result.
 
@@ -133,8 +135,8 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
     let budget = execution_budget(check);
     let remaining_budget = || budget.saturating_sub(started.elapsed());
     let timeout = Duration::from_secs_f64(config.timeout);
-    let retry_cost = Duration::from_secs_f64(config.retry_delay) + timeout;
-    let may_retry = |attempt: u32| attempt < config.retries && retry_cost <= remaining_budget();
+    let may_retry =
+        |attempt: u32| attempt < config.retries && retry_fits(&config, remaining_budget());
     let mut last_error = None;
     let http = ctx.http.for_check();
 
@@ -221,6 +223,12 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
         return Ok(CheckResult::new(check.check_id, status, data));
     }
     Ok(last_error.unwrap_or_else(|| error(check, "unexpected_error", "metrics check failed")))
+}
+
+/// Whether the retry delay plus one whole attempt fit into `remaining`.
+fn retry_fits(config: &JsonMetricsConfig, remaining: Duration) -> bool {
+    Duration::from_secs_f64(config.retry_delay) + Duration::from_secs_f64(config.timeout)
+        <= remaining
 }
 
 /// The wall-clock budget of one execution: the check's runtime estimate

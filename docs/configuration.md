@@ -840,7 +840,8 @@ Small values remain exact while the allowance permits them. Rule evaluation and
 failure status still include every check.
 
 `max_body_bytes` (default `1048576`, 1 MiB) caps how much of the response body
-is read. A larger body, or a `Content-Length` above the cap, fails with
+is read. The Rust agent accepts at most `16777216` (16 MiB); a larger value
+fails with `error_type="configuration_error"` before any request. A larger body, or a `Content-Length` above the cap, fails with
 `error_type="body_too_large"` without being parsed. The cap counts decoded
 bytes as the stream is decompressed, so a compressed response is stopped once
 its inflated size passes the cap. The agent accepts final 2xx statuses except
@@ -860,7 +861,9 @@ Other values, such as `Infinity`, `NaN` or huge numbers, fail with
 `error_type="configuration_error"` before any request. Retries also stop once
 another delay plus a whole attempt would exceed the check's runtime budget
 (its `max_runtime_seconds`, or the estimate from timeout and retries, at most
-one hour). If the budget is exhausted during the retry delay, the last failure
+one hour). Without `retries` and `retry_delay` the estimate counts the
+defaults (one retry after 2 seconds), so the default retry still fits; the
+collector's processing lease grows accordingly. If the budget is exhausted during the retry delay, the last failure
 is returned without another request.
 
 The Rust agent bounds every whole HTTP attempt, including the first, by the

@@ -13,6 +13,9 @@
 //! [`MAX_RETRY_DELAY_SECONDS`], and `retries` at most [`MAX_RETRIES`] (the
 //! bounds of the HTTP check). Python accepted `inf`/`NaN`, huge integers
 //! and any retry count, which let a check wait or retry without end.
+//! Likewise `max_body_bytes` must be at most [`MAX_BODY_BYTES_CEILING`]:
+//! Python accepted any positive integer, and a huge cap let the agent read
+//! and parse an arbitrarily large response.
 
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
@@ -26,6 +29,15 @@ pub const ALLOWED_OPERATORS: [&str; 6] = ["<", "<=", ">", ">=", "==", "!="];
 pub const ALLOWED_SEVERITIES: [&str; 2] = ["warning", "critical"];
 /// `DEFAULT_MAX_BODY_BYTES`.
 pub const DEFAULT_MAX_BODY_BYTES: i64 = 1024 * 1024;
+/// Largest accepted `max_body_bytes` (16 MiB): the response is decoded and
+/// parsed in memory, so the configured cap must stay finite and small.
+pub const MAX_BODY_BYTES_CEILING: i64 = 16 * 1024 * 1024;
+/// Default `retries` (`JsonMetricsCheckConfig.retries`); the runtime
+/// estimate uses the same default.
+pub const DEFAULT_RETRIES: i64 = 1;
+/// Default `retry_delay` in seconds; the runtime estimate uses the same
+/// default.
+pub const DEFAULT_RETRY_DELAY_SECONDS: i64 = 2;
 /// Largest accepted `timeout` in seconds (as for HTTP checks).
 pub const MAX_TIMEOUT_SECONDS: f64 = 300.0;
 /// Largest accepted `retry_delay` in seconds (as for HTTP checks).
@@ -81,7 +93,7 @@ pub struct JsonMetricsConfig {
     pub retries: u32,
     /// `float(data["retry_delay"])`, finite, `0..=MAX_RETRY_DELAY_SECONDS`.
     pub retry_delay: f64,
-    /// Positive.
+    /// `1..=MAX_BODY_BYTES_CEILING`.
     pub max_body_bytes: BigInt,
 }
 
@@ -133,7 +145,11 @@ impl JsonMetricsConfig {
             }
         };
 
-        let (one, two, ten) = (PyJson::Int(1), PyJson::Float(2.0), PyJson::Float(10.0));
+        let (one, two, ten) = (
+            PyJson::Int(DEFAULT_RETRIES),
+            PyJson::Float(DEFAULT_RETRY_DELAY_SECONDS as f64),
+            PyJson::Float(10.0),
+        );
         let retries = py_int_of(get_or(map, "retries", &one)).map_err(num_error)?;
         let retry_delay = py_float_of(get_or(map, "retry_delay", &two))?;
         let timeout = get_or(map, "timeout", &ten);
@@ -178,6 +194,11 @@ impl JsonMetricsConfig {
             return Err(ConfigError::invalid(
                 "retry_delay must be finite and at most 300 seconds",
             ));
+        }
+        if max_body_bytes > BigInt::from(MAX_BODY_BYTES_CEILING) {
+            return Err(ConfigError::invalid(format!(
+                "max_body_bytes must be at most {MAX_BODY_BYTES_CEILING} bytes"
+            )));
         }
         Ok(JsonMetricsConfig {
             url: url.clone(),
