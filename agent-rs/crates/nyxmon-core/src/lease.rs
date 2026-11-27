@@ -56,6 +56,38 @@ pub fn estimated_check_runtime_seconds(
     data: &PyJson,
     warnings: Option<&WarnOnce>,
 ) -> i64 {
+    estimate(check_id, check_type, data, warnings, None)
+}
+
+/// Estimate a JSON metrics execution from the configuration it already admitted.
+/// The execution budget uses the same override and retry arithmetic as the scheduler.
+pub fn estimated_json_metrics_runtime_seconds(
+    check_id: i64,
+    data: &PyJson,
+    config: &JsonMetricsConfig,
+) -> i64 {
+    estimate(check_id, "json-metrics", data, None, Some(config))
+}
+
+fn retry_runtime_seconds(retries: f64, per_attempt: f64, retry_delay: f64) -> i64 {
+    ((retries + 1.0) * per_attempt + retries * retry_delay + 30.0).ceil() as i64
+}
+
+fn json_metrics_runtime_seconds(config: &JsonMetricsConfig) -> i64 {
+    retry_runtime_seconds(
+        f64::from(config.retries),
+        config.timeout,
+        config.retry_delay,
+    )
+}
+
+fn estimate(
+    check_id: i64,
+    check_type: &str,
+    data: &PyJson,
+    warnings: Option<&WarnOnce>,
+    admitted_metrics: Option<&JsonMetricsConfig>,
+) -> i64 {
     let non_negative_number = |name: &str, default: i64| -> f64 {
         let Some(value) = data.get(name) else {
             return default as f64;
@@ -88,14 +120,13 @@ pub fn estimated_check_runtime_seconds(
         return ((count + 1.0) * (timeout + 2.0) + (count - 1.0) * interval + 30.0).ceil() as i64;
     }
 
-    if check_type == "json-metrics"
-        && let Ok(config) = JsonMetricsConfig::from_data(data)
-    {
-        let retries = f64::from(config.retries);
-        return ((retries + 1.0) * config.timeout + retries * config.retry_delay + 30.0).ceil()
-            as i64;
-    }
     let (default_retries, default_retry_delay) = if check_type == "json-metrics" {
+        if let Some(config) = admitted_metrics {
+            return json_metrics_runtime_seconds(config);
+        }
+        if let Ok(config) = JsonMetricsConfig::from_data(data) {
+            return json_metrics_runtime_seconds(&config);
+        }
         (DEFAULT_RETRIES, DEFAULT_RETRY_DELAY_SECONDS)
     } else {
         (0, 0)
@@ -113,5 +144,5 @@ pub fn estimated_check_runtime_seconds(
         }
         _ => timeout,
     };
-    ((retries + 1.0) * per_attempt + retries * retry_delay + 30.0).ceil() as i64
+    retry_runtime_seconds(retries, per_attempt, retry_delay)
 }

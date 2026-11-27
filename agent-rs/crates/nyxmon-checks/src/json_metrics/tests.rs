@@ -1,11 +1,16 @@
 //! The json-metrics executor against `fixtures/config_json_metrics.json`
 //! (`executor_cases`) and fake-server tests of the body rules.
 
+use std::sync::Arc;
+
+use nyxmon_core::config::json_metrics::{MAX_METRIC_CHECKS, rule_admission_count};
+use nyxmon_core::lease::estimated_check_runtime_seconds;
 use nyxmon_core::pyjson::loads;
 
 use super::*;
 use crate::ctx::Sleeper;
 use crate::http_client::HttpSession;
+use crate::registry::{Executors, Registry};
 use crate::testutil::{Action, Executor, FakeServer, head, run_fixture_case};
 
 #[tokio::test(flavor = "multi_thread")]
@@ -67,6 +72,25 @@ fn ctx() -> BatchCtx {
 }
 
 const RULES: &str = r#"[{"path": "$.a", "op": "<", "value": 10, "severity": "critical"}]"#;
+
+#[tokio::test]
+async fn registry_admits_max_rules_once_per_execution() {
+    let server = FakeServer::start(vec![crate::testutil::respond(200, &[], br#"{"a": 1}"#)]).await;
+    let rules = vec![RULES.trim_matches(['[', ']']); MAX_METRIC_CHECKS].join(",");
+    let data = format!(
+        r#"{{"url": "http://127.0.0.1:{}/m", "checks": [{rules}]}}"#,
+        server.port()
+    );
+    let before = rule_admission_count();
+    let result = Registry::new()
+        .execute(check(&data), Arc::new(ctx()))
+        .unwrap()
+        .await
+        .unwrap();
+    assert_eq!(result.status, ResultStatus::Ok, "{result:?}");
+    assert_eq!(server.requests().len(), 1);
+    assert_eq!(rule_admission_count() - before, 1);
+}
 
 #[tokio::test]
 async fn only_complete_successful_responses_can_pass_thresholds() {
@@ -409,7 +433,7 @@ fn the_default_retry_fits_into_the_derived_budget() {
     ));
     let config = JsonMetricsConfig::from_data(&defaults.data).unwrap();
     assert_eq!((config.retries, config.retry_delay), (1, 2.0));
-    let budget = execution_budget(&defaults);
+    let budget = execution_budget(&defaults, &config);
     assert_eq!(budget, Duration::from_secs(152));
     assert!(retry_fits(&config, budget - used));
 
@@ -418,13 +442,38 @@ fn the_default_retry_fits_into_the_derived_budget() {
         r#"{{"url": "http://m.test/m", "checks": {RULES}, "timeout": 60,
              "max_runtime_seconds": 90}}"#
     ));
-    assert!(!retry_fits(&config, execution_budget(&capped) - used));
-
-    // An explicit zero-retry override budgets a single attempt.
-    let single = check(&format!(
-        r#"{{"url": "http://m.test/m", "checks": {RULES}, "timeout": 60, "retries": 0}}"#
+    let config = JsonMetricsConfig::from_data(&capped.data).unwrap();
+    assert!(!retry_fits(
+        &config,
+        execution_budget(&capped, &config) - used
     ));
-    assert_eq!(execution_budget(&single), Duration::from_secs(90));
+}
+
+#[test]
+fn the_execution_budget_matches_the_capped_scheduler_estimate() {
+    for (fields, expected) in [
+        (r#""timeout": 60"#, 152),
+        (r#""timeout": 60, "retries": false"#, 90),
+        (r#""timeout": 10.25, "retries": 2, "retry_delay": 0.75"#, 63),
+        (r#""timeout": 60, "max_runtime_seconds": "90.25""#, 91),
+        (r#""timeout": 60, "max_runtime_seconds": "invalid""#, 152),
+        (r#""timeout": 300, "retries": 100"#, 3600),
+        (r#""max_runtime_seconds": 4000"#, 3600),
+    ] {
+        let check = check(&format!(
+            r#"{{"url": "http://m.test/m", "checks": {RULES}, {fields}}}"#
+        ));
+        let config = JsonMetricsConfig::from_data(&check.data).unwrap();
+        let scheduled =
+            estimated_check_runtime_seconds(check.check_id, &check.check_type, &check.data, None)
+                .min(MAX_DERIVED_PROCESSING_LEASE_SECONDS);
+        assert_eq!(scheduled, expected, "{fields}");
+        assert_eq!(
+            execution_budget(&check, &config).as_secs(),
+            expected as u64,
+            "{fields}"
+        );
+    }
 }
 
 #[tokio::test]

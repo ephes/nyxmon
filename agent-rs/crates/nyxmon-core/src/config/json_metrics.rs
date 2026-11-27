@@ -51,6 +51,17 @@ pub const MAX_METRIC_VALUE_BYTES: usize = 65_536;
 pub const MAX_METRIC_VALUE_NODES: usize = 8192;
 pub const MAX_METRIC_VALUE_DEPTH: usize = 64;
 
+#[cfg(feature = "test-support")]
+thread_local! {
+    static RULE_ADMISSIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Number of metric rule admission passes on the current test thread.
+#[cfg(feature = "test-support")]
+pub fn rule_admission_count() -> usize {
+    RULE_ADMISSIONS.get()
+}
+
 /// A threshold severity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Severity {
@@ -225,6 +236,8 @@ fn parse_checks(raw: &PyJson) -> Result<Vec<MetricCheck>, ConfigError> {
             return Err(PyException::TYPE_ERROR.into());
         }
     };
+    #[cfg(feature = "test-support")]
+    RULE_ADMISSIONS.set(RULE_ADMISSIONS.get() + 1);
     admit_work(entries)?;
     let mut checks = Vec::with_capacity(entries.len());
     let (null, empty) = (PyJson::Null, PyJson::Str(String::new()));

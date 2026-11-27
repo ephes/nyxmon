@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[features]
+test-support = []
+
 [dependencies]
 indexmap.workspace = true
 num-bigint.workspace = true

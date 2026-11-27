@@ -10,7 +10,7 @@
 //! of the configured timeout and the remaining execution budget
 //! ([`attempt_deadline`]). The budget is the runtime estimate the collector
 //! sizes the processing lease with
-//! ([`estimated_check_runtime_seconds`], capped at
+//! ([`estimated_json_metrics_runtime_seconds`] uses the admitted rules, capped at
 //! [`MAX_DERIVED_PROCESSING_LEASE_SECONDS`]); the estimate counts the
 //! default retry and delay when the config leaves them out. A retry is
 //! scheduled only if
@@ -22,7 +22,9 @@ use std::time::{Duration, Instant};
 use hyper::header::{CONTENT_RANGE, HeaderValue};
 use nyxmon_core::config::json_metrics::JsonMetricsConfig;
 use nyxmon_core::config::{ConfigError, PyException};
-use nyxmon_core::lease::{MAX_DERIVED_PROCESSING_LEASE_SECONDS, estimated_check_runtime_seconds};
+use nyxmon_core::lease::{
+    MAX_DERIVED_PROCESSING_LEASE_SECONDS, estimated_json_metrics_runtime_seconds,
+};
 use nyxmon_core::metrics_eval::{evaluate, failure_status, failure_summary};
 use nyxmon_core::model::{Check, CheckResult, ResultStatus};
 use nyxmon_core::pyjson::{PyDict, PyJson, loads_metrics_bytes, py_type_name as type_name};
@@ -132,7 +134,7 @@ pub async fn execute(check: &Check, ctx: &BatchCtx) -> Result<CheckResult, PyExc
     };
     let attempts = config.retries + 1;
     let started = Instant::now();
-    let budget = execution_budget(check);
+    let budget = execution_budget(check, &config);
     let remaining_budget = || budget.saturating_sub(started.elapsed());
     let timeout = Duration::from_secs_f64(config.timeout);
     let may_retry =
@@ -234,10 +236,9 @@ fn retry_fits(config: &JsonMetricsConfig, remaining: Duration) -> bool {
 /// The wall-clock budget of one execution: the check's runtime estimate
 /// (an explicit `max_runtime_seconds`, else retries, delays and timeouts
 /// plus a margin), never above the largest derived processing lease.
-fn execution_budget(check: &Check) -> Duration {
-    let estimate =
-        estimated_check_runtime_seconds(check.check_id, &check.check_type, &check.data, None)
-            .clamp(0, MAX_DERIVED_PROCESSING_LEASE_SECONDS);
+fn execution_budget(check: &Check, config: &JsonMetricsConfig) -> Duration {
+    let estimate = estimated_json_metrics_runtime_seconds(check.check_id, &check.data, config)
+        .clamp(0, MAX_DERIVED_PROCESSING_LEASE_SECONDS);
     Duration::from_secs(u64::try_from(estimate).unwrap_or(0))
 }
 

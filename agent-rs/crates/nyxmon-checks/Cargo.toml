@@ -37,6 +37,7 @@ md-5.workspace = true
 rand.workspace = true
 
 [dev-dependencies]
+nyxmon-core = { workspace = true, features = ["test-support"] }
 rcgen.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time", "test-util"] }

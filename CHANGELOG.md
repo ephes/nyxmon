@@ -72,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Rust JSON metrics checks
 
+- Admit metric rules once per execution and reuse the validated retry settings
+  for the runtime budget.
 - Reject terminal non-2xx statuses and 206 Partial Content before reading a
   metrics response body. Reject otherwise successful responses carrying
   `Content-Range` as well. Preserve retries for HTTP 5xx responses.

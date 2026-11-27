@@ -866,6 +866,10 @@ defaults (one retry after 2 seconds), so the default retry still fits; the
 collector's processing lease grows accordingly. If the budget is exhausted during the retry delay, the last failure
 is returned without another request.
 
+The scheduler and executor use the same runtime calculation. Each execution
+validates its rules once and reuses the validated timeout and retry settings
+to calculate its budget.
+
 The Rust agent bounds every whole HTTP attempt, including the first, by the
 lesser of `timeout` and the remaining execution budget. The limit includes
 redirects and the body read. An attempt that runs out of time returns
