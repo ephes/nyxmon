@@ -14,6 +14,8 @@ from .auth import nyxboard_login_required
 from .deletion import DELETE_CONFLICT, delete_confirmed, deletion_revision
 from .timestamps import usable_epoch as _usable_epoch
 from .models import (
+    RECENT_RESULT_ORDERING,
+    STATUS_RESULT_LIMIT,
     CheckNotificationState,
     CollectorIncident,
     Service,
@@ -205,7 +207,9 @@ def _checks_with_recent_results(*, using=None):
     return HealthCheck.objects.using(using).prefetch_related(
         Prefetch(
             "results",
-            queryset=Result.objects.using(using).order_by("-created_at", "-id")[:5],
+            queryset=Result.objects.using(using).order_by(*RECENT_RESULT_ORDERING)[
+                :STATUS_RESULT_LIMIT
+            ],
             to_attr="recent_results",
         )
     )
@@ -419,20 +423,26 @@ def healthcheck_detail(request, check_id):
     """
     Display details of a specific health check.
     """
-    health_check = get_object_or_404(HealthCheck, id=check_id)
-    # The worker stamps results with second resolution, so two samples of one
-    # check regularly share a ``created_at``; the descending id breaks that tie
-    # in insertion order and keeps the truly newest sample first.
-    results = list(health_check.results.order_by("-created_at", "-id")[:10])
+    alias = HealthCheck.objects.db
+    with transaction.atomic(using=alias):
+        health_check = get_object_or_404(
+            HealthCheck.objects.using(alias).select_related("service"), id=check_id
+        )
+        results = list(
+            health_check.results.using(alias).order_by(*RECENT_RESULT_ORDERING)[:10]
+        )
+        # Checks that have never failed may have no notification state row.
+        held_since = (
+            CheckNotificationState.objects.using(alias)
+            .filter(health_check_id=check_id)
+            .values_list("held_since", flat=True)
+            .first()
+        )
+
+    health_check.recent_results = results[:STATUS_RESULT_LIMIT]
+    status = health_check.get_status()
     for result in results:
         result.site_connectivity_badge = _site_connectivity_badge(result)
-
-    # ``held_since`` lives in the internal notification state table, which has
-    # no row at all for a check that has never failed.
-    notification_state = CheckNotificationState.objects.filter(
-        health_check=health_check
-    ).first()
-    held_since = getattr(notification_state, "held_since", 0) or 0
 
     # ``held_since`` alone does not mean the alert is held: it stays non-zero
     # after the hold budget is exhausted and after a stale-snapshot bypass, and
@@ -445,6 +455,7 @@ def healthcheck_detail(request, check_id):
         "nyxboard/healthcheck_detail.html",
         {
             "health_check": health_check,
+            "status": status,
             "results": results,
             "held_since": _format_epoch(held_since),
             "alert_held": alert_held,

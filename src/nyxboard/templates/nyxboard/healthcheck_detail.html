@@ -31,7 +31,7 @@
 <div class="list-card health-check-info">
     <div class="service-id health-check-id">
         {{ health_check.name }}
-        <span class="health-check-status status-{{ health_check.get_status }}">{{ health_check.get_status|title }}</span>
+        <span class="health-check-status status-{{ status }}">{{ status|title }}</span>
     </div>
     
     <a href="{% url 'nyxboard:service_detail' service_id=health_check.service.id %}" class="service-link">

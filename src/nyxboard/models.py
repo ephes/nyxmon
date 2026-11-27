@@ -5,6 +5,10 @@ from django.db import models
 from nyxmon.domain import ResultStatus, StatusChoices, CheckStatus, CheckType
 
 
+RECENT_RESULT_ORDERING = ("-created_at", "-id")
+STATUS_RESULT_LIMIT = 5
+
+
 class Service(models.Model):
     name: models.CharField = models.CharField("Service Name", max_length=255)
 
@@ -143,7 +147,9 @@ class HealthCheck(models.Model):
             recent_results = self.recent_results
         else:
             # Get the 5 most recent results
-            recent_results = self.results.order_by("-created_at", "-id")[:5]
+            recent_results = self.results.order_by(*RECENT_RESULT_ORDERING)[
+                :STATUS_RESULT_LIMIT
+            ]
 
         if not recent_results:
             return StatusChoices.UNKNOWN

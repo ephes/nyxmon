@@ -673,6 +673,11 @@ must be usable positive integer epochs (booleans are refused). Other payload
 fields are ignored. This bounds projection and rendered evidence after Django
 has decoded the stored JSON; it does not cap the database payload's size.
 
+A check detail page reads the ten newest results and the hold marker in one
+database snapshot. The status label and colour both use the five newest results
+from that history, ordered by timestamp and then by descending result ID for
+ties, as on the status cards.
+
 A check detail page reports a hold from the **newest stored result**, not from
 `held_since`:
 

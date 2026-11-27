@@ -1,4 +1,4 @@
-"""Real SQLite WAL completion between a card's definition and result reads."""
+"""Real SQLite WAL completions during dashboard evidence reads."""
 
 import sqlite3
 from itertools import cycle
@@ -9,7 +9,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from nyxboard.forms import HealthCheckForm
-from nyxboard.models import HealthCheck, Result, Service
+from nyxboard.models import CheckNotificationState, HealthCheck, Result, Service
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -145,3 +145,84 @@ def test_card_uses_one_snapshot_without_render_time_queries(
     assert fresh.context["check"].next_check_time == 9999999999
     assert fresh.context["last_result"].status == "error"
     assert fresh.context["check_mode"] == "normal"
+
+
+def test_detail_uses_one_snapshot_for_history_hold_and_status(
+    client, card_db, monkeypatch
+):
+    from nyxboard import views
+
+    check, sample, conn, db_path = card_db
+    CheckNotificationState.objects.using(conn.alias).create(
+        health_check_id=check.pk, held_since=1757123456
+    )
+    read_route = router.db_for_read
+    monkeypatch.setattr(
+        router,
+        "db_for_read",
+        lambda model, **hints: conn.alias
+        if model is CheckNotificationState
+        else read_route(model, **hints),
+    )
+    samples = [
+        Result.objects.using(conn.alias).create(health_check_id=check.pk, status="ok")
+        for _ in range(9)
+    ]
+    held = Result.objects.using(conn.alias).create(
+        health_check_id=check.pk,
+        status="error",
+        data={"site_connectivity": {"held": True}},
+    )
+    Result.objects.using(conn.alias).filter(health_check_id=check.pk).update(
+        created_at=sample.created_at
+    )
+    recovery_id = None
+
+    def complete(execute, sql, params, many, context):
+        nonlocal recovery_id
+        if '"check_notification_state"' in sql and recovery_id is None:
+            # Publish a recovery between the history read and the hold read.
+            with sqlite3.connect(db_path, timeout=1) as writer:
+                recovery_id = writer.execute(
+                    "INSERT INTO check_result (health_check_id, status, data, created_at) "
+                    "SELECT health_check_id, 'ok', '{}', created_at FROM check_result WHERE id=?",
+                    [held.pk],
+                ).lastrowid
+                writer.execute(
+                    "UPDATE check_notification_state SET held_since=0 WHERE check_id=?",
+                    [check.pk],
+                )
+        return execute(sql, params, many, context)
+
+    render_queries = []
+    original_render = views.render
+
+    def render(*args, **kwargs):
+        assert not conn.in_atomic_block
+        with CaptureQueriesContext(conn) as queries:
+            response = original_render(*args, **kwargs)
+        render_queries.extend(queries)
+        return response
+
+    monkeypatch.setattr(views, "render", render)
+    url = reverse("nyxboard:healthcheck_detail", args=[check.pk])
+    with conn.execute_wrapper(complete), CaptureQueriesContext(conn) as queries:
+        response = client.get(url)
+
+    assert recovery_id is not None
+    assert response.status_code == 200
+    assert response.context["held_since"] == "Sep 6, 01:50 UTC"
+    assert response.context["alert_held"] is True
+    assert b'status-failed">Failed</span>' in response.content
+    assert [row.pk for row in response.context["results"]] == [
+        held.pk,
+        *(row.pk for row in reversed(samples)),
+    ]
+    assert not render_queries
+    assert sum('"check_result"' in query["sql"] for query in queries) == 1
+
+    fresh = client.get(url)
+    assert fresh.context["results"][0].pk == recovery_id
+    assert fresh.context["held_since"] is None
+    assert fresh.context["alert_held"] is False
+    assert b'status-recovering">Recovering</span>' in fresh.content

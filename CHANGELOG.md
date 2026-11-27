@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Health check detail
+
+- Render result history, status and the hold indicator from one read snapshot,
+  so a concurrent check completion cannot mix evidence from different runs.
+
 ### Rust agent time dependency
 
 - The Rust agent formats its stderr log timestamps (local time,
